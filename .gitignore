@@ -1,0 +1,8 @@
+.idea/
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+
+# Build files
+*.zip
+*.pyc
