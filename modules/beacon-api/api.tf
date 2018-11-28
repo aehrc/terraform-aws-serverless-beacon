@@ -250,7 +250,7 @@ resource "aws_api_gateway_integration" "submit-patch" {
   resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
   http_method = "${aws_api_gateway_method.submit-patch.http_method}"
   type = "AWS_PROXY"
-  uri = "${aws_lambda_function.summariseVcf.invoke_arn}"
+  uri = "${aws_lambda_function.submitDataset.invoke_arn}"
   integration_http_method = "POST"
 }
 
@@ -294,7 +294,7 @@ resource "aws_api_gateway_integration" "submit-post" {
   resource_id = "${aws_api_gateway_method.submit-post.resource_id}"
   http_method = "${aws_api_gateway_method.submit-post.http_method}"
   type = "AWS_PROXY"
-  uri = "${aws_lambda_function.summariseVcf.invoke_arn}"
+  uri = "${aws_lambda_function.submitDataset.invoke_arn}"
   integration_http_method = "POST"
 }
 
