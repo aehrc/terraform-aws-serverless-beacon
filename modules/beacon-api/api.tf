@@ -113,7 +113,7 @@ resource "aws_api_gateway_integration" "root-get" {
     "application/json" = <<TEMPLATE
       {
         "TableName": "${aws_dynamodb_table.datasets.name}",
-        "ProjectionExpression": "DataSetID,name,assemblyId,createDateTime,updateDateTime,description,version,variantCount,callCount,sampleCount,externalUrl,info,dataUseConditions"
+        "ProjectionExpression": "id,datasetName,assemblyId,createDateTime,updateDateTime,description,version,variantCount,callCount,sampleCount,externalUrl,info,dataUseConditions"
       }
     TEMPLATE
   }
@@ -143,7 +143,7 @@ resource "aws_api_gateway_integration_response" "root-get" {
           #foreach( $item in $input.path('$.Items'))
             {
               "id": "$item.id.S",
-              "name": "$item.name.S",
+              "name": "$item.datasetName.S",
               "assemblyId": "$item.assemblyId.S",
               "createDateTime": "$item.createDateTime.S",
               "updateDateTime": "$item.updateDateTime.S"
@@ -212,7 +212,7 @@ resource "aws_api_gateway_integration_response" "submit-options" {
 
   response_parameters {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
+    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,PATCH,POST'"
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
   }
 
@@ -221,6 +221,50 @@ resource "aws_api_gateway_integration_response" "submit-options" {
   }
 
   depends_on = ["aws_api_gateway_integration.submit-options"]
+}
+
+resource "aws_api_gateway_method" "submit-patch" {
+  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
+  resource_id = "${aws_api_gateway_resource.submit.id}"
+  http_method = "PATCH"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_method_response" "submit-patch" {
+  rest_api_id = "${aws_api_gateway_method.submit-patch.rest_api_id}"
+  resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
+  http_method = "${aws_api_gateway_method.submit-patch.http_method}"
+  status_code = "200"
+
+  response_parameters {
+    "method.response.header.Access-Control-Allow-Origin" = true
+  }
+
+  response_models {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration" "submit-patch" {
+  rest_api_id = "${aws_api_gateway_method.submit-patch.rest_api_id}"
+  resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
+  http_method = "${aws_api_gateway_method.submit-patch.http_method}"
+  type = "AWS_PROXY"
+  uri = "${aws_lambda_function.summariseVcf.invoke_arn}"
+  integration_http_method = "POST"
+}
+
+resource "aws_api_gateway_integration_response" "submit-patch" {
+  rest_api_id = "${aws_api_gateway_method.submit-patch.rest_api_id}"
+  resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
+  http_method = "${aws_api_gateway_method.submit-patch.http_method}"
+  status_code = "${aws_api_gateway_method_response.submit-patch.status_code}"
+
+  response_templates {
+    "application/json" = ""
+  }
+
+  depends_on = ["aws_api_gateway_integration.submit-patch"]
 }
 
 resource "aws_api_gateway_method" "submit-post" {
