@@ -26,6 +26,55 @@ data "aws_iam_policy_document" "main-apigateway" {
 }
 
 #
+# submitDataset Lambda Function
+#
+resource "aws_iam_role" "lambda-submitDataset" {
+  name = "submitDatasetLamdaRole"
+  assume_role_policy = "${data.aws_iam_policy_document.main-lambda.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-submitDataset-xray-write" {
+  role = "${aws_iam_role.lambda-submitDataset.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-submitDataset-add-logs" {
+  role = "${aws_iam_role.lambda-submitDataset.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-submitDataset" {
+  role = "${aws_iam_role.lambda-submitDataset.name}"
+  policy_arn = "${aws_iam_policy.lambda-submitDataset.arn}"
+}
+
+resource "aws_iam_policy" "lambda-submitDataset" {
+  name_prefix = "submitDataset"
+  policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
+}
+
+data "aws_iam_policy_document" "lambda-submitDataset" {
+  statement {
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      "${aws_sns_topic.updateDataset.arn}",
+    ]
+  }
+}
+
+#
 # summariseVcf Lambda Function
 #
 resource "aws_iam_role" "lambda-summariseVcf" {
@@ -56,7 +105,6 @@ resource "aws_iam_policy" "lambda-summariseVcf" {
 data "aws_iam_policy_document" "lambda-summariseVcf" {
   statement {
     actions = [
-      "dynamodb:PutItem",
       "dynamodb:UpdateItem",
     ]
     resources = [

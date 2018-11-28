@@ -5,6 +5,13 @@ resource "aws_s3_bucket" "lambda-packages" {
   bucket_prefix = "beacon-api-lambda-packages"
 }
 
+resource "aws_s3_bucket_object" "submitDataset-package" {
+  bucket = "${aws_s3_bucket.lambda-packages.bucket}"
+  key = "submitDataset.zip"
+  source = "/tmp/lambda-submitDataset.zip"
+  etag = "${md5(file("/tmp/lambda-submitDataset.zip"))}"
+}
+
 resource "aws_s3_bucket_object" "summariseVcf-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "summariseVcf.zip"

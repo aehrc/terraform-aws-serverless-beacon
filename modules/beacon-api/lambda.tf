@@ -1,4 +1,39 @@
 #
+# submitDataset Lambda Function
+#
+resource "aws_lambda_function" "submitDataset" {
+  function_name = "submitDataset"
+  description = "Creates or updates a dataset and triggers summariseVcf."
+  role = "${aws_iam_role.lambda-submitDataset.arn}"
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.6"
+  memory_size = 2048
+  timeout = 5
+  tracing_config {
+    mode = "Active"
+  }
+
+  s3_bucket = "${aws_s3_bucket.lambda-packages.bucket}"
+  s3_key = "${aws_s3_bucket_object.submitDataset-package.id}"
+  source_code_hash = "${base64sha256(file(aws_s3_bucket_object.submitDataset-package.source))}"
+
+  environment {
+    variables = {
+      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
+      UPDATE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.updateDataset.arn}"
+    }
+  }
+}
+
+resource "aws_lambda_permission" "APISummariseVcf" {
+  statement_id = "AllowAllowAPISummariseVcfInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.submitDataset.function_name}"
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/POST/${aws_api_gateway_resource.submit.path_part}"
+}
+
+#
 # summariseVcf Lambda Function
 #
 resource "aws_lambda_function" "summariseVcf" {
@@ -24,12 +59,12 @@ resource "aws_lambda_function" "summariseVcf" {
   }
 }
 
-resource "aws_lambda_permission" "APISummariseVcf" {
-  statement_id = "AllowAllowAPISummariseVcfInvoke"
+resource "aws_lambda_permission" "SNSSummariseVcf" {
+  statement_id = "AllowSNSSummariseVcfInvoke"
   action = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.summariseVcf.function_name}"
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/POST/${aws_api_gateway_resource.submit.path_part}"
+  principal = "sns.amazonaws.com"
+  source_arn = "${aws_sns_topic.updateDataset.arn}"
 }
 
 #
