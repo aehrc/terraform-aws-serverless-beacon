@@ -44,6 +44,10 @@ attribute_details = {
         'type': 'string',
         'required': True,
     },
+    'vcfLocation': {
+        'type': 'string',
+        'required': True,
+    },
     'description': {
         'type': 'string',
         'required': False,

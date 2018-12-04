@@ -40,7 +40,16 @@ CHROMOSOMES = [
 ]
 base_pattern = re.compile('[ACGT]+|N')
 
-datasets_table = boto3.resource('dynamodb').Table(DATASETS_TABLE_NAME)
+dynamodb = boto3.client('dynamodb')
+
+
+def get_datasets(assembly_id, dataset_ids):
+    dynamodb.query(
+        TableName='Datasets',
+        IndexName='assembly_index',
+        ProjectionExpression='id,vcfLocation',
+    )
+
 
 
 def missing_parameter(*parameters):
@@ -55,6 +64,9 @@ def query_datasets(parameters):
     validation_error = validate_request(parameters)
     if validation_error:
         return bad_request(validation_error)
+
+    datasets = get_datasets(parameters.get('assemblyId'),
+                            parameters.get('datasetIds'))
 
 
 def validate_request(parameters):
