@@ -4,7 +4,8 @@ import os
 
 import boto3
 
-HEADERS = {"Access-Control-Allow-Origin": "*"}
+from api_response import bad_request, bundle_response
+
 DATASETS_TABLE_NAME = os.environ.get('DATASETS_TABLE')
 UPDATE_DATASET_SNS_TOPIC_ARN = os.environ.get('UPDATE_DATASET_SNS_TOPIC_ARN')
 
@@ -66,14 +67,6 @@ attribute_details = {
 }
 
 
-def bundle_response(status_code, body):
-    return {
-            'statusCode': status_code,
-            'headers': HEADERS,
-            'body': json.dumps(body),
-    }
-
-
 def create_dataset(attributes):
     current_time = get_current_time()
     attributes['createDateTime'] = current_time
@@ -106,10 +99,8 @@ def submit_dataset(body_dict, method):
         except KeyError:
             if new or attribute == 'id':
                 if details['required']:
-                    return bundle_response(400, {
-                        'data': '{} must be present in request'
-                                ' body.'.format(attribute),
-                    })
+                    return bad_request('{} must be present in request'
+                                       ' body.'.format(attribute))
                 else:
                     attributes[attribute] = None
         else:
@@ -119,10 +110,8 @@ def submit_dataset(body_dict, method):
                 if isinstance(dataset_attr, type_dict['type']):
                     attributes[attribute] = dataset_attr
                 else:
-                    return bundle_response(400, {
-                        'data': '{} must be {} {}.'.format(
-                            attribute, type_dict['prefix'], type_string),
-                    })
+                    return bad_request('{} must be {} {}.'.format(
+                        attribute, type_dict['prefix'], type_string))
             else:
                 attributes['id'] = None
     if new:
@@ -153,12 +142,10 @@ def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     event_body = event.get('body')
     if not event_body:
-        return bundle_response(400, {'data': 'No body sent with request.'})
+        return bad_request('No body sent with request.')
     try:
         body_dict = json.loads(event_body)
     except ValueError:
-        return bundle_response(400, {
-            'data': 'Error parsing request body, Expected JSON.',
-        })
+        return bad_request('Error parsing request body, Expected JSON.')
     method = event['httpMethod']
     return submit_dataset(body_dict, method)
