@@ -58,16 +58,6 @@ def get_datasets(assembly_id, dataset_ids):
             ':assemblyId': {'S': assembly_id}
         }
     }
-    if dataset_ids:
-        dataset_expression = '({})'.format(
-            ' OR '.join(
-                'id = {}'.format(d) for d in dataset_ids
-            )
-        )
-        kwargs['KeyConditionExpression'] += ' AND {}'.format(dataset_expression)
-        kwargs['ExpressionAttributeValues'].update({
-            ':'+d: {'S': d} for d in dataset_ids
-        })
     more_results = True
     while more_results:
         response = dynamodb.query(**kwargs)
@@ -77,6 +67,8 @@ def get_datasets(assembly_id, dataset_ids):
             kwargs['ExclusiveStartKey'] = last_evaluated
         else:
             more_results = False
+    if dataset_ids:
+        items = [i for i in items if i['id'] in dataset_ids]
     return items
 
 

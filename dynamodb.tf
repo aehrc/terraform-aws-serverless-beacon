@@ -18,10 +18,10 @@ resource "aws_dynamodb_table" "datasets" {
     hash_key = "assemblyId",
     name = "assembly_index"
     non_key_attributes = [
+      "id",
       "vcfLocation",
     ]
     projection_type = "INCLUDE"
-    range_key = "id"
     read_capacity = "4"
     write_capacity = "1"
   }
