@@ -194,10 +194,10 @@ def validate_request(parameters):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    extra_params = {
+        'beaconId': BEACON_ID,
+    }
     if event['httpMethod'] == 'POST':
-        extra_params = {
-            'beaconId': BEACON_ID,
-        }
         event_body = event.get('body')
         if not event_body:
             return bad_request('No body sent with request.', extra_params)
@@ -208,5 +208,9 @@ def lambda_handler(event, context):
                                extra_params)
     else:  # method == 'GET'
         parameters = event['queryStringParameters']
-        parameters.update(event.get('multiValueQueryStringParameters'), {})
+        if not parameters:
+            return bad_request('No query parameters sent with request.',
+                               extra_params)
+        multi_values = event['multiValueQueryStringParameters']
+        parameters['datasetIds'] = multi_values.get('datasetIds')
     return query_datasets(parameters)
