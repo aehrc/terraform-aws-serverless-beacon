@@ -226,8 +226,7 @@ resource "aws_iam_policy" "api-root-get" {
 data "aws_iam_policy_document" "api-root-get" {
   statement {
     actions = [
-      "dynamodb:BatchGetItem",
-      "dynamodb:Query",
+      "dynamodb:Scan",
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}",
