@@ -59,12 +59,9 @@ def get_datasets(assembly_id, dataset_ids):
         }
     }
     if dataset_ids:
-        ins = 100  # used to limit IN operands to 100 members each
         dataset_expression = '({})'.format(
             ' OR '.join(
-                'id IN ({})'.format(
-                    ', '.join(':' + d for d in dataset_ids[ins*i:ins*(i+1)])
-                ) for i in range(math.ceil(len(dataset_ids) / ins))
+                'id = {}'.format(d) for d in dataset_ids
             )
         )
         kwargs['KeyConditionExpression'] += ' AND {}'.format(dataset_expression)
