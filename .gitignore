@@ -2,6 +2,7 @@
 .terraform/
 terraform.tfstate
 terraform.tfstate.backup
+credentials.auto.tfvars
 
 # Build files
 *.zip
