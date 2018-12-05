@@ -1,6 +1,6 @@
 #!/bin/bash
-for module in "$(pwd)"/modules/*/
+for dir in "$(pwd)"/lambda/*/
 do
-    cd "${module}"
+    cd "${dir}"
     ./pre-terraform-build.sh
 done
