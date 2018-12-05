@@ -3,8 +3,16 @@ import json
 HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 
-def bad_request(data):
-    return bundle_response(400, {'data': data})
+def bad_request(data, extra_params=None):
+    response = {
+        'error': {
+            'errorCode': 400,
+            'errorMessage': data,
+        },
+    }
+    if extra_params:
+        response.update(extra_params)
+    return bundle_response(400, response)
 
 
 def bundle_response(status_code, body):

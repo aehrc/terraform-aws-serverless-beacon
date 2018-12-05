@@ -4,4 +4,5 @@ provider "aws" {
 
 module "beacon-api" {
   source = "modules/beacon-api"
+  beacon-id = "${var.beacon-id}"
 }

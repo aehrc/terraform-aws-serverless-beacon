@@ -88,6 +88,7 @@ resource "aws_lambda_function" "queryDatasets" {
 
   environment {
     variables = {
+      BEACON_ID = "${var.beacon-id}"
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       QUERY_FUNCTION = "${aws_lambda_function.performQuery.function_name}"
     }

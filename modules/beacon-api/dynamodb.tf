@@ -1,11 +1,16 @@
 resource "aws_dynamodb_table" "datasets" {
   hash_key = "id"
   name = "Datasets"
-  read_capacity = 5
+  read_capacity = 1
   write_capacity = 1
 
   attribute {
     name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "assemblyId"
     type = "S"
   }
 
@@ -16,6 +21,8 @@ resource "aws_dynamodb_table" "datasets" {
       "vcfLocation",
     ]
     projection_type = "INCLUDE"
-    range_key = "assemblyId"
+    range_key = "id"
+    read_capacity = "4"
+    write_capacity = "1"
   }
 }
