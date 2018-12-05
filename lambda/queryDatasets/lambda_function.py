@@ -52,7 +52,7 @@ def get_datasets(assembly_id, dataset_ids):
     kwargs = {
         'TableName': 'Datasets',
         'IndexName': 'assembly_index',
-        'ProjectExpression': 'id,vcfLocation',
+        'ProjectionExpression': 'id,vcfLocation',
         'KeyConditionExpression': 'assemblyId = :assemblyId',
         'ExpressionAttributeValues': {
             ':assemblyId': {'S': assembly_id}
@@ -67,7 +67,7 @@ def get_datasets(assembly_id, dataset_ids):
                 ) for i in range(math.ceil(len(dataset_ids) / ins))
             )
         )
-        kwargs['KeyConditionExpression'] += 'AND {}'.format(dataset_expression)
+        kwargs['KeyConditionExpression'] += ' AND {}'.format(dataset_expression)
         kwargs['ExpressionAttributeValues'].update({
             ':'+d: {'S': d} for d in dataset_ids
         })
