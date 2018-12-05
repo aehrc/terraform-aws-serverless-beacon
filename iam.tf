@@ -152,11 +152,10 @@ resource "aws_iam_policy" "lambda-queryDatasets" {
 data "aws_iam_policy_document" "lambda-queryDatasets" {
   statement {
     actions = [
-      "dynamodb:BatchGetItem",
       "dynamodb:Query",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      "${aws_dynamodb_table.datasets.arn}/index/*",
     ]
   }
 
