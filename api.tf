@@ -132,12 +132,12 @@ resource "aws_api_gateway_integration_response" "root-get" {
   response_templates {
     "application/json" = <<TEMPLATE
       {
-        "id": "$${var.beacon-id}",
-        "name": "$${var.beacon-name}",
+        "id": "${var.beacon-id}",
+        "name": "${var.beacon-name}",
         "apiVersion": "v1.0.0",
         "organisation": {
-          "id": "$${var.organisation-id}",
-          "name": "$${var.organisation-name}"
+          "id": "${var.organisation-id}",
+          "name": "${var.organisation-name}"
         },
         "datasets": [
           #foreach( $item in $input.path('$.Items'))
