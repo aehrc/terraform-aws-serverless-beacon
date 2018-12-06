@@ -89,8 +89,6 @@ def perform_query(dataset, responses, include_datasets):
     print("Invoking performQuery with payload: {}".format(payload))
     response = aws_lambda.invoke(
         FunctionName='performQuery',
-        InvocationType='RequestResponse',
-        ClientContext='string',
         Payload=payload,
     )
     response_json = response['Payload']
