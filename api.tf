@@ -146,15 +146,15 @@ resource "aws_api_gateway_integration_response" "root-get" {
               "name": "$item.datasetName.S",
               "assemblyId": "$item.assemblyId.S",
               "createDateTime": "$item.createDateTime.S",
-              "updateDateTime": "$item.updateDateTime.S"
-              #if($!{$item.description}), "description": "$item.description.S"#end
-              #if($!{$item.version}), "version": "$item.version.S"#end
-              #if($!{$item.variantCount}), "variantCount": $item.variantCount.N#end
-              #if($!{$item.callCount}), "callCount": $item.callCount.N#end
-              #if($!{$item.sampleCount}), "sampleCount": $item.sampleCount.N#end
-              #if($!{$item.externalUrl}), "externalUrl": "$item.externalUrl.S"#end
-              #if($!{$item.info}), "info": $item.info.L#end
-              #if($!{$item.dataUseConditions}), "dataUseConditions": $item.dataUseConditions.M#end
+              "updateDateTime": "$item.updateDateTime.S",
+              "description": #if($item.description.S != "")"$item.description.S"#else null#end,
+              "version": #if($item.version.S != "")"$item.version.S"#else null#end,
+              "variantCount": #if($item.variantCount.N != "")"$item.variantCount.N"#else null#end,
+              "callCount": #if($item.callCount.N != "")"$item.callCount.N"#else null#end,
+              "sampleCount": #if($item.sampleCount.N != "")"$item.sampleCount.N"#else null#end,
+              "info": #if($item.info.L != "")"$item.info.L"#else null#end,
+              "dataUseConditions": #if($item.dataUseConditions.M != "")"$item.dataUseConditions.M"#else null#end,
+              "externalUrl": #if($item.externalUrl.S != "")"$item.externalUrl.S"#else null#end
             }#if( $foreach.hasNext ),#end
           #end
         ]
