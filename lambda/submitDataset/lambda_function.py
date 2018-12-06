@@ -68,6 +68,15 @@ attribute_details = {
         'type': 'object',
         'required': False,
     },
+    # To be added by the function
+    'createDateTime': {
+        'type': 'string',
+        'required': False,
+    },
+    'updateDateTime': {
+        'type': 'string',
+        'required': False,
+    },
 }
 
 
@@ -128,16 +137,18 @@ def submit_dataset(body_dict, method):
 
 def update_dataset(attributes):
     attributes['updateDateTime'] = get_current_time()
+    if 'createDateTime' in attributes:
+        del attributes['createDateTime']
     print("Updating Item: {}".format(json.dumps(attributes)))
     datasets_table.update_item(
+        Key={'id': attributes['id']},
         UpdateExpression='SET {}'.format(','.join(
             '{alt}=:{at}'.format(alt=attribute_details[at].get('alt_name', at),
-                                 at=at) for at in attributes
+                                 at=at) for at in attributes if at != 'id'
         )),
         ExpressionAttributeValues={
-            ':{at}'.format(at=at): {
-                types[attribute_details[at]['type']]['aws']: val
-            } for at, val in attributes.items()
+            ':{at}'.format(at=at): val
+            for at, val in attributes.items() if at != 'id'
         }
     )
 

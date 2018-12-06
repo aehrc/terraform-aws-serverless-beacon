@@ -25,12 +25,12 @@ resource "aws_lambda_function" "submitDataset" {
   }
 }
 
-resource "aws_lambda_permission" "APISummariseVcf" {
-  statement_id = "AllowAllowAPISummariseVcfInvoke"
+resource "aws_lambda_permission" "APISubmitDataset" {
+  statement_id = "AllowAllowAPISubmitDatasetInvoke"
   action = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.submitDataset.function_name}"
   principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/POST/${aws_api_gateway_resource.submit.path_part}"
+  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.submit.path_part}"
 }
 
 #
