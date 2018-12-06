@@ -120,7 +120,7 @@ def query_datasets(parameters):
                              kwargs={
                                  'dataset': dataset,
                                  'responses': responses,
-                                 'include_dataset': include_datasets,
+                                 'include_datasets': include_datasets,
                              })
         t.start()
         threads.append(t)
