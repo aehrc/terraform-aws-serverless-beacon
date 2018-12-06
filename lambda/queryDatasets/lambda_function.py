@@ -91,7 +91,7 @@ def perform_query(dataset, responses, include_datasets):
         FunctionName='performQuery',
         Payload=payload,
     )
-    response_json = response['Payload']
+    response_json = response['Payload'].read()
     print("dataset_id {ds} received payload: {p}".format(ds=dataset_id,
                                                          p=response_json))
     response_dict = json.loads(response_json)
