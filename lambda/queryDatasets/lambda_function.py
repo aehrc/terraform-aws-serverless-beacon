@@ -67,7 +67,7 @@ def get_datasets(assembly_id, dataset_ids):
         else:
             more_results = False
     if dataset_ids:
-        items = [i for i in items if i['id'] in dataset_ids]
+        items = [i for i in items if i['id']['S'] in dataset_ids]
     return items
 
 
@@ -84,7 +84,7 @@ def perform_query(dataset, responses, include_datasets):
     payload = json.dumps({
         'dataset_id': dataset_id,
         'include_datasets': include_datasets,
-        'vcf_location': dataset['vcfLocation'],
+        'vcf_location': dataset['vcfLocation']['S'],
     })
     print("Invoking performQuery with payload: {}".format(payload))
     response = aws_lambda.invoke(
