@@ -79,10 +79,15 @@ def missing_parameter(*parameters):
     return "Must include {}".format(required)
 
 
-def perform_query(dataset, responses, include_datasets):
+def perform_query(dataset, start, reference_name, reference_bases,
+                  alternate_bases, include_datasets, responses):
     dataset_id = dataset['id']['S']
     payload = json.dumps({
         'dataset_id': dataset_id,
+        'start': start,
+        'reference_name': reference_name,
+        'reference_bases': reference_bases,
+        'alternate_bases': alternate_bases,
         'include_datasets': include_datasets,
         'vcf_location': dataset['vcfLocation']['S'],
     })
@@ -110,6 +115,10 @@ def query_datasets(parameters):
 
     datasets = get_datasets(parameters['assemblyId'],
                             parameters.get('datasetIds'))
+    start = parameters.get('start')
+    reference_name = parameters['referenceName']
+    reference_bases = parameters['referenceBases']
+    alternate_bases = parameters.get('alternateBases')
     include_datasets = parameters.get('includeDatasetResponses', 'NONE')
     responses = queue.Queue()
     threads = []
@@ -117,6 +126,10 @@ def query_datasets(parameters):
         t = threading.Thread(target=perform_query,
                              kwargs={
                                  'dataset': dataset,
+                                 'start': start,
+                                 'reference_name': reference_name,
+                                 'reference_bases': reference_bases,
+                                 'alternate_bases': alternate_bases,
                                  'responses': responses,
                                  'include_datasets': include_datasets,
                              })
