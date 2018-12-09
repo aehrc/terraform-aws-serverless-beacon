@@ -14,7 +14,8 @@ def perform_query(dataset_id, vcf_location, start, reference_name,
         '--format', '%REF\t%ALT\t%INFO/AC\t%INFO/AN\t[,%GT,]',
         vcf_location
     ]
-    query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp')
+    query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
+                                     encoding='ascii')
     response = {
         'datasetId': dataset_id,
         'include': False,
