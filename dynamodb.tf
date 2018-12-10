@@ -1,8 +1,7 @@
 resource "aws_dynamodb_table" "datasets" {
+  billing_mode = "PAY_PER_REQUEST"
   hash_key = "id"
   name = "Datasets"
-  read_capacity = 1
-  write_capacity = 1
 
   attribute {
     name = "id"
@@ -22,7 +21,5 @@ resource "aws_dynamodb_table" "datasets" {
       "id",
     ]
     projection_type = "INCLUDE"
-    read_capacity = "4"
-    write_capacity = "1"
   }
 }
