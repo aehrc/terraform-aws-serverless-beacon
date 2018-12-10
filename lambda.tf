@@ -26,7 +26,7 @@ resource "aws_lambda_function" "submitDataset" {
 }
 
 resource "aws_lambda_permission" "APISubmitDataset" {
-  statement_id = "AllowAllowAPISubmitDatasetInvoke"
+  statement_id = "AllowAPISubmitDatasetInvoke"
   action = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.submitDataset.function_name}"
   principal = "apigateway.amazonaws.com"
@@ -96,7 +96,7 @@ resource "aws_lambda_function" "queryDatasets" {
 }
 
 resource "aws_lambda_permission" "APIQueryDatasets" {
-  statement_id = "AllowAllowAPIQueryDatasetsInvoke"
+  statement_id = "AllowAPIQueryDatasetsInvoke"
   action = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.queryDatasets.function_name}"
   principal = "apigateway.amazonaws.com"
@@ -124,7 +124,7 @@ resource "aws_lambda_function" "performQuery" {
 }
 
 resource "aws_lambda_permission" "QueryDatasetsLambdaPerformQuery" {
-  statement_id = "AllowAllowQueryDatasetsLambdaPerformQueryInvoke"
+  statement_id = "AllowQueryDatasetsLambdaPerformQueryInvoke"
   action = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.performQuery.function_name}"
   principal = "lambda.amazonaws.com"
