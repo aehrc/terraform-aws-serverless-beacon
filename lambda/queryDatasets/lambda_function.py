@@ -59,7 +59,9 @@ def get_datasets(assembly_id, dataset_ids):
     }
     more_results = True
     while more_results:
+        print("Querying table: {}".format(json.dumps(kwargs)))
         response = dynamodb.query(**kwargs)
+        print("Received response: {}".format(json.dumps(response)))
         items += response.get('Items', [])
         last_evaluated = response.get('LastEvaluatedKey', {})
         if last_evaluated:
