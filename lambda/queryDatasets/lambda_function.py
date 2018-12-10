@@ -148,7 +148,7 @@ def query_datasets(parameters):
         if 'exists' not in response:
             # function errored out, ignore
             continue
-        exists = exists and response['exists']
+        exists = exists or response['exists']
         if response.pop('include'):
             dataset_responses.append(response)
     response_dict.update({
