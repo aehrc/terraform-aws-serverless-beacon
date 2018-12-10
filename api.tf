@@ -113,7 +113,10 @@ resource "aws_api_gateway_integration" "root-get" {
     "application/json" = <<TEMPLATE
       {
         "TableName": "${aws_dynamodb_table.datasets.name}",
-        "ProjectionExpression": "id,datasetName,assemblyId,createDateTime,updateDateTime,description,version,variantCount,callCount,sampleCount,externalUrl,info,dataUseConditions"
+        "ProjectionExpression": "id,#name,assemblyId,createDateTime,updateDateTime,description,version,variantCount,callCount,sampleCount,externalUrl,info,dataUseConditions",
+        "ExpressionAttributeNames": {
+          "#name": "name"
+        }
       }
     TEMPLATE
   }
@@ -143,7 +146,7 @@ resource "aws_api_gateway_integration_response" "root-get" {
           #foreach( $item in $input.path('$.Items'))
             {
               "id": "$item.id.S",
-              "name": "$item.datasetName.S",
+              "name": "$item.name.S",
               "assemblyId": "$item.assemblyId.S",
               "createDateTime": "$item.createDateTime.S",
               "updateDateTime": "$item.updateDateTime.S",
