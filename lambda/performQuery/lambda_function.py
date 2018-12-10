@@ -56,7 +56,7 @@ def perform_query(dataset_id, vcf_location, start, reference_name,
                             'frequency': frequency,
                             'variantCount': 1,
                             'sampleCount': sample_count,
-                            'call_count': call_count,
+                            'callCount': call_count,
                         })
                 break
     query_process.stdout.close()
@@ -70,7 +70,7 @@ def perform_query(dataset_id, vcf_location, start, reference_name,
                 'frequency': 0,
                 'variantCount': 0,
                 'sampleCount': 0,
-                'call_count': 0,
+                'callCount': 0,
             })
     return response
 
