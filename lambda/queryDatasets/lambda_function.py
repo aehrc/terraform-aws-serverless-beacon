@@ -11,6 +11,19 @@ from api_response import bad_request, bundle_response
 BEACON_ID = os.environ.get('BEACON_ID')
 DATASETS_TABLE_NAME = os.environ.get('DATASETS_TABLE')
 
+VARIANT_TYPES = {
+    'INS',
+    'DUP',
+    'DEL',
+    'INV',
+}
+
+INCLUDE_DATASETS_VALUES = {
+    'ALL',
+    'HIT',
+    'MISS',
+    'NONE',
+}
 
 CHROMOSOMES = [
     '1',
@@ -75,10 +88,10 @@ def get_datasets(assembly_id, dataset_ids):
 
 def missing_parameter(*parameters):
     if len(parameters) > 1:
-        required = "one of {}".format(','.join(parameters))
+        required = "one of {}".format(', '.join(parameters))
     else:
         required = parameters[0]
-    return "Must include {}".format(required)
+    return "{} must be specified".format(required)
 
 
 def perform_query(dataset, start, reference_name, reference_bases,
@@ -185,11 +198,92 @@ def validate_request(parameters):
     if not isinstance(assembly_id, str):
         return "assemblyId must be a string"
 
-    try:
-        start = parameters['start']
-    except KeyError:
+    start = parameters.get('start')
+    if start is None:
         missing_parameters.add('start')
-    # TODO Add more validation
+    elif not isinstance(start, int):
+            return "start must be an integer"
+
+    end = parameters.get('end')
+    if end is None:
+        missing_parameters.add('end')
+        if 'start' not in missing_parameters and reference_bases == 'N':
+            return ("referenceBases must be [ACGT]* if start is specified but"
+                    " end is not specified")
+    else:
+        if 'start' in missing_parameters:
+            return "end may not be specified if start is not specified"
+        if not isinstance(end, int):
+            return "end must be an integer"
+
+    start_min = parameters.get('startMin')
+    if start_min is None:
+        if 'start' in missing_parameters:
+            return missing_parameter('start', 'startMin')
+        missing_parameters.add('startMin')
+    else:
+        if 'start' not in missing_parameters:
+            return "Only one of start and startMin may be specified"
+        if not isinstance(start_min, int):
+            return "startMin must be an integer"
+
+    start_max = parameters.get('startMax')
+    if start_max is None:
+        if 'start' in missing_parameters:
+            return "If startMin is specified, startMax must also be specified"
+        missing_parameters.add('startMax')
+    elif not isinstance(start_max, int):
+        return "startMax must be an integer"
+
+    end_min = parameters.get('endMin')
+    if end_min is None:
+        if 'start' in missing_parameters:
+            return "If startMin is specified, endMin must also be specified"
+        missing_parameters.add('endMin')
+    elif not isinstance(end_min, int):
+        return "endMin must be an integer"
+
+    end_max = parameters.get('endMax')
+    if end_max is None:
+        if 'start' in missing_parameters:
+            return "If startMax is specified, endMax must also be specified"
+        missing_parameters.add('endMax')
+    elif not isinstance(end_max, int):
+        return "endMax must be an integer"
+
+    alternate_bases = parameters.get('alternateBases')
+    if alternate_bases is None:
+        missing_parameters.add('alternateBases')
+    else:
+        if not isinstance(alternate_bases, str):
+            return "alternateBases must be a string"
+        if not base_pattern.fullmatch(alternate_bases):
+            return "alternateBases must be either [ACGT]* or N"
+
+    variant_type = parameters.get('variantType')
+    if variant_type is None:
+        if 'alternateBases' in missing_parameters:
+            return missing_parameter('alternateBases', 'variantType')
+        missing_parameters.add('variantType')
+    elif variant_type not in VARIANT_TYPES:
+        return "variantType must be one of {}".format(', '.join(VARIANT_TYPES))
+
+    dataset_ids = parameters.get('datasetIds')
+    if dataset_ids is None:
+        missing_parameters.add('datasetIds')
+    else:
+        if not isinstance(dataset_ids, list):
+            return "datasetIds must be an array"
+        if not all(isinstance(dataset_id, str) for dataset_id in dataset_ids):
+            return "datasetIds must be an array of strings"
+
+    include_datasets = parameters.get('includeDatasetResponses')
+    if include_datasets is None:
+        missing_parameters.add('includeDatasetResponses')
+    elif include_datasets not in INCLUDE_DATASETS_VALUES:
+        return "includeDatasetResponses must be one of {}".format(
+            ', '.join(INCLUDE_DATASETS_VALUES))
+
     return ''
 
 
