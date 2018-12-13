@@ -31,8 +31,6 @@ available on the `dynamo-on-demand-gsi-fix` branch at
 result of which must replace the aws plugin binary in `.terraform/plugins`.
 
 ## To do
-##### Complete openapi.yaml
-Must add endpoints for /query and /submit.
 ##### Allow use of startMin, startMax, endMin and endMax
 * Allow querying regions based on these variables.
 * Split performQuery lambda function so each function only queries a small
