@@ -138,7 +138,7 @@ resource "aws_api_gateway_integration_response" "root-get" {
         "id": "${var.beacon-id}",
         "name": "${var.beacon-name}",
         "apiVersion": "v1.0.0",
-        "organisation": {
+        "organization": {
           "id": "${var.organisation-id}",
           "name": "${var.organisation-name}"
         },
