@@ -17,8 +17,8 @@ resource "aws_dynamodb_table" "datasets" {
     hash_key = "assemblyId",
     name = "assembly_index"
     non_key_attributes = [
-      "vcfLocation",
       "id",
+      "vcfLocations",
     ]
     projection_type = "INCLUDE"
   }

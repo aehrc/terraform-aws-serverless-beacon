@@ -582,9 +582,12 @@ components:
           description: 'Assembly identifier (GRC notation, e.g. `GRCh37`).'
           type: string
           example: GRCh38
-        vcfLocation:
-          type: string
-          description: Location of the VCF file.
+        vcfLocations:
+          type: array
+          description: Location of each VCF file.
+          minItems: 1
+          items:
+            type: string
         version:
           type: string
           description: Version of the dataset.
@@ -621,9 +624,11 @@ components:
           description: 'Assembly identifier (GRC notation, e.g. `GRCh37`).'
           type: string
           example: GRCh38
-        vcfLocation:
-          type: string
-          description: Location of the VCF file.
+        vcfLocations:
+          type: array
+          description: Location of each VCF file to add.
+          items:
+            type: string
         version:
           type: string
           description: Version of the dataset.

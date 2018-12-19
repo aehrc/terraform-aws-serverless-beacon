@@ -44,8 +44,8 @@ attribute_details = {
         'type': 'string',
         'required': True,
     },
-    'vcfLocation': {
-        'type': 'string',
+    'vcfLocations': {
+        'type': 'array',
         'required': True,
     },
     'description': {
@@ -140,6 +140,7 @@ def update_dataset(attributes):
     if 'createDateTime' in attributes:
         del attributes['createDateTime']
     print("Updating Item: {}".format(json.dumps(attributes)))
+
     datasets_table.update_item(
         Key={'id': attributes['id']},
         UpdateExpression='SET {}'.format(','.join(

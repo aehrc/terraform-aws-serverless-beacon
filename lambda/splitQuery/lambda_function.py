@@ -35,12 +35,14 @@ def perform_query(region, reference_bases, end_min, end_max, alternate_bases,
           " received payload: {payload}".format(
               vcf=vcf_location, region=region, payload=response_json))
     response_dict = json.loads(response_json)
+    # For separating samples by vcf
+    response_dict['vcf_location'] = vcf_location
     responses.put(response_dict)
 
 
 def split_query(dataset_id, reference_name, reference_bases, region_start,
                 region_end, end_min, end_max, alternate_bases, variant_type,
-                include_datasets, vcf_location):
+                include_datasets, vcf_locations):
     responses = queue.Queue()
     check_all = include_datasets in ('HIT', 'ALL')
     kwargs = {
@@ -51,7 +53,6 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
         'variant_type': variant_type,
         # Don't bother recording details from MISS, they'll all be 0s
         'include_details': check_all,
-        'vcf_location': vcf_location,
         'responses': responses,
     }
     threads = []
@@ -60,10 +61,12 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
         split_end = min(split_start + SPLIT_SIZE - 1, region_end)
         kwargs['region'] = '{}:{}-{}'.format(reference_name, split_start,
                                              split_end)
-        t = threading.Thread(target=perform_query,
-                             kwargs=kwargs)
-        t.start()
-        threads.append(t)
+        for vcf_location in vcf_locations:
+            kwargs['vcf_location'] = vcf_location
+            t = threading.Thread(target=perform_query,
+                                 kwargs=kwargs)
+            t.start()
+            threads.append(t)
         split_start += SPLIT_SIZE
 
     num_threads = len(threads)
@@ -71,7 +74,7 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
     all_alleles_count = 0
     variant_count = 0
     call_count = 0
-    samples = set()
+    vcf_samples = {}
     exists = False
     while processed < num_threads and (check_all or not exists):
         response = responses.get()
@@ -86,7 +89,11 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
                 all_alleles_count += response['all_alleles_count']
                 variant_count += response['variant_count']
                 call_count += response['call_count']
-                samples.update(response['samples'])
+                vcf_location = response['vcf_location']
+                if vcf_location in vcf_samples:
+                    vcf_samples[vcf_location].update(response['samples'])
+                else:
+                    vcf_samples[vcf_location] = set(response['samples'])
     if (include_datasets == 'ALL' or (include_datasets == 'HIT' and exists)
             or (include_datasets == 'MISS' and not exists)):
         response_dict = {
@@ -97,7 +104,8 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
                           and call_count / all_alleles_count),
             'variantCount': variant_count,
             'callCount': call_count,
-            'sampleCount': len(samples),
+            'sampleCount': sum(len(samples)
+                               for samples in vcf_samples.values()),
             'note': None,
             'externalUrl': None,
             'info': None,
@@ -123,7 +131,7 @@ def lambda_handler(event, context):
     alternate_bases = event['alternate_bases']
     variant_type = event['variant_type']
     include_datasets = event['include_datasets']
-    vcf_location = event['vcf_location']
+    vcf_locations = event['vcf_locations']
     response = split_query(
         dataset_id=dataset_id,
         reference_name=reference_name,
@@ -135,9 +143,7 @@ def lambda_handler(event, context):
         alternate_bases=alternate_bases,
         variant_type=variant_type,
         include_datasets=include_datasets,
-        vcf_location=vcf_location,
+        vcf_locations=vcf_locations,
     )
     print('Returning response: {}'.format(json.dumps(response)))
     return response
-
-

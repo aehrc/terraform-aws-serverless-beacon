@@ -33,10 +33,6 @@ represented in a vcf as eg 4 GA G and will not be discovered. It will be
 discovered if it is queried as GA > G in position 4.
 
 ## To do
-##### Allow multiple VCFs in a single dataset
-* Handle multiple vcfs in splitQuery so each performQuery only queries a single
-VCF.
-* Set up the `/submit` endpoint to be able to handle vcfLocations as an array
 ##### Implement security for calls to `/submit`
 ##### Implement general security for registered and controlled datasets
 * Allow the security level to be set on a dataset

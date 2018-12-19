@@ -58,7 +58,7 @@ def get_datasets(assembly_id, dataset_ids):
     kwargs = {
         'TableName': 'Datasets',
         'IndexName': 'assembly_index',
-        'ProjectionExpression': 'id,vcfLocation',
+        'ProjectionExpression': 'id,vcfLocations',
         'KeyConditionExpression': 'assemblyId = :assemblyId',
         'ExpressionAttributeValues': {
             ':assemblyId': {'S': assembly_id}
@@ -103,7 +103,7 @@ def perform_query(dataset, reference_name, reference_bases, region_start,
         'alternate_bases': alternate_bases,
         'variant_type': variant_type,
         'include_datasets': include_datasets,
-        'vcf_location': dataset['vcfLocation']['S'],
+        'vcf_locations': [vcf_l['S'] for vcf_l in dataset['vcfLocations']['L']],
     })
     print("Invoking {lambda_name} with payload: {payload}".format(
         lambda_name=SPLIT_QUERY, payload=payload))
