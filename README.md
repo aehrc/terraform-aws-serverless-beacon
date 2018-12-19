@@ -41,3 +41,5 @@ VCF.
 ##### Implement general security for registered and controlled datasets
 * Allow the security level to be set on a dataset
 * Implement OAuth2 for dataset access
+##### Implement summariseVcf
+* Calculate variantCount, callCount and sampleCount
