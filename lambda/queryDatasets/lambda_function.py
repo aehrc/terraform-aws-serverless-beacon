@@ -8,15 +8,9 @@ import boto3
 
 from api_response import bad_request, bundle_response
 
-BEACON_ID = os.environ.get('BEACON_ID')
-DATASETS_TABLE_NAME = os.environ.get('DATASETS_TABLE')
-
-VARIANT_TYPES = {
-    'INS',
-    'DUP',
-    'DEL',
-    'INV',
-}
+BEACON_ID = os.environ['BEACON_ID']
+DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 
 INCLUDE_DATASETS_VALUES = {
     'ALL',
@@ -94,21 +88,27 @@ def missing_parameter(*parameters):
     return "{} must be specified".format(required)
 
 
-def perform_query(dataset, start, reference_name, reference_bases,
-                  alternate_bases, include_datasets, responses):
+def perform_query(dataset, reference_name, reference_bases, region_start,
+                  region_end, end_min, end_max, alternate_bases, variant_type,
+                  include_datasets, responses):
     dataset_id = dataset['id']['S']
     payload = json.dumps({
         'dataset_id': dataset_id,
-        'start': start,
         'reference_name': reference_name,
         'reference_bases': reference_bases,
+        'region_start': region_start,
+        'region_end': region_end,
+        'end_min': end_min,
+        'end_max': end_max,
         'alternate_bases': alternate_bases,
+        'variant_type': variant_type,
         'include_datasets': include_datasets,
         'vcf_location': dataset['vcfLocation']['S'],
     })
-    print("Invoking performQuery with payload: {}".format(payload))
+    print("Invoking {lambda_name} with payload: {payload}".format(
+        lambda_name=SPLIT_QUERY, payload=payload))
     response = aws_lambda.invoke(
-        FunctionName='performQuery',
+        FunctionName=SPLIT_QUERY,
         Payload=payload,
     )
     response_json = response['Payload'].read()
@@ -131,9 +131,37 @@ def query_datasets(parameters):
     datasets = get_datasets(parameters['assemblyId'],
                             parameters.get('datasetIds'))
     start = parameters.get('start')
-    reference_name = parameters['referenceName']
+    if start is None:
+        region_start = parameters['startMin']
+        region_end = parameters['startMax']
+        end_min = parameters['endMin']
+        end_max = parameters['endMax']
+    else:
+        region_start = region_end = start
+        end = parameters.get('end')
+        if end is None:
+            end = start
+        end_min = end_max = end
     reference_bases = parameters['referenceBases']
+    # account for the 1-based indexing of vcf files
+    region_start += 1
+    region_end += 1
+    end_min += 1
+    end_max += 1
+    if reference_bases != 'N':
+        # For specific reference bases region may be smaller
+        max_offset = len(reference_bases) - 1
+        end_max = min(region_end + max_offset, end_max)
+        region_start = max(end_min - max_offset, region_start)
+        if end_min > end_max or region_start > region_end:
+            # Region search will find nothing, search a dummy region
+            region_start = 2000000000
+            region_end = region_start
+            end_min = region_start + max_offset
+            end_max = end_min
+    reference_name = parameters['referenceName']
     alternate_bases = parameters.get('alternateBases')
+    variant_type = parameters.get('variantType')
     include_datasets = parameters.get('includeDatasetResponses', 'NONE')
     responses = queue.Queue()
     threads = []
@@ -141,12 +169,16 @@ def query_datasets(parameters):
         t = threading.Thread(target=perform_query,
                              kwargs={
                                  'dataset': dataset,
-                                 'start': start,
                                  'reference_name': reference_name,
                                  'reference_bases': reference_bases,
+                                 'region_start': region_start,
+                                 'region_end': region_end,
+                                 'end_min': end_min,
+                                 'end_max': end_max,
                                  'alternate_bases': alternate_bases,
-                                 'responses': responses,
+                                 'variant_type': variant_type,
                                  'include_datasets': include_datasets,
+                                 'responses': responses,
                              })
         t.start()
         threads.append(t)
@@ -265,8 +297,6 @@ def validate_request(parameters):
         if 'alternateBases' in missing_parameters:
             return missing_parameter('alternateBases', 'variantType')
         missing_parameters.add('variantType')
-    elif variant_type not in VARIANT_TYPES:
-        return "variantType must be one of {}".format(', '.join(VARIANT_TYPES))
 
     dataset_ids = parameters.get('datasetIds')
     if dataset_ids is None:

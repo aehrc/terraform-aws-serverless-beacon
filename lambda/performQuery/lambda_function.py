@@ -5,90 +5,142 @@ import subprocess
 
 os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 
+BASES = [
+    'A',
+    'C',
+    'G',
+    'T',
+    'N',
+]
 
-def perform_query(dataset_id, vcf_location, start, reference_name,
-                  reference_bases, alternate_bases, include_datasets):
+
+def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
+                  variant_type, include_details, vcf_location):
     args = [
         'bcftools', 'query',
-        '--regions', '{}:{}'.format(reference_name, start+1),
-        '--format', '%REF\t%ALT\t%INFO/AC\t%INFO/AN\t[,%GT,]',
+        '--regions', region,
+        '--format', '%POS\t%REF\t%ALT\t%INFO/AC\t%INFO/AN\t[%GT,]\n',
         vcf_location
     ]
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
                                      encoding='ascii')
-    response = {
-        'datasetId': dataset_id,
-        'include': False,
-        'exists': None,
-        'error': None,
-        'frequency': None,
-        'variantCount': None,
-        'callCount': None,
-        'sampleCount': None,
-        'note': None,
-        'externalUrl': None,
-        'info': None,
-    }
+    v_prefix = '<{}'.format(variant_type)
+    approx = reference_bases == 'N'
     exists = False
+    variant_count = 0
+    call_count = 0
+    all_alleles_count = 0
+    sample_indexes = []
     for line in query_process.stdout:
-        first_delim = line.find('\t')
-        if line[:first_delim] == reference_bases:
-            second_delim = line.find('\t', first_delim+1)
-            alts = line[first_delim+1:second_delim].split(',')
-            alt_index = alts.index(alternate_bases)
-            if alt_index >= 0:
-                third_delim = line.find('\t', second_delim+1)
-                alt_call_counts = line[second_delim+1:third_delim].split(',')
-                call_count = int(alt_call_counts[alt_index])
-                if call_count > 0:
-                    exists = True
-                    if include_datasets in ('HIT', 'ALL'):
-                        fourth_delim = line.find('\t', third_delim+1)
-                        allele_number = int(line[third_delim+1:fourth_delim])
-                        frequency = 1.0 * call_count / allele_number
-                        alt_number = alt_index + 1
-                        sample_count = len(re.findall(
-                            ',([0-9.]+[|/])*{}[|/,]'.format(alt_number),
-                            line[fourth_delim+1:]
-                        ))
-                        response.update({
-                            'include': True,
-                            'frequency': frequency,
-                            'variantCount': 1,
-                            'sampleCount': sample_count,
-                            'callCount': call_count,
-                        })
-                break
+        try:
+            (position, reference, all_alts, all_alt_counts, total_count,
+             genotypes) = line.split('\t')
+        except ValueError as e:
+            print(repr(line.split('\t')))
+            raise e
+
+        ref_length = len(reference)
+
+        if not end_min <= int(position) + ref_length - 1 <= end_max:
+            continue
+
+        if not approx and reference.upper() != reference_bases:
+            continue
+
+        alts = all_alts.split(',')
+        if alternate_bases is None:
+            if variant_type == 'DEL':
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if ((alt.startswith(v_prefix)
+                                    or alt == '<CN0>')
+                                   if alt.startswith('<')
+                                   else len(alt) < ref_length)]
+            elif variant_type == 'INS':
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if (alt.startswith(v_prefix)
+                                   if alt.startswith('<')
+                                   else len(alt) > ref_length)]
+            elif variant_type == 'DUP':
+                pattern = re.compile('({}){{2,}}'.format(reference))
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if ((alt.startswith(v_prefix)
+                                    or (alt.startswith('<CN')
+                                        and alt not in ('<CN0>', '<CN1>')))
+                                   if alt.startswith('<')
+                                   else pattern.fullmatch(alt))]
+            elif variant_type == 'DUP:TANDEM':
+                tandem = reference + reference
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if ((alt.startswith(v_prefix)
+                                    or alt == '<CN2>')
+                                   if alt.startswith('<')
+                                   else alt == tandem)]
+            elif variant_type == 'CNV':
+                pattern = re.compile('\.|({})*'.format(reference))
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if ((alt.startswith(v_prefix)
+                                    or alt.startswith('<CN')
+                                    or alt.startswith('<DEL')
+                                    or alt.startswith('<DUP'))
+                                   if alt.startswith('<')
+                                   else pattern.fullmatch(alt))]
+            else:
+                # For structural variants that aren't otherwise recognisable
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if alt.startswith(v_prefix)]
+        else:
+            if alternate_bases == 'N':
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if alt.upper() in BASES]
+            else:
+                hit_indexes = [i for i, alt in enumerate(alts)
+                               if alt.upper() == alternate_bases]
+        if not hit_indexes:
+            continue
+
+        alt_counts = all_alt_counts.split(',')
+        call_counts = [int(alt_counts[i]) for i in hit_indexes]
+        call_count += sum(call_counts)
+        if call_count:
+            if not exists:
+                exists = True
+                if not include_details:
+                    break
+            variant_count += sum(1 for i in call_counts if i)
+            pattern = re.compile('(^|[|/])({})([|/]|$)'.format('|'.join(str(
+                i for i in hit_indexes))))
+            sample_indexes += [i for i, gt in enumerate(genotypes.split(','))
+                               if pattern.search(gt)]
+        # Used for calculating frequency. This will be a misleading value if the
+        #  alleles are spread over multiple vcf records. Ideally we should
+        #  return a dictionary for each matching record/allele, but for now the
+        #  beacon specification doesn't support it. A quick fix might be to
+        #  represent the frequency of any matching allele in the population of
+        #  haplotypes, but this could lead to an illegal value > 1.
+        all_alleles_count += int(total_count)
     query_process.stdout.close()
-    if exists:
-        response['exists'] = True
-    else:
-        response['exists'] = False
-        if include_datasets in ('MISS', 'ALL'):
-            response.update({
-                'include': True,
-                'frequency': 0,
-                'variantCount': 0,
-                'sampleCount': 0,
-                'callCount': 0,
-            })
-    return response
+    samples = list(set(sample_indexes))
+    return {
+        'exists': exists,
+        'all_alleles_count': all_alleles_count,
+        'variant_count': variant_count,
+        'call_count': call_count,
+        'samples': samples,
+    }
 
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
-    vcf_location = event['vcf_location']
-    start = event['start']
-    dataset_id = event['dataset_id']
-    reference_name = event['reference_name']
     reference_bases = event['reference_bases']
+    region = event['region']
+    end_min = event['end_min']
+    end_max = event['end_max']
     alternate_bases = event['alternate_bases']
-    include_datasets = event['include_datasets']
-    response = perform_query(
-        dataset_id, vcf_location, start, reference_name, reference_bases,
-        alternate_bases, include_datasets
-    )
+    variant_type = event['variant_type']
+    include_details = event['include_details']
+    vcf_location = event['vcf_location']
+    response = perform_query(reference_bases, region, end_min, end_max,
+                             alternate_bases, variant_type, include_details,
+                             vcf_location)
     print('Returning response: {}'.format(json.dumps(response)))
     return response
-
-

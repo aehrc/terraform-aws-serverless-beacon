@@ -26,6 +26,13 @@ resource "aws_s3_bucket_object" "queryDatasets-package" {
   etag = "${md5(file("/tmp/lambda-queryDatasets.zip"))}"
 }
 
+resource "aws_s3_bucket_object" "splitQuery-package" {
+  bucket = "${aws_s3_bucket.lambda-packages.bucket}"
+  key = "splitQuery.zip"
+  source = "/tmp/lambda-splitQuery.zip"
+  etag = "${md5(file("/tmp/lambda-splitQuery.zip"))}"
+}
+
 resource "aws_s3_bucket_object" "performQuery-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "performQuery.zip"

@@ -163,9 +163,47 @@ data "aws_iam_policy_document" "lambda-queryDatasets" {
     actions = [
       "lambda:InvokeFunction",
     ]
+    resources = ["${aws_lambda_function.splitQuery.arn}"]
+  }
+}
+
+#
+# splitQuery Lambda Function
+#
+resource "aws_iam_role" "lambda-splitQuery" {
+  name = "splitQueryLamdaRole"
+  assume_role_policy = "${data.aws_iam_policy_document.main-lambda.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-splitQuery-xray-write" {
+  role = "${aws_iam_role.lambda-splitQuery.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-splitQuery-add-logs" {
+  role = "${aws_iam_role.lambda-splitQuery.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-splitQuery" {
+  role = "${aws_iam_role.lambda-splitQuery.name}"
+  policy_arn = "${aws_iam_policy.lambda-splitQuery.arn}"
+}
+
+resource "aws_iam_policy" "lambda-splitQuery" {
+  name_prefix = "splitQuery"
+  policy = "${data.aws_iam_policy_document.lambda-splitQuery.json}"
+}
+
+data "aws_iam_policy_document" "lambda-splitQuery" {
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
     resources = ["${aws_lambda_function.performQuery.arn}"]
   }
 }
+
 
 #
 # performQuery Lambda Function

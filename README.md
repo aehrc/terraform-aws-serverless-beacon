@@ -29,14 +29,15 @@ This is a bug in v1.51.0 of the aws provider for terraform. There is a fix
 available on the `dynamo-on-demand-gsi-fix` branch at
 `https://github.com/sbogacz/terraform-provider-aws`, which is a Go project, the
 result of which must replace the aws plugin binary in `.terraform/plugins`.
+##### Variants may not be found if the reference sequence contains a padding base
+For example if a deletion A > N in position 5 (1 based), is searched for, it is
+represented in a vcf as eg 4 GA G and will not be discovered. It will be
+discovered if it is queried as GA > G in position 4.
 
 ## To do
-##### Allow use of startMin, startMax, endMin and endMax
-* Allow querying regions based on these variables.
-* Split performQuery lambda function so each function only queries a small
-slice.
 ##### Allow multiple VCFs in a single dataset
-* Split performQuery so each function only queries a single VCF, see above.
+* Handle multiple vcfs in splitQuery so each performQuery only queries a single
+VCF.
 * Set up the `/submit` endpoint to be able to handle vcfLocations as an array
 ##### Implement security for calls to `/submit`
 ##### Implement general security for registered and controlled datasets
