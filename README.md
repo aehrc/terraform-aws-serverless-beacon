@@ -28,7 +28,7 @@ datasets. The API is contained in `openapi.yaml`.
 This is a bug in v1.51.0 of the aws provider for terraform. The AWS provider
 plugin must be updated to v1.52.0 using `terraform init --upgrade`
 ##### Variants may not be found if the reference sequence contains a padding base
-For example if a deletion A > N in position 5 (1 based), is searched for, it is
+For example if a deletion A > . in position 5 (1 based), is searched for, it is
 represented in a vcf as eg 4 GA G and will not be discovered. It will be
 discovered if it is queried as GA > G in position 4.
 
