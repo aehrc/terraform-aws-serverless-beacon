@@ -2,7 +2,7 @@ openapi: 3.0.0
 servers: []
 info:
   title: Serverless Beacon API
-  version: 0.1.0
+  version: 0.2.0
   description:
     Provides an API for contributing to and querying a serverless ga4gh beacon
     instance.
@@ -351,6 +351,7 @@ components:
             Identifiers of datasets, as defined in `BeaconDataset`. If this
             field is null/not specified, all datasets should be queried.
           type: array
+          nullable: true
           items:
             type: string
         includeDatasetResponses:
@@ -379,6 +380,7 @@ components:
             in Beacon
           type: string
         exists:
+          nullable: true
           description: >-
             Indicator of whether the given allele was observed in any of the
             datasets queried. This should be non-null, unless there was an
@@ -413,6 +415,7 @@ components:
           description: Name of the dataset.
         description:
           type: string
+          nullable: true
           description: Description of the dataset.
         assemblyId:
           description: 'Assembly identifier (GRC notation, e.g. `GRCh37`).'
@@ -428,36 +431,37 @@ components:
           example: '2012-07-19 or 2017-01-17T20:33:40'
         version:
           type: string
+          nullable: true
           description: Version of the dataset.
         variantCount:
           type: integer
+          nullable: true
           format: int64
           description: Total number of variants in the dataset.
           minimum: 0
         callCount:
           type: integer
+          nullable: true
           format: int64
           description: Total number of calls in the dataset.
           minimum: 0
         sampleCount:
           type: integer
+          nullable: true
           format: int64
           description: Total number of samples in the dataset.
           minimum: 0
         externalUrl:
           type: string
+          nullable: true
           description:
             URL to an external system providing more dataset information (RFC
             3986 format).
           example: 'http://example.org/wiki/Main_Page'
         info:
-          description: Additional structured metadata, key-value pairs.
-          type: array
-          items:
-            type: object
+          $ref: '#/components/schemas/Info'
         dataUseConditions:
-          description: Data use conditions ruling this dataset.
-          type: object
+          $ref: '#/components/schemas/DataUseConditions'
     BeaconDatasetAlleleResponse:
       type: object
       required:
@@ -472,44 +476,49 @@ components:
             This should be non-null, unless there was an error, in which case
             `error` has to be non-null.
           type: boolean
+          nullable: true
         error:
           $ref: '#/components/schemas/BeaconError'
         frequency:
           type: number
+          nullable: true
           description: Frequency of this allele in the dataset. Between 0 and 1,
             inclusive.
           minimum: 0
           maximum: 1
         variantCount:
           type: integer
+          nullable: true
           description: Number of variants matching the allele request in the dataset.
           minimum: 0
         callCount:
           type: integer
+          nullable: true
           description: Number of calls matching the allele request in the dataset.
           minimum: 0
         sampleCount:
           type: integer
+          nullable: true
           description: Number of samples matching the allele request in the dataset
           minimum: 0
         note:
           type: string
+          nullable: true
           description: Additional note or description of the response.
         externalUrl:
           type: string
+          nullable: true
           description: >-
             URL to an external system, such as a secured beacon or a system
             providing more information about a given allele (RFC 3986 format).
         info:
-          description: Additional structured metadata, key-value pairs.
-          type: array
-          items:
-            type: object
+          $ref: '#/components/schemas/Info'
     BeaconError:
       description: >-
         Beacon-specific error. This should be non-null in exceptional situations
         only, in which case `exists` has to be null.
       type: object
+      nullable: true
       required:
         - errorCode
       properties:
@@ -567,7 +576,7 @@ components:
         - id
         - name
         - assemblyId
-        - vcfLocation
+        - vcfLocations
       properties:
         id:
           type: string
@@ -575,9 +584,6 @@ components:
         name:
           type: string
           description: Name of the dataset.
-        description:
-          type: string
-          description: Description of the dataset.
         assemblyId:
           description: 'Assembly identifier (GRC notation, e.g. `GRCh37`).'
           type: string
@@ -588,23 +594,26 @@ components:
           minItems: 1
           items:
             type: string
+        description:
+          type: string
+          description: Description of the dataset.
+          nullable: true
         version:
           type: string
+          nullable: true
           description: Version of the dataset.
         externalUrl:
+          nullable: true
           type: string
           description:
             URL to an external system providing more dataset information (RFC
             3986 format).
           example: 'http://example.org/wiki/Main_Page'
         info:
-          description: Additional structured metadata, key-value pairs.
-          type: array
-          items:
-            type: object
+          $ref: '#/components/schemas/Info'
         dataUseConditions:
-          description: Data use conditions ruling this dataset.
-          type: object
+          $ref: '#/components/schemas/DataUseConditions'
+
     DatasetUpdate:
       description: fields to update in a dataset.
       type: object
@@ -617,9 +626,6 @@ components:
         name:
           type: string
           description: Name of the dataset.
-        description:
-          type: string
-          description: Description of the dataset.
         assemblyId:
           description: 'Assembly identifier (GRC notation, e.g. `GRCh37`).'
           type: string
@@ -627,22 +633,53 @@ components:
         vcfLocations:
           type: array
           description: Location of each VCF file to add.
+          minItems: 1
           items:
             type: string
+        description:
+          type: string
+          nullable: true
+          description: Description of the dataset.
         version:
           type: string
+          nullable: true
           description: Version of the dataset.
         externalUrl:
           type: string
+          nullable: true
           description:
             URL to an external system providing more dataset information (RFC
             3986 format).
           example: 'http://example.org/wiki/Main_Page'
         info:
-          description: Additional structured metadata, key-value pairs.
-          type: array
-          items:
-            type: object
+          $ref: '#/components/schemas/Info'
         dataUseConditions:
-          description: Data use conditions ruling this dataset.
-          type: object
+          $ref: '#/components/schemas/DataUseConditions'
+    DataUseConditions:
+      type: object
+      nullable: true
+      required:
+        - consentCodeDataUse
+        - adamDataUse
+      description: Data use conditions ruling this dataset.
+      properties:
+        consentCodeDataUse:
+          $ref: >-
+            https://raw.githubusercontent.com/ga4gh/ga4gh-consent-policy/806ea53cffacb2055c3639f0fc9783f0dcd8cb02/consent_code.yaml#/components/schemas/ConsentCodeDataUse
+        adamDataUse:
+          $ref: >-
+            https://raw.githubusercontent.com/ga4gh/ADA-M/b16a72f9987ae20f433e97d6a3247ecddd8dde23/adam.yaml#/components/schemas/Adam
+    Info:
+      description: Additional structured metadata, key-value pairs.
+      nullable: true
+      type: array
+      items:
+        type: object
+        required:
+          - key
+          - value
+        properties:
+          key:
+            type: string
+          value:
+            type: string
