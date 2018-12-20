@@ -6,7 +6,7 @@ import threading
 
 import boto3
 
-from api_response import bad_request, bundle_response
+from api_response import bad_request, bundle_response, missing_parameter
 
 BEACON_ID = os.environ['BEACON_ID']
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
@@ -78,14 +78,6 @@ def get_datasets(assembly_id, dataset_ids):
     if dataset_ids:
         items = [i for i in items if i['id']['S'] in dataset_ids]
     return items
-
-
-def missing_parameter(*parameters):
-    if len(parameters) > 1:
-        required = "one of {}".format(', '.join(parameters))
-    else:
-        required = parameters[0]
-    return "{} must be specified".format(required)
 
 
 def perform_query(dataset, reference_name, reference_bases, region_start,

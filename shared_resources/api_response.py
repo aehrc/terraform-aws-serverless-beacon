@@ -22,3 +22,10 @@ def bundle_response(status_code, body):
         'body': json.dumps(body),
     }
 
+
+def missing_parameter(*parameters):
+    if len(parameters) > 1:
+        required = "one of {}".format(', '.join(parameters))
+    else:
+        required = parameters[0]
+    return "{} must be specified".format(required)
