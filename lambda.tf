@@ -20,7 +20,7 @@ resource "aws_lambda_function" "submitDataset" {
   environment {
     variables = {
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
-      UPDATE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.updateDataset.arn}"
+      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
 }

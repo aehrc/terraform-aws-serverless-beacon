@@ -23,3 +23,14 @@ resource "aws_dynamodb_table" "datasets" {
     projection_type = "INCLUDE"
   }
 }
+
+resource "aws_dynamodb_table" "vcf_summaries" {
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "vcfLocation"
+  name = "VcfSummaries"
+
+  attribute {
+    name = "vcfLocation"
+    type = "S"
+  }
+}

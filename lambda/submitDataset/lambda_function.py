@@ -3,12 +3,16 @@ import json
 import os
 
 import boto3
+from botocore.exceptions import ClientError
 
 from api_response import bad_request, bundle_response, missing_parameter
 
-DATASETS_TABLE_NAME = os.environ.get('DATASETS_TABLE')
+DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 
-datasets_table = boto3.resource('dynamodb').Table(DATASETS_TABLE_NAME)
+dynamodb = boto3.resource('dynamodb')
+datasets_table = dynamodb.Table(DATASETS_TABLE_NAME)
+vcf_summaries_table = dynamodb.Table(VCF_SUMMARIES_TABLE_NAME)
 
 
 def create_dataset(attributes):
@@ -26,7 +30,8 @@ def create_dataset(attributes):
         'info': attributes.get('info'),
         'dataUseConditions': attributes.get('dataUseConditions'),
     }
-    print("Putting Item: {}".format(json.dumps(item)))
+    print("Putting Item in {table}: {item}".format(
+        table=DATASETS_TABLE_NAME, item=json.dumps(item)))
     datasets_table.put_item(Item=item)
 
 
@@ -39,6 +44,7 @@ def submit_dataset(body_dict, method):
     validation_error = validate_request(body_dict, new)
     if validation_error:
         return bad_request(validation_error)
+    update_vcf_locations(body_dict.get('vcfLocations'))
     if new:
         create_dataset(body_dict)
     else:
@@ -100,9 +106,32 @@ def update_dataset(attributes):
     }
     if expression_attribute_names:
         kwargs['ExpressionAttributeNames'] = expression_attribute_names
-    print("Updating Item: {}".format(json.dumps(kwargs)))
+    print("Updating Item in {table}: {kwargs}".format(
+        table=DATASETS_TABLE_NAME, kwargs=json.dumps(kwargs)))
 
     datasets_table.update_item(**kwargs)
+
+
+def update_vcf_locations(vcf_locations):
+    if not vcf_locations:
+        return
+    for vcf_location in vcf_locations:
+        kwargs = {
+            'Item': {
+                'vcfLocation': vcf_location,
+            },
+            'ConditionExpression': 'attribute_not_exists(vcfLocation)',
+        }
+        print('Calling put_item on {table}: {kwargs}'.format(
+            table=VCF_SUMMARIES_TABLE_NAME, kwargs=json.dumps(kwargs)
+        ))
+        try:
+            vcf_summaries_table.put_item(**kwargs)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                print('vcf location is already present.')
+            else:
+                raise e
 
 
 def validate_request(parameters, new):

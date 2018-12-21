@@ -66,10 +66,10 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
 
   statement {
     actions = [
-      "SNS:Publish",
+      "dynamodb:PutItem",
     ]
     resources = [
-      "${aws_sns_topic.updateDataset.arn}",
+      "${aws_dynamodb_table.vcf_summaries.arn}",
     ]
   }
 }
