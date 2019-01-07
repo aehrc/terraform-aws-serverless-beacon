@@ -66,10 +66,68 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
 
   statement {
     actions = [
-      "dynamodb:PutItem",
+      "SNS:Publish",
+    ]
+    resources = [
+      "${aws_sns_topic.summariseDataset.arn}",
+    ]
+  }
+}
+
+#
+#
+# summariseDataset Lambda Function
+#
+resource "aws_iam_role" "lambda-summariseDataset" {
+  name = "summariseDatasetLamdaRole"
+  assume_role_policy = "${data.aws_iam_policy_document.main-lambda.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-summariseDataset-xray-write" {
+  role = "${aws_iam_role.lambda-summariseDataset.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-summariseDataset-add-logs" {
+  role = "${aws_iam_role.lambda-summariseDataset.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-summariseDataset" {
+  role = "${aws_iam_role.lambda-summariseDataset.name}"
+  policy_arn = "${aws_iam_policy.lambda-summariseDataset.arn}"
+}
+
+resource "aws_iam_policy" "lambda-summariseDataset" {
+  name_prefix = "summariseDataset"
+  policy = "${data.aws_iam_policy_document.lambda-summariseDataset.json}"
+}
+
+data "aws_iam_policy_document" "lambda-summariseDataset" {
+  statement {
+    actions = [
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:BatchGetItem",
     ]
     resources = [
       "${aws_dynamodb_table.vcf_summaries.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      "${aws_sns_topic.summariseVcf.arn}",
     ]
   }
 }
@@ -108,7 +166,82 @@ data "aws_iam_policy_document" "lambda-summariseVcf" {
       "dynamodb:UpdateItem",
     ]
     resources = [
+      "${aws_dynamodb_table.vcf_summaries.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      "${aws_sns_topic.summariseSlice.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
+}
+
+#
+# summariseSlice Lambda Function
+#
+resource "aws_iam_role" "lambda-summariseSlice" {
+  name = "summariseSliceLamdaRole"
+  assume_role_policy = "${data.aws_iam_policy_document.main-lambda.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-summariseSlice-xray-write" {
+  role = "${aws_iam_role.lambda-summariseSlice.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-summariseSlice-add-logs" {
+  role = "${aws_iam_role.lambda-summariseSlice.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda-summariseSlice" {
+  role = "${aws_iam_role.lambda-summariseSlice.name}"
+  policy_arn = "${aws_iam_policy.lambda-summariseSlice.arn}"
+}
+
+resource "aws_iam_policy" "lambda-summariseSlice" {
+  name_prefix = "summariseSlice"
+  policy = "${data.aws_iam_policy_document.lambda-summariseSlice.json}"
+}
+
+data "aws_iam_policy_document" "lambda-summariseSlice" {
+  statement {
+    actions = [
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
       "${aws_dynamodb_table.datasets.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      "${aws_sns_topic.summariseDataset.arn}",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}",
+      "${aws_dynamodb_table.datasets.arn}/index/*",
     ]
   }
 

@@ -3,16 +3,15 @@ import json
 import os
 
 import boto3
-from botocore.exceptions import ClientError
 
 from api_response import bad_request, bundle_response, missing_parameter
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
-VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
+SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 
 dynamodb = boto3.resource('dynamodb')
 datasets_table = dynamodb.Table(DATASETS_TABLE_NAME)
-vcf_summaries_table = dynamodb.Table(VCF_SUMMARIES_TABLE_NAME)
+sns = boto3.client('sns')
 
 
 def create_dataset(attributes):
@@ -23,7 +22,7 @@ def create_dataset(attributes):
         'updateDateTime': current_time,
         'name': attributes['name'],
         'assemblyId': attributes['assemblyId'],
-        'vcfLocations': attributes['vcfLocations'],
+        'vcfLocations': set(attributes['vcfLocations']),
         'description': attributes.get('description'),
         'version': attributes.get('version'),
         'externalUrl': attributes.get('externalUrl'),
@@ -44,12 +43,23 @@ def submit_dataset(body_dict, method):
     validation_error = validate_request(body_dict, new)
     if validation_error:
         return bad_request(validation_error)
-    update_vcf_locations(body_dict.get('vcfLocations'))
     if new:
         create_dataset(body_dict)
     else:
         update_dataset(body_dict)
+    if 'vcfLocations' in body_dict:
+        summarise_dataset(body_dict['id'])
     return bundle_response(200, {})
+
+
+def summarise_dataset(dataset):
+    kwargs = {
+        'TopicArn': SUMMARISE_DATASET_SNS_TOPIC_ARN,
+        'Message': dataset
+    }
+    print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
+    response = sns.publish(**kwargs)
+    print('Received Response: {}'.format(json.dumps(response)))
 
 
 def update_dataset(attributes):
@@ -57,47 +67,64 @@ def update_dataset(attributes):
         'updateDateTime=:updateDateTime',
     ]
     expression_attribute_values = {
-        ':updateDateTime': get_current_time(),
+        ':updateDateTime': {
+            'S': get_current_time(),
+        }
     }
     expression_attribute_names = {}
 
     if 'name' in attributes:
         update_set_expressions.append('#name=:name')
         expression_attribute_names['#name'] = 'name'
-        expression_attribute_values[':name'] = attributes['name']
+        expression_attribute_values[':name'] = {
+            'S': attributes['name'],
+        }
 
     if 'assemblyId' in attributes:
         update_set_expressions.append('assemblyId=:assemblyId')
-        expression_attribute_values[':assemblyId'] = attributes['assemblyId']
+        expression_attribute_values[':assemblyId'] = {
+            'S': attributes['assemblyId'],
+        }
 
     if 'vcfLocations' in attributes:
         update_set_expressions.append('vcfLocations=:vcfLocations')
-        expression_attribute_values[':vcfLocations'] = attributes[
-            'vcfLocations']
+        expression_attribute_values[':vcfLocations'] = {
+            'SS': attributes['vcfLocations'],
+        }
 
     if 'description' in attributes:
         update_set_expressions.append('description=:description')
-        expression_attribute_values[':description'] = attributes['description']
+        expression_attribute_values[':description'] = {
+            'S': attributes['description'],
+        }
 
     if 'version' in attributes:
         update_set_expressions.append('version=:version')
-        expression_attribute_values[':version'] = attributes['version']
+        expression_attribute_values[':version'] = {
+            'S': attributes['version'],
+        }
 
     if 'externalUrl' in attributes:
         update_set_expressions.append('externalUrl=:externalUrl')
-        expression_attribute_values[':externalUrl'] = attributes['externalUrl']
+        expression_attribute_values[':externalUrl'] = {
+            'S': attributes['externalUrl'],
+        }
 
     if 'info' in attributes:
         update_set_expressions.append('info=:info')
-        expression_attribute_values[':info'] = attributes['info']
+        expression_attribute_values[':info'] = {
+            'L': attributes['info'],
+        }
 
     if 'dataUseConditions' in attributes:
         update_set_expressions.append('dataUseConditions=:dataUseConditions')
-        expression_attribute_values[':dataUseConditions'] = attributes[
-            'dataUseConditions']
+        expression_attribute_values[':dataUseConditions'] = {
+            'M': attributes['dataUseConditions'],
+        }
 
     update_expression = 'SET {}'.format(', '.join(update_set_expressions))
     kwargs = {
+        'TableName': DATASETS_TABLE_NAME,
         'Key': {
             'id': attributes['id'],
         },
@@ -106,32 +133,9 @@ def update_dataset(attributes):
     }
     if expression_attribute_names:
         kwargs['ExpressionAttributeNames'] = expression_attribute_names
-    print("Updating Item in {table}: {kwargs}".format(
-        table=DATASETS_TABLE_NAME, kwargs=json.dumps(kwargs)))
+    print("Updating table: {kwargs}".format(kwargs=json.dumps(kwargs)))
 
     datasets_table.update_item(**kwargs)
-
-
-def update_vcf_locations(vcf_locations):
-    if not vcf_locations:
-        return
-    for vcf_location in vcf_locations:
-        kwargs = {
-            'Item': {
-                'vcfLocation': vcf_location,
-            },
-            'ConditionExpression': 'attribute_not_exists(vcfLocation)',
-        }
-        print('Calling put_item on {table}: {kwargs}'.format(
-            table=VCF_SUMMARIES_TABLE_NAME, kwargs=json.dumps(kwargs)
-        ))
-        try:
-            vcf_summaries_table.put_item(**kwargs)
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-                print('vcf location is already present.')
-            else:
-                raise e
 
 
 def validate_request(parameters, new):

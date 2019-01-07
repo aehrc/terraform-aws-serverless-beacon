@@ -20,6 +20,7 @@ resource "aws_lambda_function" "submitDataset" {
   environment {
     variables = {
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
       VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
@@ -34,6 +35,42 @@ resource "aws_lambda_permission" "APISubmitDataset" {
 }
 
 #
+# summariseDataset Lambda Function
+#
+resource "aws_lambda_function" "summariseDataset" {
+  function_name = "summariseDataset"
+  description = "Calculates summary counts for a dataset."
+  role = "${aws_iam_role.lambda-summariseDataset.arn}"
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.6"
+  memory_size = 2048
+  timeout = 10
+  tracing_config {
+    mode = "Active"
+  }
+
+  s3_bucket = "${aws_s3_bucket.lambda-packages.bucket}"
+  s3_key = "${aws_s3_bucket_object.summariseDataset-package.id}"
+  source_code_hash = "${base64sha256(file(aws_s3_bucket_object.summariseDataset-package.source))}"
+
+  environment {
+    variables = {
+      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
+      SUMMARISE_VCF_SNS_TOPIC_ARN = "${aws_sns_topic.summariseVcf.arn}"
+      VCF_SUMMARIES_TABLE_NAME = "${aws_dynamodb_table.vcf_summaries.name}"
+    }
+  }
+}
+
+resource "aws_lambda_permission" "SNSSummariseDataset" {
+  statement_id = "AllowSNSSummariseDatasetInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.summariseDataset.function_name}"
+  principal = "sns.amazonaws.com"
+  source_arn = "${aws_sns_topic.summariseDataset.arn}"
+}
+
+#
 # summariseVcf Lambda Function
 #
 resource "aws_lambda_function" "summariseVcf" {
@@ -43,7 +80,7 @@ resource "aws_lambda_function" "summariseVcf" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.6"
   memory_size = 2048
-  timeout = 300
+  timeout = 60
   tracing_config {
     mode = "Active"
   }
@@ -54,7 +91,8 @@ resource "aws_lambda_function" "summariseVcf" {
 
   environment {
     variables = {
-      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
+      SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
+      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
 }
@@ -64,7 +102,44 @@ resource "aws_lambda_permission" "SNSSummariseVcf" {
   action = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.summariseVcf.function_name}"
   principal = "sns.amazonaws.com"
-  source_arn = "${aws_sns_topic.updateDataset.arn}"
+  source_arn = "${aws_sns_topic.summariseVcf.arn}"
+}
+
+#
+# summariseSlice Lambda Function
+#
+resource "aws_lambda_function" "summariseSlice" {
+  function_name = "summariseSlice"
+  description = "Counts calls and variants in region of a vcf."
+  role = "${aws_iam_role.lambda-summariseSlice.arn}"
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.6"
+  memory_size = 2048
+  timeout = 60
+  tracing_config {
+    mode = "Active"
+  }
+
+  s3_bucket = "${aws_s3_bucket.lambda-packages.bucket}"
+  s3_key = "${aws_s3_bucket_object.summariseSlice-package.id}"
+  source_code_hash = "${base64sha256(file(aws_s3_bucket_object.summariseSlice-package.source))}"
+
+  environment {
+    variables = {
+      ASSEMBLY_GSI = "${lookup(aws_dynamodb_table.datasets.global_secondary_index[0], "name")}"
+      DATASETS_TABLE_NAME = "${aws_dynamodb_table.datasets.name}"
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
+      VCF_SUMMARIES_TABLE_NAME = "${aws_dynamodb_table.vcf_summaries.name}"
+    }
+  }
+}
+
+resource "aws_lambda_permission" "SNSSummariseSlice" {
+  statement_id = "AllowSNSSummariseSliceInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.summariseSlice.function_name}"
+  principal = "sns.amazonaws.com"
+  source_arn = "${aws_sns_topic.summariseSlice.arn}"
 }
 
 #
