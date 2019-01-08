@@ -10,6 +10,7 @@ DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 
+os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 
 dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
@@ -49,7 +50,8 @@ def get_counts_handle(location, region):
         '--format', '%INFO/AN\t%INFO/AC\n',
         location
     ]
-    query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp')
+    query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
+                                     encoding='ascii')
     return query_process.stdout
 
 
@@ -135,7 +137,7 @@ def summarise_slice(location, region):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
-    message = json.loads(event[0]['Sns']['Message'])
+    message = json.loads(event['Records'][0]['Sns']['Message'])
     location = message['location']
     region = message['region']
     summarise_slice(location, region)

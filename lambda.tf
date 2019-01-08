@@ -57,7 +57,7 @@ resource "aws_lambda_function" "summariseDataset" {
     variables = {
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_VCF_SNS_TOPIC_ARN = "${aws_sns_topic.summariseVcf.arn}"
-      VCF_SUMMARIES_TABLE_NAME = "${aws_dynamodb_table.vcf_summaries.name}"
+      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
 }
@@ -127,9 +127,9 @@ resource "aws_lambda_function" "summariseSlice" {
   environment {
     variables = {
       ASSEMBLY_GSI = "${lookup(aws_dynamodb_table.datasets.global_secondary_index[0], "name")}"
-      DATASETS_TABLE_NAME = "${aws_dynamodb_table.datasets.name}"
+      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
-      VCF_SUMMARIES_TABLE_NAME = "${aws_dynamodb_table.vcf_summaries.name}"
+      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
 }

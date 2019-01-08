@@ -41,8 +41,10 @@ CHROMOSOME_LENGTHS = {
 
 SLICE_SIZE = 2000000
 
-SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ('SUMMARISE_SLICE_SNS_TOPIC_ARN')
+SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ['SUMMARISE_SLICE_SNS_TOPIC_ARN']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
+
+os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 
 dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
@@ -63,9 +65,14 @@ def get_sample_count(location):
         '--no-version',
         location
     ]
-    header = subprocess.check_output(args, cwd='/tmp')
-    # Get the number of tabs after the INFO column in the last header line
-    return header.count('\t', header.find('INFO', header.rfind('\n')))
+    header = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
+                              encoding='ascii')
+    for line in header.stdout:
+        if line.startswith('#CHROM'):
+            # Get the number of tabs after the FORMAT column
+            return max(line.count('\t') - 8, 0)
+    # No header row, probably a bad file.
+    raise ValueError("Incorrectly formatted file")
 
 
 def mark_updating(location):
@@ -76,17 +83,14 @@ def mark_updating(location):
                 'S': location,
             },
         },
-        'UpdateExpression': 'SET toUpdate=:toUpdate, updating=:updating'
+        'UpdateExpression': 'SET toUpdate=:toUpdate'
                             ' REMOVE ' + ', '.join(COUNTS),
         'ExpressionAttributeValues': {
             ':toUpdate': {
                 'SS': regions,
             },
-            ':updating': {
-                'BOOL': True,
-            },
         },
-        'ConditionExpression': 'attribute_not_exists(updating)',
+        'ConditionExpression': 'attribute_not_exists(toUpdate)',
     }
     print('Updating table: {}'.format(json.dumps(kwargs)))
     try:
@@ -127,7 +131,7 @@ def update_sample_count(location, sample_count):
     kwargs = {
         'TableName': VCF_SUMMARIES_TABLE_NAME,
         'Key': {
-            'VcfLocation': {
+            'vcfLocation': {
                 'S': location,
             },
         },
@@ -144,5 +148,5 @@ def update_sample_count(location, sample_count):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
-    location = event[0]['Sns']['Message']
+    location = event['Records'][0]['Sns']['Message']
     summarise_vcf(location)

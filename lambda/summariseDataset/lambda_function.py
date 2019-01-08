@@ -8,14 +8,34 @@ DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_VCF_SNS_TOPIC_ARN = os.environ['SUMMARISE_VCF_SNS_TOPIC_ARN']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 
+BATCH_GET_MAX_ITEMS = 100
+
 COUNTS = [
     'variantCount',
     'callCount',
     'sampleCount',
 ]
 
-dynamodb = boto3.resource('dynamodb')
-sns = boto3.resource('sns')
+dynamodb = boto3.client('dynamodb')
+sns = boto3.client('sns')
+
+
+def get_locations(dataset):
+    kwargs = {
+        'TableName': DATASETS_TABLE_NAME,
+        'ProjectionExpression': 'vcfLocations',
+        'ConsistentRead': True,
+        'KeyConditionExpression': 'id = :id',
+        'ExpressionAttributeValues': {
+            ':id': {
+                'S': dataset,
+            },
+        },
+    }
+    print("Querying table: {}".format(json.dumps(kwargs)))
+    response = dynamodb.query(**kwargs)
+    print("Received response: {}".format(json.dumps(response)))
+    return response['Items'][0].get('vcfLocations', {}).get('SS', [])
 
 
 def get_locations_info(locations):
@@ -23,20 +43,22 @@ def get_locations_info(locations):
     num_locations = len(locations)
     offset = 0
     kwargs = {
-        'RequestItems': [
-            {
-                VCF_SUMMARIES_TABLE_NAME: {
-                    'ProjectionExpression': ('vcfLocation,updating,'
-                                             + ','.join(COUNTS)),
-                    'Keys': [],
-                },
+        'RequestItems': {
+            VCF_SUMMARIES_TABLE_NAME: {
+                'ProjectionExpression': ('vcfLocation,toUpdate,'
+                                         + ','.join(COUNTS)),
+                'Keys': [],
             },
-        ],
+        },
     }
     while offset < num_locations:
-        to_get = locations[offset:100]
-        kwargs['RequestItems'][0][VCF_SUMMARIES_TABLE_NAME]['Keys'] = [
-            {'S': loc} for loc in to_get
+        to_get = locations[offset:offset+BATCH_GET_MAX_ITEMS]
+        kwargs['RequestItems'][VCF_SUMMARIES_TABLE_NAME]['Keys'] = [
+            {
+                'vcfLocation': {
+                    'S': loc,
+                },
+            } for loc in to_get
         ]
         more_results = True
         while more_results:
@@ -44,24 +66,27 @@ def get_locations_info(locations):
             response = dynamodb.batch_get_item(**kwargs)
             print("Received response: {}".format(json.dumps(response)))
             items += response['Responses'][VCF_SUMMARIES_TABLE_NAME]
-            if 'UnprocessedKeys' in response:
-                kwargs['RequestItems'] = response['UnprocessedKeys']
-                more_results = True
+            unprocessed_keys = response.get('UnprocessedKeys')
+            if unprocessed_keys:
+                kwargs['RequestItems'] = unprocessed_keys
+            else:
+                more_results = False
+        offset += BATCH_GET_MAX_ITEMS
     return items
 
 
 def summarise_dataset(dataset):
-    vcf_locations = dataset['vcfLocations']['L']
+    vcf_locations = get_locations(dataset)
     locations_info = get_locations_info(vcf_locations)
     new_locations = set(vcf_locations)
     counts = Counter()
     updated = True
     for location in locations_info:
-        vcf_location = location['vcfLocation']
+        vcf_location = location['vcfLocation']['S']
         new_locations.remove(vcf_location)
-        if 'updating' in location:
+        if 'toUpdate' in location:
             updated = False
-        if any(count not in location for count in COUNTS):
+        elif any(count not in location for count in COUNTS):
             updated = False
             summarise_vcf(vcf_location)
         elif updated:
@@ -72,11 +97,11 @@ def summarise_dataset(dataset):
     for new_location in new_locations:
         summarise_vcf(new_location)
     if updated:
-        values = {':'+count: {'N': str(count)} for count in COUNTS}
+        values = {':'+count: {'N': str(counts[count])} for count in COUNTS}
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
 
-    update_dataset(dataset['id']['S'], values)
+    update_dataset(dataset, values)
 
 
 def summarise_vcf(location):
@@ -107,5 +132,5 @@ def update_dataset(dataset_id, values):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
-    dataset = json.loads(event[0]['Sns']['Message'])
+    dataset = event['Records'][0]['Sns']['Message']
     summarise_dataset(dataset)

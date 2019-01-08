@@ -9,29 +9,70 @@ from api_response import bad_request, bundle_response, missing_parameter
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 
-dynamodb = boto3.resource('dynamodb')
-datasets_table = dynamodb.Table(DATASETS_TABLE_NAME)
+dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
 
 
 def create_dataset(attributes):
     current_time = get_current_time()
     item = {
-        'id': attributes['id'],
-        'createDateTime': current_time,
-        'updateDateTime': current_time,
-        'name': attributes['name'],
-        'assemblyId': attributes['assemblyId'],
-        'vcfLocations': set(attributes['vcfLocations']),
-        'description': attributes.get('description'),
-        'version': attributes.get('version'),
-        'externalUrl': attributes.get('externalUrl'),
-        'info': attributes.get('info'),
-        'dataUseConditions': attributes.get('dataUseConditions'),
+        'id': {
+            'S': attributes['id'],
+        },
+        'createDateTime': {
+            'S': current_time,
+        },
+        'updateDateTime': {
+            'S': current_time,
+        },
+        'name': {
+            'S': attributes['name'],
+        },
+        'assemblyId': {
+            'S': attributes['assemblyId'],
+        },
+        'vcfLocations': {
+            'SS': attributes['vcfLocations'],
+        },
     }
-    print("Putting Item in {table}: {item}".format(
-        table=DATASETS_TABLE_NAME, item=json.dumps(item)))
-    datasets_table.put_item(Item=item)
+
+    description = attributes.get('description')
+    if description:
+        item['description'] = {
+            'S': description,
+        }
+
+    version = attributes.get('version')
+    if version:
+        item['version'] = {
+            'S': version,
+        }
+
+    external_url = attributes.get('externalUrl')
+    if external_url:
+        item['externalUrl'] = {
+            'S': external_url,
+        }
+
+    info = attributes.get('info')
+    if info:
+        item['info'] = {
+            'M': info,
+        }
+
+    data_use_conditions = attributes.get('dataUseConditions')
+    if data_use_conditions:
+        item['dataUseConditions'] = {
+            'M': data_use_conditions,
+        }
+
+    kwargs = {
+        'TableName': DATASETS_TABLE_NAME,
+        'Item': item,
+    }
+
+    print("Putting item in table: {}".format(json.dumps(kwargs)))
+    dynamodb.put_item(**kwargs)
 
 
 def get_current_time():
@@ -126,7 +167,9 @@ def update_dataset(attributes):
     kwargs = {
         'TableName': DATASETS_TABLE_NAME,
         'Key': {
-            'id': attributes['id'],
+            'id': {
+                'S': attributes['id'],
+            },
         },
         'UpdateExpression': update_expression,
         'ExpressionAttributeValues': expression_attribute_values,
@@ -135,7 +178,7 @@ def update_dataset(attributes):
         kwargs['ExpressionAttributeNames'] = expression_attribute_names
     print("Updating table: {kwargs}".format(kwargs=json.dumps(kwargs)))
 
-    datasets_table.update_item(**kwargs)
+    dynamodb.update_item(**kwargs)
 
 
 def validate_request(parameters, new):

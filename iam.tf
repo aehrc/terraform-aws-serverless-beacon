@@ -107,6 +107,7 @@ data "aws_iam_policy_document" "lambda-summariseDataset" {
   statement {
     actions = [
       "dynamodb:UpdateItem",
+      "dynamodb:Query",
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}",
@@ -222,7 +223,7 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
       "dynamodb:UpdateItem",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      "${aws_dynamodb_table.vcf_summaries.arn}",
     ]
   }
 
