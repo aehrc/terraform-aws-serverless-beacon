@@ -95,7 +95,7 @@ def perform_query(dataset, reference_name, reference_bases, region_start,
         'alternate_bases': alternate_bases,
         'variant_type': variant_type,
         'include_datasets': include_datasets,
-        'vcf_locations': [vcf_l['S'] for vcf_l in dataset['vcfLocations']['L']],
+        'vcf_locations': dataset['vcfLocations']['SS'],
     })
     print("Invoking {lambda_name} with payload: {payload}".format(
         lambda_name=SPLIT_QUERY, payload=payload))
