@@ -11,8 +11,12 @@ The service intends to support beacon v1 according to the
 
 ## Installation
 To package the code for lambda functions run `pre-terraform-build.sh`.
-Install using `terraform init` followed by `terraform apply`. For adding data to
-the beacon, see the API.
+
+Install using `terraform init` followed by `terraform apply`. You will be
+prompted to input `aws_access_key_id` and `aws_secret_access_key`. For more
+ information about providing these variables see the
+  [Terraform Documentation](https://learn.hashicorp.com/terraform/getting-started/variables.html#assigning-variables).
+For adding data to the beacon, see the API.
 
 To shut down the entire service run `terraform destroy`. Any created datasets
 will be lost (but not the VCFs on which they are based).
