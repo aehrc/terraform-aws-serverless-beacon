@@ -17,7 +17,7 @@ sns = boto3.client('sns')
 
 
 def get_affected_datasets(location):
-    kwargs={
+    kwargs = {
         'TableName': DATASETS_TABLE_NAME,
         'IndexName': ASSEMBLY_GSI,
         'ProjectionExpression': 'id',
