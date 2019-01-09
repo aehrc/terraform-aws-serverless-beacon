@@ -95,9 +95,9 @@ def update_vcf(location, region, variant_count, call_count):
         else:
             raise e
     if response['Attributes'].get('toUpdate'):
-        return True
-    else:
         return False
+    else:
+        return True
 
 
 def summarise_datasets(datasets):
