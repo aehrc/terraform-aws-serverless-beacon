@@ -131,6 +131,7 @@ def summarise_slice(location, region):
     counts_handle.close()
     update_complete = update_vcf(location, region, variant_count, call_count)
     if update_complete:
+        print('Final slice summarised.')
         impacted_datasets = get_affected_datasets(location)
         summarise_datasets(impacted_datasets)
 
