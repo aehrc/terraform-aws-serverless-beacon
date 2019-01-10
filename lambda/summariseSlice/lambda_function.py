@@ -43,10 +43,12 @@ def get_affected_datasets(location):
     return dataset_ids
 
 
-def get_counts_handle(location, region):
+def get_counts_handle(location, region_code, slice_size_mbp):
+    chrom, start = region_code.split(':')
     args = [
         'bcftools', 'query',
-        '--regions', region,
+        '--regions', '{chrom}:{start}000001-{end}000000'.format(
+            chrom=chrom, start=start, end=int(start)+slice_size_mbp),
         '--format', '%INFO/AN\t%INFO/AC\n',
         location
     ]
@@ -125,8 +127,8 @@ def sum_counts(counts_handle):
     return call_count, variant_count
 
 
-def summarise_slice(location, region):
-    counts_handle = get_counts_handle(location, region)
+def summarise_slice(location, region, slice_size_mbp):
+    counts_handle = get_counts_handle(location, region, slice_size_mbp)
     call_count, variant_count = sum_counts(counts_handle)
     counts_handle.close()
     update_complete = update_vcf(location, region, variant_count, call_count)
@@ -141,4 +143,5 @@ def lambda_handler(event, context):
     message = json.loads(event['Records'][0]['Sns']['Message'])
     location = message['location']
     region = message['region']
-    summarise_slice(location, region)
+    slice_size_mbp = message['slice_size_mbp']
+    summarise_slice(location, region, slice_size_mbp)

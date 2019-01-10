@@ -11,35 +11,35 @@ COUNTS = [
     'sampleCount',
 ]
 
-CHROMOSOME_LENGTHS = {
-    '1': 248956422,
-    '2': 242193529,
-    '3': 198295559,
-    '4': 190214555,
-    '5': 181538259,
-    '6': 170805979,
-    '7': 159345973,
-    '8': 145138636,
-    '9': 138394717,
-    '10': 133797422,
-    '11': 135086622,
-    '12': 133275309,
-    '13': 114364328,
-    '14': 107043718,
-    '15': 101991189,
-    '16': 90338345,
-    '17': 83257441,
-    '18': 80373285,
-    '19': 58617616,
-    '20': 64444167,
-    '21': 46709983,
-    '22': 50818468,
-    'X': 156040895,
-    'Y': 57227415,
-    'MT': 16569,
+CHROMOSOME_LENGTHS_MBP = {
+    '1': 248.956422,
+    '2': 242.193529,
+    '3': 198.295559,
+    '4': 190.214555,
+    '5': 181.538259,
+    '6': 170.805979,
+    '7': 159.345973,
+    '8': 145.138636,
+    '9': 138.394717,
+    '10': 133.797422,
+    '11': 135.086622,
+    '12': 133.275309,
+    '13': 114.364328,
+    '14': 107.043718,
+    '15': 101.991189,
+    '16': 90.338345,
+    '17': 83.257441,
+    '18': 80.373285,
+    '19': 58.617616,
+    '20': 64.444167,
+    '21': 46.709983,
+    '22': 50.818468,
+    'X': 156.040895,
+    'Y': 57.227415,
+    'MT': 0.016569,
 }
 
-SLICE_SIZE = 2000000
+SLICE_SIZE_MBP = 20
 
 SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ['SUMMARISE_SLICE_SNS_TOPIC_ARN']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
@@ -50,12 +50,11 @@ dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
 
 regions = []
-for chrom, size in CHROMOSOME_LENGTHS.items():
-    start = 1
-    while start <= size:
-        end = start + SLICE_SIZE - 1
-        regions.append('{c}:{s}-{e}'.format(c=chrom, s=start, e=end))
-        start = end + 1
+for chrom, size in CHROMOSOME_LENGTHS_MBP.items():
+    start = 0
+    while start < size:
+        regions.append('{c}:{s}'.format(c=chrom, s=start))
+        start += SLICE_SIZE_MBP
 
 
 def get_sample_count(location):
@@ -112,6 +111,7 @@ def publish_slice_updates(location):
         kwargs['Message'] = json.dumps({
             'location': location,
             'region': region,
+            'slice_size_mbp': SLICE_SIZE_MBP,
         })
         print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
         response = sns.publish(**kwargs)
