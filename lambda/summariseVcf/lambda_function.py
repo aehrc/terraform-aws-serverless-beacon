@@ -68,6 +68,7 @@ def get_sample_count(location):
                               encoding='ascii')
     for line in header.stdout:
         if line.startswith('#CHROM'):
+            header.stdout.close()
             # Get the number of tabs after the FORMAT column
             return max(line.count('\t') - 8, 0)
     # No header row, probably a bad file.
