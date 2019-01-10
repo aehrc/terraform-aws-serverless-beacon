@@ -25,6 +25,8 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
                                      encoding='ascii')
     v_prefix = '<{}'.format(variant_type)
+    first_bp = int(region[region.find(':')+1: region.find('-')])
+    last_bp = int(region[region.find('-')+1:])
     approx = reference_bases == 'N'
     exists = False
     variant_count = 0
@@ -41,7 +43,12 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
 
         ref_length = len(reference)
 
-        if not end_min <= int(position) + ref_length - 1 <= end_max:
+        pos = int(position)
+        # Ensure each variant will only be found by one process
+        if not first_bp <= pos <= last_bp:
+            continue
+
+        if not end_min <= pos + ref_length - 1 <= end_max:
             continue
 
         if not approx and reference.upper() != reference_bases:
