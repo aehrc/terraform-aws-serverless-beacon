@@ -21,7 +21,6 @@ resource "aws_lambda_function" "submitDataset" {
     variables = {
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
-      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
 }
