@@ -330,4 +330,12 @@ def lambda_handler(event, context):
                                extra_params)
         multi_values = event['multiValueQueryStringParameters']
         parameters['datasetIds'] = multi_values.get('datasetIds')
+        for int_field in ('start', 'end', 'startMin', 'startMax', 'endMin',
+                          'endMax'):
+            if int_field in parameters:
+                try:
+                    parameters[int_field] = int(parameters[int_field])
+                except ValueError:
+                    # Cannot be formatted as an integer, handle in validation
+                    pass
     return query_datasets(parameters)
