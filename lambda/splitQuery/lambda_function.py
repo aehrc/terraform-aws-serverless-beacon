@@ -40,7 +40,7 @@ def perform_query(region, reference_bases, end_min, end_max, alternate_bases,
     responses.put(response_dict)
 
 
-def split_query(dataset_id, reference_name, reference_bases, region_start,
+def split_query(dataset_id, reference_bases, region_start,
                 region_end, end_min, end_max, alternate_bases, variant_type,
                 include_datasets, vcf_locations):
     responses = queue.Queue()
@@ -59,9 +59,9 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
     split_start = region_start
     while split_start <= region_end:
         split_end = min(split_start + SPLIT_SIZE - 1, region_end)
-        kwargs['region'] = '{}:{}-{}'.format(reference_name, split_start,
-                                             split_end)
-        for vcf_location in vcf_locations:
+        for vcf_location, chrom in vcf_locations.items():
+            kwargs['region'] = '{}:{}-{}'.format(chrom, split_start,
+                                                 split_end)
             kwargs['vcf_location'] = vcf_location
             t = threading.Thread(target=perform_query,
                                  kwargs=kwargs)
@@ -122,7 +122,6 @@ def split_query(dataset_id, reference_name, reference_bases, region_start,
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     dataset_id = event['dataset_id']
-    reference_name = event['reference_name']
     reference_bases = event['reference_bases']
     region_start = event['region_start']
     region_end = event['region_end']
@@ -134,7 +133,6 @@ def lambda_handler(event, context):
     vcf_locations = event['vcf_locations']
     response = split_query(
         dataset_id=dataset_id,
-        reference_name=reference_name,
         reference_bases=reference_bases,
         region_start=region_start,
         region_end=region_end,
