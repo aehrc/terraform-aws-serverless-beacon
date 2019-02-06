@@ -29,7 +29,7 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
     last_bp = int(region[region.find('-')+1:])
     approx = reference_bases == 'N'
     exists = False
-    variant_count = 0
+    variants = []
     call_count = 0
     all_alleles_count = 0
     sample_indexes = []
@@ -107,13 +107,16 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
 
         alt_counts = all_alt_counts.split(',')
         call_counts = [int(alt_counts[i]) for i in hit_indexes]
+        variants += [
+            reference + position + alts[i]
+            for i in hit_indexes if alt_counts[i] != "0"
+        ]
         call_count += sum(call_counts)
         if call_count:
             if not exists:
                 exists = True
                 if not include_details:
                     break
-            variant_count += sum(1 for i in call_counts if i)
             pattern = re.compile('(^|[|/])({})([|/]|$)'.format('|'.join(str(
                 i for i in hit_indexes))))
             sample_indexes += [i for i, gt in enumerate(genotypes.split(','))
@@ -130,7 +133,7 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
     return {
         'exists': exists,
         'all_alleles_count': all_alleles_count,
-        'variant_count': variant_count,
+        'variants': variants,
         'call_count': call_count,
         'samples': samples,
     }

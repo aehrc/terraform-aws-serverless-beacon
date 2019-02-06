@@ -72,7 +72,7 @@ def split_query(dataset_id, reference_bases, region_start,
     num_threads = len(threads)
     processed = 0
     all_alleles_count = 0
-    variant_count = 0
+    variants = set()
     call_count = 0
     vcf_samples = {}
     exists = False
@@ -87,7 +87,7 @@ def split_query(dataset_id, reference_bases, region_start,
             exists = True
             if check_all:
                 all_alleles_count += response['all_alleles_count']
-                variant_count += response['variant_count']
+                variants.update(response['variants'])
                 call_count += response['call_count']
                 vcf_location = response['vcf_location']
                 if vcf_location in vcf_samples:
@@ -102,7 +102,7 @@ def split_query(dataset_id, reference_bases, region_start,
             'exists': exists,
             'frequency': ((all_alleles_count or call_count and None)
                           and call_count / all_alleles_count),
-            'variantCount': variant_count,
+            'variantCount': len(variants),
             'callCount': call_count,
             'sampleCount': sum(len(samples)
                                for samples in vcf_samples.values()),
