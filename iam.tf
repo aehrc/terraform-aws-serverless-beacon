@@ -299,6 +299,14 @@ data "aws_iam_policy_document" "lambda-queryDatasets" {
     ]
     resources = ["${aws_lambda_function.splitQuery.arn}"]
   }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
 }
 
 #

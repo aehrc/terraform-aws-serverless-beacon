@@ -7,6 +7,7 @@ import threading
 import boto3
 
 from api_response import bad_request, bundle_response, missing_parameter
+from chrom_matching import CHROMOSOMES, get_matching_chromosome, get_vcf_chromosomes
 
 BEACON_ID = os.environ['BEACON_ID']
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
@@ -19,34 +20,8 @@ INCLUDE_DATASETS_VALUES = {
     'NONE',
 }
 
-CHROMOSOMES = [
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    '10',
-    '11',
-    '12',
-    '13',
-    '14',
-    '15',
-    '16',
-    '17',
-    '18',
-    '19',
-    '20',
-    '21',
-    '22',
-    '23',
-    'X',
-    'Y',
-    'MT',
-]
+os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
+
 base_pattern = re.compile('[ACGT]+|N')
 
 dynamodb = boto3.client('dynamodb')
@@ -80,13 +55,22 @@ def get_datasets(assembly_id, dataset_ids):
     return items
 
 
-def perform_query(dataset, reference_name, reference_bases, region_start,
+def get_vcf_chromosome_map(datasets, chromosome):
+    all_vcfs = list(set(loc for d in datasets for loc in d['vcfLocations']['SS']))
+    vcf_chromosome_map = {}
+    for vcf in all_vcfs:
+        vcf_chromosomes = get_vcf_chromosomes(vcf)
+        vcf_chromosome_map[vcf] = get_matching_chromosome(vcf_chromosomes,
+                                                          chromosome)
+    return vcf_chromosome_map
+
+
+def perform_query(dataset_id, vcf_locations, reference_bases, region_start,
                   region_end, end_min, end_max, alternate_bases, variant_type,
                   include_datasets, responses):
-    dataset_id = dataset['id']['S']
+
     payload = json.dumps({
         'dataset_id': dataset_id,
-        'reference_name': reference_name,
         'reference_bases': reference_bases,
         'region_start': region_start,
         'region_end': region_end,
@@ -95,7 +79,7 @@ def perform_query(dataset, reference_name, reference_bases, region_start,
         'alternate_bases': alternate_bases,
         'variant_type': variant_type,
         'include_datasets': include_datasets,
-        'vcf_locations': dataset['vcfLocations']['SS'],
+        'vcf_locations': vcf_locations,
     })
     print("Invoking {lambda_name} with payload: {payload}".format(
         lambda_name=SPLIT_QUERY, payload=payload))
@@ -122,6 +106,9 @@ def query_datasets(parameters):
 
     datasets = get_datasets(parameters['assemblyId'],
                             parameters.get('datasetIds'))
+
+    reference_name = parameters['referenceName']
+    vcf_chromosomes = get_vcf_chromosome_map(datasets, reference_name)
     start = parameters.get('start')
     if start is None:
         region_start = parameters['startMin']
@@ -151,17 +138,20 @@ def query_datasets(parameters):
             region_end = region_start
             end_min = region_start + max_offset
             end_max = end_min
-    reference_name = parameters['referenceName']
     alternate_bases = parameters.get('alternateBases')
     variant_type = parameters.get('variantType')
     include_datasets = parameters.get('includeDatasetResponses', 'NONE')
     responses = queue.Queue()
     threads = []
     for dataset in datasets:
+        dataset_id = dataset['id']['S']
+        vcf_locations = {vcf: vcf_chromosomes[vcf]
+                         for vcf in dataset['vcfLocations']['SS']
+                         if vcf_chromosomes[vcf]}
         t = threading.Thread(target=perform_query,
                              kwargs={
-                                 'dataset': dataset,
-                                 'reference_name': reference_name,
+                                 'dataset_id': dataset_id,
+                                 'vcf_locations': vcf_locations,
                                  'reference_bases': reference_bases,
                                  'region_start': region_start,
                                  'region_end': region_end,

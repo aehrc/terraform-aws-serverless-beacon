@@ -3,6 +3,7 @@
 terraform.tfstate
 terraform.tfstate.backup
 credentials.auto.tfvars
+remote_state.tf
 
 # Build files
 *.zip

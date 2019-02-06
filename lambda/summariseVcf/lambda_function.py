@@ -5,39 +5,13 @@ import subprocess
 import boto3
 from botocore.exceptions import ClientError
 
+from chrom_matching import CHROMOSOME_LENGTHS_MBP, get_vcf_chromosomes, get_matching_chromosome
+
 COUNTS = [
     'variantCount',
     'callCount',
     'sampleCount',
 ]
-
-CHROMOSOME_LENGTHS_MBP = {
-    '1': 248.956422,
-    '2': 242.193529,
-    '3': 198.295559,
-    '4': 190.214555,
-    '5': 181.538259,
-    '6': 170.805979,
-    '7': 159.345973,
-    '8': 145.138636,
-    '9': 138.394717,
-    '10': 133.797422,
-    '11': 135.086622,
-    '12': 133.275309,
-    '13': 114.364328,
-    '14': 107.043718,
-    '15': 101.991189,
-    '16': 90.338345,
-    '17': 83.257441,
-    '18': 80.373285,
-    '19': 58.617616,
-    '20': 64.444167,
-    '21': 46.709983,
-    '22': 50.818468,
-    'X': 156.040895,
-    'Y': 57.227415,
-    'MT': 0.016569,
-}
 
 SLICE_SIZE_MBP = 20
 
@@ -49,12 +23,14 @@ os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
 
-regions = []
+regions = {}
 for chrom, size in CHROMOSOME_LENGTHS_MBP.items():
+    chrom_regions = []
     start = 0
     while start < size:
-        regions.append('{c}:{s}'.format(c=chrom, s=start))
+        chrom_regions.append(start)
         start += SLICE_SIZE_MBP
+    regions[chrom] = chrom_regions
 
 
 def get_sample_count(location):
@@ -75,7 +51,19 @@ def get_sample_count(location):
     raise ValueError("Incorrectly formatted file")
 
 
-def mark_updating(location):
+def get_translated_regions(location):
+    vcf_chromosomes = get_vcf_chromosomes(location)
+    vcf_regions = []
+    for target_chromosome, region_list in regions.items():
+        chromosome = get_matching_chromosome(vcf_chromosomes, target_chromosome)
+        if not chromosome:
+            continue
+        vcf_regions += ['{}:{}'.format(chromosome, region)
+                        for region in region_list]
+    return vcf_regions
+
+
+def mark_updating(location, vcf_regions):
     kwargs = {
         'TableName': VCF_SUMMARIES_TABLE_NAME,
         'Key': {
@@ -87,7 +75,7 @@ def mark_updating(location):
                             ' REMOVE ' + ', '.join(COUNTS),
         'ExpressionAttributeValues': {
             ':toUpdate': {
-                'SS': regions,
+                'SS': vcf_regions,
             },
         },
         'ConditionExpression': 'attribute_not_exists(toUpdate)',
@@ -104,11 +92,11 @@ def mark_updating(location):
     return True
 
 
-def publish_slice_updates(location):
+def publish_slice_updates(location, vcf_regions):
     kwargs = {
         'TopicArn': SUMMARISE_SLICE_SNS_TOPIC_ARN,
     }
-    for region in regions:
+    for region in vcf_regions:
         kwargs['Message'] = json.dumps({
             'location': location,
             'region': region,
@@ -120,12 +108,13 @@ def publish_slice_updates(location):
 
 
 def summarise_vcf(location):
-    start_update = mark_updating(location)
+    vcf_regions = get_translated_regions(location)
+    start_update = mark_updating(location, vcf_regions)
     if not start_update:
         return
     sample_count = get_sample_count(location)
     update_sample_count(location, sample_count)
-    publish_slice_updates(location)
+    publish_slice_updates(location, vcf_regions)
 
 
 def update_sample_count(location, sample_count):
