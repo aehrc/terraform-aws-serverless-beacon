@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 
 import boto3
@@ -14,6 +15,9 @@ os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 
 dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
+
+all_count_pattern = re.compile('[0-9]+')
+get_all_calls = all_count_pattern.findall
 
 
 def get_affected_datasets(location):
@@ -49,7 +53,7 @@ def get_counts_handle(location, region_code, slice_size_mbp):
         'bcftools', 'query',
         '--regions', '{chrom}:{start}000001-{end}000000'.format(
             chrom=chrom, start=start, end=int(start)+slice_size_mbp),
-        '--format', '%INFO/AN\t%INFO/AC\n',
+        '--format', '[%GT,]\n',
         location
     ]
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
@@ -116,14 +120,13 @@ def summarise_datasets(datasets):
 def sum_counts(counts_handle):
     call_count = 0
     variant_count = 0
-    for record in counts_handle:
-        call_num_str, alt_allele_num_str = record.strip('\r\n').split('\t')
-        # Add the AN value to the call count
-        call_count += int(call_num_str)
-        # Add the total number of alt alleles with nonzero counts to variant
-        # count
-        variant_count += sum(1 for alt in alt_allele_num_str.split(',')
-                             if int(alt))
+    for genotype_str in counts_handle:
+            # As AN is often not present, simply manually count all the calls
+            calls = get_all_calls(genotype_str)
+            call_count += len(calls)
+            # Add number of unique non-reference calls to variant count
+            call_set = set(calls)
+            variant_count += len(call_set) - (1 if '0' in call_set else 0)
     return call_count, variant_count
 
 
