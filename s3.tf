@@ -8,48 +8,48 @@ resource "aws_s3_bucket" "lambda-packages" {
 resource "aws_s3_bucket_object" "submitDataset-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "submitDataset.zip"
-  source = "/tmp/lambda-submitDataset.zip"
-  etag = "${md5(file("/tmp/lambda-submitDataset.zip"))}"
+  source = "${path.module}/lambda/submitDataset/submitDataset.zip"
+  etag = "${md5(file("${path.module}/lambda/submitDataset/submitDataset.zip"))}"
 }
 
 resource "aws_s3_bucket_object" "summariseDataset-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "summariseDataset.zip"
-  source = "/tmp/lambda-summariseDataset.zip"
-  etag = "${md5(file("/tmp/lambda-summariseDataset.zip"))}"
+  source = "${path.module}/lambda/summariseDataset/summariseDataset.zip"
+  etag = "${md5(file("${path.module}/lambda/summariseDataset/summariseDataset.zip"))}"
 }
 
 resource "aws_s3_bucket_object" "summariseVcf-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "summariseVcf.zip"
-  source = "/tmp/lambda-summariseVcf.zip"
-  etag = "${md5(file("/tmp/lambda-summariseVcf.zip"))}"
+  source = "${path.module}/lambda/summariseVcf/summariseVcf.zip"
+  etag = "${md5(file("${path.module}/lambda/summariseVcf/summariseVcf.zip"))}"
 }
 
 resource "aws_s3_bucket_object" "summariseSlice-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "summariseSlice.zip"
-  source = "/tmp/lambda-summariseSlice.zip"
-  etag = "${md5(file("/tmp/lambda-summariseSlice.zip"))}"
+  source = "${path.module}/lambda/summariseSlice/summariseSlice.zip"
+  etag = "${md5(file("${path.module}/lambda/summariseSlice/summariseSlice.zip"))}"
 }
 
 resource "aws_s3_bucket_object" "queryDatasets-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "queryDatasets.zip"
-  source = "/tmp/lambda-queryDatasets.zip"
-  etag = "${md5(file("/tmp/lambda-queryDatasets.zip"))}"
+  source = "${path.module}/lambda/queryDatasets/queryDatasets.zip"
+  etag = "${md5(file("${path.module}/lambda/queryDatasets/queryDatasets.zip"))}"
 }
 
 resource "aws_s3_bucket_object" "splitQuery-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "splitQuery.zip"
-  source = "/tmp/lambda-splitQuery.zip"
-  etag = "${md5(file("/tmp/lambda-splitQuery.zip"))}"
+  source = "${path.module}/lambda/splitQuery/splitQuery.zip"
+  etag = "${md5(file("${path.module}/lambda/splitQuery/splitQuery.zip"))}"
 }
 
 resource "aws_s3_bucket_object" "performQuery-package" {
   bucket = "${aws_s3_bucket.lambda-packages.bucket}"
   key = "performQuery.zip"
-  source = "/tmp/lambda-performQuery.zip"
-  etag = "${md5(file("/tmp/lambda-performQuery.zip"))}"
+  source = "${path.module}/lambda/performQuery/performQuery.zip"
+  etag = "${md5(file("${path.module}/lambda/performQuery/performQuery.zip"))}"
 }

@@ -10,16 +10,21 @@ The service intends to support beacon v1 according to the
 [ga4gh specification](https://github.com/ga4gh-beacon/specification).
 
 ## Installation
-To package the code for lambda functions run `pre-terraform-build.sh`.
-
-Install using `terraform init` followed by `terraform apply`. You will be
-prompted to input `aws_access_key_id` and `aws_secret_access_key`. For more
- information about providing these variables see the
-  [Terraform Documentation](https://learn.hashicorp.com/terraform/getting-started/variables.html#assigning-variables).
+Install using `terraform init` to pull the module, followed by running
+`pre-terraform-build.sh` from inside the module's directory. This will build the
+zip packages for the lambda functions and need only be done once.
+Running `terraform apply` will create the infrastucture.
 For adding data to the beacon, see the API.
 
 To shut down the entire service run `terraform destroy`. Any created datasets
 will be lost (but not the VCFs on which they are based).
+
+To repackage the code for lambda functions (if any customisations are made) run
+`pre-terraform-build.sh` followed by `terraform apply`.
+
+For standalone use the aws provider will need to be added in main.tf. See the
+example for more information.
+
 
 ## API
 The result of `terraform apply` or `terraform output` will be the base URL of
@@ -41,3 +46,9 @@ discovered if it is queried as GA > G in position 4.
 ##### Implement general security for registered and controlled datasets
 * Allow the security level to be set on a dataset
 * Implement OAuth2 for dataset access
+##### Implement better frequency calculations for distributed datasets
+If a vcf does not represent a variant, no calls are added for the purposes of
+calculating allele frequency. This means that if there are multiple
+single-sample vcfs, each hit allele will ignore any samples that don't show the
+variant, resulting in frequencies calculated using only heterozygotes and
+homozygotes for the alternate allele.
