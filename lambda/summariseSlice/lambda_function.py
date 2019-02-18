@@ -47,18 +47,38 @@ def get_affected_datasets(location):
     return dataset_ids
 
 
-def get_counts_handle(location, region_code, slice_size_mbp):
+def get_calls_and_variants(location, region, slice_size_mbp, gvcf=False):
+    counts_process = get_counts_process(location, region, slice_size_mbp,
+                                        gvcf=gvcf)
+    counts_handle = counts_process.stdout
+    call_count, variant_count = sum_counts(counts_handle, gvcf=gvcf)
+    counts_handle.close()
+    error_code = counts_process.wait(timeout=1)
+    if error_code != 0:
+        if not gvcf:
+            # Process errored out, could be because INFO tags aren't defined.
+            # This happens in the case of gVCFs, so try again using only GT.
+            print("Got error when querying, trying gVCF mode...")
+            call_count, variant_count = get_calls_and_variants(
+                location, region, slice_size_mbp, gvcf=True)
+        else:
+            assert error_code == 0, ("query returned error code"
+                                     " {}".format(error_code))
+    return call_count, variant_count
+
+
+def get_counts_process(location, region_code, slice_size_mbp, gvcf=False):
     chrom, start = region_code.split(':')
     args = [
         'bcftools', 'query',
         '--regions', '{chrom}:{start}000001-{end}000000'.format(
             chrom=chrom, start=start, end=int(start)+slice_size_mbp),
-        '--format', '[%GT,]\n',
+        '--format', '[%GT,]\n' if gvcf else '%INFO/AN\t%INFO/AC\n',
         location
     ]
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
                                      encoding='ascii')
-    return query_process.stdout
+    return query_process
 
 
 def update_vcf(location, region, variant_count, call_count):
@@ -117,23 +137,32 @@ def summarise_datasets(datasets):
         print('Received Response: {}'.format(json.dumps(response)))
 
 
-def sum_counts(counts_handle):
+def sum_counts(counts_handle, gvcf=False):
     call_count = 0
     variant_count = 0
-    for genotype_str in counts_handle:
+    if gvcf:
+        for genotype_str in counts_handle:
             # As AN is often not present, simply manually count all the calls
             calls = get_all_calls(genotype_str)
             call_count += len(calls)
             # Add number of unique non-reference calls to variant count
             call_set = set(calls)
             variant_count += len(call_set) - (1 if '0' in call_set else 0)
+    else:
+        for record in counts_handle:
+            call_num_str, alt_allele_num_str = record.strip('\r\n').split('\t')
+            # Add the AN value to the call count
+            call_count += int(call_num_str)
+            # Add the total number of alt alleles with nonzero counts to variant
+            # count
+            variant_count += sum(1 for alt in alt_allele_num_str.split(',')
+                                 if int(alt))
     return call_count, variant_count
 
 
 def summarise_slice(location, region, slice_size_mbp):
-    counts_handle = get_counts_handle(location, region, slice_size_mbp)
-    call_count, variant_count = sum_counts(counts_handle)
-    counts_handle.close()
+    call_count, variant_count = get_calls_and_variants(location, region,
+                                                       slice_size_mbp)
     update_complete = update_vcf(location, region, variant_count, call_count)
     if update_complete:
         print('Final slice summarised.')
