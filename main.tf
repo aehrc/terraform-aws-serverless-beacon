@@ -13,6 +13,7 @@ module "lambda-submitDataset" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
   source_path = "${path.module}/lambda/submitDataset"
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -37,6 +38,7 @@ module "lambda-summariseDataset" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseDataset.json}"
   source_path = "${path.module}/lambda/summariseDataset"
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -63,6 +65,7 @@ module "lambda-summariseVcf" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseVcf.json}"
   source_path = "${path.module}/lambda/summariseVcf"
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -87,6 +90,7 @@ module "lambda-summariseSlice" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseSlice.json}"
   source_path = "${path.module}/lambda/summariseSlice"
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -114,6 +118,7 @@ module "lambda-queryDatasets" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-queryDatasets.json}"
   source_path = "${path.module}/lambda/queryDatasets"
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -139,6 +144,7 @@ module "lambda-splitQuery" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-splitQuery.json}"
   source_path = "${path.module}/lambda/splitQuery"
+  tags = "${var.common-tags}"
 
   environment {
     variables = {

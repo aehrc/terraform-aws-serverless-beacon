@@ -17,3 +17,9 @@ variable "organisation-name" {
   type = "string"
   description = "Name of the organization providing the beacon."
 }
+
+variable "common-tags" {
+  type = "map"
+  description = "A set of tags to attach to every created resource."
+  default = {}
+}
