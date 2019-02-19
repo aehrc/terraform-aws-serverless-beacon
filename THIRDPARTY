@@ -4,6 +4,7 @@ The MIT/Expat License
 applies to:
   - bcftools, Copyright (C) 2012-2014 Genome Research Ltd.
   - tabix, Copyright (C) 2012-2019 Genome Research Ltd.
+  - terraform-aws-lambda, Copyright (c) 2017 Claranet
 -----------------------------------------------------------------------------
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
