@@ -205,6 +205,7 @@ data "aws_iam_policy_document" "lambda-performQuery" {
 resource "aws_iam_role" "api-root-get" {
   name = "apiRootGetRole"
   assume_role_policy = "${data.aws_iam_policy_document.main-apigateway.json}"
+  tags = "${var.common-tags}"
 }
 
 resource "aws_iam_role_policy_attachment" "api-root-get" {
