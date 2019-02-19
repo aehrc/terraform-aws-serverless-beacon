@@ -205,16 +205,19 @@ def sum_counts(counts_handle, start, end, time_assigned, gvcf=False):
     next_sample_record = 0
     for record in counts_handle:
         record_parts = record.split('\t')
+        pos = int(record_parts[0])
+
+        # Only count records that start directly in the query range
+        if not start <= pos <= end:
+            continue
 
         # Check if the records are being processed fast enough
-        pos_str = record_parts[0]
         if records == next_sample_record:
             next_sample_record += RECORDS_PER_SAMPLE
             if start_time == 0:
                 start_time = time.time()
                 print("starting timer at {}".format(start_time))
             else:
-                pos = int(pos_str)
                 slices = get_slices_to_complete(time_assigned, start_time,
                                                 start, end, pos)
                 if slices > 1:
