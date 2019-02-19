@@ -253,7 +253,7 @@ resource "aws_api_gateway_integration" "submit-patch" {
   resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
   http_method = "${aws_api_gateway_method.submit-patch.http_method}"
   type = "AWS_PROXY"
-  uri = "${aws_lambda_function.submitDataset.invoke_arn}"
+  uri = "arn:aws:apigateway:ap-southeast-2:lambda:path/2015-03-31/functions/${module.lambda-submitDataset.function_arn}/invocations"
   integration_http_method = "POST"
 }
 
@@ -297,7 +297,7 @@ resource "aws_api_gateway_integration" "submit-post" {
   resource_id = "${aws_api_gateway_method.submit-post.resource_id}"
   http_method = "${aws_api_gateway_method.submit-post.http_method}"
   type = "AWS_PROXY"
-  uri = "${aws_lambda_function.submitDataset.invoke_arn}"
+  uri = "arn:aws:apigateway:ap-southeast-2:lambda:path/2015-03-31/functions/${module.lambda-submitDataset.function_arn}/invocations"
   integration_http_method = "POST"
 }
 
@@ -399,7 +399,7 @@ resource "aws_api_gateway_integration" "query-get" {
   resource_id = "${aws_api_gateway_method.query-get.resource_id}"
   http_method = "${aws_api_gateway_method.query-get.http_method}"
   type = "AWS_PROXY"
-  uri = "${aws_lambda_function.queryDatasets.invoke_arn}"
+  uri = "arn:aws:apigateway:ap-southeast-2:lambda:path/2015-03-31/functions/${module.lambda-queryDatasets.function_arn}/invocations"
   integration_http_method = "POST"
 }
 
@@ -443,7 +443,7 @@ resource "aws_api_gateway_integration" "query-post" {
   resource_id = "${aws_api_gateway_method.query-post.resource_id}"
   http_method = "${aws_api_gateway_method.query-post.http_method}"
   type = "AWS_PROXY"
-  uri = "${aws_lambda_function.queryDatasets.invoke_arn}"
+  uri = "arn:aws:apigateway:ap-southeast-2:lambda:path/2015-03-31/functions/${module.lambda-queryDatasets.function_arn}/invocations"
   integration_http_method = "POST"
 }
 

@@ -11,16 +11,11 @@ The service intends to support beacon v1 according to the
 
 ## Installation
 Install using `terraform init` to pull the module, followed by running
-`pre-terraform-build.sh` from inside the module's directory. This will build the
-zip packages for the lambda functions and need only be done once.
 Running `terraform apply` will create the infrastucture.
 For adding data to the beacon, see the API.
 
 To shut down the entire service run `terraform destroy`. Any created datasets
 will be lost (but not the VCFs on which they are based).
-
-To repackage the code for lambda functions (if any customisations are made) run
-`pre-terraform-build.sh` followed by `terraform apply`.
 
 For standalone use the aws provider will need to be added in main.tf. See the
 example for more information.
