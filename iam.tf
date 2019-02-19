@@ -121,6 +121,7 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
     ]
     resources = [
       "${aws_sns_topic.summariseDataset.arn}",
+      "${aws_sns_topic.summariseSlice.arn}",
     ]
   }
 

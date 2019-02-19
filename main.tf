@@ -93,6 +93,7 @@ module "lambda-summariseSlice" {
       ASSEMBLY_GSI = "${lookup(aws_dynamodb_table.datasets.global_secondary_index[0], "name")}"
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
+      SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
       VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
     }
   }
