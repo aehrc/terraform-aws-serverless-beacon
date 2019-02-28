@@ -13,6 +13,7 @@ module "lambda-submitDataset" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
   source_path = "${path.module}/lambda/submitDataset"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -37,6 +38,7 @@ module "lambda-summariseDataset" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseDataset.json}"
   source_path = "${path.module}/lambda/summariseDataset"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -63,6 +65,7 @@ module "lambda-summariseVcf" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseVcf.json}"
   source_path = "${path.module}/lambda/summariseVcf"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -87,6 +90,7 @@ module "lambda-summariseSlice" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseSlice.json}"
   source_path = "${path.module}/lambda/summariseSlice"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -114,6 +118,7 @@ module "lambda-queryDatasets" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-queryDatasets.json}"
   source_path = "${path.module}/lambda/queryDatasets"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -139,6 +144,7 @@ module "lambda-splitQuery" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-splitQuery.json}"
   source_path = "${path.module}/lambda/splitQuery"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -162,4 +168,5 @@ module "lambda-performQuery" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
   source_path = "${path.module}/lambda/submitDataset"
+  reserved_concurrent_executions = -1
 }
