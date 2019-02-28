@@ -166,7 +166,7 @@ module "lambda-performQuery" {
   memory_size = 2048
   timeout = 24
   attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
-  source_path = "${path.module}/lambda/submitDataset"
+  policy = "${data.aws_iam_policy_document.lambda-performQuery.json}"
+  source_path = "${path.module}/lambda/performQuery"
   reserved_concurrent_executions = -1
 }
