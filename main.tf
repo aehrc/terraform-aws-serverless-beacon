@@ -14,6 +14,7 @@ module "lambda-submitDataset" {
   policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
   source_path = "${path.module}/lambda/submitDataset"
   tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -39,6 +40,7 @@ module "lambda-summariseDataset" {
   policy = "${data.aws_iam_policy_document.lambda-summariseDataset.json}"
   source_path = "${path.module}/lambda/summariseDataset"
   tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -66,6 +68,7 @@ module "lambda-summariseVcf" {
   policy = "${data.aws_iam_policy_document.lambda-summariseVcf.json}"
   source_path = "${path.module}/lambda/summariseVcf"
   tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -91,6 +94,7 @@ module "lambda-summariseSlice" {
   policy = "${data.aws_iam_policy_document.lambda-summariseSlice.json}"
   source_path = "${path.module}/lambda/summariseSlice"
   tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -119,6 +123,7 @@ module "lambda-queryDatasets" {
   policy = "${data.aws_iam_policy_document.lambda-queryDatasets.json}"
   source_path = "${path.module}/lambda/queryDatasets"
   tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -145,6 +150,7 @@ module "lambda-splitQuery" {
   policy = "${data.aws_iam_policy_document.lambda-splitQuery.json}"
   source_path = "${path.module}/lambda/splitQuery"
   tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 
   environment {
     variables = {
@@ -166,6 +172,8 @@ module "lambda-performQuery" {
   memory_size = 2048
   timeout = 24
   attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
-  source_path = "${path.module}/lambda/submitDataset"
+  policy = "${data.aws_iam_policy_document.lambda-performQuery.json}"
+  source_path = "${path.module}/lambda/performQuery"
+  tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
 }
