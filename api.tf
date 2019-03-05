@@ -1,8 +1,6 @@
 #
 # API Gateway
 #
-data "aws_region" "current" {}
-
 resource "aws_api_gateway_rest_api" "BeaconApi" {
   name = "BeaconApi"
   description = "API That implements the Beacon specification"
@@ -104,22 +102,9 @@ resource "aws_api_gateway_integration" "root-get" {
   rest_api_id = "${aws_api_gateway_method.root-get.rest_api_id}"
   resource_id = "${aws_api_gateway_method.root-get.resource_id}"
   http_method = "${aws_api_gateway_method.root-get.http_method}"
-  type = "AWS"
-  credentials = "${aws_iam_role.api-root-get.arn}"
-  uri = "arn:aws:apigateway:${data.aws_region.current.name}:dynamodb:action/Scan"
+  type = "AWS_PROXY"
+  uri = "arn:aws:apigateway:ap-southeast-2:lambda:path/2015-03-31/functions/${module.lambda-getInfo.function_arn}/invocations"
   integration_http_method = "POST"
-
-  request_templates {
-    "application/json" = <<TEMPLATE
-      {
-        "TableName": "${aws_dynamodb_table.datasets.name}",
-        "ProjectionExpression": "id,#name,assemblyId,createDateTime,updateDateTime,description,version,variantCount,callCount,sampleCount,externalUrl,info,dataUseConditions",
-        "ExpressionAttributeNames": {
-          "#name": "name"
-        }
-      }
-    TEMPLATE
-  }
 }
 
 resource "aws_api_gateway_integration_response" "root-get" {
@@ -128,41 +113,8 @@ resource "aws_api_gateway_integration_response" "root-get" {
   http_method = "${aws_api_gateway_method.root-get.http_method}"
   status_code = "${aws_api_gateway_method_response.root-get.status_code}"
 
-  response_parameters {
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
-  }
-
   response_templates {
-    "application/json" = <<TEMPLATE
-      {
-        "id": "${var.beacon-id}",
-        "name": "${var.beacon-name}",
-        "apiVersion": "v1.0.0",
-        "organization": {
-          "id": "${var.organisation-id}",
-          "name": "${var.organisation-name}"
-        },
-        "datasets": [
-          #foreach( $item in $input.path('$.Items'))
-            {
-              "id": "$item.id.S",
-              "name": "$item.name.S",
-              "assemblyId": "$item.assemblyId.S",
-              "createDateTime": "$item.createDateTime.S",
-              "updateDateTime": "$item.updateDateTime.S",
-              "description": #if($item.description.S != "")"$item.description.S"#else null#end,
-              "version": #if($item.version.S != "")"$item.version.S"#else null#end,
-              "variantCount": #if($item.variantCount.N != "")"$item.variantCount.N"#else null#end,
-              "callCount": #if($item.callCount.N != "")"$item.callCount.N"#else null#end,
-              "sampleCount": #if($item.sampleCount.N != "")"$item.sampleCount.N"#else null#end,
-              "info": #if($item.info.L != "")"$item.info.L"#else null#end,
-              "dataUseConditions": #if($item.dataUseConditions.M != "")"$item.dataUseConditions.M"#else null#end,
-              "externalUrl": #if($item.externalUrl.S != "")"$item.externalUrl.S"#else null#end
-            }#if( $foreach.hasNext ),#end
-          #end
-        ]
-      }
-    TEMPLATE
+    "application/json" = ""
   }
 
   depends_on = ["aws_api_gateway_integration.root-get"]
