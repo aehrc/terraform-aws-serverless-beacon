@@ -1,3 +1,7 @@
+locals {
+  api_version = "v1.0.0"
+}
+
 #
 # submitDataset Lambda Function
 #
@@ -103,6 +107,36 @@ module "lambda-summariseSlice" {
       SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
       SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
       VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
+    }
+  }
+}
+
+#
+# getInfo Lambda Function
+#
+module "lambda-getInfo" {
+  source = "github.com/bhosking/terraform-aws-lambda"
+
+  function_name = "getInfo"
+  description = "Returns basic information about the beacon and the datasets."
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.6"
+  memory_size = 2048
+  timeout = 28
+  attach_policy = true
+  policy = "${data.aws_iam_policy_document.lambda-getInfo.json}"
+  source_path = "${path.module}/lambda/getInfo"
+  tags = "${var.common-tags}"
+  reserved_concurrent_executions = -1
+
+  environment {
+    variables = {
+      BEACON_API_VERSION = "${local.api_version}"
+      BEACON_ID = "${var.beacon-id}"
+      BEACON_NAME = "${var.beacon-name}"
+      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
+      ORGANISATION_ID = "${var.organisation-id}"
+      ORGANISATION_NAME = "${var.organisation-name}"
     }
   }
 }

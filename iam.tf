@@ -145,6 +145,20 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
 }
 
 #
+# getInfo Lambda Function
+#
+data "aws_iam_policy_document" "lambda-getInfo" {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}",
+    ]
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 data "aws_iam_policy_document" "lambda-queryDatasets" {
