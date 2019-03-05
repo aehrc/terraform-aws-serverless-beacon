@@ -63,7 +63,7 @@ def transform_data(items):
                 "name": item['name']['S'],
                 "assemblyId": item['assemblyId']['S'],
                 "createDateTime": item['createDateTime']['S'],
-                "updateDateTime": "$item.updateDateTime.S",
+                "updateDateTime": item['updateDateTime']['S'],
                 "description": item.get('description', {}).get('S') or None,
                 "version": item.get('version', {}).get('S') or None,
                 "variantCount": item.get('variantCount', {}).get('N') or None,
