@@ -35,6 +35,14 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
       "${aws_sns_topic.summariseDataset.arn}",
     ]
   }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
 }
 
 #

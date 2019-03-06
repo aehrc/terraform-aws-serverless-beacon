@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import subprocess
 
 import boto3
 
@@ -9,8 +10,41 @@ from api_response import bad_request, bundle_response, missing_parameter
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 
+os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
+
 dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
+
+
+def check_vcf_locations(locations):
+    errors = []
+    for location in locations:
+        try:
+            subprocess.check_output(
+                args=[
+                    'tabix',
+                    '--list-chroms',
+                    location,
+                ],
+                stderr=subprocess.PIPE,
+                cwd='/tmp',
+                encoding='utf-8',
+            )
+        except subprocess.CalledProcessError as e:
+            error_message = e.stderr
+            print("cmd {} returned non-zero error code {}. stderr:\n{}".format(
+                e.cmd, e.returncode, error_message
+            ))
+            if error_message.startswith("[E::hts_open_format] Failed to open"):
+                errors.append("Could not access {}.".format(location))
+            elif error_message.startswith("[E::hts_hopen] Failed to open"):
+                errors.append("{} is not a gzipped vcf file.".format(location))
+            elif error_message.startswith("Could not load .tbi index"):
+                errors.append("Could not open index file for {}.".format(
+                    location))
+            else:
+                raise e
+    return errors
 
 
 def create_dataset(attributes):
@@ -84,11 +118,18 @@ def submit_dataset(body_dict, method):
     validation_error = validate_request(body_dict, new)
     if validation_error:
         return bad_request(validation_error)
+    if 'vcfLocations' in body_dict:
+        errors = check_vcf_locations(body_dict['vcfLocations'])
+        if errors:
+            return bad_request(errors)
+        summarise = True
+    else:
+        summarise = False
     if new:
         create_dataset(body_dict)
     else:
         update_dataset(body_dict)
-    if 'vcfLocations' in body_dict:
+    if summarise:
         summarise_dataset(body_dict['id'])
     return bundle_response(200, {})
 
