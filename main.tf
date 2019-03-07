@@ -1,8 +1,12 @@
+locals {
+  api_version = "v1.0.0"
+}
+
 #
 # submitDataset Lambda Function
 #
 module "lambda-submitDataset" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "submitDataset"
   description = "Creates or updates a dataset and triggers summariseVcf."
@@ -13,7 +17,7 @@ module "lambda-submitDataset" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
   source_path = "${path.module}/lambda/submitDataset"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -27,7 +31,7 @@ module "lambda-submitDataset" {
 # summariseDataset Lambda Function
 #
 module "lambda-summariseDataset" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
@@ -38,7 +42,7 @@ module "lambda-summariseDataset" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseDataset.json}"
   source_path = "${path.module}/lambda/summariseDataset"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -54,7 +58,7 @@ module "lambda-summariseDataset" {
 #
 
 module "lambda-summariseVcf" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "summariseVcf"
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
@@ -65,7 +69,7 @@ module "lambda-summariseVcf" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseVcf.json}"
   source_path = "${path.module}/lambda/summariseVcf"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -79,7 +83,7 @@ module "lambda-summariseVcf" {
 # summariseSlice Lambda Function
 #
 module "lambda-summariseSlice" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "summariseSlice"
   description = "Counts calls and variants in region of a vcf."
@@ -90,7 +94,7 @@ module "lambda-summariseSlice" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-summariseSlice.json}"
   source_path = "${path.module}/lambda/summariseSlice"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -104,10 +108,39 @@ module "lambda-summariseSlice" {
 }
 
 #
+# getInfo Lambda Function
+#
+module "lambda-getInfo" {
+  source = "modules/terraform-aws-lambda"
+
+  function_name = "getInfo"
+  description = "Returns basic information about the beacon and the datasets."
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.6"
+  memory_size = 2048
+  timeout = 28
+  attach_policy = true
+  policy = "${data.aws_iam_policy_document.lambda-getInfo.json}"
+  source_path = "${path.module}/lambda/getInfo"
+  tags = "${var.common-tags}"
+
+  environment {
+    variables = {
+      BEACON_API_VERSION = "${local.api_version}"
+      BEACON_ID = "${var.beacon-id}"
+      BEACON_NAME = "${var.beacon-name}"
+      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
+      ORGANISATION_ID = "${var.organisation-id}"
+      ORGANISATION_NAME = "${var.organisation-name}"
+    }
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 module "lambda-queryDatasets" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "queryDatasets"
   description = "Invokes splitQuery for each dataset and returns result."
@@ -118,7 +151,7 @@ module "lambda-queryDatasets" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-queryDatasets.json}"
   source_path = "${path.module}/lambda/queryDatasets"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -133,7 +166,7 @@ module "lambda-queryDatasets" {
 # splitQuery Lambda Function
 #
 module "lambda-splitQuery" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "splitQuery"
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
@@ -144,7 +177,7 @@ module "lambda-splitQuery" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-splitQuery.json}"
   source_path = "${path.module}/lambda/splitQuery"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 
   environment {
     variables = {
@@ -157,7 +190,7 @@ module "lambda-splitQuery" {
 # performQuery Lambda Function
 #
 module "lambda-performQuery" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "modules/terraform-aws-lambda"
 
   function_name = "performQuery"
   description = "Queries a slice of a vcf for a specified variant."
@@ -168,5 +201,5 @@ module "lambda-performQuery" {
   attach_policy = true
   policy = "${data.aws_iam_policy_document.lambda-performQuery.json}"
   source_path = "${path.module}/lambda/performQuery"
-  reserved_concurrent_executions = -1
+  tags = "${var.common-tags}"
 }

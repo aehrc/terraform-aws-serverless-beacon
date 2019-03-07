@@ -35,6 +35,14 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
       "${aws_sns_topic.summariseDataset.arn}",
     ]
   }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
 }
 
 #
@@ -145,6 +153,20 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
 }
 
 #
+# getInfo Lambda Function
+#
+data "aws_iam_policy_document" "lambda-getInfo" {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}",
+    ]
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 data "aws_iam_policy_document" "lambda-queryDatasets" {
@@ -205,6 +227,7 @@ data "aws_iam_policy_document" "lambda-performQuery" {
 resource "aws_iam_role" "api-root-get" {
   name = "apiRootGetRole"
   assume_role_policy = "${data.aws_iam_policy_document.main-apigateway.json}"
+  tags = "${var.common-tags}"
 }
 
 resource "aws_iam_role_policy_attachment" "api-root-get" {
