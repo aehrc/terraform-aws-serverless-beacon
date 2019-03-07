@@ -2,7 +2,7 @@ openapi: 3.0.0
 servers: []
 info:
   title: Serverless Beacon API
-  version: 0.2.0
+  version: 0.3.0
   description:
     Provides an API for contributing to and querying a serverless ga4gh beacon
     instance.
@@ -235,7 +235,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BeaconError'
-
+      security:
+        - sigv4: []
     post:
       summary: Create a dataset
       requestBody:
@@ -252,6 +253,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BeaconError'
+      security:
+        - sigv4: []
 components:
   schemas:
     Beacon:
