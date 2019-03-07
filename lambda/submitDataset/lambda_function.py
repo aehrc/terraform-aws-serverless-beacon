@@ -44,7 +44,7 @@ def check_vcf_locations(locations):
                     location))
             else:
                 raise e
-    return errors
+    return "\n".join(errors)
 
 
 def create_dataset(attributes):

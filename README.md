@@ -25,7 +25,8 @@ example for more information.
 The result of `terraform apply` or `terraform output` will be the base URL of
 the API. The main query API is designed to be compatible with the ga4gh Beacon
 API, with an additional endpoint `/submit` for the purposes of adding or editing
-datasets. The API is contained in `openapi.yaml`.
+datasets. This requires authentication via sigv4. The API is contained in
+`openapi.yaml`.
 
 ## Known Issues
 ##### Cannot run terraform apply, Global Secondary Index missing required fields.
@@ -37,7 +38,6 @@ represented in a vcf as eg 4 GA G and will not be discovered. It will be
 discovered if it is queried as GA > G in position 4.
 
 ## To do
-##### Implement security for calls to `/submit`
 ##### Implement general security for registered and controlled datasets
 * Allow the security level to be set on a dataset
 * Implement OAuth2 for dataset access
