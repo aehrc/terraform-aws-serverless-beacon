@@ -6,7 +6,7 @@ locals {
 # submitDataset Lambda Function
 #
 module "lambda-submitDataset" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "submitDataset"
   description = "Creates or updates a dataset and triggers summariseVcf."
@@ -14,12 +14,13 @@ module "lambda-submitDataset" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 5
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-submitDataset.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-submitDataset.json
+  }
   source_path = "${path.module}/lambda/submitDataset"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
@@ -31,7 +32,7 @@ module "lambda-submitDataset" {
 # summariseDataset Lambda Function
 #
 module "lambda-summariseDataset" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
@@ -39,12 +40,13 @@ module "lambda-summariseDataset" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 10
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-summariseDataset.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-summariseDataset.json
+  }
   source_path = "${path.module}/lambda/summariseDataset"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_VCF_SNS_TOPIC_ARN = "${aws_sns_topic.summariseVcf.arn}"
@@ -58,7 +60,7 @@ module "lambda-summariseDataset" {
 #
 
 module "lambda-summariseVcf" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "summariseVcf"
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
@@ -66,12 +68,13 @@ module "lambda-summariseVcf" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 60
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-summariseVcf.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-summariseVcf.json
+  }
   source_path = "${path.module}/lambda/summariseVcf"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
       SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
       VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
@@ -83,7 +86,7 @@ module "lambda-summariseVcf" {
 # summariseSlice Lambda Function
 #
 module "lambda-summariseSlice" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "summariseSlice"
   description = "Counts calls and variants in region of a vcf."
@@ -91,14 +94,15 @@ module "lambda-summariseSlice" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 60
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-summariseSlice.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-summariseSlice.json
+  }
   source_path = "${path.module}/lambda/summariseSlice"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
-      ASSEMBLY_GSI = "${lookup(aws_dynamodb_table.datasets.global_secondary_index[0], "name")}"
+      ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
       SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
       SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
@@ -111,7 +115,7 @@ module "lambda-summariseSlice" {
 # getInfo Lambda Function
 #
 module "lambda-getInfo" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "getInfo"
   description = "Returns basic information about the beacon and the datasets."
@@ -119,12 +123,13 @@ module "lambda-getInfo" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 28
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-getInfo.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-getInfo.json
+  }
   source_path = "${path.module}/lambda/getInfo"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
       BEACON_API_VERSION = "${local.api_version}"
       BEACON_ID = "${var.beacon-id}"
@@ -140,7 +145,7 @@ module "lambda-getInfo" {
 # queryDatasets Lambda Function
 #
 module "lambda-queryDatasets" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "queryDatasets"
   description = "Invokes splitQuery for each dataset and returns result."
@@ -148,12 +153,13 @@ module "lambda-queryDatasets" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 28
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-queryDatasets.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-queryDatasets.json
+  }
   source_path = "${path.module}/lambda/queryDatasets"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
       BEACON_ID = "${var.beacon-id}"
       DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
@@ -166,7 +172,7 @@ module "lambda-queryDatasets" {
 # splitQuery Lambda Function
 #
 module "lambda-splitQuery" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "splitQuery"
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
@@ -174,12 +180,13 @@ module "lambda-splitQuery" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 26
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-splitQuery.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-splitQuery.json
+  }
   source_path = "${path.module}/lambda/splitQuery"
   tags = "${var.common-tags}"
 
-  environment {
+  environment = {
     variables = {
       PERFORM_QUERY_LAMBDA = "${module.lambda-performQuery.function_name}"
     }
@@ -190,7 +197,7 @@ module "lambda-splitQuery" {
 # performQuery Lambda Function
 #
 module "lambda-performQuery" {
-  source = "modules/terraform-aws-lambda"
+  source = "github.com/claranet/terraform-aws-lambda"
 
   function_name = "performQuery"
   description = "Queries a slice of a vcf for a specified variant."
@@ -198,8 +205,9 @@ module "lambda-performQuery" {
   runtime = "python3.6"
   memory_size = 2048
   timeout = 24
-  attach_policy = true
-  policy = "${data.aws_iam_policy_document.lambda-performQuery.json}"
+  policy = {
+    json = data.aws_iam_policy_document.lambda-performQuery.json
+  }
   source_path = "${path.module}/lambda/performQuery"
   tags = "${var.common-tags}"
 }
