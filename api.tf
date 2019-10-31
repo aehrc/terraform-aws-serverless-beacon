@@ -31,13 +31,13 @@ resource "aws_api_gateway_method_response" "root-options" {
   http_method = "${aws_api_gateway_method.root-options.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
     "method.response.header.Access-Control-Allow-Methods" = true
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -48,7 +48,7 @@ resource "aws_api_gateway_integration" "root-options" {
   http_method = "${aws_api_gateway_method.root-options.http_method}"
   type = "MOCK"
 
-  request_templates {
+  request_templates = {
     "application/json" = <<TEMPLATE
       {
         "statusCode": 200
@@ -63,13 +63,13 @@ resource "aws_api_gateway_integration_response" "root-options" {
   http_method = "${aws_api_gateway_method.root-options.http_method}"
   status_code = "${aws_api_gateway_method_response.root-options.status_code}"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
   }
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -89,11 +89,11 @@ resource "aws_api_gateway_method_response" "root-get" {
   http_method = "${aws_api_gateway_method.root-get.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -103,7 +103,7 @@ resource "aws_api_gateway_integration" "root-get" {
   resource_id = "${aws_api_gateway_method.root-get.resource_id}"
   http_method = "${aws_api_gateway_method.root-get.http_method}"
   type = "AWS_PROXY"
-  uri = "${module.lambda-getInfo.invoke_arn}"
+  uri = "${module.lambda-getInfo.function_invoke_arn}"
   integration_http_method = "POST"
 }
 
@@ -113,7 +113,7 @@ resource "aws_api_gateway_integration_response" "root-get" {
   http_method = "${aws_api_gateway_method.root-get.http_method}"
   status_code = "${aws_api_gateway_method_response.root-get.status_code}"
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -133,13 +133,13 @@ resource "aws_api_gateway_method_response" "submit-options" {
   http_method = "${aws_api_gateway_method.submit-options.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
     "method.response.header.Access-Control-Allow-Methods" = true
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -150,7 +150,7 @@ resource "aws_api_gateway_integration" "submit-options" {
   http_method = "${aws_api_gateway_method.submit-options.http_method}"
   type = "MOCK"
 
-  request_templates {
+  request_templates = {
     "application/json" = <<TEMPLATE
       {
         "statusCode": 200
@@ -165,13 +165,13 @@ resource "aws_api_gateway_integration_response" "submit-options" {
   http_method = "${aws_api_gateway_method.submit-options.http_method}"
   status_code = "${aws_api_gateway_method_response.submit-options.status_code}"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,PATCH,POST'"
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
   }
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -192,11 +192,11 @@ resource "aws_api_gateway_method_response" "submit-patch" {
   http_method = "${aws_api_gateway_method.submit-patch.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -206,7 +206,7 @@ resource "aws_api_gateway_integration" "submit-patch" {
   resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
   http_method = "${aws_api_gateway_method.submit-patch.http_method}"
   type = "AWS_PROXY"
-  uri = "${module.lambda-submitDataset.invoke_arn}"
+  uri = "${module.lambda-submitDataset.function_invoke_arn}"
   integration_http_method = "POST"
 }
 
@@ -216,7 +216,7 @@ resource "aws_api_gateway_integration_response" "submit-patch" {
   http_method = "${aws_api_gateway_method.submit-patch.http_method}"
   status_code = "${aws_api_gateway_method_response.submit-patch.status_code}"
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -236,11 +236,11 @@ resource "aws_api_gateway_method_response" "submit-post" {
   http_method = "${aws_api_gateway_method.submit-post.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -250,7 +250,7 @@ resource "aws_api_gateway_integration" "submit-post" {
   resource_id = "${aws_api_gateway_method.submit-post.resource_id}"
   http_method = "${aws_api_gateway_method.submit-post.http_method}"
   type = "AWS_PROXY"
-  uri = "${module.lambda-submitDataset.invoke_arn}"
+  uri = "${module.lambda-submitDataset.function_invoke_arn}"
   integration_http_method = "POST"
 }
 
@@ -260,7 +260,7 @@ resource "aws_api_gateway_integration_response" "submit-post" {
   http_method = "${aws_api_gateway_method.submit-post.http_method}"
   status_code = "${aws_api_gateway_method_response.submit-post.status_code}"
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -280,13 +280,13 @@ resource "aws_api_gateway_method_response" "query-options" {
   http_method = "${aws_api_gateway_method.query-options.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
     "method.response.header.Access-Control-Allow-Methods" = true
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -297,7 +297,7 @@ resource "aws_api_gateway_integration" "query-options" {
   http_method = "${aws_api_gateway_method.query-options.http_method}"
   type = "MOCK"
 
-  request_templates {
+  request_templates = {
     "application/json" = <<TEMPLATE
       {
         "statusCode": 200
@@ -312,13 +312,13 @@ resource "aws_api_gateway_integration_response" "query-options" {
   http_method = "${aws_api_gateway_method.query-options.http_method}"
   status_code = "${aws_api_gateway_method_response.query-options.status_code}"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST'"
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
   }
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -338,11 +338,11 @@ resource "aws_api_gateway_method_response" "query-get" {
   http_method = "${aws_api_gateway_method.query-get.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -352,7 +352,7 @@ resource "aws_api_gateway_integration" "query-get" {
   resource_id = "${aws_api_gateway_method.query-get.resource_id}"
   http_method = "${aws_api_gateway_method.query-get.http_method}"
   type = "AWS_PROXY"
-  uri = "${module.lambda-queryDatasets.invoke_arn}"
+  uri = "${module.lambda-queryDatasets.function_invoke_arn}"
   integration_http_method = "POST"
 }
 
@@ -362,7 +362,7 @@ resource "aws_api_gateway_integration_response" "query-get" {
   http_method = "${aws_api_gateway_method.query-get.http_method}"
   status_code = "${aws_api_gateway_method_response.query-get.status_code}"
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
@@ -382,11 +382,11 @@ resource "aws_api_gateway_method_response" "query-post" {
   http_method = "${aws_api_gateway_method.query-post.http_method}"
   status_code = "200"
 
-  response_parameters {
+  response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = true
   }
 
-  response_models {
+  response_models = {
     "application/json" = "Empty"
   }
 }
@@ -396,7 +396,7 @@ resource "aws_api_gateway_integration" "query-post" {
   resource_id = "${aws_api_gateway_method.query-post.resource_id}"
   http_method = "${aws_api_gateway_method.query-post.http_method}"
   type = "AWS_PROXY"
-  uri = "${module.lambda-queryDatasets.invoke_arn}"
+  uri = "${module.lambda-queryDatasets.function_invoke_arn}"
   integration_http_method = "POST"
 }
 
@@ -406,7 +406,7 @@ resource "aws_api_gateway_integration_response" "query-post" {
   http_method = "${aws_api_gateway_method.query-post.http_method}"
   status_code = "${aws_api_gateway_method_response.query-post.status_code}"
 
-  response_templates {
+  response_templates = {
     "application/json" = ""
   }
 
