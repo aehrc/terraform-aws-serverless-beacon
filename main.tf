@@ -18,12 +18,12 @@ module "lambda-submitDataset" {
     json = data.aws_iam_policy_document.lambda-submitDataset.json
   }
   source_path = "${path.module}/lambda/submitDataset"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
-      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
-      SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
     }
   }
 }
@@ -44,13 +44,13 @@ module "lambda-summariseDataset" {
     json = data.aws_iam_policy_document.lambda-summariseDataset.json
   }
   source_path = "${path.module}/lambda/summariseDataset"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
-      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
-      SUMMARISE_VCF_SNS_TOPIC_ARN = "${aws_sns_topic.summariseVcf.arn}"
-      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SUMMARISE_VCF_SNS_TOPIC_ARN = aws_sns_topic.summariseVcf.arn
+      VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
     }
   }
 }
@@ -72,12 +72,12 @@ module "lambda-summariseVcf" {
     json = data.aws_iam_policy_document.lambda-summariseVcf.json
   }
   source_path = "${path.module}/lambda/summariseVcf"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
-      SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
-      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
+      SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
+      VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
     }
   }
 }
@@ -98,15 +98,15 @@ module "lambda-summariseSlice" {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json
   }
   source_path = "${path.module}/lambda/summariseSlice"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
       ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
-      SUMMARISE_DATASET_SNS_TOPIC_ARN = "${aws_sns_topic.summariseDataset.arn}"
-      SUMMARISE_SLICE_SNS_TOPIC_ARN = "${aws_sns_topic.summariseSlice.arn}"
-      VCF_SUMMARIES_TABLE = "${aws_dynamodb_table.vcf_summaries.name}"
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+      SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
+      VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
     }
   }
 }
@@ -127,16 +127,16 @@ module "lambda-getInfo" {
     json = data.aws_iam_policy_document.lambda-getInfo.json
   }
   source_path = "${path.module}/lambda/getInfo"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
-      BEACON_API_VERSION = "${local.api_version}"
-      BEACON_ID = "${var.beacon-id}"
-      BEACON_NAME = "${var.beacon-name}"
-      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
-      ORGANISATION_ID = "${var.organisation-id}"
-      ORGANISATION_NAME = "${var.organisation-name}"
+      BEACON_API_VERSION = local.api_version
+      BEACON_ID = var.beacon-id
+      BEACON_NAME = var.beacon-name
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      ORGANISATION_ID = var.organisation-id
+      ORGANISATION_NAME = var.organisation-name
     }
   }
 }
@@ -157,13 +157,13 @@ module "lambda-queryDatasets" {
     json = data.aws_iam_policy_document.lambda-queryDatasets.json
   }
   source_path = "${path.module}/lambda/queryDatasets"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
-      BEACON_ID = "${var.beacon-id}"
-      DATASETS_TABLE = "${aws_dynamodb_table.datasets.name}"
-      SPLIT_QUERY_LAMBDA = "${module.lambda-splitQuery.function_name}"
+      BEACON_ID = var.beacon-id
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
     }
   }
 }
@@ -184,11 +184,11 @@ module "lambda-splitQuery" {
     json = data.aws_iam_policy_document.lambda-splitQuery.json
   }
   source_path = "${path.module}/lambda/splitQuery"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 
   environment = {
     variables = {
-      PERFORM_QUERY_LAMBDA = "${module.lambda-performQuery.function_name}"
+      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
     }
   }
 }
@@ -209,5 +209,5 @@ module "lambda-performQuery" {
     json = data.aws_iam_policy_document.lambda-performQuery.json
   }
   source_path = "${path.module}/lambda/performQuery"
-  tags = "${var.common-tags}"
+  tags = var.common-tags
 }

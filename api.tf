@@ -1,34 +1,34 @@
 #
 # API Gateway
 #
-resource "aws_api_gateway_rest_api" "BeaconApi" {
+resource aws_api_gateway_rest_api BeaconApi {
   name = "BeaconApi"
   description = "API That implements the Beacon specification"
 }
 
-resource "aws_api_gateway_resource" "submit" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  parent_id = "${aws_api_gateway_rest_api.BeaconApi.root_resource_id}"
+resource aws_api_gateway_resource submit {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  parent_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   path_part = "submit"
 }
 
-resource "aws_api_gateway_resource" "query" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  parent_id = "${aws_api_gateway_rest_api.BeaconApi.root_resource_id}"
+resource aws_api_gateway_resource query {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  parent_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   path_part = "query"
 }
 
-resource "aws_api_gateway_method" "root-options" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_rest_api.BeaconApi.root_resource_id}"
+resource aws_api_gateway_method root-options {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   http_method = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "root-options" {
-  rest_api_id = "${aws_api_gateway_method.root-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.root-options.resource_id}"
-  http_method = "${aws_api_gateway_method.root-options.http_method}"
+resource aws_api_gateway_method_response root-options {
+  rest_api_id = aws_api_gateway_method.root-options.rest_api_id
+  resource_id = aws_api_gateway_method.root-options.resource_id
+  http_method = aws_api_gateway_method.root-options.http_method
   status_code = "200"
 
   response_parameters = {
@@ -42,10 +42,10 @@ resource "aws_api_gateway_method_response" "root-options" {
   }
 }
 
-resource "aws_api_gateway_integration" "root-options" {
-  rest_api_id = "${aws_api_gateway_method.root-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.root-options.resource_id}"
-  http_method = "${aws_api_gateway_method.root-options.http_method}"
+resource aws_api_gateway_integration root-options {
+  rest_api_id = aws_api_gateway_method.root-options.rest_api_id
+  resource_id = aws_api_gateway_method.root-options.resource_id
+  http_method = aws_api_gateway_method.root-options.http_method
   type = "MOCK"
 
   request_templates = {
@@ -57,11 +57,11 @@ resource "aws_api_gateway_integration" "root-options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "root-options" {
-  rest_api_id = "${aws_api_gateway_method.root-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.root-options.resource_id}"
-  http_method = "${aws_api_gateway_method.root-options.http_method}"
-  status_code = "${aws_api_gateway_method_response.root-options.status_code}"
+resource aws_api_gateway_integration_response root-options {
+  rest_api_id = aws_api_gateway_method.root-options.rest_api_id
+  resource_id = aws_api_gateway_method.root-options.resource_id
+  http_method = aws_api_gateway_method.root-options.http_method
+  status_code = aws_api_gateway_method_response.root-options.status_code
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -73,20 +73,20 @@ resource "aws_api_gateway_integration_response" "root-options" {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.root-options"]
+  depends_on = [aws_api_gateway_integration.root-options]
 }
 
-resource "aws_api_gateway_method" "root-get" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_rest_api.BeaconApi.root_resource_id}"
+resource aws_api_gateway_method root-get {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   http_method = "GET"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "root-get" {
-  rest_api_id = "${aws_api_gateway_method.root-get.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.root-get.resource_id}"
-  http_method = "${aws_api_gateway_method.root-get.http_method}"
+resource aws_api_gateway_method_response root-get {
+  rest_api_id = aws_api_gateway_method.root-get.rest_api_id
+  resource_id = aws_api_gateway_method.root-get.resource_id
+  http_method = aws_api_gateway_method.root-get.http_method
   status_code = "200"
 
   response_parameters = {
@@ -98,39 +98,39 @@ resource "aws_api_gateway_method_response" "root-get" {
   }
 }
 
-resource "aws_api_gateway_integration" "root-get" {
-  rest_api_id = "${aws_api_gateway_method.root-get.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.root-get.resource_id}"
-  http_method = "${aws_api_gateway_method.root-get.http_method}"
+resource aws_api_gateway_integration root-get {
+  rest_api_id = aws_api_gateway_method.root-get.rest_api_id
+  resource_id = aws_api_gateway_method.root-get.resource_id
+  http_method = aws_api_gateway_method.root-get.http_method
   type = "AWS_PROXY"
-  uri = "${module.lambda-getInfo.function_invoke_arn}"
+  uri = module.lambda-getInfo.function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource "aws_api_gateway_integration_response" "root-get" {
-  rest_api_id = "${aws_api_gateway_method.root-get.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.root-get.resource_id}"
-  http_method = "${aws_api_gateway_method.root-get.http_method}"
-  status_code = "${aws_api_gateway_method_response.root-get.status_code}"
+resource aws_api_gateway_integration_response root-get {
+  rest_api_id = aws_api_gateway_method.root-get.rest_api_id
+  resource_id = aws_api_gateway_method.root-get.resource_id
+  http_method = aws_api_gateway_method.root-get.http_method
+  status_code = aws_api_gateway_method_response.root-get.status_code
 
   response_templates = {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.root-get"]
+  depends_on = [aws_api_gateway_integration.root-get]
 }
 
-resource "aws_api_gateway_method" "submit-options" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_resource.submit.id}"
+resource aws_api_gateway_method submit-options {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_resource.submit.id
   http_method = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "submit-options" {
-  rest_api_id = "${aws_api_gateway_method.submit-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-options.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-options.http_method}"
+resource aws_api_gateway_method_response submit-options {
+  rest_api_id = aws_api_gateway_method.submit-options.rest_api_id
+  resource_id = aws_api_gateway_method.submit-options.resource_id
+  http_method = aws_api_gateway_method.submit-options.http_method
   status_code = "200"
 
   response_parameters = {
@@ -144,10 +144,10 @@ resource "aws_api_gateway_method_response" "submit-options" {
   }
 }
 
-resource "aws_api_gateway_integration" "submit-options" {
-  rest_api_id = "${aws_api_gateway_method.submit-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-options.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-options.http_method}"
+resource aws_api_gateway_integration submit-options {
+  rest_api_id = aws_api_gateway_method.submit-options.rest_api_id
+  resource_id = aws_api_gateway_method.submit-options.resource_id
+  http_method = aws_api_gateway_method.submit-options.http_method
   type = "MOCK"
 
   request_templates = {
@@ -159,11 +159,11 @@ resource "aws_api_gateway_integration" "submit-options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "submit-options" {
-  rest_api_id = "${aws_api_gateway_method.submit-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-options.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-options.http_method}"
-  status_code = "${aws_api_gateway_method_response.submit-options.status_code}"
+resource aws_api_gateway_integration_response submit-options {
+  rest_api_id = aws_api_gateway_method.submit-options.rest_api_id
+  resource_id = aws_api_gateway_method.submit-options.resource_id
+  http_method = aws_api_gateway_method.submit-options.http_method
+  status_code = aws_api_gateway_method_response.submit-options.status_code
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -175,21 +175,21 @@ resource "aws_api_gateway_integration_response" "submit-options" {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.submit-options"]
+  depends_on = [aws_api_gateway_integration.submit-options]
 }
 
-resource "aws_api_gateway_method" "submit-patch" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_resource.submit.id}"
+resource aws_api_gateway_method submit-patch {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_resource.submit.id
   http_method = "PATCH"
   authorization = "AWS_IAM"
 
 }
 
-resource "aws_api_gateway_method_response" "submit-patch" {
-  rest_api_id = "${aws_api_gateway_method.submit-patch.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-patch.http_method}"
+resource aws_api_gateway_method_response submit-patch {
+  rest_api_id = aws_api_gateway_method.submit-patch.rest_api_id
+  resource_id = aws_api_gateway_method.submit-patch.resource_id
+  http_method = aws_api_gateway_method.submit-patch.http_method
   status_code = "200"
 
   response_parameters = {
@@ -201,39 +201,39 @@ resource "aws_api_gateway_method_response" "submit-patch" {
   }
 }
 
-resource "aws_api_gateway_integration" "submit-patch" {
-  rest_api_id = "${aws_api_gateway_method.submit-patch.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-patch.http_method}"
+resource aws_api_gateway_integration submit-patch {
+  rest_api_id = aws_api_gateway_method.submit-patch.rest_api_id
+  resource_id = aws_api_gateway_method.submit-patch.resource_id
+  http_method = aws_api_gateway_method.submit-patch.http_method
   type = "AWS_PROXY"
-  uri = "${module.lambda-submitDataset.function_invoke_arn}"
+  uri = module.lambda-submitDataset.function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource "aws_api_gateway_integration_response" "submit-patch" {
-  rest_api_id = "${aws_api_gateway_method.submit-patch.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-patch.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-patch.http_method}"
-  status_code = "${aws_api_gateway_method_response.submit-patch.status_code}"
+resource aws_api_gateway_integration_response submit-patch {
+  rest_api_id = aws_api_gateway_method.submit-patch.rest_api_id
+  resource_id = aws_api_gateway_method.submit-patch.resource_id
+  http_method = aws_api_gateway_method.submit-patch.http_method
+  status_code = aws_api_gateway_method_response.submit-patch.status_code
 
   response_templates = {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.submit-patch"]
+  depends_on = [aws_api_gateway_integration.submit-patch]
 }
 
-resource "aws_api_gateway_method" "submit-post" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_resource.submit.id}"
+resource aws_api_gateway_method submit-post {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_resource.submit.id
   http_method = "POST"
   authorization = "AWS_IAM"
 }
 
-resource "aws_api_gateway_method_response" "submit-post" {
-  rest_api_id = "${aws_api_gateway_method.submit-post.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-post.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-post.http_method}"
+resource aws_api_gateway_method_response submit-post {
+  rest_api_id = aws_api_gateway_method.submit-post.rest_api_id
+  resource_id = aws_api_gateway_method.submit-post.resource_id
+  http_method = aws_api_gateway_method.submit-post.http_method
   status_code = "200"
 
   response_parameters = {
@@ -245,39 +245,39 @@ resource "aws_api_gateway_method_response" "submit-post" {
   }
 }
 
-resource "aws_api_gateway_integration" "submit-post" {
-  rest_api_id = "${aws_api_gateway_method.submit-post.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-post.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-post.http_method}"
+resource aws_api_gateway_integration submit-post {
+  rest_api_id = aws_api_gateway_method.submit-post.rest_api_id
+  resource_id = aws_api_gateway_method.submit-post.resource_id
+  http_method = aws_api_gateway_method.submit-post.http_method
   type = "AWS_PROXY"
-  uri = "${module.lambda-submitDataset.function_invoke_arn}"
+  uri = module.lambda-submitDataset.function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource "aws_api_gateway_integration_response" "submit-post" {
-  rest_api_id = "${aws_api_gateway_method.submit-post.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.submit-post.resource_id}"
-  http_method = "${aws_api_gateway_method.submit-post.http_method}"
-  status_code = "${aws_api_gateway_method_response.submit-post.status_code}"
+resource aws_api_gateway_integration_response submit-post {
+  rest_api_id = aws_api_gateway_method.submit-post.rest_api_id
+  resource_id = aws_api_gateway_method.submit-post.resource_id
+  http_method = aws_api_gateway_method.submit-post.http_method
+  status_code = aws_api_gateway_method_response.submit-post.status_code
 
   response_templates = {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.submit-post"]
+  depends_on = [aws_api_gateway_integration.submit-post]
 }
 
-resource "aws_api_gateway_method" "query-options" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_resource.query.id}"
+resource aws_api_gateway_method query-options {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_resource.query.id
   http_method = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "query-options" {
-  rest_api_id = "${aws_api_gateway_method.query-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-options.resource_id}"
-  http_method = "${aws_api_gateway_method.query-options.http_method}"
+resource aws_api_gateway_method_response query-options {
+  rest_api_id = aws_api_gateway_method.query-options.rest_api_id
+  resource_id = aws_api_gateway_method.query-options.resource_id
+  http_method = aws_api_gateway_method.query-options.http_method
   status_code = "200"
 
   response_parameters = {
@@ -291,10 +291,10 @@ resource "aws_api_gateway_method_response" "query-options" {
   }
 }
 
-resource "aws_api_gateway_integration" "query-options" {
-  rest_api_id = "${aws_api_gateway_method.query-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-options.resource_id}"
-  http_method = "${aws_api_gateway_method.query-options.http_method}"
+resource aws_api_gateway_integration query-options {
+  rest_api_id = aws_api_gateway_method.query-options.rest_api_id
+  resource_id = aws_api_gateway_method.query-options.resource_id
+  http_method = aws_api_gateway_method.query-options.http_method
   type = "MOCK"
 
   request_templates = {
@@ -306,11 +306,11 @@ resource "aws_api_gateway_integration" "query-options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "query-options" {
-  rest_api_id = "${aws_api_gateway_method.query-options.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-options.resource_id}"
-  http_method = "${aws_api_gateway_method.query-options.http_method}"
-  status_code = "${aws_api_gateway_method_response.query-options.status_code}"
+resource aws_api_gateway_integration_response query-options {
+  rest_api_id = aws_api_gateway_method.query-options.rest_api_id
+  resource_id = aws_api_gateway_method.query-options.resource_id
+  http_method = aws_api_gateway_method.query-options.http_method
+  status_code = aws_api_gateway_method_response.query-options.status_code
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -322,20 +322,20 @@ resource "aws_api_gateway_integration_response" "query-options" {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.query-options"]
+  depends_on = [aws_api_gateway_integration.query-options]
 }
 
-resource "aws_api_gateway_method" "query-get" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_resource.query.id}"
+resource aws_api_gateway_method query-get {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_resource.query.id
   http_method = "GET"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "query-get" {
-  rest_api_id = "${aws_api_gateway_method.query-get.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-get.resource_id}"
-  http_method = "${aws_api_gateway_method.query-get.http_method}"
+resource aws_api_gateway_method_response query-get {
+  rest_api_id = aws_api_gateway_method.query-get.rest_api_id
+  resource_id = aws_api_gateway_method.query-get.resource_id
+  http_method = aws_api_gateway_method.query-get.http_method
   status_code = "200"
 
   response_parameters = {
@@ -347,39 +347,39 @@ resource "aws_api_gateway_method_response" "query-get" {
   }
 }
 
-resource "aws_api_gateway_integration" "query-get" {
-  rest_api_id = "${aws_api_gateway_method.query-get.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-get.resource_id}"
-  http_method = "${aws_api_gateway_method.query-get.http_method}"
+resource aws_api_gateway_integration query-get {
+  rest_api_id = aws_api_gateway_method.query-get.rest_api_id
+  resource_id = aws_api_gateway_method.query-get.resource_id
+  http_method = aws_api_gateway_method.query-get.http_method
   type = "AWS_PROXY"
-  uri = "${module.lambda-queryDatasets.function_invoke_arn}"
+  uri = module.lambda-queryDatasets.function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource "aws_api_gateway_integration_response" "query-get" {
-  rest_api_id = "${aws_api_gateway_method.query-get.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-get.resource_id}"
-  http_method = "${aws_api_gateway_method.query-get.http_method}"
-  status_code = "${aws_api_gateway_method_response.query-get.status_code}"
+resource aws_api_gateway_integration_response query-get {
+  rest_api_id = aws_api_gateway_method.query-get.rest_api_id
+  resource_id = aws_api_gateway_method.query-get.resource_id
+  http_method = aws_api_gateway_method.query-get.http_method
+  status_code = aws_api_gateway_method_response.query-get.status_code
 
   response_templates = {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.query-get"]
+  depends_on = [aws_api_gateway_integration.query-get]
 }
 
-resource "aws_api_gateway_method" "query-post" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
-  resource_id = "${aws_api_gateway_resource.query.id}"
+resource aws_api_gateway_method query-post {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id = aws_api_gateway_resource.query.id
   http_method = "POST"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "query-post" {
-  rest_api_id = "${aws_api_gateway_method.query-post.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-post.resource_id}"
-  http_method = "${aws_api_gateway_method.query-post.http_method}"
+resource aws_api_gateway_method_response query-post {
+  rest_api_id = aws_api_gateway_method.query-post.rest_api_id
+  resource_id = aws_api_gateway_method.query-post.resource_id
+  http_method = aws_api_gateway_method.query-post.http_method
   status_code = "200"
 
   response_parameters = {
@@ -391,36 +391,36 @@ resource "aws_api_gateway_method_response" "query-post" {
   }
 }
 
-resource "aws_api_gateway_integration" "query-post" {
-  rest_api_id = "${aws_api_gateway_method.query-post.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-post.resource_id}"
-  http_method = "${aws_api_gateway_method.query-post.http_method}"
+resource aws_api_gateway_integration query-post {
+  rest_api_id = aws_api_gateway_method.query-post.rest_api_id
+  resource_id = aws_api_gateway_method.query-post.resource_id
+  http_method = aws_api_gateway_method.query-post.http_method
   type = "AWS_PROXY"
-  uri = "${module.lambda-queryDatasets.function_invoke_arn}"
+  uri = module.lambda-queryDatasets.function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource "aws_api_gateway_integration_response" "query-post" {
-  rest_api_id = "${aws_api_gateway_method.query-post.rest_api_id}"
-  resource_id = "${aws_api_gateway_method.query-post.resource_id}"
-  http_method = "${aws_api_gateway_method.query-post.http_method}"
-  status_code = "${aws_api_gateway_method_response.query-post.status_code}"
+resource aws_api_gateway_integration_response query-post {
+  rest_api_id = aws_api_gateway_method.query-post.rest_api_id
+  resource_id = aws_api_gateway_method.query-post.resource_id
+  http_method = aws_api_gateway_method.query-post.http_method
+  status_code = aws_api_gateway_method_response.query-post.status_code
 
   response_templates = {
     "application/json" = ""
   }
 
-  depends_on = ["aws_api_gateway_integration.query-post"]
+  depends_on = [aws_api_gateway_integration.query-post]
 }
 
 #
 # Deployment
 #
-resource "aws_api_gateway_deployment" "BeaconApi" {
-  rest_api_id = "${aws_api_gateway_rest_api.BeaconApi.id}"
+resource aws_api_gateway_deployment BeaconApi {
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
   stage_name  = "prod"
   # taint deployment if any api resources change
-  stage_description = "${md5(join("", list(
+  stage_description = md5(join("", list(
     md5(file("${path.module}/api.tf")),
     aws_api_gateway_method.root-options.id,
     aws_api_gateway_integration.root-options.id,
@@ -454,5 +454,5 @@ resource "aws_api_gateway_deployment" "BeaconApi" {
     aws_api_gateway_integration.query-post.id,
     aws_api_gateway_integration_response.query-post.id,
     aws_api_gateway_method_response.query-post.id
-  )))}"
+  )))
 }

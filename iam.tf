@@ -1,7 +1,7 @@
 #
 # Generic policy documents
 #
-data "aws_iam_policy_document" "main-apigateway" {
+data aws_iam_policy_document main-apigateway {
   statement {
     actions = [
       "sts:AssumeRole",
@@ -16,14 +16,14 @@ data "aws_iam_policy_document" "main-apigateway" {
 #
 # submitDataset Lambda Function
 #
-data "aws_iam_policy_document" "lambda-submitDataset" {
+data aws_iam_policy_document lambda-submitDataset {
   statement {
     actions = [
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      aws_dynamodb_table.datasets.arn,
     ]
   }
 
@@ -32,7 +32,7 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
       "SNS:Publish",
     ]
     resources = [
-      "${aws_sns_topic.summariseDataset.arn}",
+      aws_sns_topic.summariseDataset.arn,
     ]
   }
 
@@ -49,14 +49,14 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
 #
 # summariseDataset Lambda Function
 #
-data "aws_iam_policy_document" "lambda-summariseDataset" {
+data aws_iam_policy_document lambda-summariseDataset {
   statement {
     actions = [
       "dynamodb:UpdateItem",
       "dynamodb:Query",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      aws_dynamodb_table.datasets.arn,
     ]
   }
 
@@ -65,7 +65,7 @@ data "aws_iam_policy_document" "lambda-summariseDataset" {
       "dynamodb:BatchGetItem",
     ]
     resources = [
-      "${aws_dynamodb_table.vcf_summaries.arn}",
+      aws_dynamodb_table.vcf_summaries.arn,
     ]
   }
 
@@ -74,7 +74,7 @@ data "aws_iam_policy_document" "lambda-summariseDataset" {
       "SNS:Publish",
     ]
     resources = [
-      "${aws_sns_topic.summariseVcf.arn}",
+      aws_sns_topic.summariseVcf.arn,
     ]
   }
 }
@@ -82,13 +82,13 @@ data "aws_iam_policy_document" "lambda-summariseDataset" {
 #
 # summariseVcf Lambda Function
 #
-data "aws_iam_policy_document" "lambda-summariseVcf" {
+data aws_iam_policy_document lambda-summariseVcf {
   statement {
     actions = [
       "dynamodb:UpdateItem",
     ]
     resources = [
-      "${aws_dynamodb_table.vcf_summaries.arn}",
+      aws_dynamodb_table.vcf_summaries.arn,
     ]
   }
 
@@ -97,7 +97,7 @@ data "aws_iam_policy_document" "lambda-summariseVcf" {
       "SNS:Publish",
     ]
     resources = [
-      "${aws_sns_topic.summariseSlice.arn}",
+      aws_sns_topic.summariseSlice.arn,
     ]
   }
 
@@ -113,13 +113,13 @@ data "aws_iam_policy_document" "lambda-summariseVcf" {
 #
 # summariseSlice Lambda Function
 #
-data "aws_iam_policy_document" "lambda-summariseSlice" {
+data aws_iam_policy_document lambda-summariseSlice {
   statement {
     actions = [
       "dynamodb:UpdateItem",
     ]
     resources = [
-      "${aws_dynamodb_table.vcf_summaries.arn}",
+      aws_dynamodb_table.vcf_summaries.arn,
     ]
   }
 
@@ -128,8 +128,8 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
       "SNS:Publish",
     ]
     resources = [
-      "${aws_sns_topic.summariseDataset.arn}",
-      "${aws_sns_topic.summariseSlice.arn}",
+      aws_sns_topic.summariseDataset.arn,
+      aws_sns_topic.summariseSlice.arn,
     ]
   }
 
@@ -138,7 +138,7 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
       "dynamodb:Scan",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      aws_dynamodb_table.datasets.arn,
       "${aws_dynamodb_table.datasets.arn}/index/*",
     ]
   }
@@ -155,13 +155,13 @@ data "aws_iam_policy_document" "lambda-summariseSlice" {
 #
 # getInfo Lambda Function
 #
-data "aws_iam_policy_document" "lambda-getInfo" {
+data aws_iam_policy_document lambda-getInfo {
   statement {
     actions = [
       "dynamodb:Scan",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      aws_dynamodb_table.datasets.arn,
     ]
   }
 }
@@ -169,7 +169,7 @@ data "aws_iam_policy_document" "lambda-getInfo" {
 #
 # queryDatasets Lambda Function
 #
-data "aws_iam_policy_document" "lambda-queryDatasets" {
+data aws_iam_policy_document lambda-queryDatasets {
   statement {
     actions = [
       "dynamodb:Query",
@@ -183,7 +183,7 @@ data "aws_iam_policy_document" "lambda-queryDatasets" {
     actions = [
       "lambda:InvokeFunction",
     ]
-    resources = ["${module.lambda-splitQuery.function_arn}"]
+    resources = [module.lambda-splitQuery.function_arn]
   }
 
   statement {
@@ -198,12 +198,12 @@ data "aws_iam_policy_document" "lambda-queryDatasets" {
 #
 # splitQuery Lambda Function
 #
-data "aws_iam_policy_document" "lambda-splitQuery" {
+data aws_iam_policy_document lambda-splitQuery {
   statement {
     actions = [
       "lambda:InvokeFunction",
     ]
-    resources = ["${module.lambda-performQuery.function_arn}"]
+    resources = [module.lambda-performQuery.function_arn]
   }
 }
 
@@ -211,7 +211,7 @@ data "aws_iam_policy_document" "lambda-splitQuery" {
 #
 # performQuery Lambda Function
 #
-data "aws_iam_policy_document" "lambda-performQuery" {
+data aws_iam_policy_document lambda-performQuery {
   statement {
     actions = [
       "s3:GetObject",
@@ -224,29 +224,29 @@ data "aws_iam_policy_document" "lambda-performQuery" {
 #
 # API: / GET
 #
-resource "aws_iam_role" "api-root-get" {
+resource aws_iam_role api-root-get {
   name = "apiRootGetRole"
-  assume_role_policy = "${data.aws_iam_policy_document.main-apigateway.json}"
-  tags = "${var.common-tags}"
+  assume_role_policy = data.aws_iam_policy_document.main-apigateway.json
+  tags = var.common-tags
 }
 
-resource "aws_iam_role_policy_attachment" "api-root-get" {
-  role = "${aws_iam_role.api-root-get.name}"
-  policy_arn = "${aws_iam_policy.api-root-get.arn}"
+resource aws_iam_role_policy_attachment api-root-get {
+  role = aws_iam_role.api-root-get.name
+  policy_arn = aws_iam_policy.api-root-get.arn
 }
 
-resource "aws_iam_policy" "api-root-get" {
+resource aws_iam_policy api-root-get {
   name_prefix = "api-root-get"
-  policy = "${data.aws_iam_policy_document.api-root-get.json}"
+  policy = data.aws_iam_policy_document.api-root-get.json
 }
 
-data "aws_iam_policy_document" "api-root-get" {
+data aws_iam_policy_document api-root-get {
   statement {
     actions = [
       "dynamodb:Scan",
     ]
     resources = [
-      "${aws_dynamodb_table.datasets.arn}",
+      aws_dynamodb_table.datasets.arn,
     ]
   }
 }
