@@ -145,8 +145,8 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
                 exists = True
                 if not include_details:
                     break
-            pattern = re.compile('(^|[|/])({})([|/]|$)'.format('|'.join(str(
-                i for i in hit_indexes))))
+            hit_string = '|'.join(str(i + 1) for i in hit_indexes)
+            pattern = re.compile(f'(^|[|/])({hit_string})([|/]|$)')
             sample_indexes += [i for i, gt in enumerate(genotypes.split(','))
                                if pattern.search(gt)]
         # Used for calculating frequency. This will be a misleading value if the
