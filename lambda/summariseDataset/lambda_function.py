@@ -87,21 +87,20 @@ def summarise_dataset(dataset):
         if 'toUpdate' in location:
             updated = False
         elif any(count not in location for count in COUNTS):
-            updated = False
-            summarise_vcf(vcf_location)
+            new_locations.add(vcf_location)
         elif updated:
             counts.update({count: int(location[count]['N'])
                            for count in COUNTS})
     if new_locations:
         updated = False
-    for new_location in new_locations:
-        summarise_vcf(new_location)
     if updated:
         values = {':'+count: {'N': str(counts[count])} for count in COUNTS}
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
 
     update_dataset(dataset, values)
+    for new_location in new_locations:
+        summarise_vcf(new_location)
 
 
 def summarise_vcf(location):
