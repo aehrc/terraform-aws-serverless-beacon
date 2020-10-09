@@ -46,7 +46,11 @@ def get_vcf_chromosomes(vcf):
         '--list-chroms',
         vcf
     ]
-    tabix_output = subprocess.check_output(args=args, cwd='/tmp', encoding='utf-8')
+    try:
+        tabix_output = subprocess.check_output(args=args, cwd='/tmp', encoding='utf-8')
+    except subprocess.CalledProcessError as e:
+        print(e)
+        tabix_output = ''
     clear_tmp()
     return tabix_output.split('\n')[:-1]
 
