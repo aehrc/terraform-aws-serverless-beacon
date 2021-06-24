@@ -420,7 +420,7 @@ resource aws_api_gateway_deployment BeaconApi {
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
   stage_name  = "prod"
   # taint deployment if any api resources change
-  stage_description = md5(join("", list(
+  stage_description = md5(join("", [
     md5(file("${path.module}/api.tf")),
     aws_api_gateway_method.root-options.id,
     aws_api_gateway_integration.root-options.id,
@@ -454,5 +454,5 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration.query-post.id,
     aws_api_gateway_integration_response.query-post.id,
     aws_api_gateway_method_response.query-post.id
-  )))
+  ]))
 }
