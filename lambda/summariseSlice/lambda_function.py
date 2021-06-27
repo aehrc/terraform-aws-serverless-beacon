@@ -43,8 +43,8 @@ def calculate_slices(location, chrom, start, end, num_slices):
         slices.append({
             'location': location,
             'region': '{}:{}'.format(
-                chrom, start_pos_exc / 1000000).rstrip('0').rstrip('.'),
-            'slice_size_mbp': slice_size / 1000000
+                chrom, start_pos_exc),
+            'slice_size': slice_size
         })
         start_pos_exc += slice_size
     return slices
@@ -244,10 +244,10 @@ def sum_counts(counts_handle, start, end, time_assigned, gvcf=False):
     return call_count, variant_count, None
 
 
-def summarise_slice(location, region, slice_size_mbp, time_assigned):
+def summarise_slice(location, region, slice_size, time_assigned):
     chrom, start_str = region.split(':')
-    start = round(1000000 * float(start_str) + 1)
-    end = start + round(1000000 * slice_size_mbp - 1)
+    start = int(start_str)
+    end = start + slice_size - 1
     call_count, variant_count, slices = get_calls_and_variants(
         location, chrom, start, end, time_assigned)
     if call_count is not None:
@@ -275,5 +275,5 @@ def lambda_handler(event, context):
     message = json.loads(event['Records'][0]['Sns']['Message'])
     location = message['location']
     region = message['region']
-    slice_size_mbp = message['slice_size_mbp']
-    summarise_slice(location, region, slice_size_mbp, time_assigned)
+    slice_size_mbp = message['slice_size']
+    summarise_slice(location, region, slice_size, time_assigned)

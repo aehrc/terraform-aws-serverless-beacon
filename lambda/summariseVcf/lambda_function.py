@@ -13,7 +13,7 @@ COUNTS = [
     'sampleCount',
 ]
 
-SLICE_SIZE_MBP = 20
+SLICE_SIZE = 20000000
 
 SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ['SUMMARISE_SLICE_SNS_TOPIC_ARN']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
@@ -24,12 +24,12 @@ dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
 
 regions = {}
-for chrom, size in CHROMOSOME_LENGTHS_MBP.items():
+for chrom, size in CHROMOSOME_LENGTHS.items():
     chrom_regions = []
-    start = 0
-    while start < size:
+    start = 1
+    while start <= size:
         chrom_regions.append(start)
-        start += SLICE_SIZE_MBP
+        start += SLICE_SIZE
     regions[chrom] = chrom_regions
 
 
@@ -100,7 +100,7 @@ def publish_slice_updates(location, vcf_regions):
         kwargs['Message'] = json.dumps({
             'location': location,
             'region': region,
-            'slice_size_mbp': SLICE_SIZE_MBP,
+            'slice_size': SLICE_SIZE,
         })
         print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
         response = sns.publish(**kwargs)
