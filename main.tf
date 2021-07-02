@@ -1,5 +1,6 @@
 locals {
   api_version = "v1.0.0"
+  build_cpp_path = abspath("${path.module}/build_cpp.sh")
 }
 
 #
@@ -90,14 +91,18 @@ module "lambda-summariseSlice" {
 
   function_name = "summariseSlice"
   description = "Counts calls and variants in region of a vcf."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  handler = "function"
+  runtime = "provided"
   memory_size = 2048
   timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json
   }
-  source_path = "${path.module}/lambda/summariseSlice"
+  source_path = "${path.module}/lambda/summariseSlice/source"
+  build_command = "${local.build_cpp_path} $source $filename"
+  build_paths = [
+    local.build_cpp_path
+  ]
   tags = var.common-tags
 
   environment = {
