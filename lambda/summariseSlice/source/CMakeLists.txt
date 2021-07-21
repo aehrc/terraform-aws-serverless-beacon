@@ -1,4 +1,4 @@
-set( CMAKE_VERBOSE_MAKEFILE on )
+add_compile_options(-O3 -march=haswell)
 # add_compile_options(-Ofast -march=native)
 # Line above controlled by init.sh
 cmake_minimum_required(VERSION 3.5)
