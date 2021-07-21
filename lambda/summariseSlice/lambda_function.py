@@ -275,5 +275,5 @@ def lambda_handler(event, context):
     message = json.loads(event['Records'][0]['Sns']['Message'])
     location = message['location']
     region = message['region']
-    slice_size_mbp = message['slice_size']
+    slice_size = message['slice_size']
     summarise_slice(location, region, slice_size, time_assigned)
