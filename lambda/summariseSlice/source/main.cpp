@@ -26,6 +26,8 @@ constexpr uint_fast8_t BGZIP_BLOCK_START_LENGTH = 4;
 constexpr const uint8_t BGZIP_BLOCK_START[BGZIP_BLOCK_START_LENGTH] = {0x1f, 0x8b, 0x08, 0x04};
 constexpr uint_fast8_t BGZIP_FIELD_START_LENGTH = 4;
 constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C', 0x02, 0x00};
+constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
+constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
 constexpr uint_fast8_t XLEN_OFFSET = 10;
 
 
@@ -50,11 +52,95 @@ class StringViewStream: Aws::Utils::Stream::PreallocatedStreamBuf, public Aws::I
     {}
 };
 
+
+// class TestStream: StaticStreamBuff, public Aws::IOStream
+// {
+//     public:
+//     TestStream(uint8_t* data, size_t nbytes)
+//     :StaticStreamBuff(data, nbytes), Aws::IOStream(this)
+//     {}
+
+//     template <typename T>
+//     StringViewStream& operator<< (const T &t) override
+//     {
+//         std::cout << "going in" << std::endl;
+//         return Aws::IOStream::operator<< <T>(t);
+//     }
+// };
+
+// void download(Aws::S3::S3Client const& s3Client, Aws::S3::Model::GetObjectRequest request)
+// {
+//     Aws::S3::Model::GetObjectOutcome response = s3Client.GetObject(request);
+//     if (!response.IsSuccess())
+//     {
+//         std::cout << "Could not download data." << std::endl;
+//     }
+//     size_t totalBytes = response.GetResult().GetContentLength();
+//     std::cout << "Finished download. Got " << totalBytes << " bytes." << std::endl;
+// }
+
+
+class Downloader
+{
+    Aws::S3::Model::GetObjectRequest m_request;
+    Aws::S3::S3Client m_s3Client;
+    std::thread m_thread;
+    public:
+    size_t downloadSize;
+    Downloader(Aws::S3::S3Client const& s3Client, Aws::String const& bucket, Aws::String const& key, uint8_t* windowStart, size_t numBytes)
+    :m_s3Client(s3Client), downloadSize(0)
+    {
+        m_request.SetBucket(bucket);
+        m_request.SetKey(key);
+        m_request.SetResponseStreamFactory([windowStart, numBytes]()
+        {
+            return Aws::New<StringViewStream>(TAG, windowStart, numBytes);
+        });
+    }
+
+    static void download(Aws::S3::S3Client const& s3Client, Aws::S3::Model::GetObjectRequest request, uint_fast64_t firstByte, size_t numBytes)
+    {
+        Aws::String byteRange = "bytes=" + std::to_string(firstByte) + "-" + std::to_string(firstByte + numBytes - 1);
+        request.SetRange(byteRange);
+        std::cout << "Attempting to download s3://" << request.GetBucket() << "/" << request.GetKey() << " with byterange: \"" << byteRange << "\"" << std::endl;
+        Aws::S3::Model::GetObjectOutcome response = s3Client.GetObject(request);
+        if (!response.IsSuccess())
+        {
+            std::cout << "Could not download data." << std::endl;
+        }
+        size_t totalBytes = response.GetResult().GetContentLength();
+        std::cout << "Finished download. Got " << totalBytes << " bytes." << std::endl;
+    }
+
+    void startDownload(uint_fast64_t firstByte, size_t numBytes)
+    {
+        if (numBytes > 0)
+        {
+            m_thread = std::thread(download, m_s3Client, m_request, firstByte, numBytes);
+            downloadSize = numBytes;
+        }
+    }
+
+    size_t join()
+    {
+        if (m_thread.joinable())
+        {
+            m_thread.join();
+            return downloadSize;
+        } else {
+            return 0;
+        }
+    }
+};
+
 // See http://samtools.github.io/hts-specs/SAMv1.pdf section 4.1 "The BGZF compression format"
 class VcfChunkReader
 {
     public:
+    const size_t startCompressed;
+    const size_t totalBytes;
     const size_t numBytes;
+    size_t requestedBytes;
     uint8_t* gzipBytes;
     size_t blockStart;
     size_t nextBlockStart;
@@ -67,7 +153,11 @@ class VcfChunkReader
     Aws::Vector <char> readAltBuffer;
     uint_fast64_t charPos;
     z_stream zStream;
-    uint_fast64_t totalCSize;
+    uint_fast16_t currentSlice;
+    Aws::Vector <Downloader> downloaders;
+    size_t windowIndex;
+    size_t windowStart;
+    size_t totalCSize;
     uint_fast64_t totalUSize;
     uint_fast16_t blockXlen;
     size_t blockCompressedStart;
@@ -77,29 +167,26 @@ class VcfChunkReader
 
     public:
     VcfChunkReader(Aws::String bucket, Aws::String key, Aws::S3::S3Client const& s3Client, VcfChunk chunk)
-    :numBytes(chunk.endCompressed + BGZIP_MAX_BLOCKSIZE - chunk.startCompressed), gzipBytes(new uint8_t[numBytes]),
-     blockStart(0), nextBlockStart(0), finalBlock(chunk.endCompressed- chunk.startCompressed),
+    :startCompressed(chunk.startCompressed),
+     totalBytes(BGZIP_MAX_BLOCKSIZE + chunk.endCompressed - startCompressed),
+     numBytes(BGZIP_MAX_BLOCKSIZE + std::min(DOWNLOAD_SLICE_NUM * MAX_DOWNLOAD_SLICE_SIZE, totalBytes)),
+     requestedBytes(0), gzipBytes(new uint8_t[numBytes]),
+     nextBlockStart(BGZIP_MAX_BLOCKSIZE), finalBlock(chunk.endCompressed - startCompressed),
      finalUncompressed(chunk.endUncompressed), uncompressedChars(new char[BGZIP_MAX_BLOCKSIZE]),
      readBufferStart(uncompressedChars), readBufferLength(0),
-     charPos(0), totalCSize(0), totalUSize(0), stopWatch(), reads(0)
+     charPos(0), currentSlice(1), windowIndex(0), windowStart(BGZIP_MAX_BLOCKSIZE), totalCSize(0),
+     totalUSize(0), blockChars(0), stopWatch(), reads(0)
     {
-        uint_fast64_t endByte = chunk.startCompressed + numBytes - 1;
-        Aws::String byteRange = "bytes=" + std::to_string(chunk.startCompressed) + "-" + std::to_string(endByte);
-        Aws::S3::Model::GetObjectRequest request;
-        request.WithBucket(bucket).WithKey(key).WithRange(byteRange);
-        request.SetResponseStreamFactory([this]()
+        do
         {
-            return Aws::New<StringViewStream>(TAG, gzipBytes, numBytes);
-        });
-        std::cout << "Attempting to download s3://" << bucket << "/" << key << " with byterange: \"" << byteRange << "\"" << std::endl;
-        Aws::S3::Model::GetObjectOutcome response = s3Client.GetObject(request);
-        if (!response.IsSuccess())
-        {
-            std::cout << "Could not download data." << std::endl;
-        }
-        size_t totalBytes = response.GetResult().GetContentLength();
-        std::cout << "Finished download. Got " << totalBytes << " bytes." << std::endl;
-        getBlockDetails();
+            downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
+            downloadNext();
+            windowIndex++;
+        } while (requestedBytes + BGZIP_MAX_BLOCKSIZE < numBytes);
+        std::cout << "Downloading " << totalBytes << " bytes using " << windowIndex << " additional threads." << std::endl;
+        windowIndex = 0;
+        downloaders[windowIndex].join();
+        getNextBlock();
 
         //Initialise z_stream
         zStream.zalloc = Z_NULL;
@@ -116,11 +203,16 @@ class VcfChunkReader
             readAltBuffer.resize(altBufferPos + length);
         }
         readBufferLength += length;
-        // std::cout << "buffer before copy: \"" << Aws::String(readAltBuffer.data(), readBufferLength) << "\"" << std::endl;
         std::copy(buf, buf + length, readAltBuffer.begin() + altBufferPos);
-        // std::cout << "buffer after copy: \"" << Aws::String(readAltBuffer.data(), readBufferLength) << "\"" << std::endl;
         altBufferPos += length;
     }
+
+    void downloadNext()
+    {
+        downloaders[windowIndex].startDownload(startCompressed + requestedBytes, bytesToRequest());
+        requestedBytes += bytesToRequest();
+    }
+
 
     uint_fast8_t get8(uint8_t* buf)
     {
@@ -178,6 +270,29 @@ class VcfChunkReader
         {
             charPos -= blockChars;
             blockStart = nextBlockStart;
+            size_t nextWindow = windowStart + downloaders[windowIndex].downloadSize;
+            // Check if the next download window is coming up
+            if (nextWindow < blockStart + BGZIP_MAX_BLOCKSIZE)
+            {
+                if (windowIndex + 1 == downloaders.size())
+                {
+                    // If this is the final window in the buffer, move back to the start
+                    memcpy(gzipBytes + BGZIP_MAX_BLOCKSIZE + blockStart - nextWindow, gzipBytes + blockStart, nextWindow - blockStart);
+                    blockStart = BGZIP_MAX_BLOCKSIZE + blockStart - nextWindow;
+                    downloadNext();
+                    windowIndex = 0;
+                    windowStart = BGZIP_MAX_BLOCKSIZE;
+                    downloaders[windowIndex].join();
+                } else if (nextWindow < blockStart)
+                {
+                    // We're clear of the current download window, so we can overwrite it and move to the next.
+                    downloadNext();
+                    windowStart = nextWindow;
+                    windowIndex++;
+                } else {
+                    downloaders[windowIndex+1].join();
+                }
+            }
             getBlockDetails();
         }
         return keepReading();
@@ -200,7 +315,7 @@ class VcfChunkReader
 
     bool moreBlocks()
     {
-        return nextBlockStart <= finalBlock;
+        return totalCSize <= finalBlock;
     }
 
     template <bool first=false>
@@ -259,6 +374,11 @@ class VcfChunkReader
             getNextBlock();
             readBlock();
         } while (true);
+    }
+
+    size_t bytesToRequest()
+    {
+        return std::min(MAX_DOWNLOAD_SLICE_SIZE, totalBytes - requestedBytes);
     }
 
     template <size_t N=1, char delim>
@@ -325,6 +445,7 @@ class VcfChunkReader
         delete[] gzipBytes;
     }
 };
+
 
 void add_counts(VcfChunkReader& reader, uint_fast64_t& numCalls, uint_fast64_t& numVariants)
 {
@@ -423,6 +544,8 @@ static aws::lambda_runtime::invocation_response my_handler(aws::lambda_runtime::
             break;
         }
     }
+    stop_watch s = stop_watch();
+    s.start();
     VcfChunkReader vcfChunkReader(bucket, key, s3Client, chunk);
     std::cout << "Loaded Reader" << std::endl;
     vcfChunkReader.readBlock<true>();
@@ -442,6 +565,8 @@ static aws::lambda_runtime::invocation_response my_handler(aws::lambda_runtime::
         vcfChunkReader.skipPast<1, '\n'>();
         records += 1;
     }
+    s.stop();
+    std::cout << "Finished processing " << vcfChunkReader.totalBytes << " bytes in " << s << " (" << 1000 * vcfChunkReader.totalBytes / s.nanoseconds << "MB/s)" << std::endl;
     std::cout << "vcfChunkReader read " << vcfChunkReader.reads << " blocks completely, found compressed size: " << vcfChunkReader.totalCSize << " and uncompressed size: " << vcfChunkReader.totalUSize << " with records: " << records << std::endl;
     std::cout << "numVariants: " << numVariants << ", numCalls: " << numCalls << std::endl;
     return aws::lambda_runtime::invocation_response::success(bundle_response("Success", 200), "application/json");

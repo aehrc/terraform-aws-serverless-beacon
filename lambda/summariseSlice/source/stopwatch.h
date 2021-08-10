@@ -10,6 +10,7 @@ class stop_watch {
     std::chrono::duration<double> time_duration;
     bool is_running;
   public:
+  int64_t nanoseconds;
     stop_watch() : 
       last_time_point {std::chrono::high_resolution_clock::now()},
       time_duration {std::chrono::duration<double>::zero()},
@@ -23,6 +24,8 @@ class stop_watch {
     void stop() {
       auto n = std::chrono::high_resolution_clock::now();
       time_duration = n - last_time_point;
+      nanoseconds = std::chrono::duration_cast<
+          std::chrono::nanoseconds>(time_duration).count();
       last_time_point = n;
       is_running = false;
     }
