@@ -181,11 +181,14 @@ class VcfChunkReader
         {
             downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
             downloadNext();
+            if (windowIndex == 0) {
+                // Let the first download finish before starting the others so we can start processing right away
+                downloaders[windowIndex].join();
+            }
             windowIndex++;
         } while (requestedBytes + BGZIP_MAX_BLOCKSIZE < numBytes);
         std::cout << "Downloading " << totalBytes << " bytes using " << windowIndex << " additional threads." << std::endl;
         windowIndex = 0;
-        downloaders[windowIndex].join();
         getNextBlock();
 
         //Initialise z_stream
