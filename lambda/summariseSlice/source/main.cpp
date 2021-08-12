@@ -41,6 +41,15 @@ struct VcfChunk
     :startCompressed(virtualStart >> 16), startUncompressed(virtualStart & 0xffff), endCompressed(virtualEnd >> 16), endUncompressed(virtualEnd & 0xffff) {}
 };
 
+
+struct RegionStats
+{
+    uint_fast64_t numVariants;
+    uint_fast64_t numCalls;
+    RegionStats()
+    :numVariants(0), numCalls(0) {}
+};
+
 // A non-copying iostream.
 // See https://stackoverflow.com/questions/35322033/aws-c-sdk-uploadpart-times-out
 // https://stackoverflow.com/questions/13059091/creating-an-input-stream-from-constant-memory
@@ -450,7 +459,7 @@ class VcfChunkReader
 };
 
 
-void addCounts(VcfChunkReader& reader, uint_fast64_t& numCalls, uint_fast64_t& numVariants)
+void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
 {
     constexpr const char* acTag = "AC=";
     constexpr const char* anTag = "AN=";
@@ -473,18 +482,18 @@ void addCounts(VcfChunkReader& reader, uint_fast64_t& numCalls, uint_fast64_t& n
             if (memcmp(firstChar_p, acTag, 3) == 0)
             {
                 foundAc = true;
-                numVariants += 1;
+                regionStats.numVariants += 1;
                 for (size_t j = 3; j < numChars; ++j)
                 {
                     // Number of variants should be 1 more than the number of commas
                     if (*(firstChar_p + j) == ',')
                     {
-                        numVariants += 1;
+                        regionStats.numVariants += 1;
                     }
                 }
             } else if (memcmp(firstChar_p, anTag, 3) == 0) {
                 foundAn = true;
-                numCalls += atoui64(firstChar_p+3, (uint8_t)numChars-3);
+                regionStats.numCalls += atoui64(firstChar_p+3, (uint8_t)numChars-3);
             } else {
                 std::cout << "Found unrecognised INFO field: \"" << Aws::String(firstChar_p, numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
             }
@@ -523,16 +532,8 @@ Aws::String getMessageString(aws::lambda_runtime::invocation_request const& req)
     return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
 }
 
-static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
-    Aws::S3::S3Client const& s3Client)
+const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String location, int64_t virtualStart, int64_t virtualEnd)
 {
-    Aws::String messageString = getMessageString(req);
-    std::cout << "Message is: " << messageString << std::endl;
-    Aws::Utils::Json::JsonValue message(messageString);
-    Aws::Utils::Json::JsonView messageView = message.View();
-    Aws::String location = messageView.GetString("location");
-    int64_t virtualStart = messageView.GetInt64("virtual_start");
-    int64_t virtualEnd = messageView.GetInt64("virtual_end");
     VcfChunk chunk(virtualStart, virtualEnd);
 
     // Get bucket and key from location
@@ -553,17 +554,16 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     std::cout << "Loaded Reader" << std::endl;
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
-    uint_fast64_t numCalls = 0;
-    uint_fast64_t numVariants = 0;
-    addCounts(vcfChunkReader, numCalls, numVariants);
+    RegionStats regionStats = RegionStats();
+    addCounts(vcfChunkReader, regionStats);
     uint_fast64_t skip_size = 2 * vcfChunkReader.skipPastAndCountChars('\n');
     std::cout << "vcfChunkReader skip_size: " << skip_size << std::endl;
-    std::cout << "First record numVariants: " << numVariants << " numCalls: " << numCalls << std::endl;
+    std::cout << "First record numVariants: " << regionStats.numVariants << " numCalls: " << regionStats.numCalls << std::endl;
     uint_fast32_t records = 1;
     while (vcfChunkReader.keepReading())
     {
 
-        addCounts(vcfChunkReader, numCalls, numVariants);
+        addCounts(vcfChunkReader, regionStats);
         vcfChunkReader.seek(skip_size);
         vcfChunkReader.skipPast<1, '\n'>();
         records += 1;
@@ -571,7 +571,21 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     s.stop();
     std::cout << "Finished processing " << vcfChunkReader.totalBytes << " bytes in " << s << " (" << 1000 * vcfChunkReader.totalBytes / s.nanoseconds << "MB/s)" << std::endl;
     std::cout << "vcfChunkReader read " << vcfChunkReader.reads << " blocks completely, found compressed size: " << vcfChunkReader.totalCSize << " and uncompressed size: " << vcfChunkReader.totalUSize << " with records: " << records << std::endl;
-    std::cout << "numVariants: " << numVariants << ", numCalls: " << numCalls << std::endl;
+    std::cout << "numVariants: " << regionStats.numVariants << ", numCalls: " << regionStats.numCalls << std::endl;
+    return regionStats;
+}
+
+static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
+    Aws::S3::S3Client const& s3Client)
+{
+    Aws::String messageString = getMessageString(req);
+    std::cout << "Message is: " << messageString << std::endl;
+    Aws::Utils::Json::JsonValue message(messageString);
+    Aws::Utils::Json::JsonView messageView = message.View();
+    Aws::String location = messageView.GetString("location");
+    int64_t virtualStart = messageView.GetInt64("virtual_start");
+    int64_t virtualEnd = messageView.GetInt64("virtual_end");
+    RegionStats regionStats = getRegionStats(s3Client, location, virtualStart, virtualEnd);
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
 
