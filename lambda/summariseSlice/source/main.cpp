@@ -556,15 +556,15 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     RegionStats regionStats = RegionStats();
     addCounts(vcfChunkReader, regionStats);
-    uint_fast64_t skip_size = 2 * vcfChunkReader.skipPastAndCountChars('\n');
-    std::cout << "vcfChunkReader skip_size: " << skip_size << std::endl;
+    uint_fast64_t skipSize = 2 * vcfChunkReader.skipPastAndCountChars('\n');
+    std::cout << "vcfChunkReader skipSize: " << skipSize << std::endl;
     std::cout << "First record numVariants: " << regionStats.numVariants << " numCalls: " << regionStats.numCalls << std::endl;
     uint_fast32_t records = 1;
     while (vcfChunkReader.keepReading())
     {
 
         addCounts(vcfChunkReader, regionStats);
-        vcfChunkReader.seek(skip_size);
+        vcfChunkReader.seek(skipSize);
         vcfChunkReader.skipPast<1, '\n'>();
         records += 1;
     }
