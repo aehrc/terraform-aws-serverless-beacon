@@ -447,7 +447,7 @@ class VcfChunkReader
 };
 
 
-void add_counts(VcfChunkReader& reader, uint_fast64_t& numCalls, uint_fast64_t& numVariants)
+void addCounts(VcfChunkReader& reader, uint_fast64_t& numCalls, uint_fast64_t& numVariants)
 {
     constexpr const char* acTag = "AC=";
     constexpr const char* anTag = "AN=";
@@ -496,7 +496,7 @@ void add_counts(VcfChunkReader& reader, uint_fast64_t& numCalls, uint_fast64_t& 
     } while (!(foundAc && foundAn));
 }
 
-Aws::String bundle_response(Aws::String const& body, int statusCode)
+Aws::String bundleResponse(Aws::String const& body, int statusCode)
 {
     Aws::String outputString = "{\"headers\": {\"Access-Control-Allow-Origin\": \"*\"}, \"statusCode\": ";
     outputString.append(std::to_string(statusCode));
@@ -514,16 +514,16 @@ Aws::String bundle_response(Aws::String const& body, int statusCode)
 }
 
 
-Aws::String get_message_string(aws::lambda_runtime::invocation_request const& req)
+Aws::String getMessageString(aws::lambda_runtime::invocation_request const& req)
 {
     Aws::Utils::Json::JsonValue json(req.payload);
     return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
 }
 
-static aws::lambda_runtime::invocation_response my_handler(aws::lambda_runtime::invocation_request const& req,
+static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
     Aws::S3::S3Client const& s3Client)
 {
-    Aws::String messageString = get_message_string(req);
+    Aws::String messageString = getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
     Aws::Utils::Json::JsonValue message(messageString);
     Aws::Utils::Json::JsonView messageView = message.View();
@@ -552,7 +552,7 @@ static aws::lambda_runtime::invocation_response my_handler(aws::lambda_runtime::
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     uint_fast64_t numCalls = 0;
     uint_fast64_t numVariants = 0;
-    add_counts(vcfChunkReader, numCalls, numVariants);
+    addCounts(vcfChunkReader, numCalls, numVariants);
     uint_fast64_t skip_size = 2 * vcfChunkReader.skipPastAndCountChars('\n');
     std::cout << "vcfChunkReader skip_size: " << skip_size << std::endl;
     std::cout << "First record numVariants: " << numVariants << " numCalls: " << numCalls << std::endl;
@@ -560,7 +560,7 @@ static aws::lambda_runtime::invocation_response my_handler(aws::lambda_runtime::
     while (vcfChunkReader.keepReading())
     {
 
-        add_counts(vcfChunkReader, numCalls, numVariants);
+        addCounts(vcfChunkReader, numCalls, numVariants);
         vcfChunkReader.seek(skip_size);
         vcfChunkReader.skipPast<1, '\n'>();
         records += 1;
@@ -569,7 +569,7 @@ static aws::lambda_runtime::invocation_response my_handler(aws::lambda_runtime::
     std::cout << "Finished processing " << vcfChunkReader.totalBytes << " bytes in " << s << " (" << 1000 * vcfChunkReader.totalBytes / s.nanoseconds << "MB/s)" << std::endl;
     std::cout << "vcfChunkReader read " << vcfChunkReader.reads << " blocks completely, found compressed size: " << vcfChunkReader.totalCSize << " and uncompressed size: " << vcfChunkReader.totalUSize << " with records: " << records << std::endl;
     std::cout << "numVariants: " << numVariants << ", numCalls: " << numCalls << std::endl;
-    return aws::lambda_runtime::invocation_response::success(bundle_response("Success", 200), "application/json");
+    return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
 
 int main()
@@ -583,12 +583,12 @@ int main()
 
         auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
         Aws::S3::S3Client s3Client(credentialsProvider, config);
-        auto handler_fn = [&s3Client](aws::lambda_runtime::invocation_request const& req) {
+        auto handlerFunction = [&s3Client](aws::lambda_runtime::invocation_request const& req) {
             std::cout << "Event Recived: " << req.payload << std::endl;
-            return my_handler(req, s3Client);
+            return lambdaHandler(req, s3Client);
             std::cout.flush();
         };
-        aws::lambda_runtime::run_handler(handler_fn);
+        aws::lambda_runtime::run_handler(handlerFunction);
     }
     Aws::ShutdownAPI(options);
     return 0;
