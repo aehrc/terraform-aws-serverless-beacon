@@ -10,10 +10,13 @@
 #include <aws/core/utils/memory/stl/AWSVector.h>
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
 #include <aws/dynamodb/DynamoDBClient.h>
+#include <aws/dynamodb/model/ScanRequest.h>
 #include <aws/dynamodb/model/UpdateItemRequest.h>
 #include <aws/lambda-runtime/runtime.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/GetObjectRequest.h>
+#include <aws/sns/SNSClient.h>
+#include <aws/sns/model/PublishRequest.h>
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
@@ -522,6 +525,63 @@ Aws::String bundleResponse(Aws::String const& body, int statusCode)
     return outputString;
 }
 
+Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location)
+{
+    Aws::DynamoDB::Model::ScanRequest request;
+    request.SetTableName(getenv("DATASETS_TABLE"));
+    request.SetIndexName(getenv("ASSEMBLY_GSI"));
+    request.SetProjectionExpression("id");
+    request.SetFilterExpression("contains(vcfLocations, :location)");
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
+    Aws::DynamoDB::Model::AttributeValue locationValue;
+    locationValue.SetS(location);
+    expressionAttributeValues[":location"] = locationValue;
+    request.SetExpressionAttributeValues(expressionAttributeValues);
+    Aws::Vector<Aws::String> datasetIds;
+    do {
+        std::cout << "Calling dynamodb::Scan with vcfLocations contains \"" << location << "\"" << std::endl;
+        const Aws::DynamoDB::Model::ScanOutcome& result = dynamodbClient.Scan(request);
+        if (result.IsSuccess())
+        {
+            std::cout << "Got ids [";
+            for (const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue>& item : result.GetResult().GetItems())
+            {
+                auto datasetIdItr = item.find("id");
+                if (datasetIdItr != item.end())
+                {
+                    datasetIds.push_back(datasetIdItr->second.GetS());
+                    std::cout << "\"" << datasetIds.back() << "\", ";
+                } else {
+                    // Why is there a dataset with no id here? Let's not let it ruin the others updating.
+                    std::cout << "None (ignored), ";
+                }
+            }
+            std::cout << "]" << std::endl;
+            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue>& lastEvaluatedKey = result.GetResult().GetLastEvaluatedKey();
+            if (lastEvaluatedKey.empty())
+            {
+                std::cout << "No more ids to find" << std::endl;
+                return datasetIds;
+            } else {
+                std::cout << "More ids to find, querying for the rest..." << std::endl;
+                request.SetExclusiveStartKey(lastEvaluatedKey);
+                continue;
+            }
+        } else {
+            const Aws::DynamoDB::DynamoDBError error = result.GetError();
+            std::cout << "Scan was not successful, received error: " << error.GetMessage() << std::endl;
+            if (error.ShouldRetry())
+            {
+                std::cout << "Retrying after 1 second..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            } else {
+                std::cout << "Not Retrying." << std::endl;
+                return datasetIds;
+            }
+        }
+    } while (true);
+}
 
 Aws::String getMessageString(aws::lambda_runtime::invocation_request const& req)
 {
@@ -570,6 +630,37 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     std::cout << "vcfChunkReader read " << vcfChunkReader.reads << " blocks completely, found compressed size: " << vcfChunkReader.totalCSize << " and uncompressed size: " << vcfChunkReader.totalUSize << " with records: " << records << std::endl;
     std::cout << "numVariants: " << regionStats.numVariants << ", numCalls: " << regionStats.numCalls << std::endl;
     return regionStats;
+}
+
+void summariseDatasets(Aws::SNS::SNSClient const& snsClient, Aws::Vector<Aws::String> datasetIds)
+{
+    Aws::SNS::Model::PublishRequest request;
+    request.SetTopicArn(getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN"));
+    for (Aws::String& datasetId: datasetIds)
+    {
+        do {
+            request.SetMessage(datasetId);
+            std::cout << "Calling sns::Publish with TopicArn=\"" << request.GetTopicArn() << "\" and message=\"" << request.GetMessage() << "\"" << std::endl;
+            Aws::SNS::Model::PublishOutcome result = snsClient.Publish(request);
+            if (result.IsSuccess())
+            {
+                std::cout << "Successfully published" << std::endl;
+                break;
+            } else {
+                const Aws::SNS::SNSError error = result.GetError();
+                std::cout << "Publish was not successful, received error: " << error.GetMessage() << std::endl;
+                if (error.ShouldRetry())
+                {
+                    std::cout << "Retrying after 1 second..." << std::endl;
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    continue;
+                } else {
+                    std::cout << "Not Retrying." << std::endl;
+                    break;
+                }
+            }
+        } while (true);
+    }
 }
 
 bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
@@ -646,7 +737,7 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
 }
 
 static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
-    Aws::S3::S3Client const& s3Client, Aws::DynamoDB::DynamoDBClient const& dynamodbClient)
+    Aws::S3::S3Client const& s3Client, Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::SNS::SNSClient const& snsClient)
 {
     Aws::String messageString = getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
@@ -663,6 +754,8 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     } else {
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
+    Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
+    summariseDatasets(snsClient, datasetIds);
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
 
@@ -678,9 +771,10 @@ int main()
         auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
         Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
         Aws::S3::S3Client s3Client(credentialsProvider, config);
-        auto handlerFunction = [&s3Client, &dynamodbClient](aws::lambda_runtime::invocation_request const& req) {
+        Aws::SNS::SNSClient snsClient(credentialsProvider, config);
+        auto handlerFunction = [&s3Client, &dynamodbClient, &snsClient](aws::lambda_runtime::invocation_request const& req) {
             std::cout << "Event Recived: " << req.payload << std::endl;
-            return lambdaHandler(req, s3Client, dynamodbClient);
+            return lambdaHandler(req, s3Client, dynamodbClient, snsClient);
             std::cout.flush();
         };
         aws::lambda_runtime::run_handler(handlerFunction);

@@ -38,7 +38,7 @@ cd aws-sdk-cpp
 sed -i "1s/^/${CMAKE_FIRST_LINE}\n/" CMakeLists.txt
 mkdir build
 cd build
-cmake .. -DBUILD_ONLY="dynamodb;s3" \
+cmake .. -DBUILD_ONLY="dynamodb;s3;sns" \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=OFF \
   -DCUSTOM_MEMORY_MANAGEMENT=OFF \

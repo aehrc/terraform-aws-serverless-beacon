@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 project(function LANGUAGES CXX)
 
 find_package(aws-lambda-runtime)
-find_package(AWSSDK COMPONENTS dynamodb s3)
+find_package(AWSSDK COMPONENTS dynamodb s3 sns)
 
 add_executable(${PROJECT_NAME} "main.cpp")
 
