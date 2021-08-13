@@ -1,7 +1,6 @@
-#include <array>
-#include <endian.h>
-#include <fstream>
 #include <iostream>
+#include <stdint.h>
+#include <zlib.h>
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -17,7 +16,6 @@
 #include <aws/s3/model/GetObjectRequest.h>
 
 #include "fast_atoi.h"
-#include "GzipReader.h"
 #include "stopwatch.h"
 
 constexpr const char* TAG = "LAMBDA_ALLOC";
