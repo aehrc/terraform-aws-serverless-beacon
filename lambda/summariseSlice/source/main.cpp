@@ -184,8 +184,7 @@ class VcfChunkReader
      charPos(0), currentSlice(1), windowIndex(0), windowStart(BGZIP_MAX_BLOCKSIZE), totalCSize(0),
      totalUSize(0), blockChars(0), stopWatch(), reads(0)
     {
-        do
-        {
+        do {
             downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
             downloadNext();
             if (windowIndex == 0) {
@@ -573,8 +572,81 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     return regionStats;
 }
 
+bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
+{
+    Aws::DynamoDB::Model::UpdateItemRequest request;
+    request.SetTableName(getenv("VCF_SUMMARIES_TABLE"));
+    Aws::DynamoDB::Model::AttributeValue keyValue;
+    keyValue.SetS(location);
+    request.AddKey("vcfLocation", keyValue);
+    request.SetUpdateExpression("ADD variantCount :numVariants, callCount :numCalls DELETE toUpdate :sliceStringSet");
+    request.SetConditionExpression("contains(toUpdate, :sliceString)");
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
+    Aws::DynamoDB::Model::AttributeValue numVariantsValue;
+    numVariantsValue.SetN(static_cast<double>(regionStats.numVariants));
+    expressionAttributeValues[":numVariants"] = numVariantsValue;
+    Aws::DynamoDB::Model::AttributeValue numCallsValue;
+    numCallsValue.SetN(static_cast<double>(regionStats.numCalls));
+    expressionAttributeValues[":numCalls"] = numCallsValue;
+    Aws::String sliceString = std::to_string(virtualStart) + "-" + std::to_string(virtualEnd);
+    Aws::DynamoDB::Model::AttributeValue sliceStringSetValue;
+    sliceStringSetValue.SetSS(Aws::Vector<Aws::String>{sliceString});
+    expressionAttributeValues[":sliceStringSet"] = sliceStringSetValue;
+    Aws::DynamoDB::Model::AttributeValue sliceStringValue;
+    sliceStringValue.SetS(sliceString);
+    expressionAttributeValues[":sliceString"] = sliceStringValue;
+    request.SetExpressionAttributeValues(expressionAttributeValues);
+    request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
+    do {
+        std::cout << "Calling dynamodb::UpdateItem with key=\"" << location << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
+        const Aws::DynamoDB::Model::UpdateItemOutcome& result = dynamodbClient.UpdateItem(request);
+        if (result.IsSuccess())
+        {
+            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
+            std::cout << "Item was updated, new item has following values for these attributes: variantCount=";
+            auto variantCountItr = newAttributes.find("variantCount");
+            if (variantCountItr != newAttributes.end())
+            {
+                std::cout << variantCountItr->second.GetN();
+            }
+            std::cout << ", callCount=";
+            auto callCountItr = newAttributes.find("callCount");
+            if (callCountItr != newAttributes.end())
+            {
+                std::cout << callCountItr->second.GetN();
+            }
+            std::cout << ", toUpdate=";
+            auto toUpdateItr = newAttributes.find("toUpdate");
+            if (toUpdateItr != newAttributes.end())
+            {
+                std::cout << "{";
+                Aws::Vector<Aws::String> toUpdateNew = callCountItr->second.GetSS();
+                for (Aws::String sliceStringRemaining : toUpdateNew)
+                {
+                    std::cout << "\"" << sliceStringRemaining << "\", ";
+                }
+                std::cout << "}";
+            }
+            std::cout << std::endl;
+            return (toUpdateItr == newAttributes.end());
+        } else {
+            const Aws::DynamoDB::DynamoDBError error = result.GetError();
+            std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
+            if (error.ShouldRetry())
+            {
+                std::cout << "Retrying after 1 second..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            } else {
+                std::cout << "Not Retrying." << std::endl;
+                return false;
+            }
+        }
+    } while (true);
+}
+
 static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
-    Aws::S3::S3Client const& s3Client)
+    Aws::S3::S3Client const& s3Client, Aws::DynamoDB::DynamoDBClient const& dynamodbClient)
 {
     Aws::String messageString = getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
@@ -584,6 +656,13 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     int64_t virtualStart = messageView.GetInt64("virtual_start");
     int64_t virtualEnd = messageView.GetInt64("virtual_end");
     RegionStats regionStats = getRegionStats(s3Client, location, virtualStart, virtualEnd);
+    if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
+    {
+        std::cout << "VCF has been completely summarised!" << std::endl;
+
+    } else {
+        std::cout << "VCF has not yet been completely summarised." << std::endl;
+    }
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
 
@@ -597,10 +676,11 @@ int main()
         config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
 
         auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
+        Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
         Aws::S3::S3Client s3Client(credentialsProvider, config);
-        auto handlerFunction = [&s3Client](aws::lambda_runtime::invocation_request const& req) {
+        auto handlerFunction = [&s3Client, &dynamodbClient](aws::lambda_runtime::invocation_request const& req) {
             std::cout << "Event Recived: " << req.payload << std::endl;
-            return lambdaHandler(req, s3Client);
+            return lambdaHandler(req, s3Client, dynamodbClient);
             std::cout.flush();
         };
         aws::lambda_runtime::run_handler(handlerFunction);
