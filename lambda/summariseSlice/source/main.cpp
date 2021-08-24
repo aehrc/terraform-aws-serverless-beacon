@@ -420,7 +420,7 @@ class VcfChunkReader
         do {
             while (charPos < blockChars)
             {
-                numChars += ((uncompressedChars[charPos] == '\t') || (uncompressedChars[charPos] == '/') || (uncompressedChars[charPos] == '|') || (uncompressedChars[charPos] == ';'));
+                numChars += ((uncompressedChars[charPos] == '\t') || (uncompressedChars[charPos] == '/') || (uncompressedChars[charPos] == '|') || (uncompressedChars[charPos] == ';') || (uncompressedChars[charPos] == ':'));
                 if (uncompressedChars[charPos++] == delim)
                 {
                     return numChars;
@@ -613,6 +613,9 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     RegionStats regionStats = RegionStats();
     addCounts(vcfChunkReader, regionStats);
+    // Count delimiters and use to calculate theoretical minimum line length.
+    // Successive lines in the same chunk (and therefore contig) will not have less than this minimum,
+    // unless the VCF is very contrived. But what if they do? How do we know, and what do we do in that case?
     uint_fast64_t skipSize = 2 * vcfChunkReader.skipPastAndCountChars('\n');
     std::cout << "vcfChunkReader skipSize: " << skipSize << std::endl;
     std::cout << "First record numVariants: " << regionStats.numVariants << " numCalls: " << regionStats.numCalls << std::endl;
