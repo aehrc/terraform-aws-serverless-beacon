@@ -147,6 +147,50 @@ data aws_iam_policy_document lambda-summariseSlice {
     actions = [
       "s3:GetObject",
       "s3:ListBucket",
+      "s3:PutObject",
+    ]
+    resources = ["*"]
+  }
+}
+
+#
+# duplicateVariantSearch Lambda Function
+#
+data aws_iam_policy_document lambda-duplicateVariantSearch {
+  statement {
+    actions = [
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      aws_dynamodb_table.vcf_summaries.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.summariseDataset.arn,
+      aws_sns_topic.duplicateVariantSearch.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+      "${aws_dynamodb_table.datasets.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+      "s3:PutObject",
     ]
     resources = ["*"]
   }

@@ -5,7 +5,7 @@ import subprocess
 import boto3
 from botocore.exceptions import ClientError
 
-from chrom_matching import CHROMOSOME_LENGTHS_MBP, get_vcf_chromosomes, get_matching_chromosome
+from chrom_matching import CHROMOSOME_LENGTHS, get_vcf_chromosomes, get_matching_chromosome
 
 COUNTS = [
     'variantCount',

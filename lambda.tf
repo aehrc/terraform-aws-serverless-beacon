@@ -43,6 +43,17 @@ resource aws_lambda_permission SNSSummariseSlice {
 }
 
 #
+# duplicateVariantSearch Lambda Function
+#
+resource aws_lambda_permission SNSduplicateVariantSearch {
+  statement_id = "AllowSNSduplicateVariantSearchInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = module.lambda-duplicateVariantSearch.function_name
+  principal = "sns.amazonaws.com"
+  source_arn = aws_sns_topic.duplicateVariantSearch.arn
+}
+
+#
 # getInfo Lambda Function
 #
 resource aws_lambda_permission APIGetInfo {

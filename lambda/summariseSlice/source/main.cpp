@@ -1,4 +1,5 @@
 #include <iostream>
+#include <queue>
 #include <stdint.h>
 #include <zlib.h>
 
@@ -17,9 +18,12 @@
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/sns/SNSClient.h>
 #include <aws/sns/model/PublishRequest.h>
+#include <aws/s3/model/PutObjectRequest.h>
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
+
+using namespace std;
 
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
@@ -30,6 +34,7 @@ constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C',
 constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
 constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
 constexpr uint_fast8_t XLEN_OFFSET = 10;
+constexpr uint VCF_S3_OUTPUT_SIZE_LIMIT = 10000000;
 
 
 struct VcfChunk
@@ -458,15 +463,144 @@ class VcfChunkReader
     }
 };
 
+class writeDataToS3 {
+    private:
+    // CHROM	POS	ID	REF	ALT	QUAL	FILTER
+    struct vcfData  {  
+        uint8_t chrom;
+        uint16_t pos;
+        char ref;
+        char alt;
+    } __attribute__((packed));
 
+    Aws::String const s3BucketName;
+    Aws::String const s3BucketKey;
+    Aws::S3::S3Client const& s3Client;
+    queue<vcfData> vcfBuffer;
+    uint16_t startBasePairRegion;
+
+    template <class T>
+    T fast_atoi(const char* str,  const size_t len) {
+        T val = 0;
+        for (size_t i=0; i < len; i++) {
+            val = val * 10 + (str[i] - '0');
+        }
+        return val;
+    }
+
+    bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<vcfData> &input) {
+        Aws::S3::Model::PutObjectRequest request;
+        request.SetBucket(bucketName);
+        request.SetKey(objectName);
+
+        const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+        
+        while (!input.empty()) {
+            input_data->write(reinterpret_cast<char*>(&input.front()), sizeof(vcfData));
+            input.pop();
+        }
+        request.SetBody(input_data);
+
+        Aws::S3::Model::PutObjectOutcome outcome = client.PutObject(request);
+
+        if (!outcome.IsSuccess()) {
+            cout << "Error: PutObjectBuffer: " << 
+                outcome.GetError().GetMessage() << endl;
+            return false;
+        }
+        else {
+            cout << "Success: Object '" << objectName << "' uploaded to bucket '" << bucketName << "'." << endl;
+            return true;
+        }
+    }
+
+    void saveNewFile() {
+        if (vcfBuffer.size() > 0) {
+            string fileNameAppend = to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
+            saveOutputToS3(s3BucketName, "output/" + s3BucketKey + "_" + fileNameAppend, s3Client, vcfBuffer);
+        }
+    }
+
+    public:
+    writeDataToS3(Aws::String bucket, Aws::String key, Aws::S3::S3Client const& client):
+    s3BucketName(bucket),
+    s3BucketKey(key),
+    s3Client(client) { }
+
+    ~writeDataToS3() {
+        saveNewFile();
+    }
+
+    // char* chrom; // 1
+    // char* pos;  // 2
+    // // skip id
+    // char* ref;  // 4
+    // char* alt;  // 5
+    // // skip qual
+    // // skip filter
+
+    // Read upto the INFO field
+    void recordHeader(VcfChunkReader& reader) {
+        vcfData d;
+        uint8_t loopPos = 0;
+
+        do {
+            const char lastChar = reader.readPastChars<'\t', ','>();
+            if (lastChar == '\0') {
+                // EOF in the middle of CHROM POS REF ALT portion of vcf line, don't include this
+                break;
+            }
+            const char* firstChar_p = reader.getReadStart();
+            const size_t numChars = reader.getReadLength();
+            if (numChars >= 1) {
+                switch(++loopPos) {
+                    case 1:
+                        d.chrom = fast_atoi<uint8_t>(firstChar_p, numChars);
+                        // cout << "d.chrom: " << (int)d.chrom << " " << firstChar_p[0] << "-" << numChars << (int)(firstChar_p[0] - '0') << endl;
+                        break;
+                    case 2:
+                        d.pos = fast_atoi<uint16_t>(firstChar_p, numChars);
+                        // cout << "d.pos: " << (int)d.pos << " " << firstChar_p[0] << firstChar_p[1] << "-" << numChars << endl;
+                        break;
+                    case 4:
+                        if (numChars != 1) { cout << "Invlid Assumption Ref != 1 char" << endl; }
+                        d.ref = *firstChar_p;
+                        break;
+                    case 5:
+                        if (numChars != 1) { cout << "Invlid Assumption Alt != 1 char" << endl; }
+                        d.alt = *firstChar_p;
+
+                        // If we have more ref to proccess decrement the loop so we get the next
+                        if (lastChar == ',') {
+                            loopPos--;
+                        }
+
+                        vcfBuffer.push(d);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        } while (loopPos <= 4);
+
+        // Skip the last two fields so we exit with the reader pointng to the INFO field
+        reader.skipPast<2, '\t'>();
+
+        // Save the buffer to a file if we have reached a size limit
+        if (vcfBuffer.size() > VCF_S3_OUTPUT_SIZE_LIMIT) {
+            saveNewFile();
+        }
+    }
+};
+
+// Function assumes reader is at the INFO part of the header
 void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
 {
     constexpr const char* acTag = "AC=";
     constexpr const char* anTag = "AN=";
     bool foundAc = false;
     bool foundAn = false;
-    // Skip to info section, we want AC and AN
-    reader.skipPast<7, '\t'>();
+
     do {
         const char lastChar = reader.readPastChars<';', '\t'>();
         if (lastChar == '\0')
@@ -609,9 +743,11 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     s.start();
     VcfChunkReader vcfChunkReader(bucket, key, s3Client, chunk);
     std::cout << "Loaded Reader" << std::endl;
+    writeDataToS3 s3Data = writeDataToS3(bucket, key, s3Client);
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     RegionStats regionStats = RegionStats();
+    s3Data.recordHeader(vcfChunkReader);
     addCounts(vcfChunkReader, regionStats);
     uint_fast64_t skipSize = 2 * vcfChunkReader.skipPastAndCountChars('\n');
     std::cout << "vcfChunkReader skipSize: " << skipSize << std::endl;
@@ -619,7 +755,7 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     uint_fast32_t records = 1;
     while (vcfChunkReader.keepReading())
     {
-
+        s3Data.recordHeader(vcfChunkReader);
         addCounts(vcfChunkReader, regionStats);
         vcfChunkReader.seek(skipSize);
         vcfChunkReader.skipPast<1, '\n'>();
@@ -672,6 +808,7 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
     request.AddKey("vcfLocation", keyValue);
     request.SetUpdateExpression("ADD variantCount :numVariants, callCount :numCalls DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
+
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
     Aws::DynamoDB::Model::AttributeValue numVariantsValue;
     numVariantsValue.SetN(static_cast<double>(regionStats.numVariants));
@@ -679,13 +816,14 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
     Aws::DynamoDB::Model::AttributeValue numCallsValue;
     numCallsValue.SetN(static_cast<double>(regionStats.numCalls));
     expressionAttributeValues[":numCalls"] = numCallsValue;
-    Aws::String sliceString = std::to_string(virtualStart) + "-" + std::to_string(virtualEnd);
+    Aws::String sliceString = std::to_string(virtualStart) + ":" + std::to_string(virtualEnd);
     Aws::DynamoDB::Model::AttributeValue sliceStringSetValue;
     sliceStringSetValue.SetSS(Aws::Vector<Aws::String>{sliceString});
     expressionAttributeValues[":sliceStringSet"] = sliceStringSetValue;
     Aws::DynamoDB::Model::AttributeValue sliceStringValue;
     sliceStringValue.SetS(sliceString);
     expressionAttributeValues[":sliceString"] = sliceStringValue;
+
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
     do {
@@ -711,7 +849,7 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
             if (toUpdateItr != newAttributes.end())
             {
                 std::cout << "{";
-                Aws::Vector<Aws::String> toUpdateNew = callCountItr->second.GetSS();
+                Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
                 for (Aws::String sliceStringRemaining : toUpdateNew)
                 {
                     std::cout << "\"" << sliceStringRemaining << "\", ";
@@ -747,6 +885,7 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     int64_t virtualStart = messageView.GetInt64("virtual_start");
     int64_t virtualEnd = messageView.GetInt64("virtual_end");
     RegionStats regionStats = getRegionStats(s3Client, location, virtualStart, virtualEnd);
+    
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
         std::cout << "VCF has been completely summarised!" << std::endl;

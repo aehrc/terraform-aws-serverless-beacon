@@ -1,6 +1,7 @@
 locals {
   api_version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
+  build_share_path = abspath("${path.module}/lambda/shared/source")
 }
 
 #
@@ -102,6 +103,40 @@ module "lambda-summariseSlice" {
   build_command = "${local.build_cpp_path} $source $filename"
   build_paths = [
     local.build_cpp_path
+  ]
+  tags = var.common-tags
+
+  environment = {
+    variables = {
+      ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+      SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
+      VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+    }
+  }
+}
+
+#
+# duplicateVariantSearch Lambda Function
+#
+module "lambda-duplicateVariantSearch" {
+  source = "github.com/claranet/terraform-aws-lambda"
+
+  function_name = "duplicateVariantSearch"
+  description = "Searches for duplicate variants across vcfs."
+  handler = "function"
+  runtime = "provided"
+  memory_size = 1536
+  timeout = 60
+  policy = {
+    json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
+  }
+  source_path = "${path.module}/lambda/duplicateVariantSearch/source"
+  build_command = "${local.build_cpp_path} $source $filename"
+  build_paths = [
+    local.build_cpp_path,
+    local.build_share_path
   ]
   tags = var.common-tags
 

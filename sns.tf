@@ -27,3 +27,13 @@ resource aws_sns_topic_subscription summariseSlice {
   protocol = "lambda"
   endpoint = module.lambda-summariseSlice.function_arn
 }
+
+resource aws_sns_topic duplicateVariantSearch {
+  name = "duplicateVariantSearch"
+}
+
+resource aws_sns_topic_subscription duplicateVariantSearch {
+  topic_arn = aws_sns_topic.duplicateVariantSearch.arn
+  protocol = "lambda"
+  endpoint = module.lambda-duplicateVariantSearch.function_arn
+}
