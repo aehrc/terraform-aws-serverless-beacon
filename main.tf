@@ -67,7 +67,7 @@ module "lambda-summariseVcf" {
   function_name = "summariseVcf"
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 60
   policy = {
@@ -94,7 +94,7 @@ module "lambda-summariseSlice" {
   description = "Counts calls and variants in region of a vcf."
   handler = "function"
   runtime = "provided"
-  memory_size = 1536
+  memory_size = 768
   timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json

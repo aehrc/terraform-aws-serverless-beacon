@@ -427,7 +427,7 @@ class VcfChunkReader
         do {
             while (charPos < blockChars)
             {
-                numChars += ((uncompressedChars[charPos] == '\t') || (uncompressedChars[charPos] == '/') || (uncompressedChars[charPos] == '|') || (uncompressedChars[charPos] == ';'));
+                numChars += ((uncompressedChars[charPos] == '\t') || (uncompressedChars[charPos] == '/') || (uncompressedChars[charPos] == '|') || (uncompressedChars[charPos] == ';') || (uncompressedChars[charPos] == ':'));
                 if (uncompressedChars[charPos++] == delim)
                 {
                     return numChars;
@@ -734,6 +734,9 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     RegionStats regionStats = RegionStats();
     s3Data.recordHeader(vcfChunkReader);
     addCounts(vcfChunkReader, regionStats);
+    // Count delimiters and use to calculate theoretical minimum line length.
+    // Successive lines in the same chunk (and therefore contig) will not have less than this minimum,
+    // unless the VCF is very contrived. But what if they do? How do we know, and what do we do in that case?
     uint_fast64_t skipSize = 2 * vcfChunkReader.skipPastAndCountChars('\n');
     std::cout << "vcfChunkReader skipSize: " << skipSize << std::endl;
     std::cout << "First record numVariants: " << regionStats.numVariants << " numCalls: " << regionStats.numCalls << std::endl;
@@ -874,13 +877,11 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
         std::cout << "VCF has been completely summarised!" << std::endl;
-
+        Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
+        summariseDatasets(snsClient, datasetIds);
     } else {
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
-    Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
-    // duplicateVariantSearch(snsClient);
-    summariseDatasets(snsClient, datasetIds);
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
 
