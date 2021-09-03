@@ -1,11 +1,10 @@
 import json
 import os
-import subprocess
 
 import boto3
 from botocore.exceptions import ClientError
 
-from chrom_matching import CHROMOSOME_LENGTHS_MBP, get_vcf_chromosomes, get_matching_chromosome
+from index_reader import Csi, Tbi
 
 COUNTS = [
     'variantCount',
@@ -13,27 +12,61 @@ COUNTS = [
     'sampleCount',
 ]
 
-SLICE_SIZE = 20000000
-
 SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ['SUMMARISE_SLICE_SNS_TOPIC_ARN']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 
-os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
+# Time/Cost estimation variables
+MIN_SS_TIME = 0.1  # minimum time summariseSlice will run (s)
+SS_RATE = 75000000  # Processing speed of summariseSlice (B/s)
+SNS_TIME = 0.02  # Time to publish a message to SNS
+MAX_CONCURRENCY = 1000  # Maximum number of summariseSlice functions to invoke
+
 
 dynamodb = boto3.client('dynamodb')
+s3 = boto3.client('s3')
 sns = boto3.client('sns')
 
-regions = {}
-for chrom, size in CHROMOSOME_LENGTHS.items():
-    chrom_regions = []
-    start = 1
-    while start <= size:
-        chrom_regions.append(start)
-        start += SLICE_SIZE
-    regions[chrom] = chrom_regions
+
+def find_best_split(total_size, epsilon):
+    next_size = total_size ** 0.5
+    sizes = []
+    while True:
+        sizes.append(next_size)
+        # Use Newton's approximation to find next best split size
+        next_size = next_newton_approximation(total_size, next_size)
+        if next_size <= 0:
+            # We've jumped over to the negative side, where the approximation diverges. try a smaller size.
+            next_size = sizes[-1] / 2
+        # Check if the sizes are converging
+        if len(sizes) >= 2:
+            last_difference = next_size - sizes[-1]
+            rate = last_difference / (sizes[-1] - sizes[-2])
+            if abs(rate) < 1:
+                max_error = last_difference / (1 - rate)
+                if abs(max_error) < epsilon:
+                    break
+    return next_size
+
+
+def get_chunk_boundaries(location):
+    index = get_vcf_index(location)
+    bin_limit = index.bin_limit  # for excluding pseudobins
+    return {
+        ref_name: sorted(
+            {
+                chunk[chunk_delim]['virtual_file_offset']
+                for bin in ref['bins']
+                for chunk in bin['chunks']
+                for chunk_delim in ('chunk_beg', 'chunk_end')
+                if bin['bin'] < bin_limit
+            }
+        )
+        for ref_name, ref in zip(index.names, index.refs)
+    }
 
 
 def get_sample_count(location):
+    return 0
     args = [
         'bcftools', 'view',
         '--header-only',
@@ -51,19 +84,23 @@ def get_sample_count(location):
     raise ValueError("Incorrectly formatted file")
 
 
-def get_translated_regions(location):
-    vcf_chromosomes = get_vcf_chromosomes(location)
-    vcf_regions = []
-    for target_chromosome, region_list in regions.items():
-        chromosome = get_matching_chromosome(vcf_chromosomes, target_chromosome)
-        if not chromosome:
-            continue
-        vcf_regions += ['{}:{}'.format(chromosome, region)
-                        for region in region_list]
-    return vcf_regions
+def get_vcf_index(location, use_tbi=False):
+    suffix = '.tbi' if use_tbi else '.csi'
+    try:
+        vcf_file = s3_get_object(location + suffix)
+    except ClientError as error:
+        if not use_tbi:
+            print("Trying tbi index instead")
+            return get_vcf_index(location, use_tbi=True)
+        else:
+            print("Could not access csi or tbi index, aborting")
+            raise error
+    else:
+        return Tbi(vcf_file) if use_tbi else Csi(vcf_file)
 
 
-def mark_updating(location, vcf_regions):
+def mark_updating(location, slices):
+    slice_strings = [f'{start}-{end}' for start, end in slices]
     kwargs = {
         'TableName': VCF_SUMMARIES_TABLE_NAME,
         'Key': {
@@ -75,7 +112,7 @@ def mark_updating(location, vcf_regions):
                             ' REMOVE ' + ', '.join(COUNTS),
         'ExpressionAttributeValues': {
             ':toUpdate': {
-                'SS': vcf_regions,
+                'SS': slice_strings,
             },
         },
         'ConditionExpression': 'attribute_not_exists(toUpdate)',
@@ -92,29 +129,83 @@ def mark_updating(location, vcf_regions):
     return True
 
 
-def publish_slice_updates(location, vcf_regions):
+def next_newton_approximation(total_size, split_size):
+    # Calculate derivatives for newton's approximation, so we don't need constant coefficients
+    # Optimising for minimum total_time * cost
+    d = -MIN_SS_TIME**2/split_size**2 + 1 / SS_RATE**2 - 2 * SNS_TIME * total_size * MIN_SS_TIME / split_size**3 - SNS_TIME * total_size / split_size**2 / SS_RATE
+    dd = 2*MIN_SS_TIME**2/split_size**3 + 6 * SNS_TIME * total_size * MIN_SS_TIME / split_size**4 + 2 * SNS_TIME * total_size / split_size**3 / SS_RATE
+    return split_size - d / dd
+
+
+def partition_chunks(chunk_boundaries, slice_size):
+    chunks = []
+    for ref_chunk_boundaries in chunk_boundaries.values():
+        start_virtual_offset = ref_chunk_boundaries[0]
+        start_block_offset = start_virtual_offset >> 16
+        for virtual_offset in ref_chunk_boundaries:
+            if (virtual_offset >> 16) - start_block_offset >= slice_size:
+                chunks.append((start_virtual_offset, virtual_offset))
+                start_virtual_offset = virtual_offset
+                start_block_offset = virtual_offset >> 16
+        if ref_chunk_boundaries[-1] != start_virtual_offset:
+            # We have a partially complete slice
+            chunks.append((start_virtual_offset, ref_chunk_boundaries[-1]))
+    return chunks
+
+
+def publish_slice_updates(location, slices):
     kwargs = {
         'TopicArn': SUMMARISE_SLICE_SNS_TOPIC_ARN,
     }
-    for region in vcf_regions:
+    for virtual_start, virtual_end in slices:
         kwargs['Message'] = json.dumps({
             'location': location,
-            'region': region,
-            'slice_size': SLICE_SIZE,
+            'virtual_start': virtual_start,
+            'virtual_end': virtual_end,
         })
         print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
         response = sns.publish(**kwargs)
         print('Received Response: {}'.format(json.dumps(response)))
 
 
+def s3_get_object(s3_location):
+    delim_index = s3_location.find('/', 5)
+    bucket = s3_location[5:delim_index]
+    key = s3_location[delim_index + 1:]
+    kwargs = {
+        'Bucket': bucket,
+        'Key': key,
+    }
+    print(f"Calling s3.get_object with kwargs: {json.dumps(kwargs)}")
+    try:
+        response = s3.get_object(**kwargs)
+    except ClientError as error:
+        response = error.response
+        print(f"Received error: {json.dumps(response, default=str)}")
+        raise error
+    else:
+        print(f"Received response after: {json.dumps(response, default=str)}")
+        return response['Body']
+
+
 def summarise_vcf(location):
-    vcf_regions = get_translated_regions(location)
-    start_update = mark_updating(location, vcf_regions)
+    chunk_boundaries = get_chunk_boundaries(location)
+    first_chunk_start = min(boundaries[0] for boundaries in chunk_boundaries.values()) >> 16
+    last_chunk_end = (max(boundaries[-1] for boundaries in chunk_boundaries.values()) >> 16) + 2**16
+    num_chunks = sum(len(boundaries) for boundaries in chunk_boundaries.values()) - 1
+    total_size = last_chunk_end - first_chunk_start
+    print(f"{total_size=}")
+    avg_chunk_size = total_size / num_chunks
+    best_split_size = find_best_split(total_size, avg_chunk_size / 2)
+    if total_size / best_split_size > MAX_CONCURRENCY:
+        best_split_size = total_size / MAX_CONCURRENCY
+    slices = partition_chunks(chunk_boundaries, best_split_size)
+    start_update = mark_updating(location, slices)
     if not start_update:
         return
     sample_count = get_sample_count(location)
     update_sample_count(location, sample_count)
-    publish_slice_updates(location, vcf_regions)
+    publish_slice_updates(location, slices)
 
 
 def update_sample_count(location, sample_count):
