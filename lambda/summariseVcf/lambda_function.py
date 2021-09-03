@@ -1,3 +1,4 @@
+import gzip
 import json
 import os
 
@@ -65,23 +66,19 @@ def get_chunk_boundaries(location):
     }
 
 
-def get_sample_count(location):
-    return 0
-    args = [
-        'bcftools', 'view',
-        '--header-only',
-        '--no-version',
-        location
-    ]
-    header = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
-                              encoding='ascii')
-    for line in header.stdout:
-        if line.startswith('#CHROM'):
-            header.stdout.close()
-            # Get the number of tabs after the FORMAT column
-            return max(line.count('\t') - 8, 0)
-    # No header row, probably a bad file.
-    raise ValueError("Incorrectly formatted file")
+def get_sample_count(location, first_chunk_start):
+    block_first_byte = first_chunk_start
+    # We don't have the last byte, but we know blocks are no more than 64KB
+    byterange = f'bytes=0-{block_first_byte+65335}'
+    vcf_header = s3_get_object(location, Range=byterange)
+    with gzip.GzipFile(mode='rb', fileobj=vcf_header) as header_stream:
+        for line in header_stream:
+            if not line.startswith(b'#'):
+                print("VCF not formatted correctly, missing #CHROM\t...")
+                raise ValueError("Incorrectly formatted file")
+            elif line.startswith(b'#CHROM'):
+                # Get the number of tabs after the FORMAT column
+                return line.count(b'\t') - 8
 
 
 def get_vcf_index(location, use_tbi=False):
@@ -168,13 +165,14 @@ def publish_slice_updates(location, slices):
         print('Received Response: {}'.format(json.dumps(response)))
 
 
-def s3_get_object(s3_location):
+def s3_get_object(s3_location, **extra_kwargs):
     delim_index = s3_location.find('/', 5)
     bucket = s3_location[5:delim_index]
     key = s3_location[delim_index + 1:]
     kwargs = {
         'Bucket': bucket,
         'Key': key,
+        **extra_kwargs
     }
     print(f"Calling s3.get_object with kwargs: {json.dumps(kwargs)}")
     try:
@@ -203,7 +201,7 @@ def summarise_vcf(location):
     start_update = mark_updating(location, slices)
     if not start_update:
         return
-    sample_count = get_sample_count(location)
+    sample_count = get_sample_count(location, first_chunk_start)
     update_sample_count(location, sample_count)
     publish_slice_updates(location, slices)
 
