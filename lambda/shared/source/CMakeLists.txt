@@ -11,14 +11,12 @@ find_package(AWSSDK COMPONENTS s3 sns)
 add_library (
     Shared SHARED
     awsutils.cpp
-#    fastautils.cpp
-#    targetutils.cpp
+    generalutils.cpp
 )
 target_link_libraries(Shared PRIVATE AWS::aws-lambda-runtime ${AWSSDK_LINK_LIBRARIES})
 set_target_properties(Shared PROPERTIES
     PUBLIC_HEADER awsutils.hpp
-#    PUBLIC_HEADER fastautils.hpp
-#    PUBLIC_HEADER targetutils.hpp
+    PUBLIC_HEADER generalutils.cpp
 )
 
 target_include_directories (Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

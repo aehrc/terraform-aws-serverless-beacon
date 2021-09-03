@@ -2,6 +2,8 @@
 #include <queue>
 #include <stdint.h>
 #include <zlib.h>
+#include <regex>
+#include <generalutils.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -465,30 +467,13 @@ class VcfChunkReader
 
 class writeDataToS3 {
     private:
-    // CHROM	POS	ID	REF	ALT	QUAL	FILTER
-    struct vcfData  {  
-        uint8_t chrom;
-        uint16_t pos;
-        char ref;
-        char alt;
-    } __attribute__((packed));
-
-    Aws::String const s3BucketName;
-    Aws::String const s3BucketKey;
+    string const s3BucketName;
+    string s3BucketKey;
     Aws::S3::S3Client const& s3Client;
-    queue<vcfData> vcfBuffer;
+    queue<generalutils::vcfData> vcfBuffer;
     uint16_t startBasePairRegion;
 
-    template <class T>
-    T fast_atoi(const char* str,  const size_t len) {
-        T val = 0;
-        for (size_t i=0; i < len; i++) {
-            val = val * 10 + (str[i] - '0');
-        }
-        return val;
-    }
-
-    bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<vcfData> &input) {
+    bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
         Aws::S3::Model::PutObjectRequest request;
         request.SetBucket(bucketName);
         request.SetKey(objectName);
@@ -496,7 +481,7 @@ class writeDataToS3 {
         const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
         
         while (!input.empty()) {
-            input_data->write(reinterpret_cast<char*>(&input.front()), sizeof(vcfData));
+            input_data->write(reinterpret_cast<char*>(&input.front()), sizeof(generalutils::vcfData));
             input.pop();
         }
         request.SetBody(input_data);
@@ -516,32 +501,27 @@ class writeDataToS3 {
 
     void saveNewFile() {
         if (vcfBuffer.size() > 0) {
-            string fileNameAppend = to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
+            string fileNameAppend = to_string(vcfBuffer.front().chrom) + "_" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
             saveOutputToS3(s3BucketName, "output/" + s3BucketKey + "_" + fileNameAppend, s3Client, vcfBuffer);
         }
     }
 
     public:
-    writeDataToS3(Aws::String bucket, Aws::String key, Aws::S3::S3Client const& client):
+    writeDataToS3(string bucket, string key, Aws::S3::S3Client const& client):
     s3BucketName(bucket),
     s3BucketKey(key),
-    s3Client(client) { }
+    s3Client(client) {
+        s3BucketKey = regex_replace(s3BucketKey, regex("\\.vcf\\.gz"), "");
+        replace(s3BucketKey.begin(), s3BucketKey.end(), '/', '%');
+    }
 
     ~writeDataToS3() {
         saveNewFile();
     }
 
-    // char* chrom; // 1
-    // char* pos;  // 2
-    // // skip id
-    // char* ref;  // 4
-    // char* alt;  // 5
-    // // skip qual
-    // // skip filter
-
     // Read upto the INFO field
     void recordHeader(VcfChunkReader& reader) {
-        vcfData d;
+        generalutils::vcfData d;
         uint8_t loopPos = 0;
 
         do {
@@ -555,11 +535,16 @@ class writeDataToS3 {
             if (numChars >= 1) {
                 switch(++loopPos) {
                     case 1:
-                        d.chrom = fast_atoi<uint8_t>(firstChar_p, numChars);
+                        // If the char is not a number, save it as a char, otherwise convert the string to a number 
+                        if (numChars == 1 && firstChar_p[0] > '9') {
+                            d.chrom = firstChar_p[0];
+                        } else {
+                            d.chrom = generalutils::fast_atoi<uint8_t>(firstChar_p, numChars);
+                        }
                         // cout << "d.chrom: " << (int)d.chrom << " " << firstChar_p[0] << "-" << numChars << (int)(firstChar_p[0] - '0') << endl;
                         break;
                     case 2:
-                        d.pos = fast_atoi<uint16_t>(firstChar_p, numChars);
+                        d.pos = generalutils::fast_atoi<uint16_t>(firstChar_p, numChars);
                         // cout << "d.pos: " << (int)d.pos << " " << firstChar_p[0] << firstChar_p[1] << "-" << numChars << endl;
                         break;
                     case 4:
@@ -894,6 +879,7 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
     Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
+    // duplicateVariantSearch(snsClient);
     summariseDatasets(snsClient, datasetIds);
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }

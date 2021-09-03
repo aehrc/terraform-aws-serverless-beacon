@@ -1,8 +1,9 @@
 #include <iostream>
 #include <queue>
 #include <stdint.h>
-#include <zlib.h>
+#include <math.h>
 #include <awsutils.hpp>
+#include <generalutils.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -24,15 +25,20 @@
 using namespace std;
 
 constexpr const char* TAG = "LAMBDA_ALLOC";
-constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
-constexpr uint_fast8_t BGZIP_BLOCK_START_LENGTH = 4;
-constexpr const uint8_t BGZIP_BLOCK_START[BGZIP_BLOCK_START_LENGTH] = {0x1f, 0x8b, 0x08, 0x04};
-constexpr uint_fast8_t BGZIP_FIELD_START_LENGTH = 4;
-constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C', 0x02, 0x00};
-constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
-constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
-constexpr uint_fast8_t XLEN_OFFSET = 10;
-constexpr uint VCF_S3_OUTPUT_SIZE_LIMIT = 10000000;
+constexpr float VCF_SEARCH_BASE_PAIR_RANGE = 100000.0;
+uint const BUFFER_SIZE = 200000 * sizeof(generalutils::vcfData);
+
+struct vcfRegionData  { 
+    string filepath; 
+    uint16_t chrom;
+    uint64_t startRange;
+    uint64_t endRange;
+};
+
+struct range {
+    uint64_t start;
+    uint64_t end;
+};
 
 Aws::String bundleResponse(Aws::String const& body, int statusCode)
 {
@@ -51,6 +57,161 @@ Aws::String bundleResponse(Aws::String const& body, int statusCode)
     return outputString;
 }
 
+class DuplicateVariantSearch {
+    private:
+    Aws::S3::S3Client s3Client;
+    string s3Bucket = "large-test-vcfs"; // Todo
+
+    vector<string> retrieveS3Objects(Aws::String bucket) {
+        vector<string> objectKeys;
+        vector<string> bucketObjectKeys = awsutils::retrieveBucketObjectKeys(bucket, s3Client);
+        copy_if(bucketObjectKeys.begin(), bucketObjectKeys.end(), back_inserter(objectKeys), [](string s) { return s.find("output") != std::string::npos; });
+        return objectKeys;
+    }
+
+    vcfRegionData getFileNameInfo(string s) {
+        vcfRegionData regions;
+        regions.filepath = s;
+
+        char cstr[s.size() + 1];
+        strcpy(cstr, s.c_str());
+
+        vector<string> split;
+        char *token = strtok(cstr, "_");
+        
+        while (token != NULL) {
+            split.push_back(token);
+            token = strtok(NULL, "_");
+        }
+        string range = split.back();
+        split.pop_back();
+        regions.chrom = generalutils::fast_atoi<uint16_t>(split.back().c_str(), split.back().length());
+
+        string startRange = range.substr(0, range.find('-'));
+        string endRange = range.substr(range.find('-') + 1, range.size());
+        
+        regions.startRange = generalutils::fast_atoi<uint64_t>(startRange.c_str(), startRange.length());
+        regions.endRange = generalutils::fast_atoi<uint64_t>(endRange.c_str(), endRange.length());
+
+        // cout << regions.chrom << " / " << range << " / " << (int)regions.startRange << " / " << (int)regions.endRange << endl;
+        return regions;
+    }
+
+    void readFileContent() {
+        Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(s3Bucket, "filename", s3Client); // Todo
+    }
+
+    void createChromRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem) {
+        if (chromLookup.find(insertItem.chrom) != chromLookup.end() ) {  // If we havent seen this chrom before, add a record.
+            chromLookup[insertItem.chrom] = range{insertItem.startRange, insertItem.endRange};
+        } else {
+            if (chromLookup[insertItem.chrom].start > insertItem.startRange) {
+                chromLookup[insertItem.chrom].start = insertItem.startRange;
+            }
+            if (chromLookup[insertItem.chrom].end < insertItem.endRange) {
+                chromLookup[insertItem.chrom].end = insertItem.endRange;
+            }
+        }
+        cout << insertItem.filepath << " Chrom: " << (int)(insertItem.chrom) << " Start: " << (int)(insertItem.startRange) << " End: " << (int)(insertItem.endRange) << endl;
+    }
+
+    void filterForCorrespondingChromFilepaths(
+        vector<vcfRegionData> &currentSearchTargets,
+        vector<vcfRegionData> regionData,
+        uint16_t chrom
+    ) {
+        for (vcfRegionData rd : regionData) {
+            if (rd.chrom == chrom) {
+                currentSearchTargets.push_back(rd);
+            }
+        }
+    }
+
+    void filterForCorrespondingRegion(
+        vector<vcfRegionData> &currentSearchTargets,
+        vector<vcfRegionData> regionData,
+        uint64_t start,
+        uint64_t end
+    ) {
+        for (vcfRegionData rd : regionData) {
+            if (rd.startRange >= start || rd.endRange < end) {
+                currentSearchTargets.push_back(rd);
+            }
+        }
+    }
+
+    public:
+    DuplicateVariantSearch(Aws::S3::S3Client client):
+        s3Client(client)
+    {}
+    // sizeof(generalutils::vcfData)
+    vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response) {
+        vector<generalutils::vcfData> fileData;
+
+        auto& stream = response.GetResult().GetBody();
+        char streamBuffer[BUFFER_SIZE];
+        stream.seekg(0, stream.beg);
+        string currentRow;
+        while (stream.good()) {
+            stream.read(streamBuffer, sizeof(streamBuffer));
+            size_t bytesRead = stream.gcount();
+
+            for (int i = 0; i < bytesRead; i+=sizeof(generalutils::vcfData)) {
+                generalutils::vcfData vcf;
+                // Need to check if the buffer has enough info in it for a vcfData read
+                unsigned char *rawData = reinterpret_cast<unsigned char*> (&vcf);
+                memcpy(rawData, &streamBuffer[i], sizeof(generalutils::vcfData));
+                fileData.push_back(vcf);
+            }
+        }
+        return fileData;
+    }
+
+    bool searchForDuplicates() {
+        vector<string> s3Objects = retrieveS3Objects(s3Bucket);
+        map<uint16_t, range> chromLookup;
+
+        vector<vcfRegionData> regionData;
+        for (Aws::String filepath : s3Objects) {
+            regionData.push_back(getFileNameInfo(filepath));
+            createChromRegionsMap(chromLookup, regionData.back()); 
+        }
+
+        for (auto const& [key, val]: chromLookup) {
+            cout << "Chrom: " << key << " Start: " << val.start << " End: " << val.end << endl;
+            uint64_t searchLoopsTotal = ceil((val.end - val.start) / VCF_SEARCH_BASE_PAIR_RANGE); // the number of times to loop through to cover the entire range
+            cout << "searchLoopsTotal: " << searchLoopsTotal << endl;
+            for (uint i = 0; i < searchLoopsTotal; i++) {
+                vector<vcfRegionData> currentSearchTargets;
+                filterForCorrespondingChromFilepaths(currentSearchTargets, regionData, key);
+                uint rangeStart = val.start + (VCF_SEARCH_BASE_PAIR_RANGE * i);
+                filterForCorrespondingRegion(currentSearchTargets, regionData, rangeStart, rangeStart + VCF_SEARCH_BASE_PAIR_RANGE); // search through a portion of the range each time
+
+                cout << "currentSearchTargets size: " << currentSearchTargets.size() << endl;
+                // for each file found to correspond with the current target range, retrieve two files from the list, and search through to find duplicates
+                if (currentSearchTargets.size() > 1) {
+                    
+                    for (size_t j = 0; j < currentSearchTargets.size() - 1; j++) {
+                        Aws::S3::Model::GetObjectOutcome response1 = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
+                        Aws::S3::Model::GetObjectOutcome response2 = awsutils::getS3Object(s3Bucket, currentSearchTargets[j+1].filepath, s3Client);
+                        vector<generalutils::vcfData> file1 = streamS3Outcome(response1);
+                        vector<generalutils::vcfData> file2 = streamS3Outcome(response2);
+
+                        cout << "file 1 size: " << file1.size() << endl;
+                        cout << "file 2 size: " << file2.size() << endl;
+                    }
+
+
+                } else {
+                    cout << "Only one file for this region, continue" << endl;
+                }
+
+            }
+        }
+
+    }
+
+};
 
 
 static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
@@ -60,6 +221,10 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     std::cout << "Message is: " << messageString << std::endl;
     Aws::Utils::Json::JsonValue message(messageString);
     Aws::Utils::Json::JsonView messageView = message.View();
+
+    DuplicateVariantSearch duplicateVariantSearch = DuplicateVariantSearch(s3Client);
+
+    duplicateVariantSearch.searchForDuplicates();
 
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }

@@ -102,7 +102,8 @@ module "lambda-summariseSlice" {
   source_path = "${path.module}/lambda/summariseSlice/source"
   build_command = "${local.build_cpp_path} $source $filename"
   build_paths = [
-    local.build_cpp_path
+    local.build_cpp_path,
+    local.build_share_path
   ]
   tags = var.common-tags
 
