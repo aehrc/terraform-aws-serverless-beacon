@@ -93,7 +93,7 @@ module "lambda-summariseSlice" {
   description = "Counts calls and variants in region of a vcf."
   handler = "function"
   runtime = "provided"
-  memory_size = 1536
+  memory_size = 768
   timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json
