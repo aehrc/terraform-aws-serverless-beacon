@@ -753,12 +753,11 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
         std::cout << "VCF has been completely summarised!" << std::endl;
-
+        Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
+        summariseDatasets(snsClient, datasetIds);
     } else {
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
-    Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
-    summariseDatasets(snsClient, datasetIds);
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
 
