@@ -714,7 +714,7 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
             if (toUpdateItr != newAttributes.end())
             {
                 std::cout << "{";
-                Aws::Vector<Aws::String> toUpdateNew = callCountItr->second.GetSS();
+                Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
                 for (Aws::String sliceStringRemaining : toUpdateNew)
                 {
                     std::cout << "\"" << sliceStringRemaining << "\", ";
