@@ -544,7 +544,17 @@ class writeDataToS3 {
                         // cout << "d.chrom: " << (int)d.chrom << " " << firstChar_p[0] << "-" << numChars << (int)(firstChar_p[0] - '0') << endl;
                         break;
                     case 2:
-                        d.pos = generalutils::fast_atoi<uint16_t>(firstChar_p, numChars);
+                        d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);
+                        cout << "firstChar_p: ";
+                        for (uint x = 0; x < numChars; x++) {
+                            cout << firstChar_p[x];
+                        }
+                        cout << endl;
+                        cout << "d.pos: " << d.pos << endl;
+                        if (vcfBuffer.size() > 0 && d.pos < vcfBuffer.back().pos) {
+                            cout << "d.pos: " << d.pos << " vcfBuffer.back().pos: " << vcfBuffer.back().pos << endl;
+                            throw runtime_error("unsorted file");
+                        }
                         // cout << "d.pos: " << (int)d.pos << " " << firstChar_p[0] << firstChar_p[1] << "-" << numChars << endl;
                         break;
                     case 4:
@@ -554,13 +564,15 @@ class writeDataToS3 {
                     case 5:
                         if (numChars != 1) { cout << "Invlid Assumption Alt != 1 char" << endl; }
                         d.alt = *firstChar_p;
+                        // cout << "alt: " << d.alt << endl; 
 
                         // If we have more ref to proccess decrement the loop so we get the next
                         if (lastChar == ',') {
                             loopPos--;
                         }
-
                         vcfBuffer.push(d);
+                        // cout << "last char: " << lastChar << " " << (lastChar == ',') << endl;
+                        
                         break;
                     default:
                         break;
