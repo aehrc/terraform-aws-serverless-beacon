@@ -179,10 +179,19 @@ class DuplicateVariantSearch {
         return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
     }
 
+    bool fileHasBeenCompared(string file, map<string, vector<string>> &comparedFiles) {
+        return comparedFiles.count(file);
+    }
+
+    bool arrayContainsString(vector<string> v, string str) {
+        return find(v.begin(), v.end(), str) != v.end();
+    }
+
     bool searchForDuplicates() {
         vector<string> s3Objects = retrieveS3Objects(s3Bucket);
         map<uint16_t, range> chromLookup;
-        map<string, uint16_t> duplicatesCount;
+        map<string, size_t> duplicatesCount;
+        map<string, vector<string>> comparedFiles;
 
         vector<vcfRegionData> regionData;
         for (Aws::String filepath : s3Objects) {
@@ -192,7 +201,7 @@ class DuplicateVariantSearch {
 
         cout << "chromLookup: " << endl;
         for (auto const& [key, val]: chromLookup) {
-            cout << key << " " << val.start << " " << val.end << endl; 
+            cout << "Chrom: " << key << " StartR: " << val.start << " EndR: " << val.end << endl; 
         }
 
         for (auto const& [key, val]: chromLookup) {
@@ -219,73 +228,101 @@ class DuplicateVariantSearch {
                     for (size_t c = 0; c < currentSearchTargets.size(); c++) {
                         cout << currentSearchTargets[c].filepath << endl;
                     }
-                    
-                    for (size_t j = 0; j < currentSearchTargets.size() - 1; j++) {
+
+                    map<string, vector<string>> duplicates = {};
+
+                    for (size_t j = 0; j < currentSearchTargets.size(); j++) {
+                        
+                        if (!fileHasBeenCompared(currentSearchTargets[j].filepath, comparedFiles)) {
+                            comparedFiles.insert({currentSearchTargets[j].filepath, {}});
+                        }
+
+                        Aws::S3::Model::GetObjectOutcome response1 = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
+                        vector<generalutils::vcfData> file1 = streamS3Outcome(response1);
+
+
                         for (size_t m = 0; m < currentSearchTargets.size() - 1; m++) {
-                            map<string, vector<string>> duplicates = {};
-                            Aws::S3::Model::GetObjectOutcome response1 = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
-                            Aws::S3::Model::GetObjectOutcome response2 = awsutils::getS3Object(s3Bucket, currentSearchTargets[m].filepath, s3Client);
-                            vector<generalutils::vcfData> file1 = streamS3Outcome(response1);
-                            vector<generalutils::vcfData> file2 = streamS3Outcome(response2); // TODO - check whether the entire file has been loaded
 
-                            // Skip the first part of the file if the data we are comparing doesn't matchup.
-                            auto fileStart = searchForPosition(file2.front().pos, file1);
+                            if (
+                                j != m
+                                && fileHasBeenCompared(currentSearchTargets[m].filepath, comparedFiles)
+                                // && !arrayContainsString(comparedFiles[currentSearchTargets[m].filepath], currentSearchTargets[j].filepath)
+                            ) {
+                                comparedFiles[currentSearchTargets[j].filepath].push_back(currentSearchTargets[m].filepath);
+                            
+                                cout << "j File: " << currentSearchTargets[j].filepath << endl;
+                                cout << "m File: ";
+                                Aws::S3::Model::GetObjectOutcome response2 = awsutils::getS3Object(s3Bucket, currentSearchTargets[m].filepath, s3Client);
+                                vector<generalutils::vcfData> file2 = streamS3Outcome(response2); // TODO - check whether the entire file has been loaded
 
-                            // search for duplicates of each struct in file1 against file2
-                            for (auto l = fileStart; l != file1.end(); ++l) {
-                                vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2);
+                                // Skip the first part of the file if the data we are comparing doesn't matchup.
+                                auto fileStart = searchForPosition(file2.front().pos, file1);
 
-                                // We have read to the end of file 2, exit the file 1 loop
-                                if (searchPosition == file2.end()) {
-                                    cout << "End found, exit now" << endl;
-                                    break;
-                                }
+                                // search for duplicates of each struct in file1 against file2
+                                for (auto l = fileStart; l != file1.end(); ++l) {
+                                    vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2);
 
-                                // handle the case of multiple variants at one position
-                                for (auto k = searchPosition; k->pos == l->pos && k != file2.end(); ++k) {
-                                    // printf("Loop Pos %lu\n", (k.base())->pos);
-                                    if ((k - file2.begin()) > file2.size()) throw runtime_error("stop here");
+                                    // We have read to the end of file 2, exit the file 1 loop
+                                    if (searchPosition == file2.end()) {
+                                        cout << "End found, exit now" << endl;
+                                        break;
+                                    }
 
-                                    if (isADuplicate(l.base(), k.base())) {
-                                        // cout << "found a match! " << k->pos << " - " << l->pos << endl;
+                                    // handle the case of multiple variants at one position
+                                    for (auto k = searchPosition; k->pos == l->pos && k != file2.end(); ++k) {
+                                        // printf("Loop Pos %lu\n", (k.base())->pos);
+                                        if ((k - file2.begin()) > file2.size()) throw runtime_error("stop here");
 
-                                        string posRefAltKey = to_string(k->pos) + "_" + k->ref + "_" + k->alt;
+                                        if (isADuplicate(l.base(), k.base())) {
+                                            // cout << "found a match! " << k->pos << " - " << l->pos << endl;
 
-                                        if (duplicates.count(posRefAltKey)) { // if posRefAltKey already exists
-                                            if (!containsExistingFilepath(duplicates[posRefAltKey], currentSearchTargets[j].filepath)) {
-                                                duplicates[posRefAltKey].push_back(currentSearchTargets[j].filepath);
-                                            } 
-                                            if (!containsExistingFilepath(duplicates[posRefAltKey], currentSearchTargets[m].filepath)) {
-                                                duplicates[posRefAltKey].push_back(currentSearchTargets[m].filepath);
+                                            string posRefAltKey = to_string(k->pos) + "_" + k->ref + "_" + k->alt;
+
+                                            if (duplicates.count(posRefAltKey) != 0) { // if posRefAltKey already exists
+                                                if (!containsExistingFilepath(duplicates[posRefAltKey], currentSearchTargets[j].filepath)) {
+                                                    duplicates[posRefAltKey].push_back(currentSearchTargets[j].filepath);
+                                                } 
+                                                if (!containsExistingFilepath(duplicates[posRefAltKey], currentSearchTargets[m].filepath)) {
+                                                    duplicates[posRefAltKey].push_back(currentSearchTargets[m].filepath);
+                                                }
+
+                                            } else {
+                                                duplicates[posRefAltKey] = { currentSearchTargets[j].filepath, currentSearchTargets[m].filepath };
                                             }
 
-                                        } else {
-                                            duplicates.insert({ posRefAltKey, { currentSearchTargets[j].filepath, currentSearchTargets[m].filepath } });
                                         }
-
                                     }
                                 }
-                            }
-                            
-                            // cout << "duplicates: " << endl;
-                            // for (auto const& [key, val]: duplicates) {
-                            //     cout << key << endl;
-                            //     for (string v : val) {
-                            //         cout << v << endl;
-                            //     }
-                            //     cout << endl;
-                            // }
+                                
+                                // cout << "duplicates: " << endl;
+                                // for (auto const& [key, val]: duplicates) {
+                                //     cout << key << endl;
+                                //     for (string v : val) {
+                                //         cout << v << endl;
+                                //     }
+                                //     cout << endl;
+                                // }
+                                if (true) { // For debug info only
+                                    size_t duplicatesCounter = 0;
+                                    for (auto const& [key2, val2]: duplicates) {
+                                        duplicatesCounter += val2.size();
+                                    }
+                                    string dupCountKey = to_string(rangeStart) + "_" + to_string(rangeEnd);
+                                    cout << "duplicates count: " << dupCountKey << " " << duplicatesCounter << endl;
+                                }
 
-                            uint16_t duplicatesCounter = 0;
-                            for (auto const& [key, val]: duplicates) {
-                                duplicatesCounter += val.size();
                             }
-                            string dupCountKey = to_string(rangeStart) + "_" + to_string(rangeEnd);
-                            cout << "duplicates count: " << endl;
-                            cout << dupCountKey << " " << duplicatesCounter << endl;
-                            duplicatesCount.insert({dupCountKey, duplicatesCounter});
                         }
                     }
+                    size_t duplicatesCounter = 0;
+                    for (auto const& [key2, val2]: duplicates) {
+                        duplicatesCounter += val2.size();
+                    }
+                    string dupCountKey = to_string(rangeStart) + "_" + to_string(rangeEnd);
+                    if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
+                    cout << "total duplicates counts: " << endl;
+                    cout << dupCountKey << " " << duplicatesCounter << endl;
+                    duplicatesCount[dupCountKey] += duplicatesCounter;
 
                 } else {
                     cout << "Only one file for this region, continue" << endl;
