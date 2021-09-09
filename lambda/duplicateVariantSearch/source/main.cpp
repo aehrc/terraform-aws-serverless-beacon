@@ -4,6 +4,7 @@
 #include <math.h>
 #include <algorithm>
 #include <awsutils.hpp>
+#include <iomanip>
 #include <generalutils.hpp>
 
 #include <aws/core/Aws.h>
@@ -126,13 +127,19 @@ class DuplicateVariantSearch {
         uint64_t start,
         uint64_t end
     ) {
+        // cout << "car find s: "<< start << " e: " << end << endl;
         for (vcfRegionData rd : regionData) {
             bool isSameChrom = rd.chrom == chrom;
-            bool isInRange = (rd.startRange >= start && rd.startRange <= end) ||
-                    (rd.endRange <= end && rd.endRange >= start);
+            bool isInRange = (
+                (rd.startRange <= start && start <= rd.endRange) || // If the start point lies withn the range
+                (rd.startRange <= end && end <= rd.endRange) || // If the end point lies withn the range
+                (start < rd.startRange && rd.endRange < end) // If the start and end point encompass the range
+            );
+
+            // cout << "car start: " << rd.startRange << " car end: " << rd.endRange << " sameC: "<< isSameChrom << " inRange: " << isInRange << endl;
 
             if (isSameChrom && isInRange) {
-                cout << "rd start: " << rd.startRange << " rd end: " << rd.endRange << endl;
+                // cout << "rd start: " << rd.startRange << " rd end: " << rd.endRange << endl;
                 currentSearchTargets.push_back(rd);
             }
         }
@@ -187,6 +194,13 @@ class DuplicateVariantSearch {
         return find(v.begin(), v.end(), str) != v.end();
     }
 
+    string to_zero_lead(const int value, const unsigned precision)
+    {
+        ostringstream oss;
+        oss << setw(precision) << setfill('0') << value;
+        return oss.str();
+    }
+
     bool searchForDuplicates() {
         vector<string> s3Objects = retrieveS3Objects(s3Bucket);
         map<uint16_t, range> chromLookup;
@@ -207,19 +221,17 @@ class DuplicateVariantSearch {
             if (val.end < val.start) {
                 throw runtime_error("logic error: region end is greater than region start");
             }
-            // uint64_t searchLoopsTotal = (uint64_t)ceil((float)(val.end - val.start) / VCF_SEARCH_BASE_PAIR_RANGE); // the number of times to loop through to cover the entire range
-            // for (uint i = 0; i < 1; i++) {
+
+            for (uint64_t rangeStart = val.start; rangeStart <= val.end; rangeStart+=VCF_SEARCH_BASE_PAIR_RANGE) {
                 vector<vcfRegionData> currentSearchTargets;
-                // uint64_t rangeStart = val.start + (VCF_SEARCH_BASE_PAIR_RANGE * i);
-                // uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > val.end ? val.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE;
-                uint64_t rangeEnd = val.end;
+                uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > val.end ? val.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE - 1;
                 map<string, vector<string>> comparedFiles;
                 filterChromAndRange(
                     currentSearchTargets,
                     regionData,
                     key,
-                    val.start,
-                    val.end
+                    rangeStart,
+                    rangeEnd
                 );
 
                 // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
@@ -257,7 +269,8 @@ class DuplicateVariantSearch {
                                 vector<generalutils::vcfData> file2 = streamS3Outcome(response2); // TODO - check whether the entire file has been loaded
 
                                 // Skip the first part of the file if the data we are comparing doesn't matchup.
-                                auto fileStart = searchForPosition(file2.front().pos, file1);
+                                uint64_t filePosStart = max(rangeStart, file2.front().pos);
+                                auto fileStart = searchForPosition(filePosStart, file1);
 
                                 // search for duplicates of each struct in file1 against file2
                                 for (auto l = fileStart; l != file1.end(); ++l) {
@@ -270,10 +283,7 @@ class DuplicateVariantSearch {
                                     }
 
                                     // handle the case of multiple variants at one position
-                                    for (auto k = searchPosition; k->pos == l->pos && k != file2.end(); ++k) {
-                                        // printf("Loop Pos %lu\n", (k.base())->pos);
-                                        if ((k - file2.begin()) > file2.size()) throw runtime_error("stop here");
-
+                                    for (auto k = searchPosition; k != file2.end() && k->pos == l->pos && k->pos <= rangeEnd; ++k) {
                                         if (isADuplicate(l.base(), k.base())) {
                                             // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
 
@@ -319,24 +329,28 @@ class DuplicateVariantSearch {
                     for (auto const& [key2, val2]: duplicates) {
                         duplicatesCounter += val2.size();
                     }
-                    string dupCountKey = to_string(val.start) + "_" + to_string(val.end);
+                    string dupCountKey = to_zero_lead(rangeStart, 6) + "_" + to_zero_lead(rangeEnd, 6);
                     if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
                     cout << "total duplicates counts for chromosome: " << key << endl;
                     cout << dupCountKey << " " << duplicatesCounter << endl;
                     duplicatesCount[dupCountKey] += duplicatesCounter;
 
-                // } else {
-                //     cout << "Only one file for this region, continue" << endl;
-                // }
+                } else {
+                    cout << "Only one file for this region, continue" << endl;
+                    string dupCountKey = to_zero_lead(rangeStart, 6) + "_" + to_zero_lead(rangeEnd, 6);
+                    if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
+                }
             }
         }
 
         cout << "duplicatesCount: " << endl;
+        int totalCount = 0;
         for (auto const& [key, val]: duplicatesCount) {
             cout << "base pair range: " << key << " count of duplicates: " << val << endl;
+            totalCount += val;
             cout << endl;
         }
-
+        cout << "Final Tally: " << totalCount << endl;
         return true;
     }
 
