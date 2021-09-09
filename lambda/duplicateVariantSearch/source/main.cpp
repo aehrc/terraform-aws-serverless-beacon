@@ -191,7 +191,6 @@ class DuplicateVariantSearch {
         vector<string> s3Objects = retrieveS3Objects(s3Bucket);
         map<uint16_t, range> chromLookup;
         map<string, size_t> duplicatesCount;
-        map<string, vector<string>> comparedFiles;
 
         vector<vcfRegionData> regionData;
         for (Aws::String filepath : s3Objects) {
@@ -208,20 +207,22 @@ class DuplicateVariantSearch {
             if (val.end < val.start) {
                 throw runtime_error("logic error: region end is greater than region start");
             }
-            uint64_t searchLoopsTotal = (uint64_t)ceil((float)(val.end - val.start) / VCF_SEARCH_BASE_PAIR_RANGE); // the number of times to loop through to cover the entire range
-            for (uint i = 0; i < searchLoopsTotal; i++) {
+            // uint64_t searchLoopsTotal = (uint64_t)ceil((float)(val.end - val.start) / VCF_SEARCH_BASE_PAIR_RANGE); // the number of times to loop through to cover the entire range
+            // for (uint i = 0; i < 1; i++) {
                 vector<vcfRegionData> currentSearchTargets;
-                uint64_t rangeStart = val.start + (VCF_SEARCH_BASE_PAIR_RANGE * i);
-                uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > val.end ? val.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE;
+                // uint64_t rangeStart = val.start + (VCF_SEARCH_BASE_PAIR_RANGE * i);
+                // uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > val.end ? val.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE;
+                uint64_t rangeEnd = val.end;
+                map<string, vector<string>> comparedFiles;
                 filterChromAndRange(
                     currentSearchTargets,
                     regionData,
                     key,
-                    rangeStart,
-                    rangeEnd
+                    val.start,
+                    val.end
                 );
 
-                // for each file found to correspond with the current target range, retrieve two files from the list, and search through to find duplicates
+                // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
                 if (currentSearchTargets.size() > 1) {
 
                     cout << "currentSearchTargets: " << endl;
@@ -246,12 +247,12 @@ class DuplicateVariantSearch {
                             if (
                                 j != m
                                 && fileHasBeenCompared(currentSearchTargets[m].filepath, comparedFiles)
-                                // && !arrayContainsString(comparedFiles[currentSearchTargets[m].filepath], currentSearchTargets[j].filepath)
+                                && !arrayContainsString(comparedFiles[currentSearchTargets[m].filepath], currentSearchTargets[j].filepath)
                             ) {
                                 comparedFiles[currentSearchTargets[j].filepath].push_back(currentSearchTargets[m].filepath);
                             
-                                cout << "j File: " << currentSearchTargets[j].filepath << endl;
-                                cout << "m File: ";
+                                // cout << "j File: " << currentSearchTargets[j].filepath << endl;
+                                // cout << "m File: ";
                                 Aws::S3::Model::GetObjectOutcome response2 = awsutils::getS3Object(s3Bucket, currentSearchTargets[m].filepath, s3Client);
                                 vector<generalutils::vcfData> file2 = streamS3Outcome(response2); // TODO - check whether the entire file has been loaded
 
@@ -264,7 +265,7 @@ class DuplicateVariantSearch {
 
                                     // We have read to the end of file 2, exit the file 1 loop
                                     if (searchPosition == file2.end()) {
-                                        cout << "End found, exit now" << endl;
+                                        // cout << "End found, exit now" << endl;
                                         break;
                                     }
 
@@ -274,7 +275,7 @@ class DuplicateVariantSearch {
                                         if ((k - file2.begin()) > file2.size()) throw runtime_error("stop here");
 
                                         if (isADuplicate(l.base(), k.base())) {
-                                            // cout << "found a match! " << k->pos << " - " << l->pos << endl;
+                                            // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
 
                                             string posRefAltKey = to_string(k->pos) + "_" + k->ref + "_" + k->alt;
 
@@ -302,14 +303,14 @@ class DuplicateVariantSearch {
                                 //     }
                                 //     cout << endl;
                                 // }
-                                if (true) { // For debug info only
-                                    size_t duplicatesCounter = 0;
-                                    for (auto const& [key2, val2]: duplicates) {
-                                        duplicatesCounter += val2.size();
-                                    }
-                                    string dupCountKey = to_string(rangeStart) + "_" + to_string(rangeEnd);
-                                    cout << "duplicates count: " << dupCountKey << " " << duplicatesCounter << endl;
-                                }
+                                // if (true) { // For debug info only
+                                //     size_t duplicatesCounter = 0;
+                                //     for (auto const& [key2, val2]: duplicates) {
+                                //         duplicatesCounter += val2.size();
+                                //     }
+                                //     string dupCountKey = to_string(val.start) + "_" + to_string(val.end);
+                                //     cout << "duplicates count: " << dupCountKey << " " << duplicatesCounter << endl;
+                                // }
 
                             }
                         }
@@ -318,15 +319,15 @@ class DuplicateVariantSearch {
                     for (auto const& [key2, val2]: duplicates) {
                         duplicatesCounter += val2.size();
                     }
-                    string dupCountKey = to_string(rangeStart) + "_" + to_string(rangeEnd);
+                    string dupCountKey = to_string(val.start) + "_" + to_string(val.end);
                     if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
-                    cout << "total duplicates counts: " << endl;
+                    cout << "total duplicates counts for chromosome: " << key << endl;
                     cout << dupCountKey << " " << duplicatesCounter << endl;
                     duplicatesCount[dupCountKey] += duplicatesCounter;
 
-                } else {
-                    cout << "Only one file for this region, continue" << endl;
-                }
+                // } else {
+                //     cout << "Only one file for this region, continue" << endl;
+                // }
             }
         }
 

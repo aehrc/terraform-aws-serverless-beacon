@@ -32,7 +32,7 @@ Aws::S3::Model::GetObjectOutcome awsutils::getS3Object(Aws::String bucket, Aws::
         cout << "S3 request retry" << endl;
     }
     if (response.IsSuccess()) {
-        cout << "getS3Object complete: " << bucket << "/" << key << endl;
+        // cout << "getS3Object complete: " << bucket << "/" << key << endl;
         return response;
     } else {
         std::cout << "ERROR getS3Object Failed with error: " << response.GetError() << std::endl;

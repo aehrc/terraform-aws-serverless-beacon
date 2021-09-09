@@ -129,7 +129,7 @@ module "lambda-duplicateVariantSearch" {
   handler = "function"
   runtime = "provided"
   memory_size = 1536
-  timeout = 60
+  timeout = 180
   policy = {
     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
   }

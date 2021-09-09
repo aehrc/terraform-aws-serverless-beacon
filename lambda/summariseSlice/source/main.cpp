@@ -545,12 +545,12 @@ class writeDataToS3 {
                         break;
                     case 2:
                         d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);
-                        cout << "firstChar_p: ";
-                        for (uint x = 0; x < numChars; x++) {
-                            cout << firstChar_p[x];
-                        }
-                        cout << endl;
-                        cout << "d.pos: " << d.pos << endl;
+                        // cout << "firstChar_p: ";
+                        // for (uint x = 0; x < numChars; x++) {
+                        //     cout << firstChar_p[x];
+                        // }
+                        // cout << endl;
+                        // cout << "d.pos: " << d.pos << endl;
                         if (vcfBuffer.size() > 0 && d.pos < vcfBuffer.back().pos) {
                             cout << "d.pos: " << d.pos << " vcfBuffer.back().pos: " << vcfBuffer.back().pos << endl;
                             throw runtime_error("unsorted file");
