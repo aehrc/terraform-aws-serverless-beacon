@@ -112,7 +112,7 @@ class DuplicateVariantSearch {
                 chromLookup[insertItem.chrom].end = insertItem.endRange;
             }
         }
-        cout << insertItem.filepath << " Chrom: " << (int)(insertItem.chrom) << " Start: " << (int)(insertItem.startRange) << " End: " << (int)(insertItem.endRange) << endl;
+        // cout << insertItem.filepath << " Chrom: " << (int)(insertItem.chrom) << " Start: " << (int)(insertItem.startRange) << " End: " << (int)(insertItem.endRange) << endl;
     }
 
     // static int nthLastIndexOf(int nth, string ch, string string) {
@@ -127,7 +127,6 @@ class DuplicateVariantSearch {
         uint64_t start,
         uint64_t end
     ) {
-        // cout << "car find s: "<< start << " e: " << end << endl;
         for (vcfRegionData rd : regionData) {
             bool isSameChrom = rd.chrom == chrom;
             bool isInRange = (
@@ -136,10 +135,7 @@ class DuplicateVariantSearch {
                 (start < rd.startRange && rd.endRange < end) // If the start and end point encompass the range
             );
 
-            // cout << "car start: " << rd.startRange << " car end: " << rd.endRange << " sameC: "<< isSameChrom << " inRange: " << isInRange << endl;
-
             if (isSameChrom && isInRange) {
-                // cout << "rd start: " << rd.startRange << " rd end: " << rd.endRange << endl;
                 currentSearchTargets.push_back(rd);
             }
         }
@@ -186,15 +182,11 @@ class DuplicateVariantSearch {
         return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
     }
 
-    bool fileHasBeenCompared(string file, map<string, vector<string>> &comparedFiles) {
-        return comparedFiles.count(file);
-    }
-
     bool arrayContainsString(vector<string> v, string str) {
         return find(v.begin(), v.end(), str) != v.end();
     }
 
-    string to_zero_lead(const int value, const unsigned precision)
+    string to_zero_lead(const uint64_t value, const unsigned precision)
     {
         ostringstream oss;
         oss << setw(precision) << setfill('0') << value;
@@ -212,11 +204,6 @@ class DuplicateVariantSearch {
             createChromRegionsMap(chromLookup, regionData.back());
         }
 
-        cout << "chromLookup: " << endl;
-        for (auto const& [key, val]: chromLookup) {
-            cout << "Chrom: " << key << " StartR: " << val.start << " EndR: " << val.end << endl; 
-        }
-
         for (auto const& [key, val]: chromLookup) {
             if (val.end < val.start) {
                 throw runtime_error("logic error: region end is greater than region start");
@@ -225,6 +212,7 @@ class DuplicateVariantSearch {
             for (uint64_t rangeStart = val.start; rangeStart <= val.end; rangeStart+=VCF_SEARCH_BASE_PAIR_RANGE) {
                 vector<vcfRegionData> currentSearchTargets;
                 uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > val.end ? val.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE - 1;
+
                 map<string, vector<string>> comparedFiles;
                 filterChromAndRange(
                     currentSearchTargets,
@@ -234,39 +222,30 @@ class DuplicateVariantSearch {
                     rangeEnd
                 );
 
+                string dupCountKey = to_zero_lead(rangeStart, 6) + "-" + to_zero_lead(rangeEnd, 6);
+                if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
+
                 // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
                 if (currentSearchTargets.size() > 1) {
 
-                    cout << "currentSearchTargets: " << endl;
-                    for (size_t c = 0; c < currentSearchTargets.size(); c++) {
-                        cout << currentSearchTargets[c].filepath << endl;
-                    }
-
                     map<string, vector<string>> duplicates = {};
 
+                    map<string, vector<generalutils::vcfData>> fileLookup;
                     for (size_t j = 0; j < currentSearchTargets.size(); j++) {
-                        
-                        if (!fileHasBeenCompared(currentSearchTargets[j].filepath, comparedFiles)) {
-                            comparedFiles.insert({currentSearchTargets[j].filepath, {}});
+
+                            Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
+                            fileLookup[currentSearchTargets[j].filepath] = streamS3Outcome(response);
                         }
 
-                        Aws::S3::Model::GetObjectOutcome response1 = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
-                        vector<generalutils::vcfData> file1 = streamS3Outcome(response1);
-
+                        vector<generalutils::vcfData> file1 = fileLookup[currentSearchTargets[j].filepath];
 
                         for (size_t m = 0; m < currentSearchTargets.size() - 1; m++) {
 
-                            if (
-                                j != m
-                                && fileHasBeenCompared(currentSearchTargets[m].filepath, comparedFiles)
-                                && !arrayContainsString(comparedFiles[currentSearchTargets[m].filepath], currentSearchTargets[j].filepath)
-                            ) {
-                                comparedFiles[currentSearchTargets[j].filepath].push_back(currentSearchTargets[m].filepath);
-                            
-                                // cout << "j File: " << currentSearchTargets[j].filepath << endl;
-                                // cout << "m File: ";
-                                Aws::S3::Model::GetObjectOutcome response2 = awsutils::getS3Object(s3Bucket, currentSearchTargets[m].filepath, s3Client);
-                                vector<generalutils::vcfData> file2 = streamS3Outcome(response2); // TODO - check whether the entire file has been loaded
+                            // strategically compare files only once
+                            if (j != m && fileLookup.count(currentSearchTargets[m].filepath)) {
+
+                                // TODO - check whether the entire file has been loaded
+                                vector<generalutils::vcfData> file2 = fileLookup[currentSearchTargets[m].filepath];
 
                                 // Skip the first part of the file if the data we are comparing doesn't matchup.
                                 uint64_t filePosStart = max(rangeStart, file2.front().pos);
@@ -304,24 +283,6 @@ class DuplicateVariantSearch {
                                         }
                                     }
                                 }
-                                
-                                // cout << "duplicates: " << endl;
-                                // for (auto const& [key, val]: duplicates) {
-                                //     cout << key << endl;
-                                //     for (string v : val) {
-                                //         cout << v << endl;
-                                //     }
-                                //     cout << endl;
-                                // }
-                                // if (true) { // For debug info only
-                                //     size_t duplicatesCounter = 0;
-                                //     for (auto const& [key2, val2]: duplicates) {
-                                //         duplicatesCounter += val2.size();
-                                //     }
-                                //     string dupCountKey = to_string(val.start) + "_" + to_string(val.end);
-                                //     cout << "duplicates count: " << dupCountKey << " " << duplicatesCounter << endl;
-                                // }
-
                             }
                         }
                     }
@@ -329,16 +290,11 @@ class DuplicateVariantSearch {
                     for (auto const& [key2, val2]: duplicates) {
                         duplicatesCounter += val2.size();
                     }
-                    string dupCountKey = to_zero_lead(rangeStart, 6) + "_" + to_zero_lead(rangeEnd, 6);
-                    if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
-                    cout << "total duplicates counts for chromosome: " << key << endl;
-                    cout << dupCountKey << " " << duplicatesCounter << endl;
                     duplicatesCount[dupCountKey] += duplicatesCounter;
+                    // cout << "duplicate counts for chrom " << key << " range " << dupCountKey << " - " << duplicatesCounter << endl;
 
                 } else {
                     cout << "Only one file for this region, continue" << endl;
-                    string dupCountKey = to_zero_lead(rangeStart, 6) + "_" + to_zero_lead(rangeEnd, 6);
-                    if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
                 }
             }
         }
@@ -355,7 +311,6 @@ class DuplicateVariantSearch {
     }
 
 };
-
 
 static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
     Aws::S3::S3Client const& s3Client, Aws::DynamoDB::DynamoDBClient const& /*dynamodbClient*/, Aws::SNS::SNSClient const& /*snsClient*/)
