@@ -87,7 +87,14 @@ class DuplicateVariantSearch {
         }
         string range = split.back();
         split.pop_back();
-        regions.chrom = generalutils::fast_atoi<uint16_t>(split.back().c_str(), split.back().length());
+        
+        // This will convert chromosome 0-23 to a number and
+        // chromosome 'X'and 'Y' to an ASCII integer representave
+        if (split.back().length() == 1 && split.back().c_str()[0] > '9') {
+            regions.chrom = split.back().c_str()[0];
+        } else {
+            regions.chrom = generalutils::fast_atoi<uint16_t>(split.back().c_str(), split.back().length());
+        }
 
         string startRange = range.substr(0, range.find('-'));
         string endRange = range.substr(range.find('-') + 1, range.size());
@@ -182,10 +189,6 @@ class DuplicateVariantSearch {
         return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
     }
 
-    bool arrayContainsString(vector<string> v, string str) {
-        return find(v.begin(), v.end(), str) != v.end();
-    }
-
     string to_zero_lead(const uint64_t value, const unsigned precision)
     {
         ostringstream oss;
@@ -193,7 +196,7 @@ class DuplicateVariantSearch {
         return oss.str();
     }
 
-    bool searchForDuplicates() {
+    int searchForDuplicates() {
         vector<string> s3Objects = retrieveS3Objects(s3Bucket);
         map<uint16_t, range> chromLookup;
         map<string, size_t> duplicatesCount;
@@ -233,6 +236,7 @@ class DuplicateVariantSearch {
                     map<string, vector<generalutils::vcfData>> fileLookup;
                     for (size_t j = 0; j < currentSearchTargets.size(); j++) {
 
+                        if (fileLookup.count(currentSearchTargets[j].filepath) == 0) {
                             Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
                             fileLookup[currentSearchTargets[j].filepath] = streamS3Outcome(response);
                         }
@@ -242,7 +246,7 @@ class DuplicateVariantSearch {
                         for (size_t m = 0; m < currentSearchTargets.size() - 1; m++) {
 
                             // strategically compare files only once
-                            if (j != m && fileLookup.count(currentSearchTargets[m].filepath)) {
+                            if (j != m && fileLookup.count(currentSearchTargets[m].filepath) > 0) {
 
                                 // TODO - check whether the entire file has been loaded
                                 vector<generalutils::vcfData> file2 = fileLookup[currentSearchTargets[m].filepath];
@@ -307,7 +311,7 @@ class DuplicateVariantSearch {
             cout << endl;
         }
         cout << "Final Tally: " << totalCount << endl;
-        return true;
+        return totalCount;
     }
 
 };

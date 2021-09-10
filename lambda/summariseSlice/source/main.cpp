@@ -472,6 +472,7 @@ class writeDataToS3 {
     Aws::S3::S3Client const& s3Client;
     queue<generalutils::vcfData> vcfBuffer;
     uint16_t startBasePairRegion;
+    string chrom = "";
 
     bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
         Aws::S3::Model::PutObjectRequest request;
@@ -501,7 +502,7 @@ class writeDataToS3 {
 
     void saveNewFile() {
         if (vcfBuffer.size() > 0) {
-            string fileNameAppend = to_string(vcfBuffer.front().chrom) + "_" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
+            string fileNameAppend = chrom + "_" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
             saveOutputToS3(s3BucketName, "output/" + s3BucketKey + "_" + fileNameAppend, s3Client, vcfBuffer);
         }
     }
@@ -534,14 +535,11 @@ class writeDataToS3 {
             const size_t numChars = reader.getReadLength();
             if (numChars >= 1) {
                 switch(++loopPos) {
+                    // one chrom per read file
                     case 1:
-                        // If the char is not a number, save it as a char, otherwise convert the string to a number 
-                        if (numChars == 1 && firstChar_p[0] > '9') {
-                            d.chrom = firstChar_p[0];
-                        } else {
-                            d.chrom = generalutils::fast_atoi<uint8_t>(firstChar_p, numChars);
+                        if (chrom.length() == 0) {
+                            chrom = string(firstChar_p, numChars);
                         }
-                        // cout << "d.chrom: " << (int)d.chrom << " " << firstChar_p[0] << "-" << numChars << (int)(firstChar_p[0] - '0') << endl;
                         break;
                     case 2:
                         d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);

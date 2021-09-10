@@ -7,7 +7,6 @@ using namespace std;
 namespace generalutils {
 
     struct vcfData  {  
-        uint8_t chrom;
         uint64_t pos;
         char ref;
         char alt;
