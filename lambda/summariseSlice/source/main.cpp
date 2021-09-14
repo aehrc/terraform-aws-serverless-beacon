@@ -24,6 +24,7 @@
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
+#include "initDuplicateVariantSearch.hpp"
 
 using namespace std;
 
@@ -890,6 +891,10 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
         Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
         summariseDatasets(snsClient, datasetIds);
     } else {
+        // TODO move this into the above if block
+        InitDuplicateVariantSearch idv = InitDuplicateVariantSearch(s3Client, snsClient);
+        idv.initDuplicateVariantSearch("large-test-vcfs");
+
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");

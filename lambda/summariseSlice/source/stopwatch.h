@@ -1,5 +1,4 @@
-#ifndef _STOP_WATCH_HPP_
-#define _STOP_WATCH_HPP_
+#pragma once
 
 #include <chrono>
 #include <utility>
@@ -55,5 +54,3 @@ class stop_watch {
       return out;
     }
 };
-
-#endif

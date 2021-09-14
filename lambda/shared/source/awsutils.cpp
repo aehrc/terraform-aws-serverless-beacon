@@ -39,3 +39,29 @@ Aws::S3::Model::GetObjectOutcome awsutils::getS3Object(Aws::String bucket, Aws::
         throw response.GetError();
     }
 }
+
+void awsutils::publishSnsRequest(
+    Aws::SNS::SNSClient const& snsClient,
+    const char * topicArn,
+     Aws::Utils::Json::JsonValue message
+) {
+
+    Aws::SNS::Model::PublishRequest request;
+    request.SetTopicArn(getenv(topicArn));
+    request.SetMessage(message.View().WriteCompact());
+
+    std::cout << "Calling sns::Publish with TopicArn=\"" << request.GetTopicArn() << "\" and message=\"" << request.GetMessage() << "\"" << std::endl;
+    Aws::SNS::Model::PublishOutcome result = snsClient.Publish(request);
+    if (result.IsSuccess()) {
+        std::cout << "Successfully published" << std::endl;
+    } else {
+        const Aws::SNS::SNSError error = result.GetError();
+        std::cout << "Publish was not successful, received error: " << error.GetMessage() << std::endl;
+        if (error.ShouldRetry()) {
+            std::cout << "Retrying after 1 second..." << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        } else {
+            std::cout << "Not Retrying." << std::endl;
+        }
+    }
+}

@@ -61,12 +61,15 @@ Aws::String bundleResponse(Aws::String const& body, int statusCode)
 
 class DuplicateVariantSearch {
     private:
-    Aws::S3::S3Client s3Client;
-    string s3Bucket = "large-test-vcfs"; // Todo
+    Aws::S3::S3Client _s3Client;
+    Aws::String _bucket;
+    uint64_t _rangeStart;
+    uint64_t _rangeEnd;
+    uint16_t _chrom;
 
-    vector<string> retrieveS3Objects(Aws::String bucket) {
+    vector<string> retrieveS3Objects() {
         vector<string> objectKeys;
-        vector<string> bucketObjectKeys = awsutils::retrieveBucketObjectKeys(bucket, s3Client);
+        vector<string> bucketObjectKeys = awsutils::retrieveBucketObjectKeys(_bucket, _s3Client);
         copy_if(bucketObjectKeys.begin(), bucketObjectKeys.end(), back_inserter(objectKeys), [](string s) { return s.find("output") != std::string::npos; });
         return objectKeys;
     }
@@ -105,7 +108,7 @@ class DuplicateVariantSearch {
     }
 
     void readFileContent() {
-        Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(s3Bucket, "filename", s3Client); // Todo
+        Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(_bucket, "filename", _s3Client); // Todo
     }
 
     void createChromRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem) {
@@ -149,8 +152,19 @@ class DuplicateVariantSearch {
     };
 
     public:
-    DuplicateVariantSearch(Aws::S3::S3Client client):
-        s3Client(client)
+    DuplicateVariantSearch(
+        Aws::S3::S3Client client,
+        Aws::String bucket,
+        uint64_t rangeStart,
+        uint64_t rangeEnd,
+        uint16_t chrom
+    ):
+        _s3Client(client),
+        _bucket(bucket),
+        _rangeStart(rangeStart),
+        _rangeEnd(rangeEnd),
+        _chrom(chrom)
+
     {}
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response) {
         vector<generalutils::vcfData> fileData;
@@ -197,7 +211,7 @@ class DuplicateVariantSearch {
     }
 
     int searchForDuplicates() {
-        vector<string> s3Objects = retrieveS3Objects(s3Bucket);
+        vector<string> s3Objects = retrieveS3Objects();
         map<uint16_t, range> chromLookup;
         map<string, size_t> duplicatesCount;
 
@@ -237,7 +251,7 @@ class DuplicateVariantSearch {
                     for (size_t j = 0; j < currentSearchTargets.size(); j++) {
 
                         if (fileLookup.count(currentSearchTargets[j].filepath) == 0) {
-                            Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(s3Bucket, currentSearchTargets[j].filepath, s3Client);
+                            Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(_bucket, currentSearchTargets[j].filepath, _s3Client);
                             fileLookup[currentSearchTargets[j].filepath] = streamS3Outcome(response);
                         }
 
@@ -321,12 +335,17 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
 {
     Aws::String messageString = awsutils::getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
-    // Aws::Utils::Json::JsonValue message(messageString);
-    // Aws::Utils::Json::JsonView messageView = message.View();
+    Aws::Utils::Json::JsonValue message(messageString);
+    Aws::Utils::Json::JsonView messageView = message.View();
 
-    DuplicateVariantSearch duplicateVariantSearch = DuplicateVariantSearch(s3Client);
+    Aws::String bucket = messageView.GetString("bucket");
+    uint64_t rangeStart = messageView.GetInt64("rangeStart");
+    uint64_t rangeEnd = messageView.GetInt64("rangeEnd");
+    uint16_t chrom = messageView.GetInteger("chrom");
 
-    duplicateVariantSearch.searchForDuplicates();
+    // DuplicateVariantSearch duplicateVariantSearch = DuplicateVariantSearch(s3Client, bucket, rangeStart, rangeEnd, chrom);
+
+    // duplicateVariantSearch.searchForDuplicates();
 
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
