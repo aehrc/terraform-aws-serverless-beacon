@@ -66,11 +66,13 @@ class DuplicateVariantSearch {
     uint64_t _rangeStart;
     uint64_t _rangeEnd;
     uint16_t _chrom;
+    Aws::Utils::Array<Aws::Utils::Json::JsonView> _targetFilepaths;
+    
 
     vector<string> retrieveS3Objects() {
         vector<string> objectKeys;
         vector<string> bucketObjectKeys = awsutils::retrieveBucketObjectKeys(_bucket, _s3Client);
-        copy_if(bucketObjectKeys.begin(), bucketObjectKeys.end(), back_inserter(objectKeys), [](string s) { return s.find("output") != std::string::npos; });
+        copy_if(bucketObjectKeys.begin(), bucketObjectKeys.end(), back_inserter(objectKeys), [](string s) { return s.find("vcf-summaries") != std::string::npos; });
         return objectKeys;
     }
 
@@ -157,13 +159,15 @@ class DuplicateVariantSearch {
         Aws::String bucket,
         uint64_t rangeStart,
         uint64_t rangeEnd,
-        uint16_t chrom
+        uint16_t chrom,
+        Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths
     ):
         _s3Client(client),
         _bucket(bucket),
         _rangeStart(rangeStart),
         _rangeEnd(rangeEnd),
-        _chrom(chrom)
+        _chrom(chrom),
+        _targetFilepaths(targetFilepaths)
 
     {}
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response) {
@@ -211,110 +215,85 @@ class DuplicateVariantSearch {
     }
 
     int searchForDuplicates() {
-        vector<string> s3Objects = retrieveS3Objects();
-        map<uint16_t, range> chromLookup;
         map<string, size_t> duplicatesCount;
+        uint targetFilepathsLength = _targetFilepaths.GetLength();
 
-        vector<vcfRegionData> regionData;
-        for (Aws::String filepath : s3Objects) {
-            regionData.push_back(getFileNameInfo(filepath));
-            createChromRegionsMap(chromLookup, regionData.back());
-        }
+        string dupCountKey = to_zero_lead(_rangeStart, 6) + "-" + to_zero_lead(_rangeEnd, 6);
+        if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
 
-        for (auto const& [key, val]: chromLookup) {
-            if (val.end < val.start) {
-                throw runtime_error("logic error: region end is greater than region start");
-            }
+        // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
+        if (targetFilepathsLength > 1) {
 
-            for (uint64_t rangeStart = val.start; rangeStart <= val.end; rangeStart+=VCF_SEARCH_BASE_PAIR_RANGE) {
-                vector<vcfRegionData> currentSearchTargets;
-                uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > val.end ? val.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE - 1;
+            map<string, vector<string>> duplicates = {};
 
-                map<string, vector<string>> comparedFiles;
-                filterChromAndRange(
-                    currentSearchTargets,
-                    regionData,
-                    key,
-                    rangeStart,
-                    rangeEnd
-                );
+            map<string, vector<generalutils::vcfData>> fileLookup;
+            for (size_t j = 0; j < targetFilepathsLength; j++) {
 
-                string dupCountKey = to_zero_lead(rangeStart, 6) + "-" + to_zero_lead(rangeEnd, 6);
-                if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
+                string targetFilepathJ = _targetFilepaths[j].AsString();
+                if (fileLookup.count(_targetFilepaths[j].AsString()) == 0) {
+                    Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(_bucket, targetFilepathJ, _s3Client);
+                    fileLookup[targetFilepathJ] = streamS3Outcome(response);
+                }
 
-                // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
-                if (currentSearchTargets.size() > 1) {
+                vector<generalutils::vcfData> file1 = fileLookup[targetFilepathJ];
 
-                    map<string, vector<string>> duplicates = {};
+                for (size_t m = 0; m < targetFilepathsLength - 1; m++) {
+                    string targetFilepathM = _targetFilepaths[m].AsString();
 
-                    map<string, vector<generalutils::vcfData>> fileLookup;
-                    for (size_t j = 0; j < currentSearchTargets.size(); j++) {
+                    // strategically compare files only once
+                    if (j != m && fileLookup.count(targetFilepathM) > 0) {
 
-                        if (fileLookup.count(currentSearchTargets[j].filepath) == 0) {
-                            Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(_bucket, currentSearchTargets[j].filepath, _s3Client);
-                            fileLookup[currentSearchTargets[j].filepath] = streamS3Outcome(response);
-                        }
+                        // TODO - check whether the entire file has been loaded
+                        vector<generalutils::vcfData> file2 = fileLookup[targetFilepathM];
 
-                        vector<generalutils::vcfData> file1 = fileLookup[currentSearchTargets[j].filepath];
+                        // Skip the first part of the file if the data we are comparing doesn't matchup.
+                        uint64_t filePosStart = max(_rangeStart, file2.front().pos);
+                        auto fileStart = searchForPosition(filePosStart, file1);
 
-                        for (size_t m = 0; m < currentSearchTargets.size() - 1; m++) {
+                        // search for duplicates of each struct in file1 against file2
+                        for (auto l = fileStart; l != file1.end(); ++l) {
+                            vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2);
 
-                            // strategically compare files only once
-                            if (j != m && fileLookup.count(currentSearchTargets[m].filepath) > 0) {
+                            // We have read to the end of file 2, exit the file 1 loop
+                            if (searchPosition == file2.end()) {
+                                // cout << "End found, exit now" << endl;
+                                break;
+                            }
 
-                                // TODO - check whether the entire file has been loaded
-                                vector<generalutils::vcfData> file2 = fileLookup[currentSearchTargets[m].filepath];
+                            // handle the case of multiple variants at one position
+                            for (auto k = searchPosition; k != file2.end() && k->pos == l->pos && k->pos <= _rangeEnd; ++k) {
+                                if (isADuplicate(l.base(), k.base())) {
+                                    // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
 
-                                // Skip the first part of the file if the data we are comparing doesn't matchup.
-                                uint64_t filePosStart = max(rangeStart, file2.front().pos);
-                                auto fileStart = searchForPosition(filePosStart, file1);
+                                    string posRefAltKey = to_string(k->pos) + "_" + k->ref + "_" + k->alt;
 
-                                // search for duplicates of each struct in file1 against file2
-                                for (auto l = fileStart; l != file1.end(); ++l) {
-                                    vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2);
-
-                                    // We have read to the end of file 2, exit the file 1 loop
-                                    if (searchPosition == file2.end()) {
-                                        // cout << "End found, exit now" << endl;
-                                        break;
-                                    }
-
-                                    // handle the case of multiple variants at one position
-                                    for (auto k = searchPosition; k != file2.end() && k->pos == l->pos && k->pos <= rangeEnd; ++k) {
-                                        if (isADuplicate(l.base(), k.base())) {
-                                            // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
-
-                                            string posRefAltKey = to_string(k->pos) + "_" + k->ref + "_" + k->alt;
-
-                                            if (duplicates.count(posRefAltKey) != 0) { // if posRefAltKey already exists
-                                                if (!containsExistingFilepath(duplicates[posRefAltKey], currentSearchTargets[j].filepath)) {
-                                                    duplicates[posRefAltKey].push_back(currentSearchTargets[j].filepath);
-                                                } 
-                                                if (!containsExistingFilepath(duplicates[posRefAltKey], currentSearchTargets[m].filepath)) {
-                                                    duplicates[posRefAltKey].push_back(currentSearchTargets[m].filepath);
-                                                }
-
-                                            } else {
-                                                duplicates[posRefAltKey] = { currentSearchTargets[j].filepath, currentSearchTargets[m].filepath };
-                                            }
-
+                                    if (duplicates.count(posRefAltKey) != 0) { // if posRefAltKey already exists
+                                        if (!containsExistingFilepath(duplicates[posRefAltKey], targetFilepathJ)) {
+                                            duplicates[posRefAltKey].push_back(targetFilepathJ);
+                                        } 
+                                        if (!containsExistingFilepath(duplicates[posRefAltKey], targetFilepathM)) {
+                                            duplicates[posRefAltKey].push_back(targetFilepathM);
                                         }
+
+                                    } else {
+                                        duplicates[posRefAltKey] = { targetFilepathJ, targetFilepathM };
                                     }
+
                                 }
                             }
                         }
                     }
-                    size_t duplicatesCounter = 0;
-                    for (auto const& [key2, val2]: duplicates) {
-                        duplicatesCounter += val2.size();
-                    }
-                    duplicatesCount[dupCountKey] += duplicatesCounter;
-                    // cout << "duplicate counts for chrom " << key << " range " << dupCountKey << " - " << duplicatesCounter << endl;
-
-                } else {
-                    cout << "Only one file for this region, continue" << endl;
                 }
             }
+            size_t duplicatesCounter = 0;
+            for (auto const& [key2, val2]: duplicates) {
+                duplicatesCounter += val2.size();
+            }
+            duplicatesCount[dupCountKey] += duplicatesCounter;
+            // cout << "duplicate counts for chrom " << key << " range " << dupCountKey << " - " << duplicatesCounter << endl;
+
+        } else {
+            cout << "Only one file for this region, continue" << endl;
         }
 
         cout << "duplicatesCount: " << endl;
@@ -342,10 +321,11 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     uint64_t rangeStart = messageView.GetInt64("rangeStart");
     uint64_t rangeEnd = messageView.GetInt64("rangeEnd");
     uint16_t chrom = messageView.GetInteger("chrom");
+    Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths = messageView.GetArray("targetFilepaths");
 
-    // DuplicateVariantSearch duplicateVariantSearch = DuplicateVariantSearch(s3Client, bucket, rangeStart, rangeEnd, chrom);
+    DuplicateVariantSearch duplicateVariantSearch = DuplicateVariantSearch(s3Client, bucket, rangeStart, rangeEnd, chrom, targetFilepaths);
 
-    // duplicateVariantSearch.searchForDuplicates();
+    duplicateVariantSearch.searchForDuplicates();
 
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }

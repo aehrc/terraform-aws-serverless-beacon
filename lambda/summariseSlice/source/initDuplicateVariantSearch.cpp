@@ -97,12 +97,28 @@ void InitDuplicateVariantSearch::initDuplicateVariantSearch(string bucket) {
         for (uint64_t rangeStart = reg.start; rangeStart <= reg.end; rangeStart+=VCF_SEARCH_BASE_PAIR_RANGE) {
             uint64_t rangeEnd = rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > reg.end ? reg.end : rangeStart + VCF_SEARCH_BASE_PAIR_RANGE - 1;
             cout << rangeStart << " " << rangeEnd << endl;
-        
+
+            vector<vcfRegionData> currentSearchTargets;
+            filterChromAndRange(
+                currentSearchTargets,
+                regionData,
+                chrom,
+                rangeStart,
+                rangeEnd
+            );
+
+            Aws::Utils::Array<Aws::String> targetFilepaths(currentSearchTargets.size());
+            size_t targetPos = 0;
+            for (vcfRegionData cst : currentSearchTargets) {
+                targetFilepaths[targetPos++] = cst.filepath;
+            }
+
             Aws::Utils::Json::JsonValue vcfWindow;
             vcfWindow.WithString("bucket", bucket);
             vcfWindow.WithInt64("rangeStart", rangeStart);
             vcfWindow.WithInt64("rangeEnd", rangeEnd);
             vcfWindow.WithInteger("chrom", chrom);
+            vcfWindow.WithArray("targetFilepaths", targetFilepaths);
             awsutils::publishSnsRequest(snsClient, "DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN", vcfWindow);
         }
     }

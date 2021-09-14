@@ -503,8 +503,8 @@ class writeDataToS3 {
 
     void saveNewFile() {
         if (vcfBuffer.size() > 0) {
-            string fileNameAppend = chrom + "_" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
-            saveOutputToS3(s3BucketName, "output/" + s3BucketKey + "_" + fileNameAppend, s3Client, vcfBuffer);
+            string fileNameAppend = "/chromosomes/" + chrom + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
+            saveOutputToS3(s3BucketName, "vcf-summaries/" + s3BucketKey + fileNameAppend, s3Client, vcfBuffer);
         }
     }
 
@@ -815,7 +815,7 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
     Aws::DynamoDB::Model::AttributeValue numCallsValue;
     numCallsValue.SetN(static_cast<double>(regionStats.numCalls));
     expressionAttributeValues[":numCalls"] = numCallsValue;
-    Aws::String sliceString = std::to_string(virtualStart) + ":" + std::to_string(virtualEnd);
+    Aws::String sliceString = std::to_string(virtualStart) + "-" + std::to_string(virtualEnd);
     Aws::DynamoDB::Model::AttributeValue sliceStringSetValue;
     sliceStringSetValue.SetSS(Aws::Vector<Aws::String>{sliceString});
     expressionAttributeValues[":sliceStringSet"] = sliceStringSetValue;
@@ -887,14 +887,13 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
+        InitDuplicateVariantSearch idv = InitDuplicateVariantSearch(s3Client, snsClient);
+        idv.initDuplicateVariantSearch("large-test-vcfs");
+
         std::cout << "VCF has been completely summarised!" << std::endl;
         Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
         summariseDatasets(snsClient, datasetIds);
     } else {
-        // TODO move this into the above if block
-        InitDuplicateVariantSearch idv = InitDuplicateVariantSearch(s3Client, snsClient);
-        idv.initDuplicateVariantSearch("large-test-vcfs");
-
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
