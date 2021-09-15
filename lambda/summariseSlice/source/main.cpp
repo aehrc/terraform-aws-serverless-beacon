@@ -37,7 +37,7 @@ constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C',
 constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
 constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
 constexpr uint_fast8_t XLEN_OFFSET = 10;
-constexpr uint VCF_S3_OUTPUT_SIZE_LIMIT = 10000000;
+constexpr uint VCF_S3_OUTPUT_SIZE_LIMIT = 10000;
 
 
 struct VcfChunk
@@ -475,15 +475,23 @@ class writeDataToS3 {
     uint16_t startBasePairRegion;
     string chrom = "";
 
+    void stringToFile(const std::shared_ptr<Aws::IOStream> &file, string &input) {
+        uint8_t length = (uint8_t)(input.size() & 0xff);
+        file->write(reinterpret_cast<char*>(&length), sizeof(uint8_t));
+        file->write(input.c_str(), length);
+    }
+
     bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
         Aws::S3::Model::PutObjectRequest request;
         request.SetBucket(bucketName);
         request.SetKey(objectName);
 
         const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-        
+
         while (!input.empty()) {
-            input_data->write(reinterpret_cast<char*>(&input.front()), sizeof(generalutils::vcfData));
+            input_data->write(reinterpret_cast<char*>(&(input.front().pos)), sizeof(&input.front().pos));
+            stringToFile(input_data, input.front().ref);
+            stringToFile(input_data, input.front().alt);
             input.pop();
         }
         request.SetBody(input_data);
@@ -508,6 +516,26 @@ class writeDataToS3 {
         }
     }
 
+    string seqToBin(const char *s, size_t n) {
+        uint8_t chromBin;
+        if (n == 1) {
+            chromBin = generalutils::chromosomeToBinary.at(s[0]);
+            return string(1, chromBin);
+        }
+
+        string concat = "";
+        // Pack two chars into one byte by using custom compression
+        for (size_t i=0; i<n; i+=2) {
+            chromBin = generalutils::chromosomeToBinary.at(s[i]);
+            if (i+1 < n) {
+                chromBin = chromBin << 4;
+                chromBin |= generalutils::chromosomeToBinary.at(s[i+1]);
+            }
+            concat.append((char*)(&chromBin));
+        }
+        return concat;
+    }
+
     public:
     writeDataToS3(string bucket, string key, Aws::S3::S3Client const& client):
     s3BucketName(bucket),
@@ -526,6 +554,11 @@ class writeDataToS3 {
         generalutils::vcfData d;
         uint8_t loopPos = 0;
 
+        if (chrom.length() != 0) {
+            reader.skipPast<1, '\t'>();
+            loopPos = 1;
+        }
+
         do {
             const char lastChar = reader.readPastChars<'\t', ','>();
             if (lastChar == '\0') {
@@ -538,32 +571,25 @@ class writeDataToS3 {
                 switch(++loopPos) {
                     // one chrom per read file
                     case 1:
-                        if (chrom.length() == 0) {
-                            chrom = string(firstChar_p, numChars);
-                        }
+                        chrom = string(firstChar_p, numChars);
                         break;
                     case 2:
                         d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);
-                        // cout << "firstChar_p: ";
-                        // for (uint x = 0; x < numChars; x++) {
-                        //     cout << firstChar_p[x];
-                        // }
-                        // cout << endl;
-                        // cout << "d.pos: " << d.pos << endl;
+
                         if (vcfBuffer.size() > 0 && d.pos < vcfBuffer.back().pos) {
                             cout << "d.pos: " << d.pos << " vcfBuffer.back().pos: " << vcfBuffer.back().pos << endl;
                             throw runtime_error("unsorted file");
                         }
-                        // cout << "d.pos: " << (int)d.pos << " " << firstChar_p[0] << firstChar_p[1] << "-" << numChars << endl;
+                        reader.skipPast<1, '\t'>();
+                        loopPos++;
                         break;
                     case 4:
-                        if (numChars != 1) { cout << "Invlid Assumption Ref != 1 char" << endl; }
-                        d.ref = *firstChar_p;
+                        d.ref = seqToBin(firstChar_p, numChars);
+                        // d.ref.push(generalutils::chromosomeToBinary.at(firstChar_p[0]));
                         break;
                     case 5:
-                        if (numChars != 1) { cout << "Invlid Assumption Alt != 1 char" << endl; }
-                        d.alt = *firstChar_p;
-                        // cout << "alt: " << d.alt << endl; 
+                        d.alt = seqToBin(firstChar_p, numChars);
+                        // d.alt.push(generalutils::chromosomeToBinary.at(firstChar_p[0]));
 
                         // If we have more ref to proccess decrement the loop so we get the next
                         if (lastChar == ',') {
@@ -571,7 +597,6 @@ class writeDataToS3 {
                         }
                         vcfBuffer.push(d);
                         // cout << "last char: " << lastChar << " " << (lastChar == ',') << endl;
-                        
                         break;
                     default:
                         break;
@@ -579,7 +604,7 @@ class writeDataToS3 {
             }
         } while (loopPos <= 4);
 
-        // Skip the last two fields so we exit with the reader pointng to the INFO field
+        // Skip the last two fields so we exit with the reader pointing to the INFO field
         reader.skipPast<2, '\t'>();
 
         // Save the buffer to a file if we have reached a size limit
@@ -913,7 +938,7 @@ int main()
         Aws::S3::S3Client s3Client(credentialsProvider, config);
         Aws::SNS::SNSClient snsClient(credentialsProvider, config);
         auto handlerFunction = [&s3Client, &dynamodbClient, &snsClient](aws::lambda_runtime::invocation_request const& req) {
-            std::cout << "Event Recived: " << req.payload << std::endl;
+            std::cout << "Event Received: " << req.payload << std::endl;
             return lambdaHandler(req, s3Client, dynamodbClient, snsClient);
             std::cout.flush();
         };

@@ -8,8 +8,8 @@ project(function LANGUAGES CXX)
 find_package(aws-lambda-runtime)
 find_package(AWSSDK COMPONENTS dynamodb s3 sns)
 
-add_executable(${PROJECT_NAME} "main.cpp")
-
+file(GLOB MyCSources *.cpp)
+add_executable(${PROJECT_NAME} ${MyCSources})
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/source shared)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
