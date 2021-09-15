@@ -22,9 +22,7 @@ vector<generalutils::vcfData> ReadVcfData::getVcfData() {
             _fileData.push_back(vcf);
 
         } else {
-            // exit the loop
-            bufferPos = _dataLength;
-            // throw runtime_error("Invalid File Read - getVcfData()");
+            throw runtime_error("Invalid File Read - getVcfData()");
         }
     } while (_dataLength != bufferPos);
 
@@ -49,7 +47,7 @@ string ReadVcfData::readString(size_t &bufferPos) {
 }
 
 bool ReadVcfData::checkForAvailableData(size_t bytesNeeded, size_t &bufferPos) {
-    if (_dataLength > (bufferPos + bytesNeeded)) {
+    if (_dataLength >= (bufferPos + bytesNeeded)) {
         return true;
     }
 
