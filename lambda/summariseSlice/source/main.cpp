@@ -494,11 +494,7 @@ void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
             } else if (memcmp(firstChar_p, anTag, 3) == 0) {
                 foundAn = true;
                 regionStats.numCalls += atoui64(firstChar_p+3, (uint8_t)numChars-3);
-            } else {
-                std::cout << "Found unrecognised INFO field: \"" << Aws::String(firstChar_p, numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
             }
-        } else {
-            std::cout << "Found short unrecognised INFO field: \"" << Aws::String(reader.getReadStart(), numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
         }
         if (lastChar == '\t' && !(foundAc && foundAn))
         {
