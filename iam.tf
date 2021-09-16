@@ -75,7 +75,16 @@ data aws_iam_policy_document lambda-summariseDataset {
     ]
     resources = [
       aws_sns_topic.summariseVcf.arn,
+       aws_sns_topic.duplicateVariantSearch.arn,
     ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
   }
 }
 
@@ -190,7 +199,6 @@ data aws_iam_policy_document lambda-duplicateVariantSearch {
   statement {
     actions = [
       "s3:GetObject",
-      "s3:ListBucket",
       "s3:PutObject",
     ]
     resources = ["*"]

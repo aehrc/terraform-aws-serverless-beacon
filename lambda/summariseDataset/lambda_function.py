@@ -1,8 +1,9 @@
 from collections import Counter
+from initDuplicateVariantSearch import initDuplicateVariantSearch
 import json
 import os
-
 import boto3
+
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_VCF_SNS_TOPIC_ARN = os.environ['SUMMARISE_VCF_SNS_TOPIC_ARN']
@@ -79,6 +80,10 @@ def summarise_dataset(dataset):
     vcf_locations = get_locations(dataset)
     locations_info = get_locations_info(vcf_locations)
     new_locations = set(vcf_locations)
+
+    initDuplicateVariantSearch("large-test-vcfs")
+
+
     counts = Counter()
     updated = True
     for location in locations_info:

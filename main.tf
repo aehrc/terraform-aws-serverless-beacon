@@ -39,7 +39,7 @@ module "lambda-summariseDataset" {
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.7"
   memory_size = 2048
   timeout = 10
   policy = {
@@ -53,6 +53,7 @@ module "lambda-summariseDataset" {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_VCF_SNS_TOPIC_ARN = aws_sns_topic.summariseVcf.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+      DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
     }
   }
 }
@@ -114,7 +115,6 @@ module "lambda-summariseSlice" {
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-      DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
     }
   }
 }
@@ -145,10 +145,6 @@ module "lambda-duplicateVariantSearch" {
   environment = {
     variables = {
       ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-      DATASETS_TABLE = aws_dynamodb_table.datasets.name
-      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-      SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
-      VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
     }
   }
 }
