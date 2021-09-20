@@ -81,9 +81,6 @@ def summarise_dataset(dataset):
     locations_info = get_locations_info(vcf_locations)
     new_locations = set(vcf_locations)
 
-    initDuplicateVariantSearch("large-test-vcfs")
-
-
     counts = Counter()
     updated = True
     for location in locations_info:
@@ -96,13 +93,17 @@ def summarise_dataset(dataset):
         elif updated:
             counts.update({count: int(location[count]['N'])
                            for count in COUNTS})
+
+    print('newlocations:', new_locations)
     if new_locations:
         updated = False
     if updated:
         values = {':'+count: {'N': str(counts[count])} for count in COUNTS}
+        datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
+        initDuplicateVariantSearch(datasetFilePaths)
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
-
+    
     update_dataset(dataset, values)
     for new_location in new_locations:
         summarise_vcf(new_location)

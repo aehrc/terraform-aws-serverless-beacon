@@ -36,3 +36,15 @@ resource aws_dynamodb_table vcf_summaries {
     type = "S"
   }
 }
+
+resource aws_dynamodb_table vcf_duplicates {
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "vcfDuplicates"
+  name = "VcfDuplicates"
+  tags = var.common-tags
+
+  attribute {
+    name = "vcfDuplicates"
+    type = "S"
+  }
+}

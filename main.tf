@@ -53,6 +53,7 @@ module "lambda-summariseDataset" {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_VCF_SNS_TOPIC_ARN = aws_sns_topic.summariseVcf.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+      VCF_DUPLICATES_TABLE = aws_dynamodb_table.vcf_duplicates.name
       DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
     }
   }
@@ -145,6 +146,7 @@ module "lambda-duplicateVariantSearch" {
   environment = {
     variables = {
       ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+      VCF_DUPLICATES_TABLE = aws_dynamodb_table.vcf_duplicates.name
     }
   }
 }

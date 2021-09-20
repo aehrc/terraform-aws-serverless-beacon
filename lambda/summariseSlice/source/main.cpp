@@ -912,9 +912,6 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
-        InitDuplicateVariantSearch idv = InitDuplicateVariantSearch(s3Client, snsClient);
-        idv.initDuplicateVariantSearch("large-test-vcfs");
-
         std::cout << "VCF has been completely summarised!" << std::endl;
         Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
         summariseDatasets(snsClient, datasetIds);

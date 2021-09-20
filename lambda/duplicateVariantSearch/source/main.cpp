@@ -28,7 +28,7 @@ Aws::String bundleResponse(Aws::String const& body, int statusCode)
 
 
 
-static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req, Aws::S3::S3Client &s3Client)
+static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req, Aws::S3::S3Client &s3Client, Aws::DynamoDB::DynamoDBClient &dynamodbClient)
 {
     Aws::String messageString = awsutils::getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
@@ -38,10 +38,10 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     Aws::String bucket = messageView.GetString("bucket");
     uint64_t rangeStart = messageView.GetInt64("rangeStart");
     uint64_t rangeEnd = messageView.GetInt64("rangeEnd");
-    uint16_t chrom = messageView.GetInteger("chrom");
+    Aws::String chrom = messageView.GetString("chrom");
     Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths = messageView.GetArray("targetFilepaths");
 
-    DuplicateVariantSearch(s3Client, bucket, rangeStart, rangeEnd, chrom, targetFilepaths).searchForDuplicates();
+    DuplicateVariantSearch(s3Client, dynamodbClient, bucket, rangeStart, rangeEnd, chrom, targetFilepaths).searchForDuplicates();
 
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }
@@ -57,9 +57,11 @@ int main()
 
         auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
         Aws::S3::S3Client s3Client(credentialsProvider, config);
-        auto handlerFunction = [&s3Client](aws::lambda_runtime::invocation_request const& req) {
+        Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
+
+        auto handlerFunction = [&s3Client, &dynamodbClient](aws::lambda_runtime::invocation_request const& req) {
             std::cout << "Event Received: " << req.payload << std::endl;
-            return lambdaHandler(req, s3Client);
+            return lambdaHandler(req, s3Client, dynamodbClient);
             std::cout.flush();
         };
         aws::lambda_runtime::run_handler(handlerFunction);

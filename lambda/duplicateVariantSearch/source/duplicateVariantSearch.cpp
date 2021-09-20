@@ -76,14 +76,16 @@ void DuplicateVariantSearch::filterChromAndRange(
 }
 
 DuplicateVariantSearch::DuplicateVariantSearch(
-    Aws::S3::S3Client client,
+    Aws::S3::S3Client &client,
+    Aws::DynamoDB::DynamoDBClient &dynamodbClient,
     Aws::String bucket,
     uint64_t rangeStart,
     uint64_t rangeEnd,
-    uint16_t chrom,
+    Aws::String chrom,
     Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths
 ):
     _s3Client(client),
+    _dynamodbClient(dynamodbClient),
     _bucket(bucket),
     _rangeStart(rangeStart),
     _rangeEnd(rangeEnd),
@@ -116,8 +118,9 @@ int DuplicateVariantSearch::searchForDuplicates() {
     map<string, size_t> duplicatesCount;
     uint targetFilepathsLength = _targetFilepaths.GetLength();
 
+    // TODO: Remove key to save on proccessing power
     string dupCountKey = to_zero_lead(_rangeStart, 6) + "-" + to_zero_lead(_rangeEnd, 6);
-    if (duplicatesCount.count(dupCountKey) == 0) { duplicatesCount[dupCountKey] = 0; }
+    duplicatesCount[dupCountKey] = 0;
 
     // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
     if (targetFilepathsLength > 1) {
@@ -202,5 +205,83 @@ int DuplicateVariantSearch::searchForDuplicates() {
         cout << endl;
     }
     cout << "Final Tally: " << totalCount << endl;
+    updateVcfDuplicates(totalCount);
+
     return totalCount;
+}
+
+bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount)
+{
+    Aws::DynamoDB::Model::UpdateItemRequest request;
+    request.SetTableName(getenv("VCF_DUPLICATES_TABLE"));
+
+    Aws::DynamoDB::Model::AttributeValue keyValue;
+    keyValue.SetS(_chrom);
+    request.AddKey("vcfDuplicates", keyValue);
+    request.SetUpdateExpression("ADD variantCount :numVariants DELETE toUpdate :sliceStringSet");
+    request.SetConditionExpression("contains(toUpdate, :sliceString)");
+
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
+
+    Aws::DynamoDB::Model::AttributeValue numVariantsValue;
+    numVariantsValue.SetN(static_cast<double>(totalCount));
+    expressionAttributeValues[":numVariants"] = numVariantsValue;
+
+    string sliceString = to_string(_rangeStart) + "-" + to_string(_rangeEnd);
+    Aws::DynamoDB::Model::AttributeValue sliceStringSetValue;
+    sliceStringSetValue.SetSS(Aws::Vector<Aws::String>{sliceString});
+    expressionAttributeValues[":sliceStringSet"] = sliceStringSetValue;
+
+    Aws::DynamoDB::Model::AttributeValue sliceStringValue;
+    sliceStringValue.SetS(sliceString);
+    expressionAttributeValues[":sliceString"] = sliceStringValue;
+
+    request.SetExpressionAttributeValues(expressionAttributeValues);
+    request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
+    do {
+        std::cout << "Calling dynamodb::UpdateItem with key=\"" << _chrom << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
+        const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
+        if (result.IsSuccess())
+        {
+            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
+            std::cout << "Item was updated, new item has following values for these attributes: variantCount=";
+            auto variantCountItr = newAttributes.find("variantCount");
+            if (variantCountItr != newAttributes.end())
+            {
+                std::cout << variantCountItr->second.GetN();
+            }
+            std::cout << ", callCount=";
+            auto callCountItr = newAttributes.find("callCount");
+            if (callCountItr != newAttributes.end())
+            {
+                std::cout << callCountItr->second.GetN();
+            }
+            std::cout << ", toUpdate=";
+            auto toUpdateItr = newAttributes.find("toUpdate");
+            if (toUpdateItr != newAttributes.end())
+            {
+                std::cout << "{";
+                Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
+                for (Aws::String sliceStringRemaining : toUpdateNew)
+                {
+                    std::cout << "\"" << sliceStringRemaining << "\", ";
+                }
+                std::cout << "}";
+            }
+            std::cout << std::endl;
+            return (toUpdateItr == newAttributes.end());
+        } else {
+            const Aws::DynamoDB::DynamoDBError error = result.GetError();
+            std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
+            if (error.ShouldRetry())
+            {
+                std::cout << "Retrying after 1 second..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            } else {
+                std::cout << "Not Retrying." << std::endl;
+                return false;
+            }
+        }
+    } while (true);
 }
