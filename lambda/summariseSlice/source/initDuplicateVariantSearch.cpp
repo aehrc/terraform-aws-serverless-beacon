@@ -22,7 +22,7 @@ vcfRegionData InitDuplicateVariantSearch::getFileNameInfo(string s) {
     string chrom = s.substr(chromPos, nthLastIndexOf(2, s) - chromPos);
     
     // This will convert chromosome 0-23 to a number and
-    // chromosome 'X'and 'Y' to an ASCII integer representave
+    // chromosome 'X' and 'Y' will remain as a character
     if (chrom.length() == 1 && chrom.c_str()[0] > '9') {
         regions.chrom = chrom.c_str()[0];
     } else {
@@ -38,7 +38,7 @@ vcfRegionData InitDuplicateVariantSearch::getFileNameInfo(string s) {
 }
 
 void InitDuplicateVariantSearch::createChromRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem) {
-    if (chromLookup.count(insertItem.chrom) == 0) {  // If we havent seen this chrom before, add a record.
+    if (chromLookup.count(insertItem.chrom) == 0) {  // If we haven't seen this chrom before, add a record.
         chromLookup[insertItem.chrom] = range{ insertItem.startRange, insertItem.endRange };
     } else {
         if (chromLookup[insertItem.chrom].start > insertItem.startRange) {
@@ -61,8 +61,8 @@ void InitDuplicateVariantSearch::filterChromAndRange(
     for (vcfRegionData rd : regionData) {
         bool isSameChrom = rd.chrom == chrom;
         bool isInRange = (
-            (rd.startRange <= start && start <= rd.endRange) || // If the start point lies withn the range
-            (rd.startRange <= end && end <= rd.endRange) || // If the end point lies withn the range
+            (rd.startRange <= start && start <= rd.endRange) || // If the start point lies within the range
+            (rd.startRange <= end && end <= rd.endRange) || // If the end point lies within the range
             (start < rd.startRange && rd.endRange < end) // If the start and end point encompass the range
         );
 

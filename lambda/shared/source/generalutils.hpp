@@ -16,7 +16,7 @@ namespace generalutils {
 
     // Chromosome to number lookup, must not exceed 15
     // as we are packing two into one byte
-    const map<char, uint8_t> chromosomeToBinary = {
+    const map<char, uint8_t> sequenceToBinary = {
         {'A', 1},
         {'C', 2},
         {'G', 3},

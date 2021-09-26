@@ -1,10 +1,14 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 import json
+import math
 import boto3
 from botocore.exceptions import ClientError
 
-VCF_SEARCH_BASE_PAIR_RANGE: int = 5000
+MAX_BASE_PAIR_DIGITS: int = 15
+MIN_DATA_SPLIT: int = 1036000
+ABS_MAX_DATA_SPLIT: int = 1536000
+
 DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = os.environ['DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN']
 VCF_DUPLICATES_TABLE_NAME = os.environ['VCF_DUPLICATES_TABLE']
 
@@ -16,6 +20,7 @@ dynamodb = boto3.client('dynamodb')
 class vcfRegionData:
     filepath: str
     filename: str
+    filesize: int
     chrom: str
     startRange: int
     endRange: int
@@ -24,6 +29,7 @@ class vcfRegionData:
 class basePairRange:
     start: int
     end: int
+    filePaths: 'list[str]' = field(default_factory=list)
 
 def retrieveS3Objects(bucket: str) -> 'list[str]':
     """Get a list of all keys in an S3 bucket."""
@@ -43,7 +49,7 @@ def retrieveS3Objects(bucket: str) -> 'list[str]':
     return keys
 
 def getFileNameInfo(filepath: str) -> vcfRegionData:
-    # Array looks like [ 'vcf-summaries', 'filename' , 'chromosomes', '1', 'regions', '10000-13333']
+    # Array looks like [ 'vcf-summaries', 'filename' , 'chromosomes', '1', 'regions', '43400310-43749862-125506']
     splitArray : list[str] = filepath.split('/')
     chrom: str = splitArray[-3]
     filename: str = splitArray[-5]
@@ -51,20 +57,13 @@ def getFileNameInfo(filepath: str) -> vcfRegionData:
     splitRange : list[str] = splitArray[-1].split('-')
     startRange: int = int(splitRange[0])
     endRange: int = int(splitRange[1])
+    fileSize: int = int(splitRange[2])
     
-    return vcfRegionData(filepath, filename, chrom, startRange, endRange)
+    return vcfRegionData(filepath, filename, fileSize, chrom, startRange, endRange)
 
-def createChromRegionsMap(chromLookup: 'dict[str, basePairRange]', insertItem: vcfRegionData) -> None:
-    if insertItem.chrom not in chromLookup: # If we haven't seen this chrom before, add a record.
-        chromLookup[insertItem.chrom] = basePairRange(insertItem.startRange, insertItem.endRange)
-    else:
-        if (chromLookup[insertItem.chrom].start > insertItem.startRange):
-            chromLookup[insertItem.chrom].start = insertItem.startRange
-        
-        if (chromLookup[insertItem.chrom].end < insertItem.endRange):
-            chromLookup[insertItem.chrom].end = insertItem.endRange
-
-def filterChromAndRange(currentSearchTargets: 'list[vcfRegionData]', regionData: 'list[vcfRegionData]', chrom: int, start: int, end: int) -> None:
+def filterChromAndRange(regionData: 'list[vcfRegionData]', chrom: int, start: int, end: int) -> 'tuple[int, list[vcfRegionData]]':
+    searchFiles: list[vcfRegionData] = []
+    rangeSize: int = 0
     for rd in regionData:
         isSameChrom: bool = rd.chrom == chrom
         isInRange: bool = (
@@ -74,7 +73,41 @@ def filterChromAndRange(currentSearchTargets: 'list[vcfRegionData]', regionData:
         )
 
         if (isSameChrom and isInRange):
-            currentSearchTargets.append(rd)
+            searchFiles.append(rd)
+            rangeSize = rangeSize + rd.filesize
+    return rangeSize, searchFiles
+
+# Add a range to the rangeSlices array, return the starting point for the next loop
+def addRange(regionData: 'list[vcfRegionData]', chrom: str, startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
+    rangeSize, fileList = filterChromAndRange(regionData, chrom, startRange, endRange)
+
+    while rangeSize > ABS_MAX_DATA_SPLIT:
+        # catch issue where there could be no more items in the list, return the minimum list if this happens
+        try:
+            # Keep all files less than than the endRange
+            # Take the maximum of this result to be the new end
+            newEnd = max(file.endRange for file in fileList if file.endRange < endRange)
+            rangeSize, fileList = filterChromAndRange(fileList, chrom, startRange, newEnd)
+        except ValueError:
+            print("Issue with reducing the dataset, Max value exceeded")
+            newEnd = endRange
+        
+        if endRange == newEnd:
+            break
+        endRange = newEnd
+    
+    rangeSlices[chrom].append(basePairRange(startRange, endRange, [file.filepath for file in fileList]))
+    # print("Start R:", startRange, "End R:", endRange, f"({MIN_DATA_SPLIT} <= {rangeSize} <= {ABS_MAX_DATA_SPLIT}) =", MIN_DATA_SPLIT <= rangeSize <= ABS_MAX_DATA_SPLIT, [file.filepath for file in fileList])
+
+    return endRange + 1, (regionData.index(fileList[-1]) + 1)
+
+
+# https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
+# DynamoDB transactional API operations have the following constraints:
+# A transaction cannot contain more than 25 unique items.
+# A transaction cannot contain more than 4 MB of data.
+# There is no limit on the number of values in a List, a Map, or a Set, as long as the item containing the values fits within the 400 KB (409600 bytes) item size limit.
+# The size of a List or Map is (length of attribute name) + sum (size of nested elements) + (3 bytes)
 
 def mark_updating(chrom: str, slices : 'list[basePairRange]'):
     slice_strings = [f'{s.start}-{s.end}' for s in slices]
@@ -104,58 +137,58 @@ def mark_updating(chrom: str, slices : 'list[basePairRange]'):
             raise e
     return True
 
-def initDuplicateVariantSearch(filepaths: 'list[str]') -> None:
-    print('filepaths:', filepaths)
-    filenames: list[str] = [fn.split('/')[-1].split('.')[0] for fn in filepaths]
-    print('filenames:', filenames)
-    s3Objects: list[str] = retrieveS3Objects("large-test-vcfs")
-    # print('s3Objects:', s3Objects)
+def sortVcfRegion(elem: vcfRegionData):
+    return elem.chrom + str(elem.startRange).zfill(MAX_BASE_PAIR_DIGITS)
 
-    chromLookup: dict[str, basePairRange] = {}
+def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'dict[str, list[basePairRange]]':
+    rangeSlices : 'dict[str, list[basePairRange]]' = {} # This is the data structure we are trying to fill in
+    runningTotal: int = 0
+    chromEndTracker: int = 0
+    chrom: str = regionData[0].chrom
+    startRange: int = regionData[0].startRange
+    itemInc: int = 0
 
-    regionData: list[vcfRegionData] = []
-    for filepath in s3Objects:
-        splitfilepath: vcfRegionData = getFileNameInfo(filepath)
-        if splitfilepath.filename in filenames:
-            regionData.append(splitfilepath)
-            createChromRegionsMap(chromLookup, regionData[-1])
+    while startRange - 1 != regionData[-1].endRange:
+        element = regionData[itemInc]
+        # Init the range slice with a new chrom if needed
+        if chrom not in rangeSlices:
+            rangeSlices[chrom] = []
 
-    # print('regionData: ', [out.filename for out in regionData])
-    rangeSlices : dict[str, list[basePairRange]] = {}
+        # If we are switching chrom, finish the other range first
+        if chrom != element.chrom:
+            # Check to see if the range is valid, it could have just been added
+            if runningTotal != 0:
+                addRange(regionData, chrom, startRange, chromEndTracker, rangeSlices)
+            # Reset variables ready for this chrom
+            runningTotal = 0
+            chrom = element.chrom
+            startRange = element.startRange
+
+        chromEndTracker = element.endRange
+        if runningTotal < MIN_DATA_SPLIT:
+            runningTotal = runningTotal + element.filesize
+            itemInc = itemInc + 1 if itemInc + 1 < len(regionData) else itemInc
+        else:
+            # We have hit the minimum amount required, gather other files and return the next starting point
+            startRange, itemInc = addRange(regionData, chrom, startRange, element.endRange, rangeSlices)
+            runningTotal = 0
+
+    if runningTotal != 0:
+        addRange(regionData, chrom, startRange, chromEndTracker, rangeSlices)
     
-    for chrom, reg in chromLookup.items():
-        if (reg.end < reg.start):
-            raise Exception("logic error: region end is greater than region start")
-        rangeSlices[chrom] = []
+    return rangeSlices
 
-        for rangeStart in range(reg.start, reg.end, VCF_SEARCH_BASE_PAIR_RANGE):
-            rangeEnd: int = reg.end if rangeStart + VCF_SEARCH_BASE_PAIR_RANGE > reg.end else rangeStart + VCF_SEARCH_BASE_PAIR_RANGE - 1
-            rangeSlices[chrom].append(basePairRange(rangeStart, rangeEnd))
-            # print(rangeStart, rangeEnd)
-
+def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]') -> None:
     for chrom, baseRange in rangeSlices.items():
         # Only send the SNS if the database update succeeds
         if mark_updating(chrom, baseRange):
             for br in baseRange: 
-                currentSearchTargets: list[vcfRegionData] = []
-                filterChromAndRange(
-                    currentSearchTargets,
-                    regionData,
-                    chrom,
-                    br.start,
-                    br.end
-                )
-
-                targetFilepaths: list[str] = []
-                for cst in currentSearchTargets:
-                    targetFilepaths.append(cst.filepath)
-
                 message = {
                     'bucket': "large-test-vcfs", # TODO
                     'rangeStart': br.start,
                     'rangeEnd': br.end,
                     'chrom': chrom,
-                    'targetFilepaths': targetFilepaths
+                    'targetFilepaths': br.filePaths
                 }
 
                 kwargs = {
@@ -163,5 +196,24 @@ def initDuplicateVariantSearch(filepaths: 'list[str]') -> None:
                     'Message': json.dumps(message),
                 }
                 print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
+                continue # TODO
                 response = sns.publish(**kwargs)
                 print('Received Response: {}'.format(json.dumps(response)))
+
+def initDuplicateVariantSearch(filepaths: 'list[str]') -> None:
+    print('filepaths:', filepaths)
+    filenames: list[str] = [fn.split('/')[-1].split('.')[0] for fn in filepaths]
+    print('filenames:', filenames)
+    s3Objects: list[str] = retrieveS3Objects("large-test-vcfs")
+    # print('s3Objects:', s3Objects)
+
+    regionData: list[vcfRegionData] = []
+    for filepath in s3Objects:
+        splitfilepath: vcfRegionData = getFileNameInfo(filepath)
+        if splitfilepath.filename in filenames:
+            regionData.append(splitfilepath)
+    regionData.sort(key=sortVcfRegion)
+
+    rangeSlices : 'dict[str, list[basePairRange]]' = calcRangeSplits(regionData)
+    print(rangeSlices)
+    insertDatabaseAndCallSNS(rangeSlices)

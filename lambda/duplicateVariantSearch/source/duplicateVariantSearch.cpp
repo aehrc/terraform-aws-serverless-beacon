@@ -107,8 +107,7 @@ bool DuplicateVariantSearch::containsExistingFilepath(vector<string> &existingFi
     return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
 }
 
-string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned precision)
-{
+string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned precision) {
     ostringstream oss;
     oss << setw(precision) << setfill('0') << value;
     return oss.str();
@@ -188,7 +187,7 @@ int DuplicateVariantSearch::searchForDuplicates() {
         }
         size_t duplicatesCounter = 0;
         for (auto const& [key2, val2]: duplicates) {
-            duplicatesCounter += val2.size();
+            duplicatesCounter += val2.size() - 1;
         }
         duplicatesCount[dupCountKey] += duplicatesCounter;
         // cout << "duplicate counts for chrom " << key << " range " << dupCountKey << " - " << duplicatesCounter << endl;
@@ -210,15 +209,14 @@ int DuplicateVariantSearch::searchForDuplicates() {
     return totalCount;
 }
 
-bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount)
-{
+bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("VCF_DUPLICATES_TABLE"));
 
     Aws::DynamoDB::Model::AttributeValue keyValue;
     keyValue.SetS(_chrom);
     request.AddKey("vcfDuplicates", keyValue);
-    request.SetUpdateExpression("ADD variantCount :numVariants DELETE toUpdate :sliceStringSet");
+    request.SetUpdateExpression("ADD duplicateCount :numVariants DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
 
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
@@ -241,29 +239,19 @@ bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount)
     do {
         std::cout << "Calling dynamodb::UpdateItem with key=\"" << _chrom << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
         const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
-        if (result.IsSuccess())
-        {
+        if (result.IsSuccess()) {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
-            std::cout << "Item was updated, new item has following values for these attributes: variantCount=";
-            auto variantCountItr = newAttributes.find("variantCount");
-            if (variantCountItr != newAttributes.end())
-            {
-                std::cout << variantCountItr->second.GetN();
-            }
-            std::cout << ", callCount=";
-            auto callCountItr = newAttributes.find("callCount");
-            if (callCountItr != newAttributes.end())
-            {
-                std::cout << callCountItr->second.GetN();
+            std::cout << "Item was updated, new item has following values for these attributes: duplicateCount=";
+            auto duplicateCountItr = newAttributes.find("duplicateCount");
+            if (duplicateCountItr != newAttributes.end()) {
+                std::cout << duplicateCountItr->second.GetN();
             }
             std::cout << ", toUpdate=";
             auto toUpdateItr = newAttributes.find("toUpdate");
-            if (toUpdateItr != newAttributes.end())
-            {
+            if (toUpdateItr != newAttributes.end()) {
                 std::cout << "{";
                 Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
-                for (Aws::String sliceStringRemaining : toUpdateNew)
-                {
+                for (Aws::String sliceStringRemaining : toUpdateNew) {
                     std::cout << "\"" << sliceStringRemaining << "\", ";
                 }
                 std::cout << "}";
@@ -273,8 +261,7 @@ bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount)
         } else {
             const Aws::DynamoDB::DynamoDBError error = result.GetError();
             std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
-            if (error.ShouldRetry())
-            {
+            if (error.ShouldRetry()) {
                 std::cout << "Retrying after 1 second..." << std::endl;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;

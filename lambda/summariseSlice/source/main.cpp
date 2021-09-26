@@ -26,6 +26,10 @@
 #include "stopwatch.h"
 #include "initDuplicateVariantSearch.hpp"
 
+
+// #define INCLUDE_STOP_WATCH
+// #define DEBUG_ON
+
 using namespace std;
 
 constexpr const char* TAG = "LAMBDA_ALLOC";
@@ -37,8 +41,8 @@ constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C',
 constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
 constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
 constexpr uint_fast8_t XLEN_OFFSET = 10;
-constexpr uint VCF_S3_OUTPUT_SIZE_LIMIT = 10000;
-
+#define VCF_S3_OUTPUT_SIZE_LIMIT 100000
+#define MAX_SLICE_GAP 100000
 
 struct VcfChunk
 {
@@ -180,8 +184,10 @@ class VcfChunkReader
     uint_fast16_t blockXlen;
     size_t blockCompressedStart;
     uint_fast32_t blockChars;
+#ifdef INCLUDE_STOP_WATCH
     stop_watch stopWatch;
     uint reads;
+#endif
 
     public:
     VcfChunkReader(Aws::String bucket, Aws::String key, Aws::S3::S3Client const& s3Client, VcfChunk chunk)
@@ -193,8 +199,12 @@ class VcfChunkReader
      finalUncompressed(chunk.endUncompressed), uncompressedChars(new char[BGZIP_MAX_BLOCKSIZE]),
      readBufferStart(uncompressedChars), readBufferLength(0),
      charPos(0), currentSlice(1), windowIndex(0), windowStart(BGZIP_MAX_BLOCKSIZE), totalCSize(0),
-     totalUSize(0), blockChars(0), stopWatch(), reads(0)
+     totalUSize(0), blockChars(0)
     {
+#ifdef INCLUDE_STOP_WATCH
+        stopWatch = stop_watch();
+        reads = 0;
+#endif
         do {
             downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
             downloadNext();
@@ -351,13 +361,17 @@ class VcfChunkReader
         } else {
             inflateReset(&zStream);
         }
+#ifdef INCLUDE_STOP_WATCH
         stopWatch.start();
+#endif
         inflate(&zStream, Z_FINISH);
+#ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
         if (++reads <= 10 || (reads > 15000 && reads <= 15010))
         {
             std::cout << "Inflate took: " << stopWatch << " to inflate " << nextBlockStart - blockStart - blockXlen - 20 << " bytes into " << blockChars << " bytes on read " << reads << std::endl;
         }
+#endif
     }
 
     template <char charA, char charB>
@@ -482,10 +496,6 @@ class writeDataToS3 {
     }
 
     bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
-        Aws::S3::Model::PutObjectRequest request;
-        request.SetBucket(bucketName);
-        request.SetKey(objectName);
-
         const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
 
         while (!input.empty()) {
@@ -494,6 +504,12 @@ class writeDataToS3 {
             stringToFile(input_data, input.front().alt);
             input.pop();
         }
+        input_data->seekg( 0, ios::end );
+        objectName += "-" + to_string(input_data->tellg());
+
+        Aws::S3::Model::PutObjectRequest request;
+        request.SetBucket(bucketName);
+        request.SetKey(objectName);
         request.SetBody(input_data);
 
         Aws::S3::Model::PutObjectOutcome outcome = client.PutObject(request);
@@ -516,20 +532,29 @@ class writeDataToS3 {
         }
     }
 
-    string seqToBin(const char *s, size_t n) {
+    string compressSeq(const char *s, size_t n) {
         uint8_t chromBin;
         if (n == 1) {
-            chromBin = generalutils::chromosomeToBinary.at(s[0]);
+            chromBin = generalutils::sequenceToBinary.at(s[0]);
             return string(1, chromBin);
+        }
+
+
+        // TODO look into ways to compress this a little
+        // Ideas: DEL, INS, DUP could be compressed into one byte
+        // Remove ':' char
+        if (s[0] == '<' && s[n-1] == '>') {
+            // Return the contents of the variant genome
+            return string(&s[1], n-2);
         }
 
         string concat = "";
         // Pack two chars into one byte by using custom compression
         for (size_t i=0; i<n; i+=2) {
-            chromBin = generalutils::chromosomeToBinary.at(s[i]);
+            chromBin = generalutils::sequenceToBinary.at(s[i]);
             if (i+1 < n) {
                 chromBin = chromBin << 4;
-                chromBin |= generalutils::chromosomeToBinary.at(s[i+1]);
+                chromBin |= generalutils::sequenceToBinary.at(s[i+1]);
             }
             concat.append((char*)(&chromBin));
         }
@@ -576,25 +601,31 @@ class writeDataToS3 {
                     case 2:
                         d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);
 
-                        if (vcfBuffer.size() > 0 && d.pos < vcfBuffer.back().pos) {
-                            cout << "d.pos: " << d.pos << " vcfBuffer.back().pos: " << vcfBuffer.back().pos << endl;
-                            throw runtime_error("unsorted file");
+                        if (vcfBuffer.size() > 0) {
+                            if (d.pos < vcfBuffer.back().pos) {
+                                cout << "d.pos: " << d.pos << " vcfBuffer.back().pos: " << vcfBuffer.back().pos << endl;
+                                throw runtime_error("unsorted file");
+                            }
+
+                            // Remove large gaps in file data by saving a new file when a large gap is found
+                            if (d.pos > vcfBuffer.back().pos + MAX_SLICE_GAP) {
+                                saveNewFile();
+                            }
                         }
                         reader.skipPast<1, '\t'>();
                         loopPos++;
                         break;
                     case 4:
-                        d.ref = seqToBin(firstChar_p, numChars);
-                        // d.ref.push(generalutils::chromosomeToBinary.at(firstChar_p[0]));
+                        d.ref = compressSeq(firstChar_p, numChars);
                         break;
                     case 5:
-                        d.alt = seqToBin(firstChar_p, numChars);
-                        // d.alt.push(generalutils::chromosomeToBinary.at(firstChar_p[0]));
+                        d.alt = compressSeq(firstChar_p, numChars);
 
                         // If we have more ref to proccess decrement the loop so we get the next
                         if (lastChar == ',') {
                             loopPos--;
                         }
+                        
                         vcfBuffer.push(d);
                         // cout << "last char: " << lastChar << " " << (lastChar == ',') << endl;
                         break;
@@ -648,13 +679,19 @@ void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
                 }
             } else if (memcmp(firstChar_p, anTag, 3) == 0) {
                 foundAn = true;
-                regionStats.numCalls += atoui64(firstChar_p+3, (uint8_t)numChars-3);
-            } else {
+                regionStats.numCalls += atoui64(firstChar_p+3, (uint8_t)(numChars)-3);
+            }
+#ifdef DEBUG_ON
+            else {
                 std::cout << "Found unrecognised INFO field: \"" << Aws::String(firstChar_p, numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
             }
-        } else {
+#endif
+        }
+#ifdef DEBUG_ON
+        else {
             std::cout << "Found short unrecognised INFO field: \"" << Aws::String(reader.getReadStart(), numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
         }
+#endif
         if (lastChar == '\t' && !(foundAc && foundAn))
         {
             std::cout << "Did not find either AC or AN. AC found: " << foundAc << ". AN found: " << foundAn << std::endl;
@@ -760,8 +797,10 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
             break;
         }
     }
+#ifdef INCLUDE_STOP_WATCH
     stop_watch s = stop_watch();
     s.start();
+#endif
     VcfChunkReader vcfChunkReader(bucket, key, s3Client, chunk);
     std::cout << "Loaded Reader" << std::endl;
     writeDataToS3 s3Data = writeDataToS3(bucket, key, s3Client);
@@ -785,10 +824,12 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
         vcfChunkReader.skipPast<1, '\n'>();
         records += 1;
     }
+#ifdef INCLUDE_STOP_WATCH
     s.stop();
     std::cout << "Finished processing " << vcfChunkReader.totalBytes << " bytes in " << s << " (" << 1000 * vcfChunkReader.totalBytes / s.nanoseconds << "MB/s)" << std::endl;
     std::cout << "vcfChunkReader read " << vcfChunkReader.reads << " blocks completely, found compressed size: " << vcfChunkReader.totalCSize << " and uncompressed size: " << vcfChunkReader.totalUSize << " with records: " << records << std::endl;
     std::cout << "numVariants: " << regionStats.numVariants << ", numCalls: " << regionStats.numCalls << std::endl;
+#endif
     return regionStats;
 }
 
