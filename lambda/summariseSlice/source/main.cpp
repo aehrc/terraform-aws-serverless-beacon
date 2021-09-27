@@ -32,6 +32,7 @@
 
 using namespace std;
 
+const string S3_SUMMARIES_BUCKET = getenv("S3_SUMMARIES_BUCKET");
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
 constexpr uint_fast8_t BGZIP_BLOCK_START_LENGTH = 4;
@@ -482,7 +483,6 @@ class VcfChunkReader
 
 class writeDataToS3 {
     private:
-    string const s3BucketName;
     string s3BucketKey;
     Aws::S3::S3Client const& s3Client;
     queue<generalutils::vcfData> vcfBuffer;
@@ -495,7 +495,7 @@ class writeDataToS3 {
         file->write(input.c_str(), length);
     }
 
-    bool saveOutputToS3(string bucketName, string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
+    bool saveOutputToS3(string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
         const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
 
         while (!input.empty()) {
@@ -508,7 +508,7 @@ class writeDataToS3 {
         objectName += "-" + to_string(input_data->tellg());
 
         Aws::S3::Model::PutObjectRequest request;
-        request.SetBucket(bucketName);
+        request.SetBucket(S3_SUMMARIES_BUCKET);
         request.SetKey(objectName);
         request.SetBody(input_data);
 
@@ -520,7 +520,7 @@ class writeDataToS3 {
             return false;
         }
         else {
-            cout << "Success: Object '" << objectName << "' uploaded to bucket '" << bucketName << "'." << endl;
+            cout << "Success: Object '" << objectName << "' uploaded to bucket '" << S3_SUMMARIES_BUCKET << "'." << endl;
             return true;
         }
     }
@@ -528,7 +528,7 @@ class writeDataToS3 {
     void saveNewFile() {
         if (vcfBuffer.size() > 0) {
             string fileNameAppend = "/chromosomes/" + chrom + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
-            saveOutputToS3(s3BucketName, "vcf-summaries/" + s3BucketKey + fileNameAppend, s3Client, vcfBuffer);
+            saveOutputToS3("vcf-summaries/" + s3BucketKey + fileNameAppend, s3Client, vcfBuffer);
         }
     }
 
@@ -562,8 +562,7 @@ class writeDataToS3 {
     }
 
     public:
-    writeDataToS3(string bucket, string key, Aws::S3::S3Client const& client):
-    s3BucketName(bucket),
+    writeDataToS3(string key, Aws::S3::S3Client const& client):
     s3BucketKey(key),
     s3Client(client) {
         s3BucketKey = regex_replace(s3BucketKey, regex("\\.vcf\\.gz"), "");
@@ -803,7 +802,7 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
 #endif
     VcfChunkReader vcfChunkReader(bucket, key, s3Client, chunk);
     std::cout << "Loaded Reader" << std::endl;
-    writeDataToS3 s3Data = writeDataToS3(bucket, key, s3Client);
+    writeDataToS3 s3Data = writeDataToS3(key, s3Client);
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     RegionStats regionStats = RegionStats();

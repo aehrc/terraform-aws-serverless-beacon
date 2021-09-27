@@ -11,6 +11,7 @@ ABS_MAX_DATA_SPLIT: int = 1536000
 
 DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = os.environ['DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN']
 VCF_DUPLICATES_TABLE_NAME = os.environ['VCF_DUPLICATES_TABLE']
+S3_SUMMARIES_BUCKET = os.environ['S3_SUMMARIES_BUCKET']
 
 s3 = boto3.client('s3')
 sns = boto3.client('sns')
@@ -184,7 +185,7 @@ def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]') -> 
         if mark_updating(chrom, baseRange):
             for br in baseRange: 
                 message = {
-                    'bucket': "large-test-vcfs", # TODO
+                    'bucket': S3_SUMMARIES_BUCKET,
                     'rangeStart': br.start,
                     'rangeEnd': br.end,
                     'chrom': chrom,
@@ -196,7 +197,7 @@ def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]') -> 
                     'Message': json.dumps(message),
                 }
                 print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
-                continue # TODO
+                # continue # TODO
                 response = sns.publish(**kwargs)
                 print('Received Response: {}'.format(json.dumps(response)))
 
@@ -204,7 +205,7 @@ def initDuplicateVariantSearch(filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
     filenames: list[str] = [fn.split('/')[-1].split('.')[0] for fn in filepaths]
     print('filenames:', filenames)
-    s3Objects: list[str] = retrieveS3Objects("large-test-vcfs")
+    s3Objects: list[str] = retrieveS3Objects(S3_SUMMARIES_BUCKET)
     # print('s3Objects:', s3Objects)
 
     regionData: list[vcfRegionData] = []

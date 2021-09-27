@@ -32,10 +32,10 @@ vector<generalutils::vcfData> ReadVcfData::getVcfData() {
 string ReadVcfData::readString(size_t &bufferPos) {
     uint8_t stringLen = _streamBuffer[bufferPos];
     string ret = "";
-    if (stringLen != 1) {
-        cout << "Found string with len: " << (uint16_t) stringLen << " At Pos: " << bufferPos << endl;
-        throw runtime_error("Invalid length read");
-    }
+    // if (stringLen != 1) {
+    //     cout << "Found string with len: " << (uint16_t) stringLen << " At Pos: " << bufferPos << endl;
+    //     throw runtime_error("Invalid length read");
+    // }
     bufferPos += 1; // A byte for the length
     if (checkForAvailableData(stringLen, bufferPos)) {
         ret = string(stringLen, _streamBuffer[bufferPos]);

@@ -23,3 +23,9 @@ variable "common-tags" {
   description = "A set of tags to attach to every created resource."
   default = {}
 }
+
+variable "summaries-bucket-prefix" {
+    type        = string
+    description = "S3 bucket for storing vcf summaries used for duplicate variant searches"
+    default     = ""
+}

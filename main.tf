@@ -55,6 +55,7 @@ module "lambda-summariseDataset" {
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
       VCF_DUPLICATES_TABLE = aws_dynamodb_table.vcf_duplicates.name
       DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
+      S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
     }
   }
 }
@@ -116,6 +117,7 @@ module "lambda-summariseSlice" {
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+      S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
     }
   }
 }
@@ -249,5 +251,14 @@ module "lambda-performQuery" {
     json = data.aws_iam_policy_document.lambda-performQuery.json
   }
   source_path = "${path.module}/lambda/performQuery"
+  tags = var.common-tags
+}
+
+#
+# S3 bucket for persisted vcf summaries (duplicate variant search feature)
+#
+resource "aws_s3_bucket" "s3-summaries-bucket" {
+  bucket_prefix = var.summaries-bucket-prefix
+  acl = "private"
   tags = var.common-tags
 }
