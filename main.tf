@@ -2,6 +2,9 @@ locals {
   api_version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
+  
+  maximum_load_file_size  = 1536000
+  vcf_processed_file_size = 100000
 }
 
 #
@@ -56,6 +59,8 @@ module "lambda-summariseDataset" {
       VCF_DUPLICATES_TABLE = aws_dynamodb_table.vcf_duplicates.name
       DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
       S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
+      MIN_DATA_SPLIT = local.maximum_load_file_size - local.vcf_processed_file_size
+      ABS_MAX_DATA_SPLIT = local.maximum_load_file_size
     }
   }
 }
@@ -118,6 +123,8 @@ module "lambda-summariseSlice" {
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
       S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
+      MAX_SLICE_GAP = local.vcf_processed_file_size
+      VCF_S3_OUTPUT_SIZE_LIMIT = local.vcf_processed_file_size
     }
   }
 }

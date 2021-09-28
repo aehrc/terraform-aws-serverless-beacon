@@ -1,6 +1,7 @@
 #include <iostream>
 #include <queue>
 #include <stdint.h>
+#include <stdlib.h>
 #include <zlib.h>
 #include <regex>
 #include <generalutils.hpp>
@@ -24,7 +25,6 @@
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
-#include "initDuplicateVariantSearch.hpp"
 
 
 // #define INCLUDE_STOP_WATCH
@@ -33,6 +33,10 @@
 using namespace std;
 
 const string S3_SUMMARIES_BUCKET = getenv("S3_SUMMARIES_BUCKET");
+const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
+const string SLICE_GAP = getenv("MAX_SLICE_GAP");
+const uint_fast64_t VCF_S3_OUTPUT_SIZE_LIMIT = atoll(OUTPUT_SIZE_LIMIT.c_str());
+const uint_fast64_t MAX_SLICE_GAP = atoll(SLICE_GAP.c_str());
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
 constexpr uint_fast8_t BGZIP_BLOCK_START_LENGTH = 4;
@@ -42,8 +46,6 @@ constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C',
 constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
 constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
 constexpr uint_fast8_t XLEN_OFFSET = 10;
-#define VCF_S3_OUTPUT_SIZE_LIMIT 100000
-#define MAX_SLICE_GAP 100000
 
 struct VcfChunk
 {
