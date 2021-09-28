@@ -114,12 +114,8 @@ string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned
 }
 
 int DuplicateVariantSearch::searchForDuplicates() {
-    map<string, size_t> duplicatesCount;
+    size_t duplicatesCount = 0;
     uint targetFilepathsLength = _targetFilepaths.GetLength();
-
-    // TODO: Remove key to save on proccessing power
-    string dupCountKey = to_zero_lead(_rangeStart, 6) + "-" + to_zero_lead(_rangeEnd, 6);
-    duplicatesCount[dupCountKey] = 0;
 
     // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
     if (targetFilepathsLength > 1) {
@@ -143,7 +139,6 @@ int DuplicateVariantSearch::searchForDuplicates() {
                 // strategically compare files only once
                 if (j != m && fileLookup.count(targetFilepathM) > 0) {
 
-                    // TODO - check whether the entire file has been loaded
                     vector<generalutils::vcfData> file2 = fileLookup[targetFilepathM];
 
                     // Skip the first part of the file if the data we are comparing doesn't matchup.
@@ -185,28 +180,17 @@ int DuplicateVariantSearch::searchForDuplicates() {
                 }
             }
         }
-        size_t duplicatesCounter = 0;
         for (auto const& [key2, val2]: duplicates) {
-            duplicatesCounter += val2.size() - 1;
+            duplicatesCount += val2.size() - 1;
         }
-        duplicatesCount[dupCountKey] += duplicatesCounter;
-        // cout << "duplicate counts for chrom " << key << " range " << dupCountKey << " - " << duplicatesCounter << endl;
 
     } else {
         cout << "Only one file for this region, continue" << endl;
     }
 
-    cout << "duplicatesCount: " << endl;
-    int totalCount = 0;
-    for (auto const& [key, val]: duplicatesCount) {
-        cout << "base pair range: " << key << " count of duplicates: " << val << endl;
-        totalCount += val;
-        cout << endl;
-    }
-    cout << "Final Tally: " << totalCount << endl;
-    updateVcfDuplicates(totalCount);
-
-    return totalCount;
+    cout << "Final Tally: " << duplicatesCount << endl;
+    updateVcfDuplicates(duplicatesCount);
+    return duplicatesCount;
 }
 
 bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount) {
