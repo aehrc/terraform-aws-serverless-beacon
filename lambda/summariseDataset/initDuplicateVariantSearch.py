@@ -6,8 +6,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 MAX_BASE_PAIR_DIGITS: int = 15
-MIN_DATA_SPLIT: int = os.environ['MIN_DATA_SPLIT']
-ABS_MAX_DATA_SPLIT: int = os.environ['ABS_MAX_DATA_SPLIT']
+MIN_DATA_SPLIT: str = os.environ['MIN_DATA_SPLIT']
+ABS_MAX_DATA_SPLIT: str = os.environ['ABS_MAX_DATA_SPLIT']
 
 DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = os.environ['DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN']
 VCF_DUPLICATES_TABLE_NAME = os.environ['VCF_DUPLICATES_TABLE']
@@ -82,7 +82,7 @@ def filterChromAndRange(regionData: 'list[vcfRegionData]', chrom: int, start: in
 def addRange(regionData: 'list[vcfRegionData]', chrom: str, startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
     rangeSize, fileList = filterChromAndRange(regionData, chrom, startRange, endRange)
 
-    while rangeSize > ABS_MAX_DATA_SPLIT:
+    while rangeSize > int(ABS_MAX_DATA_SPLIT):
         # catch issue where there could be no more items in the list, return the minimum list if this happens
         try:
             # Keep all files less than than the endRange
@@ -166,7 +166,7 @@ def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'dict[str, list[baseP
             startRange = element.startRange
 
         chromEndTracker = element.endRange
-        if runningTotal < MIN_DATA_SPLIT:
+        if runningTotal < int(MIN_DATA_SPLIT):
             runningTotal = runningTotal + element.filesize
             itemInc = itemInc + 1 if itemInc + 1 < len(regionData) else itemInc
         else:
