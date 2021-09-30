@@ -14,7 +14,7 @@ namespace generalutils {
         string alt;
     };
 
-    // Chromosome to number lookup, must not exceed 15
+    // Contig to number lookup, must not exceed 15
     // as we are packing two into one byte
     const map<char, uint8_t> sequenceToBinary = {
         {'A', 1},

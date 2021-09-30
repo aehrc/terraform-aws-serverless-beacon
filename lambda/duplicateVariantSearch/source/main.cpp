@@ -38,10 +38,11 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     Aws::String bucket = messageView.GetString("bucket");
     uint64_t rangeStart = messageView.GetInt64("rangeStart");
     uint64_t rangeEnd = messageView.GetInt64("rangeEnd");
-    Aws::String chrom = messageView.GetString("chrom");
+    Aws::String contig = messageView.GetString("contig");
     Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths = messageView.GetArray("targetFilepaths");
+    Aws::String dataset = messageView.GetString("dataset");
 
-    DuplicateVariantSearch(s3Client, dynamodbClient, bucket, rangeStart, rangeEnd, chrom, targetFilepaths).searchForDuplicates();
+    DuplicateVariantSearch(s3Client, dynamodbClient, bucket, rangeStart, rangeEnd, contig, targetFilepaths, dataset).searchForDuplicates();
 
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
 }

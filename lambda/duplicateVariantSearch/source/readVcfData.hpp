@@ -8,7 +8,7 @@ constexpr size_t MIN_DATA_SIZE = sizeof(generalutils::vcfData::pos) + 4;
 
 struct vcfRegionData  { 
     string filepath; 
-    uint16_t chrom;
+    uint16_t contig;
     uint64_t startRange;
     uint64_t endRange;
 };

@@ -33,9 +33,7 @@
 using namespace std;
 
 const string S3_SUMMARIES_BUCKET = getenv("S3_SUMMARIES_BUCKET");
-const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
 const string SLICE_GAP = getenv("MAX_SLICE_GAP");
-const uint_fast64_t VCF_S3_OUTPUT_SIZE_LIMIT = atoll(OUTPUT_SIZE_LIMIT.c_str());
 const uint_fast64_t MAX_SLICE_GAP = atoll(SLICE_GAP.c_str());
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
@@ -489,7 +487,7 @@ class writeDataToS3 {
     Aws::S3::S3Client const& s3Client;
     queue<generalutils::vcfData> vcfBuffer;
     uint16_t startBasePairRegion;
-    string chrom = "";
+    string contig = "";
 
     void stringToFile(const std::shared_ptr<Aws::IOStream> &file, string &input) {
         uint8_t length = (uint8_t)(input.size() & 0xff);
@@ -529,16 +527,16 @@ class writeDataToS3 {
 
     void saveNewFile() {
         if (vcfBuffer.size() > 0) {
-            string fileNameAppend = "/chromosomes/" + chrom + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
+            string fileNameAppend = "/contig/" + contig + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
             saveOutputToS3("vcf-summaries/" + s3BucketKey + fileNameAppend, s3Client, vcfBuffer);
         }
     }
 
     string compressSeq(const char *s, size_t n) {
-        uint8_t chromBin;
+        uint8_t contigBin;
         if (n == 1) {
-            chromBin = generalutils::sequenceToBinary.at(s[0]);
-            return string(1, chromBin);
+            contigBin = generalutils::sequenceToBinary.at(s[0]);
+            return string(1, contigBin);
         }
 
 
@@ -553,12 +551,12 @@ class writeDataToS3 {
         string concat = "";
         // Pack two chars into one byte by using custom compression
         for (size_t i=0; i<n; i+=2) {
-            chromBin = generalutils::sequenceToBinary.at(s[i]);
+            contigBin = generalutils::sequenceToBinary.at(s[i]);
             if (i+1 < n) {
-                chromBin = chromBin << 4;
-                chromBin |= generalutils::sequenceToBinary.at(s[i+1]);
+                contigBin = contigBin << 4;
+                contigBin |= generalutils::sequenceToBinary.at(s[i+1]);
             }
-            concat.append((char*)(&chromBin));
+            concat.append((char*)(&contigBin));
         }
         return concat;
     }
@@ -580,7 +578,7 @@ class writeDataToS3 {
         generalutils::vcfData d;
         uint8_t loopPos = 0;
 
-        if (chrom.length() != 0) {
+        if (contig.length() != 0) {
             reader.skipPast<1, '\t'>();
             loopPos = 1;
         }
@@ -595,9 +593,9 @@ class writeDataToS3 {
             const size_t numChars = reader.getReadLength();
             if (numChars >= 1) {
                 switch(++loopPos) {
-                    // one chrom per read file
+                    // one contig per read file
                     case 1:
-                        chrom = string(firstChar_p, numChars);
+                        contig = string(firstChar_p, numChars);
                         break;
                     case 2:
                         d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);
@@ -638,11 +636,6 @@ class writeDataToS3 {
 
         // Skip the last two fields so we exit with the reader pointing to the INFO field
         reader.skipPast<2, '\t'>();
-
-        // Save the buffer to a file if we have reached a size limit
-        if (vcfBuffer.size() > VCF_S3_OUTPUT_SIZE_LIMIT) {
-            saveNewFile();
-        }
     }
 };
 

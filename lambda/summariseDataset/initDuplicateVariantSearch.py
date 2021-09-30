@@ -6,11 +6,10 @@ import boto3
 from botocore.exceptions import ClientError
 
 MAX_BASE_PAIR_DIGITS: int = 15
-MIN_DATA_SPLIT: str = os.environ['MIN_DATA_SPLIT']
-ABS_MAX_DATA_SPLIT: str = os.environ['ABS_MAX_DATA_SPLIT']
+ABS_MAX_DATA_SPLIT: int = int(os.environ['ABS_MAX_DATA_SPLIT'])
 
 DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = os.environ['DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN']
-VCF_DUPLICATES_TABLE_NAME = os.environ['VCF_DUPLICATES_TABLE']
+VARIANT_DUPLICATES_TABLE_NAME = os.environ['VARIANT_DUPLICATES_TABLE']
 S3_SUMMARIES_BUCKET = os.environ['S3_SUMMARIES_BUCKET']
 
 s3 = boto3.client('s3')
@@ -22,7 +21,7 @@ class vcfRegionData:
     filepath: str
     filename: str
     filesize: int
-    chrom: str
+    contig: str
     startRange: int
     endRange: int
 
@@ -50,9 +49,9 @@ def retrieveS3Objects(bucket: str) -> 'list[str]':
     return keys
 
 def getFileNameInfo(filepath: str) -> vcfRegionData:
-    # Array looks like [ 'vcf-summaries', 'filename' , 'chromosomes', '1', 'regions', '43400310-43749862-125506']
+    # Array looks like [ 'vcf-summaries', 'filename' , 'contig', '1', 'regions', '43400310-43749862-125506']
     splitArray : list[str] = filepath.split('/')
-    chrom: str = splitArray[-3]
+    contig: str = splitArray[-3]
     filename: str = splitArray[-5]
 
     splitRange : list[str] = splitArray[-1].split('-')
@@ -60,35 +59,35 @@ def getFileNameInfo(filepath: str) -> vcfRegionData:
     endRange: int = int(splitRange[1])
     fileSize: int = int(splitRange[2])
     
-    return vcfRegionData(filepath, filename, fileSize, chrom, startRange, endRange)
+    return vcfRegionData(filepath, filename, fileSize, contig, startRange, endRange)
 
-def filterChromAndRange(regionData: 'list[vcfRegionData]', chrom: int, start: int, end: int) -> 'tuple[int, list[vcfRegionData]]':
+def filterContigAndRange(regionData: 'list[vcfRegionData]', contig: int, start: int, end: int) -> 'tuple[int, list[vcfRegionData]]':
     searchFiles: list[vcfRegionData] = []
     rangeSize: int = 0
     for rd in regionData:
-        isSameChrom: bool = rd.chrom == chrom
+        isSameContig: bool = rd.contig == contig
         isInRange: bool = (
             (rd.startRange <= start and start <= rd.endRange) or # If the start point lies within the range
             (rd.startRange <= end and end <= rd.endRange) or # If the end point lies within the range
             (start < rd.startRange and rd.endRange < end) # If the start and end point encompass the range
         )
 
-        if (isSameChrom and isInRange):
+        if (isSameContig and isInRange):
             searchFiles.append(rd)
             rangeSize = rangeSize + rd.filesize
     return rangeSize, searchFiles
 
 # Add a range to the rangeSlices array, return the starting point for the next loop
-def addRange(regionData: 'list[vcfRegionData]', chrom: str, startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
-    rangeSize, fileList = filterChromAndRange(regionData, chrom, startRange, endRange)
+def addRange(regionData: 'list[vcfRegionData]', contig: str, startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
+    rangeSize, fileList = filterContigAndRange(regionData, contig, startRange, endRange)
 
-    while rangeSize > int(ABS_MAX_DATA_SPLIT):
+    while rangeSize > ABS_MAX_DATA_SPLIT:
         # catch issue where there could be no more items in the list, return the minimum list if this happens
         try:
             # Keep all files less than than the endRange
             # Take the maximum of this result to be the new end
             newEnd = max(file.endRange for file in fileList if file.endRange < endRange)
-            rangeSize, fileList = filterChromAndRange(fileList, chrom, startRange, newEnd)
+            rangeSize, fileList = filterContigAndRange(fileList, contig, startRange, newEnd)
         except ValueError:
             print("Issue with reducing the dataset, Max value exceeded")
             newEnd = endRange
@@ -97,7 +96,7 @@ def addRange(regionData: 'list[vcfRegionData]', chrom: str, startRange: int, end
             break
         endRange = newEnd
     
-    rangeSlices[chrom].append(basePairRange(startRange, endRange, [file.filepath for file in fileList]))
+    rangeSlices[contig].append(basePairRange(startRange, endRange, [file.filepath for file in fileList]))
     # print("Start R:", startRange, "End R:", endRange, f"({MIN_DATA_SPLIT} <= {rangeSize} <= {ABS_MAX_DATA_SPLIT}) =", MIN_DATA_SPLIT <= rangeSize <= ABS_MAX_DATA_SPLIT, [file.filepath for file in fileList])
 
     return endRange + 1, (regionData.index(fileList[-1]) + 1)
@@ -110,22 +109,25 @@ def addRange(regionData: 'list[vcfRegionData]', chrom: str, startRange: int, end
 # There is no limit on the number of values in a List, a Map, or a Set, as long as the item containing the values fits within the 400 KB (409600 bytes) item size limit.
 # The size of a List or Map is (length of attribute name) + sum (size of nested elements) + (3 bytes)
 
-def mark_updating(chrom: str, slices : 'list[basePairRange]'):
+# length of attribute name = sizeof("toUpdate") = 8
+# size of nested elements = (15*2) + 1 = 31
+# + 3
+# ( (409600 - 8 - 3) / 31 ) = 13,212 items in the array at 15 charators for each start/end position
+
+def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
     slice_strings = [f'{s.start}-{s.end}' for s in slices]
     kwargs = {
-        'TableName': VCF_DUPLICATES_TABLE_NAME,
+        'TableName': VARIANT_DUPLICATES_TABLE_NAME,
         'Key': {
-            'vcfDuplicates': {
-                'S': chrom,
-            },
+            "contig": {"S":contig}, 
+            "datasetKey": {"S":dataset},
         },
-        'UpdateExpression': 'SET toUpdate=:toUpdate',
+        'UpdateExpression': 'ADD toUpdate :toUpdate',
         'ExpressionAttributeValues': {
             ':toUpdate': {
                 'SS': slice_strings,
             },
         },
-        'ConditionExpression': 'attribute_not_exists(toUpdate)',
     }
     print('Updating table: ', kwargs)
     try:
@@ -139,57 +141,59 @@ def mark_updating(chrom: str, slices : 'list[basePairRange]'):
     return True
 
 def sortVcfRegion(elem: vcfRegionData):
-    return elem.chrom + str(elem.startRange).zfill(MAX_BASE_PAIR_DIGITS)
+    return elem.contig + str(elem.startRange).zfill(MAX_BASE_PAIR_DIGITS)
 
 def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'dict[str, list[basePairRange]]':
     rangeSlices : 'dict[str, list[basePairRange]]' = {} # This is the data structure we are trying to fill in
     runningTotal: int = 0
-    chromEndTracker: int = 0
-    chrom: str = regionData[0].chrom
+    contigEndTracker: int = 0
+    contig: str = regionData[0].contig
     startRange: int = regionData[0].startRange
     itemInc: int = 0
+    minDataSplit: int = ABS_MAX_DATA_SPLIT - (regionData[0].filesize * 2)
 
     while startRange - 1 != regionData[-1].endRange:
         element = regionData[itemInc]
-        # Init the range slice with a new chrom if needed
-        if chrom not in rangeSlices:
-            rangeSlices[chrom] = []
+        # Init the range slice with a new contig if needed
+        if contig not in rangeSlices:
+            rangeSlices[contig] = []
 
-        # If we are switching chrom, finish the other range first
-        if chrom != element.chrom:
+        # If we are switching contig, finish the other range first
+        if contig != element.contig:
             # Check to see if the range is valid, it could have just been added
             if runningTotal != 0:
-                addRange(regionData, chrom, startRange, chromEndTracker, rangeSlices)
-            # Reset variables ready for this chrom
+                addRange(regionData, contig, startRange, contigEndTracker, rangeSlices)
+            # Reset variables ready for this contig
             runningTotal = 0
-            chrom = element.chrom
+            contig = element.contig
             startRange = element.startRange
 
-        chromEndTracker = element.endRange
-        if runningTotal < int(MIN_DATA_SPLIT):
+        contigEndTracker = element.endRange
+        if runningTotal < minDataSplit:
             runningTotal = runningTotal + element.filesize
             itemInc = itemInc + 1 if itemInc + 1 < len(regionData) else itemInc
         else:
             # We have hit the minimum amount required, gather other files and return the next starting point
-            startRange, itemInc = addRange(regionData, chrom, startRange, element.endRange, rangeSlices)
+            startRange, itemInc = addRange(regionData, contig, startRange, element.endRange, rangeSlices)
             runningTotal = 0
 
     if runningTotal != 0:
-        addRange(regionData, chrom, startRange, chromEndTracker, rangeSlices)
+        addRange(regionData, contig, startRange, contigEndTracker, rangeSlices)
     
     return rangeSlices
 
-def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]') -> None:
-    for chrom, baseRange in rangeSlices.items():
+def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]', dataset: str) -> None:
+    for contig, baseRange in rangeSlices.items():
         # Only send the SNS if the database update succeeds
-        if mark_updating(chrom, baseRange):
+        if mark_updating(contig, baseRange, dataset):
             for br in baseRange: 
                 message = {
                     'bucket': S3_SUMMARIES_BUCKET,
                     'rangeStart': br.start,
                     'rangeEnd': br.end,
-                    'chrom': chrom,
-                    'targetFilepaths': br.filePaths
+                    'contig': contig,
+                    'targetFilepaths': br.filePaths,
+                    'dataset': dataset,
                 }
 
                 kwargs = {
@@ -201,7 +205,7 @@ def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]') -> 
                 response = sns.publish(**kwargs)
                 print('Received Response: {}'.format(json.dumps(response)))
 
-def initDuplicateVariantSearch(filepaths: 'list[str]') -> None:
+def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
     filenames: list[str] = [fn.split('/')[-1].split('.')[0] for fn in filepaths]
     print('filenames:', filenames)
@@ -217,4 +221,4 @@ def initDuplicateVariantSearch(filepaths: 'list[str]') -> None:
 
     rangeSlices : 'dict[str, list[basePairRange]]' = calcRangeSplits(regionData)
     print(rangeSlices)
-    insertDatabaseAndCallSNS(rangeSlices)
+    insertDatabaseAndCallSNS(rangeSlices, dataset)

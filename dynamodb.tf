@@ -37,14 +37,20 @@ resource aws_dynamodb_table vcf_summaries {
   }
 }
 
-resource aws_dynamodb_table vcf_duplicates {
+resource aws_dynamodb_table variant_duplicates {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "vcfDuplicates"
-  name = "VcfDuplicates"
+  hash_key = "contig"
+  range_key = "datasetKey"
+  name = "VariantDuplicates"
   tags = var.common-tags
 
   attribute {
-    name = "vcfDuplicates"
+    name = "contig"
+    type = "S"
+  }
+
+  attribute {
+    name = "datasetKey"
     type = "S"
   }
 }

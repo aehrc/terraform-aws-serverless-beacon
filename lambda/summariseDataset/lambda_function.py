@@ -100,7 +100,7 @@ def summarise_dataset(dataset):
     if updated:
         values = {':'+count: {'N': str(counts[count])} for count in COUNTS}
         datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
-        initDuplicateVariantSearch(datasetFilePaths)
+        initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
     

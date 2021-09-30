@@ -24,12 +24,12 @@ vcfRegionData DuplicateVariantSearch::getFileNameInfo(string s) {
     string range = split.back();
     split.pop_back();
     
-    // This will convert chromosome 0-23 to a number and
-    // chromosome 'X'and 'Y' to an ASCII integer representave
+    // This will convert contig 0-23 to a number and
+    // contig 'X'and 'Y' to an ASCII integer representave
     if (split.back().length() == 1 && split.back().c_str()[0] > '9') {
-        regions.chrom = split.back().c_str()[0];
+        regions.contig = split.back().c_str()[0];
     } else {
-        regions.chrom = generalutils::fast_atoi<uint16_t>(split.back().c_str(), split.back().length());
+        regions.contig = generalutils::fast_atoi<uint16_t>(split.back().c_str(), split.back().length());
     }
 
     string startRange = range.substr(0, range.find('-'));
@@ -40,40 +40,40 @@ vcfRegionData DuplicateVariantSearch::getFileNameInfo(string s) {
     return regions;
 }
 
-void DuplicateVariantSearch::createChromRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem) {
-    if (chromLookup.count(insertItem.chrom) == 0) {  // If we haven't seen this chrom before, add a record.
-        chromLookup[insertItem.chrom] = range{ insertItem.startRange, insertItem.endRange };
-    } else {
-        if (chromLookup[insertItem.chrom].start > insertItem.startRange) {
-            chromLookup[insertItem.chrom].start = insertItem.startRange;
-        }
-        if (chromLookup[insertItem.chrom].end < insertItem.endRange) {
-            chromLookup[insertItem.chrom].end = insertItem.endRange;
-        }
-    }
-    // cout << insertItem.filepath << " Chrom: " << (int)(insertItem.chrom) << " Start: " << (int)(insertItem.startRange) << " End: " << (int)(insertItem.endRange) << endl;
-}
+// void DuplicateVariantSearch::createContigRegionsMap(map<uint16_t, range> &contigLookup, vcfRegionData &insertItem) {
+//     if (contigLookup.count(insertItem.contig) == 0) {  // If we haven't seen this contig before, add a record.
+//         contigLookup[insertItem.contig] = range{ insertItem.startRange, insertItem.endRange };
+//     } else {
+//         if (contigLookup[insertItem.contig].start > insertItem.startRange) {
+//             contigLookup[insertItem.contig].start = insertItem.startRange;
+//         }
+//         if (contigLookup[insertItem.contig].end < insertItem.endRange) {
+//             contigLookup[insertItem.contig].end = insertItem.endRange;
+//         }
+//     }
+//     // cout << insertItem.filepath << " Contig: " << (int)(insertItem.contig) << " Start: " << (int)(insertItem.startRange) << " End: " << (int)(insertItem.endRange) << endl;
+// }
 
-void DuplicateVariantSearch::filterChromAndRange(
-    vector<vcfRegionData> &currentSearchTargets,
-    vector<vcfRegionData> &regionData,
-    uint16_t chrom,
-    uint64_t start,
-    uint64_t end
-) {
-    for (vcfRegionData rd : regionData) {
-        bool isSameChrom = rd.chrom == chrom;
-        bool isInRange = (
-            (rd.startRange <= start && start <= rd.endRange) || // If the start point lies within the range
-            (rd.startRange <= end && end <= rd.endRange) || // If the end point lies within the range
-            (start < rd.startRange && rd.endRange < end) // If the start and end point encompass the range
-        );
+// void DuplicateVariantSearch::filterChromAndRange(
+//     vector<vcfRegionData> &currentSearchTargets,
+//     vector<vcfRegionData> &regionData,
+//     uint16_t contig,
+//     uint64_t start,
+//     uint64_t end
+// ) {
+//     for (vcfRegionData rd : regionData) {
+//         bool isSameContig = rd.contig == contig;
+//         bool isInRange = (
+//             (rd.startRange <= start && start <= rd.endRange) || // If the start point lies within the range
+//             (rd.startRange <= end && end <= rd.endRange) || // If the end point lies within the range
+//             (start < rd.startRange && rd.endRange < end) // If the start and end point encompass the range
+//         );
 
-        if (isSameChrom && isInRange) {
-            currentSearchTargets.push_back(rd);
-        }
-    }
-}
+//         if (isSameContig && isInRange) {
+//             currentSearchTargets.push_back(rd);
+//         }
+//     }
+// }
 
 DuplicateVariantSearch::DuplicateVariantSearch(
     Aws::S3::S3Client &client,
@@ -81,16 +81,18 @@ DuplicateVariantSearch::DuplicateVariantSearch(
     Aws::String bucket,
     uint64_t rangeStart,
     uint64_t rangeEnd,
-    Aws::String chrom,
-    Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths
+    Aws::String contig,
+    Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths,
+    Aws::String dataset
 ):
     _s3Client(client),
     _dynamodbClient(dynamodbClient),
     _bucket(bucket),
     _rangeStart(rangeStart),
     _rangeEnd(rangeEnd),
-    _chrom(chrom),
-    _targetFilepaths(targetFilepaths) {}
+    _contig(contig),
+    _targetFilepaths(targetFilepaths),
+    _dataset(dataset) {}
 
 bool DuplicateVariantSearch::comparePos(generalutils::vcfData const &i, uint64_t j){ return i.pos < j; }
 
@@ -113,9 +115,9 @@ string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned
     return oss.str();
 }
 
-int DuplicateVariantSearch::searchForDuplicates() {
+size_t DuplicateVariantSearch::searchForDuplicates() {
     size_t duplicatesCount = 0;
-    uint targetFilepathsLength = _targetFilepaths.GetLength();
+    size_t targetFilepathsLength = _targetFilepaths.GetLength();
 
     // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
     if (targetFilepathsLength > 1) {
@@ -189,19 +191,29 @@ int DuplicateVariantSearch::searchForDuplicates() {
     }
 
     cout << "Final Tally: " << duplicatesCount << endl;
-    updateVcfDuplicates(duplicatesCount);
+    updateVariantDuplicates(duplicatesCount);
     return duplicatesCount;
 }
 
-bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount) {
-    Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(getenv("VCF_DUPLICATES_TABLE"));
+bool DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
+    Aws::DynamoDB::Model::AttributeValue partitionKey, sortKey;
+    partitionKey.SetS(_contig);
+    sortKey.SetS(_dataset);
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> key;
+    key["contig"] = partitionKey;
+    key["datasetKey"] = sortKey;
 
-    Aws::DynamoDB::Model::AttributeValue keyValue;
-    keyValue.SetS(_chrom);
-    request.AddKey("vcfDuplicates", keyValue);
+    Aws::DynamoDB::Model::UpdateItemRequest request;
+    request.SetTableName(getenv("VARIANT_DUPLICATES_TABLE"));
+    request.WithKey(key);
     request.SetUpdateExpression("ADD duplicateCount :numVariants DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
+
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> temp;
+    temp = request.GetKey();
+    for (auto const& [key2, val2]: temp) {
+        cout << key2 << ":" << val2.GetS() << endl;
+    }
 
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
 
@@ -221,7 +233,7 @@ bool DuplicateVariantSearch::updateVcfDuplicates(int64_t totalCount) {
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
     do {
-        std::cout << "Calling dynamodb::UpdateItem with key=\"" << _chrom << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
+        std::cout << "Calling dynamodb::UpdateItem with partition=\"" << _contig << "\", sort=\"" << _dataset << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
         const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
         if (result.IsSuccess()) {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();

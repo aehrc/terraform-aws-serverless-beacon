@@ -23,20 +23,21 @@ class DuplicateVariantSearch {
     Aws::String _bucket;
     uint64_t _rangeStart;
     uint64_t _rangeEnd;
-    Aws::String _chrom;
+    Aws::String _contig;
     Aws::Utils::Array<Aws::Utils::Json::JsonView> _targetFilepaths;
+    Aws::String _dataset;
 
     vector<string> retrieveS3Objects();
     vcfRegionData getFileNameInfo(string s);
-    void createChromRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem);
-    void filterChromAndRange(
-        vector<vcfRegionData> &currentSearchTargets,
-        vector<vcfRegionData> &regionData,
-        uint16_t chrom,
-        uint64_t start,
-        uint64_t end
-    );
-    bool updateVcfDuplicates(int64_t totalCount);
+    // void createContigRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem);
+    // void filterChromAndRange(
+    //     vector<vcfRegionData> &currentSearchTargets,
+    //     vector<vcfRegionData> &regionData,
+    //     uint16_t contig,
+    //     uint64_t start,
+    //     uint64_t end
+    // );
+    bool updateVariantDuplicates(int64_t totalCount);
 
     public:
     DuplicateVariantSearch(
@@ -45,8 +46,9 @@ class DuplicateVariantSearch {
         Aws::String bucket,
         uint64_t rangeStart,
         uint64_t rangeEnd,
-        Aws::String chrom,
-        Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths
+        Aws::String contig,
+        Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths,
+        Aws::String dataset
     );
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response);
     static bool comparePos(generalutils::vcfData const &i, uint64_t j);
@@ -54,6 +56,6 @@ class DuplicateVariantSearch {
     static bool isADuplicate(generalutils::vcfData *a, generalutils::vcfData *b);
     static bool containsExistingFilepath(vector<string> &existingFilepaths, string filepath);
     static string to_zero_lead(const uint64_t value, const unsigned precision);
-    int searchForDuplicates();
+    size_t searchForDuplicates();
 
 };

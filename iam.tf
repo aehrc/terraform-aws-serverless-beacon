@@ -57,7 +57,7 @@ data aws_iam_policy_document lambda-summariseDataset {
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
-      aws_dynamodb_table.vcf_duplicates.arn,
+      aws_dynamodb_table.variant_duplicates.arn,
     ]
   }
 
@@ -173,7 +173,7 @@ data aws_iam_policy_document lambda-duplicateVariantSearch {
       "dynamodb:UpdateItem",
     ]
     resources = [
-      aws_dynamodb_table.vcf_duplicates.arn,
+      aws_dynamodb_table.variant_duplicates.arn,
     ]
   }
 
