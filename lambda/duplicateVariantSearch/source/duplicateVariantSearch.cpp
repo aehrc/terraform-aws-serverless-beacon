@@ -206,14 +206,11 @@ bool DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("VARIANT_DUPLICATES_TABLE"));
     request.WithKey(key);
+    // for debugging
+    // request.SetUpdateExpression("ADD duplicateCount :numVariants, updated :sliceStringSet DELETE toUpdate :sliceStringSet");
+    // request.SetConditionExpression("contains(toUpdate, :sliceString) And NOT (contains(updated, :sliceString))");
     request.SetUpdateExpression("ADD duplicateCount :numVariants DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
-
-    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> temp;
-    temp = request.GetKey();
-    for (auto const& [key2, val2]: temp) {
-        cout << key2 << ":" << val2.GetS() << endl;
-    }
 
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
 
@@ -221,19 +218,23 @@ bool DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
     numVariantsValue.SetN(static_cast<double>(totalCount));
     expressionAttributeValues[":numVariants"] = numVariantsValue;
 
-    string sliceString = to_string(_rangeStart) + "-" + to_string(_rangeEnd);
+    range item;
+    item.start = _rangeStart;
+    item.end = _rangeEnd;
+    Aws::Utils::ByteBuffer bb = Aws::Utils::ByteBuffer(static_cast<unsigned char*>(static_cast<void*>(&item)), sizeof(item));
+
     Aws::DynamoDB::Model::AttributeValue sliceStringSetValue;
-    sliceStringSetValue.SetSS(Aws::Vector<Aws::String>{sliceString});
+    sliceStringSetValue.SetBS(Aws::Vector<Aws::Utils::ByteBuffer>{bb});
     expressionAttributeValues[":sliceStringSet"] = sliceStringSetValue;
 
     Aws::DynamoDB::Model::AttributeValue sliceStringValue;
-    sliceStringValue.SetS(sliceString);
+    sliceStringValue.SetB(bb);
     expressionAttributeValues[":sliceString"] = sliceStringValue;
 
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
     do {
-        std::cout << "Calling dynamodb::UpdateItem with partition=\"" << _contig << "\", sort=\"" << _dataset << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
+        std::cout << "Calling dynamodb::UpdateItem with partition=\"" << _contig << "\", sort=\"" << _dataset << "\" and slice=\"" << _rangeStart << "_" << _rangeEnd << "\"" << std::endl;
         const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
         if (result.IsSuccess()) {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();

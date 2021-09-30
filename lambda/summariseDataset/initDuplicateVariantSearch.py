@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import os
 import json
-import math
+import struct
 import boto3
 from botocore.exceptions import ClientError
 
@@ -110,12 +110,13 @@ def addRange(regionData: 'list[vcfRegionData]', contig: str, startRange: int, en
 # The size of a List or Map is (length of attribute name) + sum (size of nested elements) + (3 bytes)
 
 # length of attribute name = sizeof("toUpdate") = 8
-# size of nested elements = (15*2) + 1 = 31
+# size of nested elements = 8*2 = 16
 # + 3
-# ( (409600 - 8 - 3) / 31 ) = 13,212 items in the array at 15 charators for each start/end position
+# ( (409600 - 8 - 3) / 16 ) = 25,598 items in the array
 
 def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
-    slice_strings = [f'{s.start}-{s.end}' for s in slices]
+    slice_strings = [struct.pack('QQ', s.start, s.end) for s in slices]
+
     kwargs = {
         'TableName': VARIANT_DUPLICATES_TABLE_NAME,
         'Key': {
@@ -125,7 +126,7 @@ def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
         'UpdateExpression': 'ADD toUpdate :toUpdate',
         'ExpressionAttributeValues': {
             ':toUpdate': {
-                'SS': slice_strings,
+                'BS': slice_strings,
             },
         },
     }
