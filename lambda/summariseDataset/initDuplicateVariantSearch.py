@@ -35,7 +35,7 @@ def retrieveS3Objects(bucket: str) -> 'list[str]':
     """Get a list of all keys in an S3 bucket."""
     keys = []
 
-    kwargs = {'Bucket': bucket, 'Prefix': 'vcf-summaries/'}
+    kwargs = {'Bucket': bucket, 'Prefix': "vcf-summaries/"}
     while True:
         resp = s3.list_objects_v2(**kwargs)
         for obj in resp['Contents']:
@@ -107,6 +107,7 @@ def addRange(regionData: 'list[vcfRegionData]', contig: str, startRange: int, en
 # A transaction cannot contain more than 25 unique items.
 # A transaction cannot contain more than 4 MB of data.
 # There is no limit on the number of values in a List, a Map, or a Set, as long as the item containing the values fits within the 400 KB (409600 bytes) item size limit.
+# An attribute of type List or Map requires 3 bytes of overhead, regardless of its contents
 # The size of a List or Map is (length of attribute name) + sum (size of nested elements) + (3 bytes)
 
 # length of attribute name = sizeof("toUpdate") = 8
@@ -208,17 +209,18 @@ def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]', dat
 
 def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
-    filenames: list[str] = [fn.split('/')[-1].split('.')[0] for fn in filepaths]
-    print('filenames:', filenames)
+    filenames: list[str] = ['vcf-summaries/'+'%'.join(fn[5:].split('/')[1:]).split('.vcf.gz')[0]+'/' for fn in filepaths]
+    # print('filenames:', filenames)
     s3Objects: list[str] = retrieveS3Objects(S3_SUMMARIES_BUCKET)
     # print('s3Objects:', s3Objects)
 
     regionData: list[vcfRegionData] = []
     for filepath in s3Objects:
-        splitfilepath: vcfRegionData = getFileNameInfo(filepath)
-        if splitfilepath.filename in filenames:
+        if any([fn in filepath for fn in filenames]):
+            splitfilepath: vcfRegionData = getFileNameInfo(filepath)
             regionData.append(splitfilepath)
     regionData.sort(key=sortVcfRegion)
+    # print('regionData:', regionData)
 
     rangeSlices : 'dict[str, list[basePairRange]]' = calcRangeSplits(regionData)
     print(rangeSlices)

@@ -130,7 +130,7 @@ size_t DuplicateVariantSearch::searchForDuplicates() {
             string targetFilepathJ = _targetFilepaths[j].AsString();
             if (fileLookup.count(_targetFilepaths[j].AsString()) == 0) {
                 fileLookup[targetFilepathJ] = ReadVcfData(_bucket, targetFilepathJ, _s3Client).getVcfData();
-                cout << "File " << targetFilepathJ << " Size: " << fileLookup[targetFilepathJ].size() << endl;
+                // cout << "File " << targetFilepathJ << " Size: " << fileLookup[targetFilepathJ].size() << endl;
             }
 
             vector<generalutils::vcfData> file1 = fileLookup[targetFilepathJ];

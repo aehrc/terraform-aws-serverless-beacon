@@ -563,9 +563,8 @@ class writeDataToS3 {
 
     public:
     writeDataToS3(string key, Aws::S3::S3Client const& client):
-    s3BucketKey(key),
     s3Client(client) {
-        s3BucketKey = regex_replace(s3BucketKey, regex("\\.vcf\\.gz"), "");
+        s3BucketKey = regex_replace(key, regex("\\.vcf\\.gz"), "");
         replace(s3BucketKey.begin(), s3BucketKey.end(), '/', '%');
     }
 
