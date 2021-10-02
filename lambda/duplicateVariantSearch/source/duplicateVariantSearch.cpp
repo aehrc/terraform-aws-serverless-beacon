@@ -40,78 +40,77 @@ string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned
     return oss.str();
 }
 
+void DuplicateVariantSearch::compareFiles(size_t j, size_t m) {
+    vector<generalutils::vcfData> file1 = _fileLookup[j];
+    vector<generalutils::vcfData> file2 = _fileLookup[m];
+    size_t file2Offest = 0;
+
+    // Skip the first part of the file if the data we are comparing doesn't matchup.
+    uint64_t filePosStart = max(_rangeStart, file2.front().pos);
+    std::vector<generalutils::vcfData>::iterator file1Start = searchForPosition(filePosStart, file1, 0);
+
+    // search for duplicates of each struct in file1 against file2
+    for (std::vector<generalutils::vcfData>::iterator l = file1Start; l != file1.end(); ++l) {
+        vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2, file2Offest);
+        file2Offest = searchPosition - file2.begin();
+
+        // We have read to the end of file 2, exit the file 1 loop
+        if (searchPosition == file2.end()) {
+            // cout << "End found, exit now" << endl;
+            break;
+        }
+
+        // handle the case of multiple variants at one position
+        for (auto k = searchPosition; k != file2.end() && k->pos == l->pos && k->pos <= _rangeEnd; ++k) {
+            if (isADuplicate(l.base(), k.base())) {
+                // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
+                
+                const string posRefAltKey = to_string(k->pos) + k->ref + "_" + k->alt;
+                
+                if (_duplicates.count(posRefAltKey) != 0) { // if k already exists
+                    if (!containsExistingFilepath(_duplicates[posRefAltKey], j)) {
+                        _duplicates[posRefAltKey].push_back(j);
+                    } 
+                    if (!containsExistingFilepath(_duplicates[posRefAltKey], m)) {
+                        _duplicates[posRefAltKey].push_back(m);
+                    }
+
+                } else {
+                    _duplicates[posRefAltKey] = { j, m };
+                }
+
+            }
+        }
+    }
+}
+
 size_t DuplicateVariantSearch::searchForDuplicates() {
     size_t duplicatesCount = 0;
     size_t targetFilepathsLength = _targetFilepaths.GetLength();
 
     // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
     if (targetFilepathsLength > 1) {
-
-        map<string, vector<size_t>> duplicates = {};
-
-        map<string, vector<generalutils::vcfData>> fileLookup;
         for (size_t j = 0; j < targetFilepathsLength; j++) {
 
             string targetFilepathJ = _targetFilepaths[j].AsString();
-            if (fileLookup.count(targetFilepathJ) == 0) {
-                fileLookup[targetFilepathJ] = ReadVcfData(_bucket, targetFilepathJ, _s3Client).getVcfData(_rangeStart, _rangeEnd);
-                // cout << "File " << targetFilepathJ << " Size: " << fileLookup[targetFilepathJ].size() << endl;
-            }
-
-            vector<generalutils::vcfData> file1 = fileLookup[targetFilepathJ];
+            _fileLookup.push_back(ReadVcfData(_bucket, targetFilepathJ, _s3Client).getVcfData(_rangeStart, _rangeEnd));
 
             for (size_t m = 0; m < targetFilepathsLength - 1; m++) {
-                string targetFilepathM = _targetFilepaths[m].AsString();
-
                 // strategically compare files only once
-                if (j != m && fileLookup.count(targetFilepathM) > 0) {
-
-                    vector<generalutils::vcfData> file2 = fileLookup[targetFilepathM];
-
-                    // Skip the first part of the file if the data we are comparing doesn't matchup.
-                    uint64_t filePosStart = max(_rangeStart, file2.front().pos);
-                    std::vector<generalutils::vcfData>::iterator fileStart = searchForPosition(filePosStart, file1, 0);
-
-                    
-                    
-                    size_t file2Offest = 0;
-                    // search for duplicates of each struct in file1 against file2
-                    for (std::vector<generalutils::vcfData>::iterator l = fileStart; l != file1.end(); ++l) {
-                        vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2, file2Offest);
-                        file2Offest = searchPosition - file2.begin();
-
-                        // We have read to the end of file 2, exit the file 1 loop
-                        if (searchPosition == file2.end()) {
-                            // cout << "End found, exit now" << endl;
-                            break;
-                        }
-
-                        // handle the case of multiple variants at one position
-                        for (auto k = searchPosition; k != file2.end() && k->pos == l->pos && k->pos <= _rangeEnd; ++k) {
-                            if (isADuplicate(l.base(), k.base())) {
-                                // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
-                                
-                                const string posRefAltKey = to_string(k->pos) + k->ref + "_" + k->alt;
-                                
-                                if (duplicates.count(posRefAltKey) != 0) { // if k already exists
-                                    if (!containsExistingFilepath(duplicates[posRefAltKey], j)) {
-                                        duplicates[posRefAltKey].push_back(j);
-                                    } 
-                                    if (!containsExistingFilepath(duplicates[posRefAltKey], m)) {
-                                        duplicates[posRefAltKey].push_back(m);
-                                    }
-
-                                } else {
-                                    duplicates[posRefAltKey] = { j, m };
-                                }
-
-                            }
-                        }
-                    }
+                if (j <= m) {
+                    break;
+                }
+                bool isInRange = (
+                    (_fileLookup[j].front().pos <= _fileLookup[m].front().pos && _fileLookup[m].front().pos <= _fileLookup[j].back().pos) || // If the start point lies within the range
+                    (_fileLookup[j].front().pos <= _fileLookup[m].back().pos && _fileLookup[m].back().pos <= _fileLookup[j].back().pos) || // If the end point lies within the range
+                    (_fileLookup[m].front().pos < _fileLookup[j].front().pos && _fileLookup[j].back().pos < _fileLookup[m].back().pos) // If the start and end point encompass the range
+                );
+                if (isInRange) {
+                    compareFiles(j, m);
                 }
             }
         }
-        for (auto const& [key2, val2]: duplicates) {
+        for (auto const& [key2, val2]: _duplicates) {
             duplicatesCount += val2.size() - 1;
         }
 
