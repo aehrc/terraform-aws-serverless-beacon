@@ -26,5 +26,5 @@ class ReadVcfData {
 
     public:
     ReadVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client);
-    vector<generalutils::vcfData> getVcfData();
+    vector<generalutils::vcfData> getVcfData(uint64_t rangeStart, uint64_t rangeEnd);
 };

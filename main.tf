@@ -3,7 +3,8 @@ locals {
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
 
-  maximum_load_file_size  = 600000000
+  maximum_load_file_size  = 50000000
+  vcf_processed_file_size = 4000
 }
 
 #
@@ -17,7 +18,7 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.6"
   memory_size = 2048
-  timeout = 5
+  timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-submitDataset.json
   }
@@ -43,7 +44,7 @@ module "lambda-summariseDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.7"
   memory_size = 2048
-  timeout = 10
+  timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseDataset.json
   }
@@ -122,6 +123,7 @@ module "lambda-summariseSlice" {
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
       S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
       MAX_SLICE_GAP = 100000
+      VCF_S3_OUTPUT_SIZE_LIMIT = local.vcf_processed_file_size
     }
   }
 }
@@ -136,8 +138,8 @@ module "lambda-duplicateVariantSearch" {
   description = "Searches for duplicate variants across vcfs."
   handler = "function"
   runtime = "provided"
-  memory_size = 768
-  timeout = 180
+  memory_size = 1536
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
   }

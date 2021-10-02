@@ -27,16 +27,6 @@ class DuplicateVariantSearch {
     Aws::Utils::Array<Aws::Utils::Json::JsonView> _targetFilepaths;
     Aws::String _dataset;
 
-    vector<string> retrieveS3Objects();
-    vcfRegionData getFileNameInfo(string s);
-    // void createContigRegionsMap(map<uint16_t, range> &chromLookup, vcfRegionData &insertItem);
-    // void filterChromAndRange(
-    //     vector<vcfRegionData> &currentSearchTargets,
-    //     vector<vcfRegionData> &regionData,
-    //     uint16_t contig,
-    //     uint64_t start,
-    //     uint64_t end
-    // );
     bool updateVariantDuplicates(int64_t totalCount);
 
     public:
@@ -52,9 +42,9 @@ class DuplicateVariantSearch {
     );
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response);
     static bool comparePos(generalutils::vcfData const &i, uint64_t j);
-    std::vector<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, vector<generalutils::vcfData> &fileData);
+    std::vector<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, vector<generalutils::vcfData> &fileData, size_t offset);
     static bool isADuplicate(generalutils::vcfData *a, generalutils::vcfData *b);
-    static bool containsExistingFilepath(vector<string> &existingFilepaths, string filepath);
+    static bool containsExistingFilepath(vector<size_t> &existingFilepaths, size_t filepath);
     static string to_zero_lead(const uint64_t value, const unsigned precision);
     size_t searchForDuplicates();
 

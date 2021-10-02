@@ -33,7 +33,9 @@
 using namespace std;
 
 const string S3_SUMMARIES_BUCKET = getenv("S3_SUMMARIES_BUCKET");
+const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
 const string SLICE_GAP = getenv("MAX_SLICE_GAP");
+const uint_fast64_t VCF_S3_OUTPUT_SIZE_LIMIT = atoll(OUTPUT_SIZE_LIMIT.c_str());
 const uint_fast64_t MAX_SLICE_GAP = atoll(SLICE_GAP.c_str());
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
@@ -635,6 +637,11 @@ class writeDataToS3 {
 
         // Skip the last two fields so we exit with the reader pointing to the INFO field
         reader.skipPast<2, '\t'>();
+
+        // Save the buffer to a file if we have reached a size limit
+        if (vcfBuffer.size() > VCF_S3_OUTPUT_SIZE_LIMIT) {
+            saveNewFile();
+        }
     }
 };
 
