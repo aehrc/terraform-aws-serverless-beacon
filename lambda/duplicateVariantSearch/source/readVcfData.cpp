@@ -8,7 +8,7 @@ ReadVcfData::ReadVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3
 }
 
 
-vector<generalutils::vcfData> ReadVcfData::getVcfData(uint64_t rangeStart, uint64_t rangeEnd) {
+deque<generalutils::vcfData> ReadVcfData::getVcfData(uint64_t rangeStart, uint64_t rangeEnd) {
     size_t bufferPos = BUFFER_SIZE;
     generalutils::vcfData vcf;
 

@@ -2,6 +2,7 @@
 
 #include <awsutils.hpp>
 #include <generalutils.hpp>
+#include <deque>
 
 #define BUFFER_SIZE 1000000
 constexpr size_t MIN_DATA_SIZE = sizeof(generalutils::vcfData::pos) + 4;
@@ -18,7 +19,7 @@ class ReadVcfData {
     Aws::S3::Model::GetObjectOutcome _response;
     Aws::IOStream &_stream;
     char _streamBuffer[BUFFER_SIZE];
-    vector<generalutils::vcfData> _fileData;
+    deque<generalutils::vcfData> _fileData;
     size_t _dataLength = BUFFER_SIZE;
 
     bool checkForAvailableData(size_t bytesNeeded, size_t &bufferPos);
@@ -26,5 +27,5 @@ class ReadVcfData {
 
     public:
     ReadVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client);
-    vector<generalutils::vcfData> getVcfData(uint64_t rangeStart, uint64_t rangeEnd);
+    deque<generalutils::vcfData> getVcfData(uint64_t rangeStart, uint64_t rangeEnd);
 };

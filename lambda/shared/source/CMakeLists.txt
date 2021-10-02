@@ -16,7 +16,7 @@ add_library (
 target_link_libraries(Shared PRIVATE AWS::aws-lambda-runtime ${AWSSDK_LINK_LIBRARIES})
 set_target_properties(Shared PROPERTIES
     PUBLIC_HEADER awsutils.hpp
-    PUBLIC_HEADER generalutils.cpp
+    PUBLIC_HEADER generalutils.hpp
 )
 
 target_include_directories (Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

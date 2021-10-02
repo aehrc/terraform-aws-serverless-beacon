@@ -21,15 +21,15 @@ DuplicateVariantSearch::DuplicateVariantSearch(
 
 bool DuplicateVariantSearch::comparePos(generalutils::vcfData const &i, uint64_t j){ return i.pos < j; }
 
-std::vector<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, vector<generalutils::vcfData> &fileData, size_t offset) {
+std::deque<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset) {
     return lower_bound(fileData.begin() + offset, fileData.end(), pos, comparePos);
 }
 
-bool DuplicateVariantSearch::isADuplicate(generalutils::vcfData *a, generalutils::vcfData *b) {
-    return a->ref.compare(b->ref) == 0 && a->alt.compare(b->alt) == 0;
+bool DuplicateVariantSearch::isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b) {
+    return a.ref.compare(b.ref) == 0 && a.alt.compare(b.alt) == 0;
 }
 
-bool DuplicateVariantSearch::containsExistingFilepath(vector<size_t> &existingFilepaths, size_t filepath) {
+bool DuplicateVariantSearch::containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath) {
     return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
 }
 
@@ -41,17 +41,17 @@ string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned
 }
 
 void DuplicateVariantSearch::compareFiles(size_t j, size_t m) {
-    vector<generalutils::vcfData> file1 = _fileLookup[j];
-    vector<generalutils::vcfData> file2 = _fileLookup[m];
+    deque<generalutils::vcfData> file1 = _fileLookup[j];
+    deque<generalutils::vcfData> file2 = _fileLookup[m];
     size_t file2Offest = 0;
 
     // Skip the first part of the file if the data we are comparing doesn't matchup.
     uint64_t filePosStart = max(_rangeStart, file2.front().pos);
-    std::vector<generalutils::vcfData>::iterator file1Start = searchForPosition(filePosStart, file1, 0);
+    deque<generalutils::vcfData>::iterator file1Start = searchForPosition(filePosStart, file1, 0);
 
     // search for duplicates of each struct in file1 against file2
-    for (std::vector<generalutils::vcfData>::iterator l = file1Start; l != file1.end(); ++l) {
-        vector<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2, file2Offest);
+    for (deque<generalutils::vcfData>::iterator l = file1Start; l != file1.end(); ++l) {
+        deque<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, file2, file2Offest);
         file2Offest = searchPosition - file2.begin();
 
         // We have read to the end of file 2, exit the file 1 loop
@@ -62,7 +62,7 @@ void DuplicateVariantSearch::compareFiles(size_t j, size_t m) {
 
         // handle the case of multiple variants at one position
         for (auto k = searchPosition; k != file2.end() && k->pos == l->pos && k->pos <= _rangeEnd; ++k) {
-            if (isADuplicate(l.base(), k.base())) {
+            if (isADuplicate(*l, *k)) {
                 // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
                 
                 const string posRefAltKey = to_string(k->pos) + k->ref + "_" + k->alt;

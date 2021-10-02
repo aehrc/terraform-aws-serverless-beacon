@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <queue>
+#include <deque>
 #include <stdint.h>
 #include <math.h>
 #include <algorithm>
@@ -25,8 +25,8 @@ class DuplicateVariantSearch {
     uint64_t _rangeEnd;
     Aws::String _contig;
     Aws::Utils::Array<Aws::Utils::Json::JsonView> _targetFilepaths;
-    vector<vector<generalutils::vcfData>> _fileLookup;
-    map<string, vector<size_t>> _duplicates = {};
+    deque<deque<generalutils::vcfData>> _fileLookup;
+    map<string, deque<size_t>> _duplicates = {};
     Aws::String _dataset;
 
     bool updateVariantDuplicates(int64_t totalCount);
@@ -44,9 +44,9 @@ class DuplicateVariantSearch {
     );
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response);
     static bool comparePos(generalutils::vcfData const &i, uint64_t j);
-    std::vector<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, vector<generalutils::vcfData> &fileData, size_t offset);
-    static bool isADuplicate(generalutils::vcfData *a, generalutils::vcfData *b);
-    static bool containsExistingFilepath(vector<size_t> &existingFilepaths, size_t filepath);
+    std::deque<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset);
+    static bool isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b);
+    static bool containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath);
     static string to_zero_lead(const uint64_t value, const unsigned precision);
     size_t searchForDuplicates();
     void compareFiles(size_t j, size_t m);
