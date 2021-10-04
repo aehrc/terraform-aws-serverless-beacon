@@ -3,8 +3,9 @@
 #include <awsutils.hpp>
 #include <generalutils.hpp>
 #include <deque>
+#include <gzip.hpp>
 
-#define BUFFER_SIZE 1000000
+#define BUFFER_SIZE 1024
 constexpr size_t MIN_DATA_SIZE = sizeof(generalutils::vcfData::pos) + 4;
 
 struct vcfRegionData  { 
@@ -16,16 +17,9 @@ struct vcfRegionData  {
 
 class ReadVcfData {
     private:
-    Aws::S3::Model::GetObjectOutcome _response;
-    Aws::IOStream &_stream;
-    char _streamBuffer[BUFFER_SIZE];
-    deque<generalutils::vcfData> _fileData;
-    size_t _dataLength = BUFFER_SIZE;
-
-    bool checkForAvailableData(size_t bytesNeeded, size_t &bufferPos);
-    string readString(size_t &bufferPos);
+    static string readString(size_t &bufferPos, gzip &inputGzip, size_t &dataLength, char *streamBuffer);
+    static bool checkForAvailableData(size_t bytesNeeded, size_t &bufferPos, gzip &inputGzip, size_t &dataLength);
 
     public:
-    ReadVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client);
-    deque<generalutils::vcfData> getVcfData(uint64_t rangeStart, uint64_t rangeEnd);
+    static deque<generalutils::vcfData> getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd);
 };

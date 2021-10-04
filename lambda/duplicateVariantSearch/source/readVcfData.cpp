@@ -1,50 +1,50 @@
 #include "readVcfData.hpp"
 
-ReadVcfData::ReadVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client) :
-    _response(awsutils::getS3Object(bucket, targetFilepath, client)),
-    _stream(_response.GetResult().GetBody())
-{
-    _stream.seekg(0, _stream.beg);
-}
-
-
-deque<generalutils::vcfData> ReadVcfData::getVcfData(uint64_t rangeStart, uint64_t rangeEnd) {
-    size_t bufferPos = BUFFER_SIZE;
+deque<generalutils::vcfData> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd) {
+    size_t bufferPos = 0;
+    size_t dataLength = 0;
+    char streamBuffer[BUFFER_SIZE];
     generalutils::vcfData vcf;
+    deque<generalutils::vcfData> fileData;
+
+    Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(bucket, targetFilepath, client);
+    Aws::IOStream &stream = response.GetResult().GetBody();
+    gzip inputGzip = gzip(stream, response.GetResult().GetContentLength(), streamBuffer, sizeof(streamBuffer));
+    inputGzip.inflateFile();
 
     do {
-        if (checkForAvailableData(MIN_DATA_SIZE, bufferPos)) {
-            memcpy(reinterpret_cast<unsigned char*> (&vcf.pos), &_streamBuffer[bufferPos], sizeof(generalutils::vcfData::pos));
+        if (checkForAvailableData(MIN_DATA_SIZE, bufferPos, inputGzip, dataLength)) {
+            memcpy(reinterpret_cast<unsigned char*> (&vcf.pos), &streamBuffer[bufferPos], sizeof(generalutils::vcfData::pos));
             bufferPos += sizeof(generalutils::vcfData::pos);
             // Check if we can skip this start position
             if (rangeStart <= vcf.pos) {
-                vcf.ref = readString(bufferPos);
-                vcf.alt = readString(bufferPos);
-                _fileData.push_back(vcf);
+                vcf.ref = readString(bufferPos, inputGzip, dataLength, streamBuffer);
+                vcf.alt = readString(bufferPos, inputGzip, dataLength, streamBuffer);
+                fileData.push_back(vcf);
             } else {
                 // We need to move the buffer along by two strings worth if we are skipping this point
-                bufferPos += _streamBuffer[bufferPos] + 1;
-                bufferPos += _streamBuffer[bufferPos] + 1;
+                bufferPos += streamBuffer[bufferPos] + 1;
+                bufferPos += streamBuffer[bufferPos] + 1;
             }
 
         } else {
             throw runtime_error("Invalid File Read - getVcfData()");
         }
-    } while (_dataLength != bufferPos && vcf.pos <= rangeEnd);
+    } while ((dataLength != bufferPos && vcf.pos <= rangeEnd) || inputGzip.hasMoreData());
 
-    return _fileData;
+    return fileData;
 }
 
-string ReadVcfData::readString(size_t &bufferPos) {
-    uint8_t stringLen = _streamBuffer[bufferPos];
+string ReadVcfData::readString(size_t &bufferPos, gzip &inputGzip, size_t &dataLength, char *streamBuffer) {
+    uint8_t stringLen = streamBuffer[bufferPos];
     string ret = "";
     // if (stringLen != 1) {
     //     cout << "Found string with len: " << (uint16_t) stringLen << " At Pos: " << bufferPos << endl;
     //     throw runtime_error("Invalid length read");
     // }
     bufferPos += 1; // A byte for the length
-    if (checkForAvailableData(stringLen, bufferPos)) {
-        ret = string(stringLen, _streamBuffer[bufferPos]);
+    if (checkForAvailableData(stringLen, bufferPos, inputGzip, dataLength)) {
+        ret = string(stringLen, streamBuffer[bufferPos]);
         bufferPos += stringLen;
     } else {
         throw runtime_error("Invalid File Read - readString()");
@@ -52,25 +52,16 @@ string ReadVcfData::readString(size_t &bufferPos) {
     return ret;
 }
 
-bool ReadVcfData::checkForAvailableData(size_t bytesNeeded, size_t &bufferPos) {
-    if (_dataLength >= (bufferPos + bytesNeeded)) {
+bool ReadVcfData::checkForAvailableData(size_t bytesNeeded, size_t &bufferPos, gzip &inputGzip, size_t &dataLength) {
+    if (dataLength >= (bufferPos + bytesNeeded)) {
         return true;
     }
-
-    if (!_stream.good()) {
+    if (!inputGzip.hasMoreData()) {
         return false;
     }
+    dataLength = inputGzip.proccesData(bufferPos, dataLength);
 
-    size_t bufferRemain = BUFFER_SIZE - bufferPos;
-
-    if (_dataLength != bufferPos) {
-        memcpy(&_streamBuffer[0], &_streamBuffer[bufferPos], bufferRemain);
-    }
-
-    _stream.read(&_streamBuffer[bufferRemain], BUFFER_SIZE - bufferRemain);
-    _dataLength = _stream.gcount() + bufferRemain;
-
-    if (_dataLength > 0) {
+    if (dataLength > 0) {
         bufferPos = 0;
         return true;
     }

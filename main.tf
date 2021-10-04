@@ -2,9 +2,10 @@ locals {
   api_version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
+  build_gzip_path = abspath("${path.module}/lambda/shared/gzip")
 
-  maximum_load_file_size  = 50000000
-  vcf_processed_file_size = 4000
+  maximum_load_file_size  = 100000000
+  vcf_processed_file_size = 5000
 }
 
 #
@@ -110,7 +111,8 @@ module "lambda-summariseSlice" {
   build_command = "${local.build_cpp_path} $source $filename"
   build_paths = [
     local.build_cpp_path,
-    local.build_share_path
+    local.build_share_path,
+    local.build_gzip_path,
   ]
   tags = var.common-tags
 
@@ -147,7 +149,8 @@ module "lambda-duplicateVariantSearch" {
   build_command = "${local.build_cpp_path} $source $filename"
   build_paths = [
     local.build_cpp_path,
-    local.build_share_path
+    local.build_share_path,
+    local.build_gzip_path,
   ]
   tags = var.common-tags
 

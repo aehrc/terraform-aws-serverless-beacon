@@ -11,8 +11,14 @@ find_package(AWSSDK COMPONENTS dynamodb s3 sns)
 file(GLOB MyCSources *.cpp)
 add_executable(${PROJECT_NAME} ${MyCSources})
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/source shared)
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/gzip gzip)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Shared AWS::aws-lambda-runtime ${AWSSDK_LINK_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    Shared
+    Gzip
+    AWS::aws-lambda-runtime
+    ${AWSSDK_LINK_LIBRARIES}
+)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     "-Wall"

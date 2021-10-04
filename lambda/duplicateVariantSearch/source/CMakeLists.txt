@@ -11,9 +11,11 @@ find_package(AWSSDK COMPONENTS dynamodb s3 sns)
 file(GLOB MyCSources *.cpp)
 add_executable(${PROJECT_NAME} ${MyCSources})
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/source shared)
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/gzip gzip)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     Shared
+    Gzip
     AWS::aws-lambda-runtime
     ${AWSSDK_LINK_LIBRARIES}
 )
@@ -23,7 +25,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     "-Wextra"
     "-Wconversion"
     "-Wshadow"
-    "-Wno-sign-conversion")
+    "-Wno-sign-conversion"
+    "-O3"
+)
 
 target_compile_features(${PROJECT_NAME} PRIVATE "cxx_std_17")
 

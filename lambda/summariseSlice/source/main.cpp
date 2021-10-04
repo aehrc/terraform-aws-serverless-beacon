@@ -5,6 +5,7 @@
 #include <zlib.h>
 #include <regex>
 #include <generalutils.hpp>
+#include <gzip.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -35,8 +36,8 @@ using namespace std;
 const string S3_SUMMARIES_BUCKET = getenv("S3_SUMMARIES_BUCKET");
 const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
 const string SLICE_GAP = getenv("MAX_SLICE_GAP");
-const uint_fast64_t VCF_S3_OUTPUT_SIZE_LIMIT = atoll(OUTPUT_SIZE_LIMIT.c_str());
-const uint_fast64_t MAX_SLICE_GAP = atoll(SLICE_GAP.c_str());
+const int VCF_S3_OUTPUT_SIZE_LIMIT = atoi(OUTPUT_SIZE_LIMIT.c_str());
+const int MAX_SLICE_GAP = atoi(SLICE_GAP.c_str());
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
 constexpr uint_fast8_t BGZIP_BLOCK_START_LENGTH = 4;
@@ -491,23 +492,43 @@ class writeDataToS3 {
     uint16_t startBasePairRegion;
     string contig = "";
 
-    void stringToFile(const std::shared_ptr<Aws::IOStream> &file, string &input) {
+    int stringToFile(char *fileBuffer, string &input) {
         uint8_t length = (uint8_t)(input.size() & 0xff);
-        file->write(reinterpret_cast<char*>(&length), sizeof(uint8_t));
-        file->write(input.c_str(), length);
+        fileBuffer[0] = length;
+        memcpy(&fileBuffer[1], input.c_str(), length);
+        return length+1;
     }
 
     bool saveOutputToS3(string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
-        const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+        uint_fast32_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT * 15;
+        char fileBuffer[bufferSize] = {0};
+        size_t fileLength = 0;
+
+        cout << "Gather file Buffer, total size: " << bufferSize << endl;
 
         while (!input.empty()) {
-            input_data->write(reinterpret_cast<char*>(&(input.front().pos)), sizeof(&input.front().pos));
-            stringToFile(input_data, input.front().ref);
-            stringToFile(input_data, input.front().alt);
+            if (fileLength + 20 > bufferSize) {
+                cout << "Buffer Consumed Len: " << fileLength << " From: " << bufferSize << endl;
+                throw runtime_error("Buffer overflow");
+            }
+            memcpy(&fileBuffer[fileLength], reinterpret_cast<char*>(&input.front().pos), sizeof(input.front().pos));
+            fileLength += sizeof(&input.front().pos);
+            fileLength += stringToFile(&fileBuffer[fileLength], input.front().ref);
+            fileLength += stringToFile(&fileBuffer[fileLength], input.front().alt);
             input.pop();
         }
-        input_data->seekg( 0, ios::end );
-        objectName += "-" + to_string(input_data->tellg());
+
+        cout << "Buffered: " << fileLength << endl;
+        const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+        gzip gz(*input_data, 0, fileBuffer, fileLength);
+        gz.deflateFile(Z_BEST_COMPRESSION);
+
+        // input_data->write(gzipBuffer, bufferSize);
+        // input_data->seekg( 0, ios::end );
+        // objectName += "-" + to_string(input_data->tellg());
+        objectName += "-" + to_string(fileLength);
+
+        cout << "Stream Done" << endl;
 
         Aws::S3::Model::PutObjectRequest request;
         request.SetBucket(S3_SUMMARIES_BUCKET);
