@@ -500,33 +500,39 @@ class writeDataToS3 {
     }
 
     bool saveOutputToS3(string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
-        uint_fast32_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT * 15;
+        uint_fast32_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT;
         char fileBuffer[bufferSize] = {0};
-        size_t fileLength = 0;
+        size_t bufferLength = 0;
+        size_t accBufferLength = 0;
 
         cout << "Gather file Buffer, total size: " << bufferSize << endl;
 
+        const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
         while (!input.empty()) {
-            if (fileLength + 20 > bufferSize) {
-                cout << "Buffer Consumed Len: " << fileLength << " From: " << bufferSize << endl;
-                throw runtime_error("Buffer overflow");
+            if (bufferLength + input.front().ref.size() + input.front().alt.size() + sizeof(input.front().pos) > bufferSize) {
+                cout << "Buffer consumed Len: " << bufferLength << " From: " << bufferSize << endl;
+                gzip gz(*input_data, 0, fileBuffer, bufferLength);
+                gz.deflateFile(Z_BEST_COMPRESSION);
+                accBufferLength += bufferLength;
+                bufferLength = 0;
             }
-            memcpy(&fileBuffer[fileLength], reinterpret_cast<char*>(&input.front().pos), sizeof(input.front().pos));
-            fileLength += sizeof(&input.front().pos);
-            fileLength += stringToFile(&fileBuffer[fileLength], input.front().ref);
-            fileLength += stringToFile(&fileBuffer[fileLength], input.front().alt);
+            memcpy(&fileBuffer[bufferLength], reinterpret_cast<char*>(&input.front().pos), sizeof(input.front().pos));
+            bufferLength += sizeof(input.front().pos);
+            bufferLength += stringToFile(&fileBuffer[bufferLength], input.front().ref);
+            bufferLength += stringToFile(&fileBuffer[bufferLength], input.front().alt);
             input.pop();
         }
 
-        cout << "Buffered: " << fileLength << endl;
-        const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-        gzip gz(*input_data, 0, fileBuffer, fileLength);
-        gz.deflateFile(Z_BEST_COMPRESSION);
+        if (bufferLength > 0) {
+            gzip gz(*input_data, 0, fileBuffer, bufferLength);
+            gz.deflateFile(Z_BEST_COMPRESSION);
+            accBufferLength += bufferLength;
+        }        
 
         // input_data->write(gzipBuffer, bufferSize);
         // input_data->seekg( 0, ios::end );
         // objectName += "-" + to_string(input_data->tellg());
-        objectName += "-" + to_string(fileLength);
+        objectName += "-" + to_string(accBufferLength);
 
         cout << "Stream Done" << endl;
 
