@@ -25,19 +25,19 @@ DuplicateVariantSearch::DuplicateVariantSearch(
 
 bool DuplicateVariantSearch::comparePos(generalutils::vcfData const &i, uint64_t j){ return i.pos < j; }
 
-std::deque<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset) {
+inline std::deque<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset) {
     return lower_bound(fileData.begin() + offset, fileData.end(), pos, comparePos);
 }
 
-bool DuplicateVariantSearch::isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b) {
+inline bool DuplicateVariantSearch::isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b) {
     return a.ref.compare(b.ref) == 0 && a.alt.compare(b.alt) == 0;
 }
 
-bool DuplicateVariantSearch::containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath) {
+inline bool DuplicateVariantSearch::containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath) {
     return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
 }
 
-string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned precision) {
+inline string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned precision) {
     ostringstream oss;
     oss << setw(precision) << setfill('0') << value;
     return oss.str();
@@ -49,25 +49,33 @@ size_t DuplicateVariantSearch::compareFiles(
     uint64_t targetFilepathsLength,
     deque<deque<generalutils::vcfData>> &fileLookup
 ) {
-    // cout << "top: rangeStart: " << rangeStart << " rangeEnd: " << rangeEnd << endl;
     map<string, deque<size_t>> duplicates;
     for (size_t j = 0; j < targetFilepathsLength; j++) {
-        for (size_t m = 0; m < targetFilepathsLength - 1; m++) {
+        uint64_t jFrontPos = fileLookup[j].front().pos;
+        bool isInRangeJ = (
+            (jFrontPos <= rangeStart && rangeStart <= fileLookup[j].back().pos) || // If the start point lies within the range
+            (jFrontPos <= rangeEnd && rangeEnd <= fileLookup[j].back().pos) || // If the end point lies within the range
+            (rangeStart < jFrontPos && fileLookup[j].back().pos < rangeEnd) // If the start and end point encompass the range
+        );
+        for (size_t m = 0; (m < targetFilepathsLength - 1) && isInRangeJ; m++) {
+            uint64_t mFrontPos = fileLookup[m].front().pos;
+
             // strategically compare files only once
             if (j <= m) {
                 break;
             }
+            // files are in range of each other
             bool isInRange = (
-                (fileLookup[j].front().pos <= fileLookup[m].front().pos && fileLookup[m].front().pos <= fileLookup[j].back().pos) || // If the start point lies within the range
-                (fileLookup[j].front().pos <= fileLookup[m].back().pos && fileLookup[m].back().pos <= fileLookup[j].back().pos) || // If the end point lies within the range
-                (fileLookup[m].front().pos < fileLookup[j].front().pos && fileLookup[j].back().pos < fileLookup[m].back().pos) // If the start and end point encompass the range
+                (jFrontPos <= mFrontPos && mFrontPos <= fileLookup[j].back().pos) || // If the start point lies within the range
+                (jFrontPos <= fileLookup[m].back().pos && fileLookup[m].back().pos <= fileLookup[j].back().pos) || // If the end point lies within the range
+                (mFrontPos < jFrontPos && fileLookup[j].back().pos < fileLookup[m].back().pos) // If the start and end point encompass the range
             );
-            // bool isInRange2 = (
-            //     (fileLookup[j].front().pos <= fileLookup[m].front().pos && fileLookup[m].front().pos <= fileLookup[j].back().pos) || // If the start point lies within the range
-            //     (fileLookup[j].front().pos <= fileLookup[m].back().pos && fileLookup[m].back().pos <= fileLookup[j].back().pos) || // If the end point lies within the range
-            //     (fileLookup[m].front().pos < fileLookup[j].front().pos && fileLookup[j].back().pos < fileLookup[m].back().pos) // If the start and end point encompass the range
-            // );
-            if (isInRange) {
+            bool isInRangeM = (
+                (rangeStart <= mFrontPos && mFrontPos <= rangeEnd) || // If the start point lies within the range
+                (rangeStart <= fileLookup[m].back().pos && fileLookup[m].back().pos <= rangeEnd) || // If the end point lies within the range
+                (mFrontPos < rangeStart && rangeEnd < fileLookup[m].back().pos) // If the start and end point encompass the range
+            );
+            if (isInRange && isInRangeM) {
                 size_t file2Offest = 0;
 
                 // Skip the first part of the file if the data we are comparing doesn't matchup.

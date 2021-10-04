@@ -46,11 +46,11 @@ class DuplicateVariantSearch {
         uint64_t targetFilepathsLength,
         deque<deque<generalutils::vcfData>> &fileLookup
     );
-    static deque<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset);
-    static bool comparePos(generalutils::vcfData const &i, uint64_t j);
-    static bool isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b);
-    static bool containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath);
-    static string to_zero_lead(const uint64_t value, const unsigned precision);
+    inline static deque<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset);
+    inline static bool comparePos(generalutils::vcfData const &i, uint64_t j);
+    inline static bool isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b);
+    inline static bool containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath);
+    inline static string to_zero_lead(const uint64_t value, const unsigned precision);
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response);
     size_t searchForDuplicates();
 };
