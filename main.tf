@@ -158,6 +158,7 @@ module "lambda-duplicateVariantSearch" {
     variables = {
       ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
       VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
     }
   }
 }

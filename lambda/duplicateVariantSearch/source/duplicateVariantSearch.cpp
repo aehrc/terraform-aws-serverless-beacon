@@ -23,9 +23,9 @@ DuplicateVariantSearch::DuplicateVariantSearch(
     _targetFilepaths(targetFilepaths),
     _dataset(dataset) {}
 
-bool DuplicateVariantSearch::comparePos(generalutils::vcfData const &i, uint64_t j){ return i.pos < j; }
+bool DuplicateVariantSearch::comparePos(generalutils::vcfData const &i, uint64_t j) { return i.pos < j; }
 
-inline std::deque<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset) {
+inline deque<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset) {
     return lower_bound(fileData.begin() + offset, fileData.end(), pos, comparePos);
 }
 
@@ -49,7 +49,7 @@ size_t DuplicateVariantSearch::compareFiles(
     uint64_t targetFilepathsLength,
     deque<deque<generalutils::vcfData>> &fileLookup
 ) {
-    map<string, deque<size_t>> duplicates;
+    set<string> uniqueVariants;
     for (size_t j = 0; j < targetFilepathsLength; j++) {
         uint64_t jFrontPos = fileLookup[j].front().pos;
         bool isInRangeJ = (
@@ -96,20 +96,9 @@ size_t DuplicateVariantSearch::compareFiles(
                     // handle the case of multiple variants at one position
                     for (auto k = searchPosition; k != fileLookup[m].end() && k->pos == l->pos && k->pos <= rangeEnd; ++k) {
                         if (isADuplicate(*l, *k)) {
-                            // cout << "found a match! " << k->pos << "-" << k->ref << "-" << k->alt << " - " << l->pos << endl;
-
                             const string posRefAltKey = to_string(k->pos) + k->ref + "_" + k->alt;
-
-                            if (duplicates.count(posRefAltKey) != 0) { // if k already exists
-                                if (!containsExistingFilepath(duplicates[posRefAltKey], j)) {
-                                    duplicates[posRefAltKey].push_back(j);
-                                } 
-                                if (!containsExistingFilepath(duplicates[posRefAltKey], m)) {
-                                    duplicates[posRefAltKey].push_back(m);
-                                }
-                            } else {
-                                duplicates[posRefAltKey] = { j, m };
-                            }
+                            uniqueVariants.insert(posRefAltKey);
+                            break;
                         }
                     }
                 }
@@ -117,16 +106,11 @@ size_t DuplicateVariantSearch::compareFiles(
         }
     }
 
-    size_t duplicatesCount = 0; 
-    for (auto const& [key2, val2]: duplicates) {
-        duplicatesCount += val2.size() - 1;
-    }
-    // cout << "bottom: rangeStart: " << rangeStart << " rangeEnd: " << rangeEnd << endl;
-    // cout << "Dupe " << duplicatesCount << endl;
-    return duplicatesCount;
+    cout << "Unique variants " <<  uniqueVariants.size() << endl;
+    return uniqueVariants.size();
 }
 
-size_t DuplicateVariantSearch::searchForDuplicates() {
+void DuplicateVariantSearch::searchForDuplicates() {
     size_t numThreads = thread::hardware_concurrency() * 2;
     size_t duplicatesCount = 0;
     size_t targetFilepathsLength = _targetFilepaths.GetLength();
@@ -162,7 +146,7 @@ size_t DuplicateVariantSearch::searchForDuplicates() {
 
 #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
-        cout << "Files took: " << stopWatch << " to download "<< std::endl;
+        cout << "Files took: " << stopWatch << " to download "<< endl;
 
         stopWatch.start();
 #endif
@@ -181,7 +165,7 @@ size_t DuplicateVariantSearch::searchForDuplicates() {
                     duplicatesCountList.push_back(pool.enqueue_task(DuplicateVariantSearch::compareFiles, start, end, targetFilepathsLength, ref(fileLookup)));
                 }
             }
-            for (size_t i=0; i < duplicatesCountList.size(); i++) {
+            for (size_t i = 0; i < duplicatesCountList.size(); i++) {
                 if (duplicatesCountList[i].valid()) {
                     duplicatesCount += duplicatesCountList[i].get();
                 } else {
@@ -191,7 +175,7 @@ size_t DuplicateVariantSearch::searchForDuplicates() {
         }
 #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
-        cout << "compareFiles took: " << stopWatch << " to complete "<< std::endl;
+        cout << "compareFiles took: " << stopWatch << " to complete "<< endl;
 #endif
 
     } else {
@@ -199,11 +183,47 @@ size_t DuplicateVariantSearch::searchForDuplicates() {
     }
 
     cout << "Final Tally: " << duplicatesCount << endl;
-    updateVariantDuplicates(duplicatesCount);
-    return duplicatesCount;
+    double finalTally = updateVariantDuplicates(duplicatesCount);
+
+    if (finalTally >= 0) {
+        cout << "All variants have been compared!" << endl;
+        updateVariantCounts(finalTally);
+    } else {
+        cout << "All variants have not yet been compared" << endl;
+    }
 }
 
-bool DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
+void DuplicateVariantSearch::updateVariantCounts(double finalTally) {
+    Aws::DynamoDB::Model::UpdateItemRequest request;
+    request.SetTableName(getenv("DATASETS_TABLE"));
+    Aws::DynamoDB::Model::AttributeValue keyValue;
+    keyValue.SetS(_dataset);
+    request.AddKey("id", keyValue);
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
+    Aws::DynamoDB::Model::AttributeValue duplicatesValue;
+    request.SetUpdateExpression("SET uniqueVariants = :numDuplicates");
+    duplicatesValue.SetN(finalTally);
+    expressionAttributeValues[":numDuplicates"] = duplicatesValue;
+    request.SetExpressionAttributeValues(expressionAttributeValues);
+    request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
+    const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
+    if (result.IsSuccess()) {
+        const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
+        auto uniqueVariants = newAttributes.find("uniqueVariants");
+        cout << "variant count: " << uniqueVariants->second.GetN() << endl;
+    } else {
+        const Aws::DynamoDB::DynamoDBError error = result.GetError();
+        cout << "Item was not updated, received error: " << error.GetMessage() << endl;
+        if (error.ShouldRetry()) {
+            cout << "Retrying after 1 second..." << endl;
+            this_thread::sleep_for(chrono::seconds(1));
+        } else {
+            cout << "Not Retrying." << endl;
+        }
+    }
+}
+
+int64_t DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
     Aws::DynamoDB::Model::AttributeValue partitionKey, sortKey;
     partitionKey.SetS(_contig);
     sortKey.SetS(_dataset);
@@ -214,9 +234,6 @@ bool DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("VARIANT_DUPLICATES_TABLE"));
     request.WithKey(key);
-    // for debugging
-    // request.SetUpdateExpression("ADD duplicateCount :numVariants, updated :sliceStringSet DELETE toUpdate :sliceStringSet");
-    // request.SetConditionExpression("contains(toUpdate, :sliceString) And NOT (contains(updated, :sliceString))");
     request.SetUpdateExpression("ADD duplicateCount :numVariants DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
 
@@ -242,36 +259,37 @@ bool DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
     do {
-        std::cout << "Calling dynamodb::UpdateItem with partition=\"" << _contig << "\", sort=\"" << _dataset << "\" and slice=\"" << _rangeStart << "_" << _rangeEnd << "\"" << std::endl;
+        cout << "Calling dynamodb::UpdateItem with partition=\"" << _contig << "\", sort=\"" << _dataset << "\" and slice=\"" << _rangeStart << "_" << _rangeEnd << "\"" << endl;
         const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
         if (result.IsSuccess()) {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
-            std::cout << "Item was updated, new item has following values for these attributes: duplicateCount=";
+            cout << "Item was updated, new item has following values for these attributes: duplicateCount=";
             auto duplicateCountItr = newAttributes.find("duplicateCount");
             if (duplicateCountItr != newAttributes.end()) {
-                std::cout << duplicateCountItr->second.GetN();
+                cout << duplicateCountItr->second.GetN();
             }
-            std::cout << ", toUpdate=";
+            cout << ", toUpdate=";
             auto toUpdateItr = newAttributes.find("toUpdate");
             if (toUpdateItr != newAttributes.end()) {
-                std::cout << "{";
+                cout << "{";
                 Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
                 for (Aws::String sliceStringRemaining : toUpdateNew) {
-                    std::cout << "\"" << sliceStringRemaining << "\", ";
+                    cout << "\"" << sliceStringRemaining << "\", ";
                 }
-                std::cout << "}";
+                cout << "}";
             }
-            std::cout << std::endl;
-            return (toUpdateItr == newAttributes.end());
+            cout << endl;
+            uint64_t duplicateCount = atol(duplicateCountItr->second.GetN().c_str());
+            return toUpdateItr == newAttributes.end() ? duplicateCount : -1;
         } else {
             const Aws::DynamoDB::DynamoDBError error = result.GetError();
-            std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
+            cout << "Item was not updated, received error: " << error.GetMessage() << endl;
             if (error.ShouldRetry()) {
-                std::cout << "Retrying after 1 second..." << std::endl;
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+                cout << "Retrying after 1 second..." << endl;
+                this_thread::sleep_for(chrono::seconds(1));
                 continue;
             } else {
-                std::cout << "Not Retrying." << std::endl;
+                cout << "Not Retrying." << endl;
                 return false;
             }
         }

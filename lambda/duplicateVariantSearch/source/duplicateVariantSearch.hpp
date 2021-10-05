@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <aws/dynamodb/DynamoDBClient.h>
 #include <aws/dynamodb/model/UpdateItemRequest.h>
+#include <aws/dynamodb/model/GetItemRequest.h>
 
 #include "readVcfData.hpp"
 
@@ -27,7 +28,8 @@ class DuplicateVariantSearch {
     Aws::Utils::Array<Aws::Utils::Json::JsonView> _targetFilepaths;
     Aws::String _dataset;
 
-    bool updateVariantDuplicates(int64_t totalCount);
+    void updateVariantCounts(double finalTally);
+    int64_t updateVariantDuplicates(int64_t totalCount);
 
     public:
     DuplicateVariantSearch(
@@ -52,5 +54,5 @@ class DuplicateVariantSearch {
     inline static bool containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath);
     inline static string to_zero_lead(const uint64_t value, const unsigned precision);
     vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response);
-    size_t searchForDuplicates();
+    void searchForDuplicates();
 };

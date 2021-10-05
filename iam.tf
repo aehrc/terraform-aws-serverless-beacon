@@ -174,6 +174,7 @@ data aws_iam_policy_document lambda-duplicateVariantSearch {
     ]
     resources = [
       aws_dynamodb_table.variant_duplicates.arn,
+      aws_dynamodb_table.datasets.arn,
     ]
   }
 
