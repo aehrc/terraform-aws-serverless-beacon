@@ -43,7 +43,7 @@ inline string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const u
     return oss.str();
 }
 
-size_t DuplicateVariantSearch::compareFiles(
+inline size_t DuplicateVariantSearch::compareFiles(
     uint64_t rangeStart,
     uint64_t rangeEnd,
     uint64_t targetFilepathsLength,
@@ -112,7 +112,7 @@ size_t DuplicateVariantSearch::compareFiles(
 
 void DuplicateVariantSearch::searchForDuplicates() {
     size_t numThreads = thread::hardware_concurrency() * 2;
-    size_t duplicatesCount = 0;
+    size_t variantsCount = 0;
     size_t targetFilepathsLength = _targetFilepaths.GetLength();
     map<string, deque<size_t>> duplicates = {};
     deque<deque<generalutils::vcfData>> fileLookup;
@@ -151,27 +151,28 @@ void DuplicateVariantSearch::searchForDuplicates() {
         stopWatch.start();
 #endif
         {
-            deque<future<size_t>> duplicatesCountList;
-            {
-                thread_pool pool(numThreads);
-                cout << "Starting " << numThreads << " worker threads" << endl;
-                size_t inc = (_rangeEnd - _rangeStart) / (numThreads * 2);
+            // deque<future<size_t>> variantsCountList;
+            // {
+            //     thread_pool pool(numThreads);
+            //     cout << "Starting " << numThreads << " worker threads" << endl;
+            //     size_t inc = (_rangeEnd - _rangeStart) / (numThreads * 2);
 
-                for (size_t i = 0; i < (numThreads * 2); i++) {
-                    size_t start =_rangeStart + (inc * i), end = _rangeEnd;
-                    if ((i + 1) < (numThreads * 2)) {
-                        end = _rangeStart + ( inc * (i + 1)) - 1;
-                    }
-                    duplicatesCountList.push_back(pool.enqueue_task(DuplicateVariantSearch::compareFiles, start, end, targetFilepathsLength, ref(fileLookup)));
-                }
-            }
-            for (size_t i = 0; i < duplicatesCountList.size(); i++) {
-                if (duplicatesCountList[i].valid()) {
-                    duplicatesCount += duplicatesCountList[i].get();
-                } else {
-                    throw runtime_error("Invalid return value from thread"); 
-                }
-            }
+            //     for (size_t i = 0; i < (numThreads * 2); i++) {
+            //         size_t start =_rangeStart + (inc * i), end = _rangeEnd;
+            //         if ((i + 1) < (numThreads * 2)) {
+            //             end = _rangeStart + ( inc * (i + 1)) - 1;
+            //         }
+            //         variantsCountList.push_back(pool.enqueue_task(DuplicateVariantSearch::compareFiles, start, end, targetFilepathsLength, ref(fileLookup)));
+            //     }
+            // }
+            // for (size_t i = 0; i < variantsCountList.size(); i++) {
+            //     if (variantsCountList[i].valid()) {
+            //         variantsCount += variantsCountList[i].get();
+            //     } else {
+            //         throw runtime_error("Invalid return value from thread"); 
+            //     }
+            // }
+            variantsCount = DuplicateVariantSearch::compareFiles(_rangeStart, _rangeEnd, targetFilepathsLength, fileLookup);
         }
 #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
@@ -182,8 +183,8 @@ void DuplicateVariantSearch::searchForDuplicates() {
         cout << "Only one file for this region, continue" << endl;
     }
 
-    cout << "Final Tally: " << duplicatesCount << endl;
-    double finalTally = updateVariantDuplicates(duplicatesCount);
+    cout << "Final Tally: " << variantsCount << endl;
+    double finalTally = updateVariantDuplicates(variantsCount);
 
     if (finalTally >= 0) {
         cout << "All variants have been compared!" << endl;

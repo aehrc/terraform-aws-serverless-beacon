@@ -140,7 +140,7 @@ module "lambda-duplicateVariantSearch" {
   description = "Searches for duplicate variants across vcfs."
   handler = "function"
   runtime = "provided"
-  memory_size = 1536
+  memory_size = 1024
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
