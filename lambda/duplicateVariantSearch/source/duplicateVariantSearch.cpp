@@ -52,12 +52,12 @@ inline size_t DuplicateVariantSearch::compareFiles(
     set<string> uniqueVariants;
     for (size_t j = 0; j < targetFilepathsLength; j++) {
         uint64_t jFrontPos = fileLookup[j].front().pos;
-        bool isInRangeJ = (
-            (jFrontPos <= rangeStart && rangeStart <= fileLookup[j].back().pos) || // If the start point lies within the range
-            (jFrontPos <= rangeEnd && rangeEnd <= fileLookup[j].back().pos) || // If the end point lies within the range
-            (rangeStart < jFrontPos && fileLookup[j].back().pos < rangeEnd) // If the start and end point encompass the range
-        );
-        for (size_t m = 0; (m < targetFilepathsLength - 1) && isInRangeJ; m++) {
+        // bool isInRangeJ = (
+        //     (jFrontPos <= rangeStart && rangeStart <= fileLookup[j].back().pos) || // If the start point lies within the range
+        //     (jFrontPos <= rangeEnd && rangeEnd <= fileLookup[j].back().pos) || // If the end point lies within the range
+        //     (rangeStart < jFrontPos && fileLookup[j].back().pos < rangeEnd) // If the start and end point encompass the range
+        // );
+        for (size_t m = 0; (m < targetFilepathsLength - 1); m++) {
             uint64_t mFrontPos = fileLookup[m].front().pos;
 
             // strategically compare files only once
@@ -70,12 +70,12 @@ inline size_t DuplicateVariantSearch::compareFiles(
                 (jFrontPos <= fileLookup[m].back().pos && fileLookup[m].back().pos <= fileLookup[j].back().pos) || // If the end point lies within the range
                 (mFrontPos < jFrontPos && fileLookup[j].back().pos < fileLookup[m].back().pos) // If the start and end point encompass the range
             );
-            bool isInRangeM = (
-                (rangeStart <= mFrontPos && mFrontPos <= rangeEnd) || // If the start point lies within the range
-                (rangeStart <= fileLookup[m].back().pos && fileLookup[m].back().pos <= rangeEnd) || // If the end point lies within the range
-                (mFrontPos < rangeStart && rangeEnd < fileLookup[m].back().pos) // If the start and end point encompass the range
-            );
-            if (isInRange && isInRangeM) {
+            // bool isInRangeM = (
+            //     (rangeStart <= mFrontPos && mFrontPos <= rangeEnd) || // If the start point lies within the range
+            //     (rangeStart <= fileLookup[m].back().pos && fileLookup[m].back().pos <= rangeEnd) || // If the end point lies within the range
+            //     (mFrontPos < rangeStart && rangeEnd < fileLookup[m].back().pos) // If the start and end point encompass the range
+            // );
+            if (isInRange) {
                 size_t file2Offest = 0;
 
                 // Skip the first part of the file if the data we are comparing doesn't matchup.
@@ -184,7 +184,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
     }
 
     cout << "Final Tally: " << variantsCount << endl;
-    double finalTally = updateVariantDuplicates(variantsCount);
+    int64_t finalTally = updateVariantDuplicates(variantsCount);
 
     if (finalTally >= 0) {
         cout << "All variants have been compared!" << endl;
@@ -194,7 +194,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
     }
 }
 
-void DuplicateVariantSearch::updateVariantCounts(double finalTally) {
+void DuplicateVariantSearch::updateVariantCounts(int64_t finalTally) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("DATASETS_TABLE"));
     Aws::DynamoDB::Model::AttributeValue keyValue;
@@ -203,7 +203,7 @@ void DuplicateVariantSearch::updateVariantCounts(double finalTally) {
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
     Aws::DynamoDB::Model::AttributeValue duplicatesValue;
     request.SetUpdateExpression("SET uniqueVariants = :numDuplicates");
-    duplicatesValue.SetN(finalTally);
+    duplicatesValue.SetN(Aws::String(std::to_string(finalTally).c_str()));
     expressionAttributeValues[":numDuplicates"] = duplicatesValue;
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
@@ -224,7 +224,7 @@ void DuplicateVariantSearch::updateVariantCounts(double finalTally) {
     }
 }
 
-int64_t DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
+int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
     Aws::DynamoDB::Model::AttributeValue partitionKey, sortKey;
     partitionKey.SetS(_contig);
     sortKey.SetS(_dataset);
@@ -268,6 +268,7 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
             auto duplicateCountItr = newAttributes.find("duplicateCount");
             if (duplicateCountItr != newAttributes.end()) {
                 cout << duplicateCountItr->second.GetN();
+                
             }
             cout << ", toUpdate=";
             auto toUpdateItr = newAttributes.find("toUpdate");
@@ -291,8 +292,10 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(int64_t totalCount) {
                 continue;
             } else {
                 cout << "Not Retrying." << endl;
-                return false;
+                return -1;
             }
         }
     } while (true);
+    
+    return -1;
 }

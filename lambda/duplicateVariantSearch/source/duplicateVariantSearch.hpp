@@ -28,8 +28,8 @@ class DuplicateVariantSearch {
     Aws::Utils::Array<Aws::Utils::Json::JsonView> _targetFilepaths;
     Aws::String _dataset;
 
-    void updateVariantCounts(double finalTally);
-    int64_t updateVariantDuplicates(int64_t totalCount);
+    void updateVariantCounts(int64_t finalTally);
+    int64_t updateVariantDuplicates(size_t totalCount);
 
     public:
     DuplicateVariantSearch(

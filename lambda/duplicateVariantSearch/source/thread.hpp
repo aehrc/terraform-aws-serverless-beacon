@@ -155,7 +155,7 @@ public:
 			while(true)
 			{
 				proc_t f;
-				for(auto n = 0; n < m_count * K; ++n)
+				for(std::size_t n = 0; n < m_count * K; ++n)
 					if(m_queues[(i + n) % m_count].try_pop(f))
 						break;
 				if(!f && !m_queues[i].pop(f))
@@ -165,7 +165,7 @@ public:
 		};
 
 		m_threads.reserve(thread_count);
-		for(auto i = 0; i < thread_count; ++i)
+		for(std::size_t i = 0; i < thread_count; ++i)
 			m_threads.emplace_back(worker, i);
 	}
 
@@ -183,7 +183,7 @@ public:
 		auto work = [p = std::forward<F>(f), t = std::make_tuple(std::forward<Args>(args)...)]() { std::apply(p, t); };
 		auto i = m_index++;
 
-		for(auto n = 0; n < m_count * K; ++n)
+		for(std::size_t n = 0; n < m_count * K; ++n)
 			if(m_queues[(i + n) % m_count].try_push(work))
 				return;
 
@@ -201,7 +201,7 @@ public:
 		auto result = task->get_future();
 		auto i = m_index++;
 
-		for(auto n = 0; n < m_count * K; ++n)
+		for(std::size_t n = 0; n < m_count * K; ++n)
 			if(m_queues[(i + n) % m_count].try_push(work))
 				return result;
 
