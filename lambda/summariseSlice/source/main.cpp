@@ -492,11 +492,12 @@ class writeDataToS3 {
     uint16_t startBasePairRegion;
     string contig = "";
 
-    int stringToFile(char *fileBuffer, string &input) {
-        uint8_t length = (uint8_t)(input.size() & 0xff);
-        fileBuffer[0] = length;
-        memcpy(&fileBuffer[1], input.c_str(), length);
-        return length+1;
+    int stringToFile(char *fileBuffer, string &ref, string &alt) {
+        uint16_t length = (ref.size() + alt.size() + 1);
+        memcpy(&fileBuffer[0], reinterpret_cast<char*>(&length), sizeof(uint16_t));
+        string outString = ref + "_" + alt;
+        memcpy(&fileBuffer[2], outString.c_str(), length);
+        return length + sizeof(uint16_t); // Return the string length and the length int
     }
 
     bool saveOutputToS3(string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
@@ -518,8 +519,7 @@ class writeDataToS3 {
             }
             memcpy(&fileBuffer[bufferLength], reinterpret_cast<char*>(&input.front().pos), sizeof(input.front().pos));
             bufferLength += sizeof(input.front().pos);
-            bufferLength += stringToFile(&fileBuffer[bufferLength], input.front().ref);
-            bufferLength += stringToFile(&fileBuffer[bufferLength], input.front().alt);
+            bufferLength += stringToFile(&fileBuffer[bufferLength], input.front().ref, input.front().alt);
             input.pop();
         }
 

@@ -42,12 +42,6 @@ class DuplicateVariantSearch {
         Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths,
         Aws::String dataset
     );
-    static size_t compareFiles(
-        uint64_t rangeStart,
-        uint64_t rangeEnd,
-        uint64_t targetFilepathsLength,
-        deque<deque<generalutils::vcfData>> &fileLookup
-    );
     inline static deque<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset);
     inline static bool comparePos(generalutils::vcfData const &i, uint64_t j);
     inline static bool isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b);

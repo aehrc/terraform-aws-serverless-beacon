@@ -1,11 +1,25 @@
 #include "readVcfData.hpp"
 
-deque<generalutils::vcfData> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd) {
+// std::string string_to_hex(const std::string& input)
+// {
+//     static const char hex_digits[] = "0123456789ABCDEF";
+
+//     std::string output;
+//     output.reserve(input.length() * 2);
+//     for (unsigned char c : input)
+//     {
+//         output.push_back(hex_digits[c >> 4]);
+//         output.push_back(hex_digits[c & 15]);
+//     }
+//     return output;
+// }
+
+deque<string> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd) {
     size_t bufferPos = 0;
     size_t dataLength = 0;
     char streamBuffer[BUFFER_SIZE];
     generalutils::vcfData vcf;
-    deque<generalutils::vcfData> fileData;
+    deque<string> fileData; 
 
     Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(bucket, targetFilepath, client);
     Aws::IOStream &stream = response.GetResult().GetBody();
@@ -16,15 +30,17 @@ deque<generalutils::vcfData> ReadVcfData::getVcfData(Aws::String bucket, Aws::St
         if (checkForAvailableData(MIN_DATA_SIZE, bufferPos, inputGzip, dataLength)) {
             memcpy(reinterpret_cast<unsigned char*> (&vcf.pos), &streamBuffer[bufferPos], sizeof(generalutils::vcfData::pos));
             bufferPos += sizeof(generalutils::vcfData::pos);
+
             // Check if we can skip this start position
             if (rangeStart <= vcf.pos) {
-                vcf.ref = readString(bufferPos, inputGzip, dataLength, streamBuffer);
-                vcf.alt = readString(bufferPos, inputGzip, dataLength, streamBuffer);
-                fileData.push_back(vcf);
+                string refAlt = readString(bufferPos, inputGzip, dataLength, streamBuffer);
+                fileData.push_back(to_string(vcf.pos) + refAlt);
+
             } else {
-                // We need to move the buffer along by two strings worth if we are skipping this point
-                bufferPos += streamBuffer[bufferPos] + 1;
-                bufferPos += streamBuffer[bufferPos] + 1;
+                // Skip the rest of the data
+                uint16_t stringLen;
+                memcpy(reinterpret_cast<char*>(&stringLen), &streamBuffer[bufferPos], sizeof(uint16_t)); // copy in the length bytes
+                bufferPos += stringLen + sizeof(uint16_t);
             }
 
         } else {
@@ -36,15 +52,14 @@ deque<generalutils::vcfData> ReadVcfData::getVcfData(Aws::String bucket, Aws::St
 }
 
 string ReadVcfData::readString(size_t &bufferPos, gzip &inputGzip, size_t &dataLength, char *streamBuffer) {
-    uint8_t stringLen = streamBuffer[bufferPos];
+    uint16_t stringLen;
     string ret = "";
-    // if (stringLen != 1) {
-    //     cout << "Found string with len: " << (uint16_t) stringLen << " At Pos: " << bufferPos << endl;
-    //     throw runtime_error("Invalid length read");
-    // }
-    bufferPos += 1; // A byte for the length
+
+    memcpy(reinterpret_cast<char*>(&stringLen), &streamBuffer[bufferPos], sizeof(uint16_t)); // copy in the length bytes
+    bufferPos += sizeof(uint16_t);
+
     if (checkForAvailableData(stringLen, bufferPos, inputGzip, dataLength)) {
-        ret = string(stringLen, streamBuffer[bufferPos]);
+        ret = string(&streamBuffer[bufferPos], stringLen);
         bufferPos += stringLen;
     } else {
         throw runtime_error("Invalid File Read - readString()");

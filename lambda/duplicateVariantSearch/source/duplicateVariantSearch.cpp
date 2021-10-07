@@ -1,5 +1,7 @@
 #include "duplicateVariantSearch.hpp"
 #include "thread.hpp"
+#include <numeric>
+#include <unordered_set>
 
 #include "stopwatch.h"
 // #define INCLUDE_STOP_WATCH
@@ -23,99 +25,12 @@ DuplicateVariantSearch::DuplicateVariantSearch(
     _targetFilepaths(targetFilepaths),
     _dataset(dataset) {}
 
-bool DuplicateVariantSearch::comparePos(generalutils::vcfData const &i, uint64_t j) { return i.pos < j; }
-
-inline deque<generalutils::vcfData>::iterator DuplicateVariantSearch::searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset) {
-    return lower_bound(fileData.begin() + offset, fileData.end(), pos, comparePos);
-}
-
-inline bool DuplicateVariantSearch::isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b) {
-    return a.ref.compare(b.ref) == 0 && a.alt.compare(b.alt) == 0;
-}
-
-inline bool DuplicateVariantSearch::containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath) {
-    return find(existingFilepaths.begin(), existingFilepaths.end(), filepath) != existingFilepaths.end();
-}
-
-inline string DuplicateVariantSearch::to_zero_lead(const uint64_t value, const unsigned precision) {
-    ostringstream oss;
-    oss << setw(precision) << setfill('0') << value;
-    return oss.str();
-}
-
-inline size_t DuplicateVariantSearch::compareFiles(
-    uint64_t rangeStart,
-    uint64_t rangeEnd,
-    uint64_t targetFilepathsLength,
-    deque<deque<generalutils::vcfData>> &fileLookup
-) {
-    set<string> uniqueVariants;
-    for (size_t j = 0; j < targetFilepathsLength; j++) {
-        uint64_t jFrontPos = fileLookup[j].front().pos;
-        // bool isInRangeJ = (
-        //     (jFrontPos <= rangeStart && rangeStart <= fileLookup[j].back().pos) || // If the start point lies within the range
-        //     (jFrontPos <= rangeEnd && rangeEnd <= fileLookup[j].back().pos) || // If the end point lies within the range
-        //     (rangeStart < jFrontPos && fileLookup[j].back().pos < rangeEnd) // If the start and end point encompass the range
-        // );
-        for (size_t m = 0; (m < targetFilepathsLength - 1); m++) {
-            uint64_t mFrontPos = fileLookup[m].front().pos;
-
-            // strategically compare files only once
-            if (j <= m) {
-                break;
-            }
-            // files are in range of each other
-            bool isInRange = (
-                (jFrontPos <= mFrontPos && mFrontPos <= fileLookup[j].back().pos) || // If the start point lies within the range
-                (jFrontPos <= fileLookup[m].back().pos && fileLookup[m].back().pos <= fileLookup[j].back().pos) || // If the end point lies within the range
-                (mFrontPos < jFrontPos && fileLookup[j].back().pos < fileLookup[m].back().pos) // If the start and end point encompass the range
-            );
-            // bool isInRangeM = (
-            //     (rangeStart <= mFrontPos && mFrontPos <= rangeEnd) || // If the start point lies within the range
-            //     (rangeStart <= fileLookup[m].back().pos && fileLookup[m].back().pos <= rangeEnd) || // If the end point lies within the range
-            //     (mFrontPos < rangeStart && rangeEnd < fileLookup[m].back().pos) // If the start and end point encompass the range
-            // );
-            if (isInRange) {
-                size_t file2Offest = 0;
-
-                // Skip the first part of the file if the data we are comparing doesn't matchup.
-                uint64_t filePosStart = max(rangeStart, fileLookup[m].front().pos);
-                deque<generalutils::vcfData>::iterator file1Start = searchForPosition(filePosStart, fileLookup[j], 0);
-
-                // search for duplicates of each struct in file1 against file2
-                for (deque<generalutils::vcfData>::iterator l = file1Start; l != fileLookup[j].end(); ++l) {
-                    deque<generalutils::vcfData>::iterator searchPosition = searchForPosition(l->pos, fileLookup[m], file2Offest);
-                    file2Offest = searchPosition - fileLookup[m].begin();
-
-                    // We have read to the end of file 2, exit the file 1 loop
-                    if (searchPosition == fileLookup[m].end()) {
-                        // cout << "End found, exit now" << endl;
-                        break;
-                    }
-
-                    // handle the case of multiple variants at one position
-                    for (auto k = searchPosition; k != fileLookup[m].end() && k->pos == l->pos && k->pos <= rangeEnd; ++k) {
-                        if (isADuplicate(*l, *k)) {
-                            const string posRefAltKey = to_string(k->pos) + k->ref + "_" + k->alt;
-                            uniqueVariants.insert(posRefAltKey);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    cout << "Unique variants " <<  uniqueVariants.size() << endl;
-    return uniqueVariants.size();
-}
-
 void DuplicateVariantSearch::searchForDuplicates() {
     size_t numThreads = thread::hardware_concurrency() * 2;
-    size_t variantsCount = 0;
+    unordered_set<string> uniqueVariants;
     size_t targetFilepathsLength = _targetFilepaths.GetLength();
     map<string, deque<size_t>> duplicates = {};
-    deque<deque<generalutils::vcfData>> fileLookup;
+    deque<deque<string>> fileLookup;
 
     #ifdef INCLUDE_STOP_WATCH
         stop_watch stopWatch = stop_watch();
@@ -127,7 +42,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
         stopWatch.start();
 #endif
         {
-            deque<future<deque<generalutils::vcfData>>> fileList;
+            deque<future<deque<string>>> fileList;
             {
                 thread_pool pool(numThreads);
                 cout << "Starting " << numThreads << " download threads" << endl;
@@ -135,7 +50,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
                     fileList.push_back(pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[j].AsString(), ref(_s3Client), _rangeStart, _rangeEnd));
                 }
             }
-            for (size_t i=0; i < fileList.size(); i++) {
+            for (size_t i = 0; i < fileList.size(); i++) {
                 if (fileList[i].valid()) {
                     fileLookup.push_back(fileList[i].get());
                 } else {
@@ -150,30 +65,13 @@ void DuplicateVariantSearch::searchForDuplicates() {
 
         stopWatch.start();
 #endif
-        {
-            // deque<future<size_t>> variantsCountList;
-            // {
-            //     thread_pool pool(numThreads);
-            //     cout << "Starting " << numThreads << " worker threads" << endl;
-            //     size_t inc = (_rangeEnd - _rangeStart) / (numThreads * 2);
 
-            //     for (size_t i = 0; i < (numThreads * 2); i++) {
-            //         size_t start =_rangeStart + (inc * i), end = _rangeEnd;
-            //         if ((i + 1) < (numThreads * 2)) {
-            //             end = _rangeStart + ( inc * (i + 1)) - 1;
-            //         }
-            //         variantsCountList.push_back(pool.enqueue_task(DuplicateVariantSearch::compareFiles, start, end, targetFilepathsLength, ref(fileLookup)));
-            //     }
-            // }
-            // for (size_t i = 0; i < variantsCountList.size(); i++) {
-            //     if (variantsCountList[i].valid()) {
-            //         variantsCount += variantsCountList[i].get();
-            //     } else {
-            //         throw runtime_error("Invalid return value from thread"); 
-            //     }
-            // }
-            variantsCount = DuplicateVariantSearch::compareFiles(_rangeStart, _rangeEnd, targetFilepathsLength, fileLookup);
+        for (size_t i = 0; i < fileLookup.size(); i++) {
+            for (size_t j = 0; j < fileLookup[i].size(); j++) {
+                uniqueVariants.insert(fileLookup[i][j]);
+            }
         }
+
 #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
         cout << "compareFiles took: " << stopWatch << " to complete "<< endl;
@@ -183,8 +81,8 @@ void DuplicateVariantSearch::searchForDuplicates() {
         cout << "Only one file for this region, continue" << endl;
     }
 
-    cout << "Final Tally: " << variantsCount << endl;
-    int64_t finalTally = updateVariantDuplicates(variantsCount);
+    cout << "Final Tally: " << uniqueVariants.size() << endl;
+    int64_t finalTally = updateVariantDuplicates(uniqueVariants.size());
 
     if (finalTally >= 0) {
         cout << "All variants have been compared!" << endl;
