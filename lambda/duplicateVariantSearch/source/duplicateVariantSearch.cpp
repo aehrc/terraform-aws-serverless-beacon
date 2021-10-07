@@ -100,15 +100,15 @@ void DuplicateVariantSearch::updateVariantCounts(int64_t finalTally) {
     request.AddKey("id", keyValue);
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
     Aws::DynamoDB::Model::AttributeValue duplicatesValue;
-    request.SetUpdateExpression("SET uniqueVariants = :numDuplicates");
+    request.SetUpdateExpression("ADD variantCount :variantCount");
     duplicatesValue.SetN(Aws::String(std::to_string(finalTally).c_str()));
-    expressionAttributeValues[":numDuplicates"] = duplicatesValue;
+    expressionAttributeValues[":variantCount"] = duplicatesValue;
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
     const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
     if (result.IsSuccess()) {
         const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
-        auto uniqueVariants = newAttributes.find("uniqueVariants");
+        auto uniqueVariants = newAttributes.find("variantCount");
         cout << "variant count: " << uniqueVariants->second.GetN() << endl;
     } else {
         const Aws::DynamoDB::DynamoDBError error = result.GetError();
@@ -133,7 +133,7 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("VARIANT_DUPLICATES_TABLE"));
     request.WithKey(key);
-    request.SetUpdateExpression("ADD duplicateCount :numVariants DELETE toUpdate :sliceStringSet");
+    request.SetUpdateExpression("ADD variantCount :numVariants DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
 
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
@@ -162,10 +162,10 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
         const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
         if (result.IsSuccess()) {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
-            cout << "Item was updated, new item has following values for these attributes: duplicateCount=";
-            auto duplicateCountItr = newAttributes.find("duplicateCount");
-            if (duplicateCountItr != newAttributes.end()) {
-                cout << duplicateCountItr->second.GetN();
+            cout << "Item was updated, new item has following values for these attributes: variantCount=";
+            auto variantCountItr = newAttributes.find("variantCount");
+            if (variantCountItr != newAttributes.end()) {
+                cout << variantCountItr->second.GetN();
                 
             }
             cout << ", toUpdate=";
@@ -179,7 +179,7 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
                 cout << "}";
             }
             cout << endl;
-            uint64_t duplicateCount = atol(duplicateCountItr->second.GetN().c_str());
+            uint64_t duplicateCount = atol(variantCountItr->second.GetN().c_str());
             return toUpdateItr == newAttributes.end() ? duplicateCount : -1;
         } else {
             const Aws::DynamoDB::DynamoDBError error = result.GetError();

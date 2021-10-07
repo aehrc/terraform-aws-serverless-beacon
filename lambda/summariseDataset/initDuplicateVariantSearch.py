@@ -11,6 +11,7 @@ ABS_MAX_DATA_SPLIT: int = int(os.environ['ABS_MAX_DATA_SPLIT'])
 DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = os.environ['DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN']
 VARIANT_DUPLICATES_TABLE_NAME = os.environ['VARIANT_DUPLICATES_TABLE']
 S3_SUMMARIES_BUCKET = os.environ['S3_SUMMARIES_BUCKET']
+DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 
 s3 = boto3.client('s3')
 sns = boto3.client('sns')
@@ -124,10 +125,13 @@ def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
             "contig": {"S":contig}, 
             "datasetKey": {"S":dataset},
         },
-        'UpdateExpression': 'ADD toUpdate :toUpdate',
+        'UpdateExpression': 'ADD toUpdate :toUpdate SET variantCount = :variantCount',
         'ExpressionAttributeValues': {
             ':toUpdate': {
                 'BS': slice_strings,
+            },
+            ':variantCount': {
+                'N': '0',
             },
         },
     }
@@ -207,6 +211,25 @@ def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]', dat
                 response = sns.publish(**kwargs)
                 print('Received Response: {}'.format(json.dumps(response)))
 
+def clearDatasetVariantCount(dataset: str) -> None:
+    kwargs = {
+        'TableName': DATASETS_TABLE_NAME,
+        'Key': {
+            "id": {"S": dataset}, 
+        },
+        'UpdateExpression': 'SET variantCount = :variantCount',
+        'ExpressionAttributeValues': {
+            ':variantCount': {
+                'N': '0',
+            },
+        },
+    }
+    print('Updating table: ', kwargs)
+    try:
+        dynamodb.update_item(**kwargs)
+    except ClientError as e:
+        raise e
+
 def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
     filenames: list[str] = ['vcf-summaries/'+'%'.join(fn[5:].split('/')[1:]).split('.vcf.gz')[0]+'/' for fn in filepaths]
@@ -224,4 +247,6 @@ def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
 
     rangeSlices : 'dict[str, list[basePairRange]]' = calcRangeSplits(regionData)
     print(rangeSlices)
+
+    clearDatasetVariantCount(dataset)
     insertDatabaseAndCallSNS(rangeSlices, dataset)

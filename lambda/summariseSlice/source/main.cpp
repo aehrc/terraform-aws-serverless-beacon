@@ -506,12 +506,9 @@ class writeDataToS3 {
         size_t bufferLength = 0;
         size_t accBufferLength = 0;
 
-        cout << "Gather file Buffer, total size: " << bufferSize << endl;
-
         const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
         while (!input.empty()) {
             if (bufferLength + input.front().ref.size() + input.front().alt.size() + sizeof(input.front().pos) > bufferSize) {
-                cout << "Buffer consumed Len: " << bufferLength << " From: " << bufferSize << endl;
                 gzip gz(*input_data, 0, fileBuffer, bufferLength);
                 gz.deflateFile(Z_BEST_COMPRESSION);
                 accBufferLength += bufferLength;
@@ -533,8 +530,6 @@ class writeDataToS3 {
         // input_data->seekg( 0, ios::end );
         // objectName += "-" + to_string(input_data->tellg());
         objectName += "-" + to_string(accBufferLength);
-
-        cout << "Stream Done" << endl;
 
         Aws::S3::Model::PutObjectRequest request;
         request.SetBucket(S3_SUMMARIES_BUCKET);
@@ -902,16 +897,20 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
     request.SetConditionExpression("contains(toUpdate, :sliceString)");
 
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
+
     Aws::DynamoDB::Model::AttributeValue numVariantsValue;
-    numVariantsValue.SetN(static_cast<double>(regionStats.numVariants));
+    numVariantsValue.SetN(to_string(regionStats.numVariants));
     expressionAttributeValues[":numVariants"] = numVariantsValue;
+
     Aws::DynamoDB::Model::AttributeValue numCallsValue;
     numCallsValue.SetN(static_cast<double>(regionStats.numCalls));
     expressionAttributeValues[":numCalls"] = numCallsValue;
+
     Aws::String sliceString = std::to_string(virtualStart) + "-" + std::to_string(virtualEnd);
     Aws::DynamoDB::Model::AttributeValue sliceStringSetValue;
     sliceStringSetValue.SetSS(Aws::Vector<Aws::String>{sliceString});
     expressionAttributeValues[":sliceStringSet"] = sliceStringSetValue;
+
     Aws::DynamoDB::Model::AttributeValue sliceStringValue;
     sliceStringValue.SetS(sliceString);
     expressionAttributeValues[":sliceString"] = sliceStringValue;
@@ -924,12 +923,6 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
         if (result.IsSuccess())
         {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
-            std::cout << "Item was updated, new item has following values for these attributes: variantCount=";
-            auto variantCountItr = newAttributes.find("variantCount");
-            if (variantCountItr != newAttributes.end())
-            {
-                std::cout << variantCountItr->second.GetN();
-            }
             std::cout << ", callCount=";
             auto callCountItr = newAttributes.find("callCount");
             if (callCountItr != newAttributes.end())

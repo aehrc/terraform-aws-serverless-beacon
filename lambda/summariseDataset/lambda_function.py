@@ -12,7 +12,6 @@ VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 BATCH_GET_MAX_ITEMS = 100
 
 COUNTS = [
-    'variantCount',
     'callCount',
     'sampleCount',
 ]
@@ -103,7 +102,7 @@ def summarise_dataset(dataset):
         initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
-    
+
     update_dataset(dataset, values)
     for new_location in new_locations:
         summarise_vcf(new_location)
