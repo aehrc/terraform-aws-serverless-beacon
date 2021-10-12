@@ -8,3 +8,5 @@ remote_state.tf
 # Build files
 *.zip
 *.pyc
+build
+libraries

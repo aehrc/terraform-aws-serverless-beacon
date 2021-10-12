@@ -1,8 +1,9 @@
 from collections import Counter
+from initDuplicateVariantSearch import initDuplicateVariantSearch
 import json
 import os
-
 import boto3
+
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_VCF_SNS_TOPIC_ARN = os.environ['SUMMARISE_VCF_SNS_TOPIC_ARN']
@@ -11,7 +12,6 @@ VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 BATCH_GET_MAX_ITEMS = 100
 
 COUNTS = [
-    'variantCount',
     'callCount',
     'sampleCount',
 ]
@@ -79,6 +79,7 @@ def summarise_dataset(dataset):
     vcf_locations = get_locations(dataset)
     locations_info = get_locations_info(vcf_locations)
     new_locations = set(vcf_locations)
+
     counts = Counter()
     updated = True
     for location in locations_info:
@@ -91,10 +92,14 @@ def summarise_dataset(dataset):
         elif updated:
             counts.update({count: int(location[count]['N'])
                            for count in COUNTS})
+
+    print('newlocations:', new_locations)
     if new_locations:
         updated = False
     if updated:
         values = {':'+count: {'N': str(counts[count])} for count in COUNTS}
+        datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
+        initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
 

@@ -1,4 +1,4 @@
-add_compile_options(-O3 -march=haswell)
+
 # add_compile_options(-Ofast -march=native)
 # Line above controlled by init.sh
 cmake_minimum_required(VERSION 3.14)
@@ -13,7 +13,7 @@ add_executable(${PROJECT_NAME} ${MyCSources})
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/source shared)
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../shared/gzip gzip)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(${PROJECT_NAME} PRIVATE 
     Shared
     Gzip
     AWS::aws-lambda-runtime
@@ -25,9 +25,10 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     "-Wextra"
     "-Wconversion"
     "-Wshadow"
-    "-Wno-sign-conversion")
+    "-Wno-sign-conversion"
+    "-O3"
+)
 
 target_compile_features(${PROJECT_NAME} PRIVATE "cxx_std_17")
 
 aws_lambda_package_target(${PROJECT_NAME} NO_LIBC)
-

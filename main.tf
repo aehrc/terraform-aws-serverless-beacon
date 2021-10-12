@@ -1,6 +1,11 @@
 locals {
   api_version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
+  build_share_path = abspath("${path.module}/lambda/shared/source")
+  build_gzip_path = abspath("${path.module}/lambda/shared/gzip")
+
+  maximum_load_file_size  = 100000000
+  vcf_processed_file_size = 5000
 }
 
 #
@@ -14,7 +19,7 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.6"
   memory_size = 2048
-  timeout = 5
+  timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-submitDataset.json
   }
@@ -38,9 +43,9 @@ module "lambda-summariseDataset" {
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.7"
   memory_size = 2048
-  timeout = 10
+  timeout = 60
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseDataset.json
   }
@@ -52,6 +57,10 @@ module "lambda-summariseDataset" {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_VCF_SNS_TOPIC_ARN = aws_sns_topic.summariseVcf.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+      VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+      DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
+      S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
+      ABS_MAX_DATA_SPLIT = local.maximum_load_file_size
     }
   }
 }
@@ -101,7 +110,9 @@ module "lambda-summariseSlice" {
   source_path = "${path.module}/lambda/summariseSlice/source"
   build_command = "${local.build_cpp_path} $source $filename"
   build_paths = [
-    local.build_cpp_path
+    local.build_cpp_path,
+    local.build_share_path,
+    local.build_gzip_path,
   ]
   tags = var.common-tags
 
@@ -112,6 +123,42 @@ module "lambda-summariseSlice" {
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+      S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
+      MAX_SLICE_GAP = 100000
+      VCF_S3_OUTPUT_SIZE_LIMIT = local.vcf_processed_file_size
+    }
+  }
+}
+
+#
+# duplicateVariantSearch Lambda Function
+#
+module "lambda-duplicateVariantSearch" {
+  source = "github.com/claranet/terraform-aws-lambda"
+
+  function_name = "duplicateVariantSearch"
+  description = "Searches for duplicate variants across vcfs."
+  handler = "function"
+  runtime = "provided"
+  memory_size = 1536
+  timeout = 900
+  policy = {
+    json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
+  }
+  source_path = "${path.module}/lambda/duplicateVariantSearch/source"
+  build_command = "${local.build_cpp_path} $source $filename"
+  build_paths = [
+    local.build_cpp_path,
+    local.build_share_path,
+    local.build_gzip_path,
+  ]
+  tags = var.common-tags
+
+  environment = {
+    variables = {
+      ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+      VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
     }
   }
 }
@@ -214,5 +261,14 @@ module "lambda-performQuery" {
     json = data.aws_iam_policy_document.lambda-performQuery.json
   }
   source_path = "${path.module}/lambda/performQuery"
+  tags = var.common-tags
+}
+
+#
+# S3 bucket for persisted vcf summaries (duplicate variant search feature)
+#
+resource "aws_s3_bucket" "s3-summaries-bucket" {
+  bucket_prefix = var.summaries-bucket-prefix
+  acl = "private"
   tags = var.common-tags
 }
