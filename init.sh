@@ -33,7 +33,7 @@ mkdir "${SOURCE}"
 # Build the C++ AWS SDK libraries
 cd "${SOURCE}"
 # Tag to avoid build error introduced in 1.9.49
-git clone https://github.com/aws/aws-sdk-cpp.git --depth=1 --recursive --branch 1.9.48
+git clone https://github.com/aws/aws-sdk-cpp.git --depth=1 --recursive
 cd aws-sdk-cpp
 sed -i "1s/^/${CMAKE_FIRST_LINE}\n/" CMakeLists.txt
 mkdir build
