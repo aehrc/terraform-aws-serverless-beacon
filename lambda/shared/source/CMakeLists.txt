@@ -1,5 +1,4 @@
-
-# add_compile_options(-Ofast -march=native)
+add_compile_options(-O3 -march=native)
 # Line above controlled by init.sh
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_CXX_STANDARD 17)

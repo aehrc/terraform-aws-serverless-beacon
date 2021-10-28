@@ -1,5 +1,3 @@
-add_compile_options(-march=ivybridge)
-# Line above controlled by init.sh
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_CXX_STANDARD 17)
 project(function LANGUAGES CXX)

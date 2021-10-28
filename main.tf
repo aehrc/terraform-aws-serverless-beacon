@@ -12,7 +12,7 @@ locals {
 # submitDataset Lambda Function
 #
 module "lambda-submitDataset" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "submitDataset"
   description = "Creates or updates a dataset and triggers summariseVcf."
@@ -38,7 +38,7 @@ module "lambda-submitDataset" {
 # summariseDataset Lambda Function
 #
 module "lambda-summariseDataset" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
@@ -70,7 +70,7 @@ module "lambda-summariseDataset" {
 #
 
 module "lambda-summariseVcf" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "summariseVcf"
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
@@ -96,12 +96,13 @@ module "lambda-summariseVcf" {
 # summariseSlice Lambda Function
 #
 module "lambda-summariseSlice" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "summariseSlice"
   description = "Counts calls and variants in region of a vcf."
   handler = "function"
-  runtime = "provided"
+  runtime = "provided.al2"
+  architectures = ["arm64"]
   memory_size = 768
   timeout = 60
   policy = {
@@ -134,12 +135,13 @@ module "lambda-summariseSlice" {
 # duplicateVariantSearch Lambda Function
 #
 module "lambda-duplicateVariantSearch" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "duplicateVariantSearch"
   description = "Searches for duplicate variants across vcfs."
   handler = "function"
-  runtime = "provided"
+  runtime = "provided.al2"
+  architectures = ["arm64"]
   memory_size = 1536
   timeout = 900
   policy = {
@@ -167,7 +169,7 @@ module "lambda-duplicateVariantSearch" {
 # getInfo Lambda Function
 #
 module "lambda-getInfo" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "getInfo"
   description = "Returns basic information about the beacon and the datasets."
@@ -197,7 +199,7 @@ module "lambda-getInfo" {
 # queryDatasets Lambda Function
 #
 module "lambda-queryDatasets" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "queryDatasets"
   description = "Invokes splitQuery for each dataset and returns result."
@@ -224,7 +226,7 @@ module "lambda-queryDatasets" {
 # splitQuery Lambda Function
 #
 module "lambda-splitQuery" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "splitQuery"
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
@@ -249,7 +251,7 @@ module "lambda-splitQuery" {
 # performQuery Lambda Function
 #
 module "lambda-performQuery" {
-  source = "github.com/claranet/terraform-aws-lambda"
+  source = "github.com/bhosking/terraform-aws-lambda"
 
   function_name = "performQuery"
   description = "Queries a slice of a vcf for a specified variant."
