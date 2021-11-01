@@ -33,7 +33,7 @@
 
 using namespace std;
 
-const string S3_SUMMARIES_BUCKET = getenv("S3_SUMMARIES_BUCKET");
+const string VARIANTS_BUCKET = getenv("VARIANTS_BUCKET");
 const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
 const string SLICE_GAP = getenv("MAX_SLICE_GAP");
 const int VCF_S3_OUTPUT_SIZE_LIMIT = atoi(OUTPUT_SIZE_LIMIT.c_str());
@@ -532,7 +532,7 @@ class writeDataToS3 {
         objectName += "-" + to_string(accBufferLength);
 
         Aws::S3::Model::PutObjectRequest request;
-        request.SetBucket(S3_SUMMARIES_BUCKET);
+        request.SetBucket(VARIANTS_BUCKET);
         request.SetKey(objectName);
         request.SetBody(input_data);
 
@@ -544,7 +544,7 @@ class writeDataToS3 {
             return false;
         }
         else {
-            cout << "Success: Object '" << objectName << "' uploaded to bucket '" << S3_SUMMARIES_BUCKET << "'." << endl;
+            cout << "Success: Object '" << objectName << "' uploaded to bucket '" << VARIANTS_BUCKET << "'." << endl;
             return true;
         }
     }

@@ -24,7 +24,7 @@ variable "common-tags" {
   default = {}
 }
 
-variable "summaries-bucket-prefix" {
+variable "variants-bucket-prefix" {
     type        = string
     description = "S3 bucket for storing vcf summaries used for duplicate variant searches"
     default     = ""

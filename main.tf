@@ -59,7 +59,7 @@ module "lambda-summariseDataset" {
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
       VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
       DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
-      S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
+      VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
       ABS_MAX_DATA_SPLIT = local.maximum_load_file_size
     }
   }
@@ -124,7 +124,7 @@ module "lambda-summariseSlice" {
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-      S3_SUMMARIES_BUCKET = aws_s3_bucket.s3-summaries-bucket.bucket
+      VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
       MAX_SLICE_GAP = 100000
       VCF_S3_OUTPUT_SIZE_LIMIT = local.vcf_processed_file_size
     }

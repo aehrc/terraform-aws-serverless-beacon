@@ -10,7 +10,7 @@ ABS_MAX_DATA_SPLIT: int = int(os.environ['ABS_MAX_DATA_SPLIT'])
 
 DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = os.environ['DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN']
 VARIANT_DUPLICATES_TABLE_NAME = os.environ['VARIANT_DUPLICATES_TABLE']
-S3_SUMMARIES_BUCKET = os.environ['S3_SUMMARIES_BUCKET']
+VARIANTS_BUCKET = os.environ['VARIANTS_BUCKET']
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 
 s3 = boto3.client('s3')
@@ -194,7 +194,7 @@ def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]', dat
         if mark_updating(contig, baseRange, dataset):
             for br in baseRange: 
                 message = {
-                    'bucket': S3_SUMMARIES_BUCKET,
+                    'bucket': VARIANTS_BUCKET,
                     'rangeStart': br.start,
                     'rangeEnd': br.end,
                     'contig': contig,
@@ -234,7 +234,7 @@ def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
     filenames: list[str] = ['vcf-summaries/'+'%'.join(fn[5:].split('/')[1:]).split('.vcf.gz')[0]+'/' for fn in filepaths]
     # print('filenames:', filenames)
-    s3Objects: list[str] = retrieveS3Objects(S3_SUMMARIES_BUCKET)
+    s3Objects: list[str] = retrieveS3Objects(VARIANTS_BUCKET)
     # print('s3Objects:', s3Objects)
 
     regionData: list[vcfRegionData] = []
