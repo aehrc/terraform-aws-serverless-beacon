@@ -101,8 +101,8 @@ module "lambda-summariseSlice" {
   function_name = "summariseSlice"
   description = "Counts calls and variants in region of a vcf."
   handler = "function"
-  runtime = "provided.al2"
-  architectures = ["arm64"]
+  runtime = "provided"
+  architectures = ["x86_64"]
   memory_size = 768
   timeout = 60
   policy = {
@@ -140,8 +140,8 @@ module "lambda-duplicateVariantSearch" {
   function_name = "duplicateVariantSearch"
   description = "Searches for duplicate variants across vcfs."
   handler = "function"
-  runtime = "provided.al2"
-  architectures = ["arm64"]
+  runtime = "provided"
+  architectures = ["x86_64"]
   memory_size = 1536
   timeout = 900
   policy = {
