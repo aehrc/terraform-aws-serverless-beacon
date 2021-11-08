@@ -172,9 +172,13 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
             auto toUpdateItr = newAttributes.find("toUpdate");
             if (toUpdateItr != newAttributes.end()) {
                 cout << "{";
-                Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
-                for (Aws::String sliceStringRemaining : toUpdateNew) {
-                    cout << "\"" << sliceStringRemaining << "\", ";
+                Aws::Vector<Aws::Utils::ByteBuffer> toUpdateNew = toUpdateItr->second.GetBS();
+                for (Aws::Utils::ByteBuffer sliceStringRemaining : toUpdateNew) {
+                    cout << "\"0x";
+                    for (size_t i = 0; i < sliceStringRemaining.GetLength(); i++) {
+                        cout << hex << (unsigned int)sliceStringRemaining[i];
+                    }
+                    cout << "\", ";
                 }
                 cout << "}";
             }
