@@ -232,7 +232,7 @@ def clearDatasetVariantCount(dataset: str) -> None:
 
 def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
-    filenames: list[str] = ['vcf-summaries/'+'%'.join(fn[5:].split('/')[1:]).split('.vcf.gz')[0]+'/' for fn in filepaths]
+    filenames: list[str] = ['vcf-summaries/'+ fn[5:-7].replace('/', '%')+'/' for fn in filepaths]
     # print('filenames:', filenames)
     s3Objects: list[str] = retrieveS3Objects(VARIANTS_BUCKET)
     # print('s3Objects:', s3Objects)

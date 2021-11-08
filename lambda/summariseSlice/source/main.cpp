@@ -586,9 +586,10 @@ class writeDataToS3 {
     }
 
     public:
-    writeDataToS3(string key, Aws::S3::S3Client const& client):
+    writeDataToS3(string location, Aws::S3::S3Client const& client):
     s3Client(client) {
-        s3BucketKey = regex_replace(key, regex("\\.vcf\\.gz"), "");
+        // Remove leading "s3://" and trailing ".vcf.gz"
+        s3BucketKey = location.substr(5, location.size() - 12);
         replace(s3BucketKey.begin(), s3BucketKey.end(), '/', '%');
     }
 
@@ -825,7 +826,7 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
 #endif
     VcfChunkReader vcfChunkReader(bucket, key, s3Client, chunk);
     std::cout << "Loaded Reader" << std::endl;
-    writeDataToS3 s3Data = writeDataToS3(key, s3Client);
+    writeDataToS3 s3Data = writeDataToS3(location, s3Client);
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     RegionStats regionStats = RegionStats();
