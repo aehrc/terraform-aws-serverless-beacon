@@ -118,6 +118,15 @@ data aws_iam_policy_document lambda-summariseVcf {
     ]
     resources = ["*"]
   }
+
+  statement {
+    actions = [
+      "s3:DeleteObject",
+    ]
+    resources = [
+      "${aws_s3_bucket.variants-bucket.arn}/*"
+    ]
+  }
 }
 
 #

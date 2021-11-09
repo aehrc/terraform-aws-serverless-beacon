@@ -87,6 +87,7 @@ module "lambda-summariseVcf" {
   environment = {
     variables = {
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
+      VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
       VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
     }
   }

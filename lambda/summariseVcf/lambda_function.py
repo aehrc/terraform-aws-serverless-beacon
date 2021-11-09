@@ -14,6 +14,7 @@ COUNTS = [
 ]
 
 SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ['SUMMARISE_SLICE_SNS_TOPIC_ARN']
+VARIANTS_BUCKET = os.environ['VARIANTS_BUCKET']
 VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
 
 # Time/Cost estimation variables
@@ -26,6 +27,39 @@ MAX_CONCURRENCY = 1000  # Maximum number of summariseSlice functions to invoke
 dynamodb = boto3.client('dynamodb')
 s3 = boto3.client('s3')
 sns = boto3.client('sns')
+
+
+def delete_old_variant_files(location: str):
+    # Remove leading "s3://" and trailing "vcf.gz" and change "/" delimiters
+    key_prefix = 'vcf-summaries/' + location[5:-7].replace('/', '%') + '/'
+    list_kwargs = {
+        'Bucket': VARIANTS_BUCKET,
+        'MaxKeys': 1000,  # To ensure the numbers line up with the delete call
+        'Prefix': key_prefix,
+    }
+    while True:
+        print(f"Calling s3.list_objects_v2 with kwargs: {json.dumps(list_kwargs)}")
+        list_response = s3.list_objects_v2(**list_kwargs)
+        print(f"Received_response: {json.dumps(list_response, default=str)}")
+        objects = [
+            {'Key': obj['Key']}
+            for obj in list_response.get('Contents', [])
+        ]
+        if not objects:
+            break
+        delete_kwargs = {
+            'Bucket': VARIANTS_BUCKET,
+            'Delete': {
+                'Objects': objects,
+                'Quiet': True,
+            }
+        }
+        print(f"Calling s3.delete_objects with kwargs: {json.dumps(delete_kwargs)}")
+        response = s3.delete_objects(**delete_kwargs)
+        print(f"Received response {json.dumps(response, default=str)}")
+        assert not response.get('Errors')
+        if not list_response['IsTruncated']:
+            break
 
 
 def find_best_split(total_size, epsilon):
@@ -203,6 +237,7 @@ def summarise_vcf(location):
         return
     sample_count = get_sample_count(location, first_chunk_start)
     update_sample_count(location, sample_count)
+    delete_old_variant_files(location)
     publish_slice_updates(location, slices)
 
 
