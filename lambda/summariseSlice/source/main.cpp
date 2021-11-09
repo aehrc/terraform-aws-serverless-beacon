@@ -190,8 +190,8 @@ class VcfChunkReader
     uint_fast32_t blockChars;
 #ifdef INCLUDE_STOP_WATCH
     stop_watch stopWatch;
-    uint reads;
 #endif
+    uint reads;
 
     public:
     VcfChunkReader(Aws::String bucket, Aws::String key, Aws::S3::S3Client const& s3Client, VcfChunk chunk)
@@ -207,8 +207,8 @@ class VcfChunkReader
     {
 #ifdef INCLUDE_STOP_WATCH
         stopWatch = stop_watch();
-        reads = 0;
 #endif
+        reads = 0;
         do {
             downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
             downloadNext();
@@ -369,9 +369,10 @@ class VcfChunkReader
         stopWatch.start();
 #endif
         inflate(&zStream, Z_FINISH);
+        reads++;
 #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
-        if (++reads <= 10 || (reads > 15000 && reads <= 15010))
+        if (reads <= 10 || (reads > 15000 && reads <= 15010))
         {
             std::cout << "Inflate took: " << stopWatch << " to inflate " << nextBlockStart - blockStart - blockXlen - 20 << " bytes into " << blockChars << " bytes on read " << reads << std::endl;
         }
@@ -850,9 +851,9 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
 #ifdef INCLUDE_STOP_WATCH
     s.stop();
     std::cout << "Finished processing " << vcfChunkReader.totalBytes << " bytes in " << s << " (" << 1000 * vcfChunkReader.totalBytes / s.nanoseconds << "MB/s)" << std::endl;
+#endif
     std::cout << "vcfChunkReader read " << vcfChunkReader.reads << " blocks completely, found compressed size: " << vcfChunkReader.totalCSize << " and uncompressed size: " << vcfChunkReader.totalUSize << " with records: " << records << std::endl;
     std::cout << "numVariants: " << regionStats.numVariants << ", numCalls: " << regionStats.numCalls << std::endl;
-#endif
     return regionStats;
 }
 
