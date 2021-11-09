@@ -26,13 +26,15 @@ vector<string> awsutils::retrieveBucketObjectKeys(Aws::String bucket, Aws::S3::S
 Aws::S3::Model::GetObjectOutcome awsutils::getS3Object(Aws::String bucket, Aws::String key, Aws::S3::S3Client client) {
     Aws::S3::Model::GetObjectRequest request;
     request.WithBucket(bucket).WithKey(key);
+    cout << "calling S3.getObject with bucket: " << bucket << " and key: " << key << endl;
     auto response = client.GetObject(request);
     if (!response.IsSuccess() && response.GetError().ShouldRetry()) {
         response = client.GetObject(request);
         cout << "S3 request retry" << endl;
     }
     if (response.IsSuccess()) {
-        // cout << "getS3Object complete: " << bucket << "/" << key << endl;
+        size_t totalBytes = response.GetResult().GetContentLength();
+        cout << "getS3Object complete: " << bucket << "/" << key << ", received " << totalBytes << " bytes." << endl;
         return response;
     } else {
         std::cout << "ERROR getS3Object Failed with error: " << response.GetError() << std::endl;
