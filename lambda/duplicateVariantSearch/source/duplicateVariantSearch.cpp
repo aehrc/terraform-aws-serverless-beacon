@@ -32,29 +32,30 @@ void DuplicateVariantSearch::searchForDuplicates() {
     #ifdef INCLUDE_STOP_WATCH
         stop_watch stopWatch = stop_watch();
         stopWatch.start();
-#endif
-            Aws::Vector<future<Aws::Vector<Aws::String>>> fileList;
-                thread_pool pool(numThreads);
-                cout << "Starting " << numThreads << " download threads" << endl;
-                for (size_t j = 0; j < _targetFilepaths.GetLength(); j++) {
-                    fileList.push_back(pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[j].AsString(), ref(_s3Client), _rangeStart, _rangeEnd));
-                }
-            for (size_t i = 0; i < fileList.size(); i++) {
-                if (fileList[i].valid()) {
-                    Aws::Vector<Aws::String> fileVariants = fileList[i].get();
-                    for (size_t v = 0; v < fileVariants.size(); v++) {
-                        uniqueVariants.insert(fileVariants[v]);
-                    }
-                    cout << "New number of variants: " << uniqueVariants.size() << endl;
-                } else {
-                    throw runtime_error("Invalid return value from thread"); 
-                }
-            }
+    #endif
 
-#ifdef INCLUDE_STOP_WATCH
+    Aws::Vector<future<Aws::Vector<Aws::String>>> fileList;
+    thread_pool pool(numThreads);
+    cout << "Starting " << numThreads << " download threads" << endl;
+    for (size_t j = 0; j < _targetFilepaths.GetLength(); j++) {
+        fileList.push_back(pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[j].AsString(), ref(_s3Client), _rangeStart, _rangeEnd));
+    }
+    for (size_t i = 0; i < fileList.size(); i++) {
+        if (fileList[i].valid()) {
+            Aws::Vector<Aws::String> fileVariants = fileList[i].get();
+            for (size_t v = 0; v < fileVariants.size(); v++) {
+                uniqueVariants.insert(fileVariants[v]);
+            }
+            cout << "New number of variants: " << uniqueVariants.size() << endl;
+        } else {
+            throw runtime_error("Invalid return value from thread");
+        }
+    }
+
+    #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
         cout << "Files took: " << stopWatch << " to download "<< endl;
-#endif
+    #endif
 
     cout << "Final Tally: " << uniqueVariants.size() << endl;
     int64_t finalTally = updateVariantDuplicates(uniqueVariants.size());
