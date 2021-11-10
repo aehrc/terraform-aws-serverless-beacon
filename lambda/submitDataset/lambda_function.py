@@ -119,9 +119,10 @@ def submit_dataset(body_dict, method):
     if validation_error:
         return bad_request(validation_error)
     if 'vcfLocations' in body_dict:
-        errors = check_vcf_locations(body_dict['vcfLocations'])
-        if errors:
-            return bad_request(errors)
+        if 'skipCheck' not in body_dict:
+            errors = check_vcf_locations(body_dict['vcfLocations'])
+            if errors:
+                return bad_request(errors)
         summarise = True
     else:
         summarise = False
