@@ -2,7 +2,6 @@
 
 #include <awsutils.hpp>
 #include <generalutils.hpp>
-#include <deque>
 #include <gzip.hpp>
 
 #define BUFFER_SIZE 1024
@@ -21,5 +20,5 @@ class ReadVcfData {
     static bool checkForAvailableData(size_t bytesNeeded, size_t &bufferPos, gzip &inputGzip, size_t &dataLength);
 
     public:
-    static deque<string> getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd);
+    static Aws::Vector<Aws::String> getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd);
 };

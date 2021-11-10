@@ -1,7 +1,6 @@
 #pragma once
 
 #include <iostream>
-#include <deque>
 #include <stdint.h>
 #include <math.h>
 #include <algorithm>
@@ -42,11 +41,5 @@ class DuplicateVariantSearch {
         Aws::Utils::Array<Aws::Utils::Json::JsonView> targetFilepaths,
         Aws::String dataset
     );
-    inline static deque<generalutils::vcfData>::iterator searchForPosition(uint64_t pos, deque<generalutils::vcfData> &fileData, size_t offset);
-    inline static bool comparePos(generalutils::vcfData const &i, uint64_t j);
-    inline static bool isADuplicate(generalutils::vcfData &a, generalutils::vcfData &b);
-    inline static bool containsExistingFilepath(deque<size_t> &existingFilepaths, size_t filepath);
-    inline static string to_zero_lead(const uint64_t value, const unsigned precision);
-    vector<generalutils::vcfData> streamS3Outcome(Aws::S3::Model::GetObjectOutcome &response);
     void searchForDuplicates();
 };

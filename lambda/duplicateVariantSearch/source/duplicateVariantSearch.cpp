@@ -28,58 +28,33 @@ DuplicateVariantSearch::DuplicateVariantSearch(
 void DuplicateVariantSearch::searchForDuplicates() {
     size_t numThreads = thread::hardware_concurrency() * 2;
     unordered_set<string> uniqueVariants;
-    size_t targetFilepathsLength = _targetFilepaths.GetLength();
-    map<string, deque<size_t>> duplicates = {};
-    deque<deque<string>> fileLookup;
 
     #ifdef INCLUDE_STOP_WATCH
         stop_watch stopWatch = stop_watch();
-    #endif
-
-    // for each file found to correspond with the current target range, retrieve two files at a time from the list, and search through to find duplicates
-    if (targetFilepathsLength > 1) {
-#ifdef INCLUDE_STOP_WATCH
         stopWatch.start();
 #endif
-        {
-            deque<future<deque<string>>> fileList;
-            {
+            Aws::Vector<future<Aws::Vector<Aws::String>>> fileList;
                 thread_pool pool(numThreads);
                 cout << "Starting " << numThreads << " download threads" << endl;
-                for (size_t j = 0; j < targetFilepathsLength; j++) {
+                for (size_t j = 0; j < _targetFilepaths.GetLength(); j++) {
                     fileList.push_back(pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[j].AsString(), ref(_s3Client), _rangeStart, _rangeEnd));
                 }
-            }
             for (size_t i = 0; i < fileList.size(); i++) {
                 if (fileList[i].valid()) {
-                    fileLookup.push_back(fileList[i].get());
+                    Aws::Vector<Aws::String> fileVariants = fileList[i].get();
+                    for (size_t v = 0; v < fileVariants.size(); v++) {
+                        uniqueVariants.insert(fileVariants[v]);
+                    }
+                    cout << "New number of variants: " << uniqueVariants.size() << endl;
                 } else {
                     throw runtime_error("Invalid return value from thread"); 
                 }
             }
-        }
 
 #ifdef INCLUDE_STOP_WATCH
         stopWatch.stop();
         cout << "Files took: " << stopWatch << " to download "<< endl;
-
-        stopWatch.start();
 #endif
-
-        for (size_t i = 0; i < fileLookup.size(); i++) {
-            for (size_t j = 0; j < fileLookup[i].size(); j++) {
-                uniqueVariants.insert(fileLookup[i][j]);
-            }
-        }
-
-#ifdef INCLUDE_STOP_WATCH
-        stopWatch.stop();
-        cout << "compareFiles took: " << stopWatch << " to complete "<< endl;
-#endif
-
-    } else {
-        cout << "Only one file for this region, continue" << endl;
-    }
 
     cout << "Final Tally: " << uniqueVariants.size() << endl;
     int64_t finalTally = updateVariantDuplicates(uniqueVariants.size());

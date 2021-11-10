@@ -1,11 +1,11 @@
 #include "readVcfData.hpp"
 
-deque<string> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd) {
+Aws::Vector<Aws::String> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd) {
     size_t bufferPos = 0;
     size_t dataLength = 0;
     char streamBuffer[BUFFER_SIZE];
     generalutils::vcfData vcf;
-    deque<string> fileData; 
+    Aws::Vector<Aws::String> fileData;
 
     Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(bucket, targetFilepath, client);
     Aws::IOStream &stream = response.GetResult().GetBody();
