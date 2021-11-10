@@ -175,9 +175,11 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
                 Aws::Vector<Aws::Utils::ByteBuffer> toUpdateNew = toUpdateItr->second.GetBS();
                 for (Aws::Utils::ByteBuffer sliceStringRemaining : toUpdateNew) {
                     cout << "\"0x";
+                    ios::fmtflags f(cout.flags());  // Store formatting state because "hex" changes it
                     for (size_t i = 0; i < sliceStringRemaining.GetLength(); i++) {
                         cout << hex << (unsigned int)sliceStringRemaining[i];
                     }
+                    cout.flags(f);  // Restore the previous formatting flags
                     cout << "\", ";
                 }
                 cout << "}";
