@@ -26,7 +26,7 @@ DuplicateVariantSearch::DuplicateVariantSearch(
     _dataset(dataset) {}
 
 void DuplicateVariantSearch::searchForDuplicates() {
-    size_t numThreads = thread::hardware_concurrency() * 2;
+    size_t numThreads = min(static_cast<size_t>(thread::hardware_concurrency() * 2), _targetFilepaths.GetLength());
     unordered_set<string> uniqueVariants;
 
     #ifdef INCLUDE_STOP_WATCH
