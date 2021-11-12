@@ -36,7 +36,7 @@ using namespace std;
 const string VARIANTS_BUCKET = getenv("VARIANTS_BUCKET");
 const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
 const string SLICE_GAP = getenv("MAX_SLICE_GAP");
-const int VCF_S3_OUTPUT_SIZE_LIMIT = atoi(OUTPUT_SIZE_LIMIT.c_str());
+const size_t VCF_S3_OUTPUT_SIZE_LIMIT = static_cast<size_t>(atoi(OUTPUT_SIZE_LIMIT.c_str()));
 const int MAX_SLICE_GAP = atoi(SLICE_GAP.c_str());
 constexpr const char* TAG = "LAMBDA_ALLOC";
 constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
