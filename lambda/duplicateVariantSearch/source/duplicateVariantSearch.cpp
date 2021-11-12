@@ -34,21 +34,32 @@ void DuplicateVariantSearch::searchForDuplicates() {
         stopWatch.start();
     #endif
 
-    Aws::Vector<future<Aws::Vector<Aws::String>>> fileList;
+    future<Aws::Vector<Aws::String>> taskList[numThreads];
     thread_pool pool(numThreads);
     cout << "Starting " << numThreads << " download threads" << endl;
-    for (size_t j = 0; j < _targetFilepaths.GetLength(); j++) {
-        fileList.push_back(pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[j].AsString(), ref(_s3Client), _rangeStart, _rangeEnd));
-    }
-    for (size_t i = 0; i < fileList.size(); i++) {
-        if (fileList[i].valid()) {
-            Aws::Vector<Aws::String> fileVariants = fileList[i].get();
-            for (size_t v = 0; v < fileVariants.size(); v++) {
-                uniqueVariants.insert(fileVariants[v]);
+    size_t assignedFiles = 0;
+    size_t completedFiles = 0;
+    while (true) {
+        // Each loop get process a downloaded file and/or begin downloading a file
+        if (assignedFiles < _targetFilepaths.GetLength()) {
+            // While there are files to download, download a new file
+            taskList[assignedFiles % numThreads] = pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[assignedFiles].AsString(), ref(_s3Client), _rangeStart, _rangeEnd);
+            assignedFiles++;
+        }
+        if (assignedFiles >= numThreads) {
+            // Once we have a download process running in each thread, wait for the earliest to complete
+            if (taskList[completedFiles % numThreads].valid()) {
+                Aws::Vector<Aws::String> fileVariants = taskList[completedFiles % numThreads].get();
+                for (size_t v = 0; v < fileVariants.size(); v++) {
+                    uniqueVariants.insert(fileVariants[v]);
+                }
+                cout << "New number of variants: " << uniqueVariants.size() << endl;
+                if (++completedFiles == _targetFilepaths.GetLength()) {
+                    break;
+                }
+            } else {
+                throw runtime_error("Invalid return value from thread");
             }
-            cout << "New number of variants: " << uniqueVariants.size() << endl;
-        } else {
-            throw runtime_error("Invalid return value from thread");
         }
     }
 
