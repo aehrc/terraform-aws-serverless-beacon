@@ -502,8 +502,8 @@ class writeDataToS3 {
     }
 
     bool saveOutputToS3(string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
-        uint_fast32_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT;
-        char fileBuffer[bufferSize] = {0};
+        size_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT;
+        char *fileBuffer = new char[VCF_S3_OUTPUT_SIZE_LIMIT];
         size_t bufferLength = 0;
         size_t accBufferLength = 0;
 
@@ -526,6 +526,7 @@ class writeDataToS3 {
             gz.deflateFile(Z_BEST_COMPRESSION);
             accBufferLength += bufferLength;
         }        
+        delete[] fileBuffer;
 
         // input_data->write(gzipBuffer, bufferSize);
         // input_data->seekg( 0, ios::end );
