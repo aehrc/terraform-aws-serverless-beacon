@@ -889,6 +889,79 @@ void summariseDatasets(Aws::SNS::SNSClient const& snsClient, Aws::Vector<Aws::St
     }
 }
 
+bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String vcfLocation, Aws::String datasetId)
+{
+    Aws::DynamoDB::Model::UpdateItemRequest request;
+    request.SetTableName(getenv("DATASETS_TABLE"));
+    Aws::DynamoDB::Model::AttributeValue keyValue;
+    keyValue.SetS(datasetId);
+    request.AddKey("id", keyValue);
+    request.SetUpdateExpression("DELETE toUpdateFiles :vcfLocationSet");
+    request.SetConditionExpression("contains(toUpdateFiles, :vcfLocation)");
+
+    Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
+
+
+    Aws::DynamoDB::Model::AttributeValue vcfLocationSetValue;
+    vcfLocationSetValue.SetSS(Aws::Vector<Aws::String>{vcfLocation});
+    expressionAttributeValues[":vcfLocationSet"] = vcfLocationSetValue;
+
+    Aws::DynamoDB::Model::AttributeValue vcfLocationValue;
+    vcfLocationValue.SetS(vcfLocation);
+    expressionAttributeValues[":vcfLocation"] = vcfLocationValue;
+
+    request.SetExpressionAttributeValues(expressionAttributeValues);
+    request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
+    do {
+        std::cout << "Calling dynamodb::UpdateItem with key=\"" << datasetId << "\" and vcfLocation=\"" << vcfLocation << "\"" << std::endl;
+        const Aws::DynamoDB::Model::UpdateItemOutcome& result = dynamodbClient.UpdateItem(request);
+        if (result.IsSuccess())
+        {
+            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
+            std::cout << ", toUpdateFiles=";
+            auto toUpdateItr = newAttributes.find("toUpdateFiles");
+            if (toUpdateItr != newAttributes.end())
+            {
+                std::cout << "{";
+                Aws::Vector<Aws::String> toUpdateNew = toUpdateItr->second.GetSS();
+                for (Aws::String vcfLocationRemaining : toUpdateNew)
+                {
+                    std::cout << "\"" << vcfLocationRemaining << "\", ";
+                }
+                std::cout << "}";
+            }
+            std::cout << std::endl;
+            return (toUpdateItr == newAttributes.end());
+        } else {
+            const Aws::DynamoDB::DynamoDBError error = result.GetError();
+            std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
+            if (error.ShouldRetry())
+            {
+                std::cout << "Retrying after 1 second..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            } else {
+                std::cout << "Not Retrying." << std::endl;
+                return false;
+            }
+        }
+    } while (true);
+}
+
+Aws::Vector<Aws::String> getDatasetsToUpdate(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location, Aws::Vector<Aws::String> datasetIds)
+{
+    Aws::Vector<Aws::String> toUpdateIds;
+    for (Aws::String datasetId : datasetIds)
+    {
+        if (updateFileInDataset(dynamodbClient, location, datasetId))
+        {
+            toUpdateIds.push_back(datasetId);
+        }
+    }
+    return toUpdateIds;
+}
+
+
 bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
 {
     Aws::DynamoDB::Model::UpdateItemRequest request;
@@ -977,8 +1050,9 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
         std::cout << "VCF has been completely summarised!" << std::endl;
-        Aws::Vector<Aws::String> datasetIds = getAffectedDatasets(dynamodbClient, location);
-        summariseDatasets(snsClient, datasetIds);
+        Aws::Vector<Aws::String> allDatasetIds = getAffectedDatasets(dynamodbClient, location);
+        Aws::Vector<Aws::String> datasetsToUpdate = getDatasetsToUpdate(dynamodbClient, location, allDatasetIds);
+        summariseDatasets(snsClient, datasetsToUpdate);
     } else {
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }

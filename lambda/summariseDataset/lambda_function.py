@@ -103,7 +103,7 @@ def summarise_dataset(dataset):
     else:
         values = {':'+count: {'NULL': True} for count in COUNTS}
 
-    update_dataset(dataset, values)
+    update_dataset(dataset, values, new_locations)
     for new_location in new_locations:
         summarise_vcf(new_location)
 
@@ -118,7 +118,7 @@ def summarise_vcf(location):
     print('Received Response: {}'.format(json.dumps(response)))
 
 
-def update_dataset(dataset_id, values):
+def update_dataset(dataset_id, values, new_locations):
     kwargs = {
         'TableName': DATASETS_TABLE_NAME,
         'Key': {
@@ -130,6 +130,11 @@ def update_dataset(dataset_id, values):
                                                for count in COUNTS),
         'ExpressionAttributeValues': values,
     }
+    if new_locations:
+        kwargs['UpdateExpression'] += ', toUpdateFiles=:toUpdateFiles'
+        kwargs['ExpressionAttributeValues'][':toUpdateFiles'] = {
+            'SS': list(new_locations),
+        }
     print('Updating item: {}'.format(json.dumps(kwargs)))
     dynamodb.update_item(**kwargs)
 
