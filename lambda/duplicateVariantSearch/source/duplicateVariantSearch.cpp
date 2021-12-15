@@ -93,24 +93,24 @@ void DuplicateVariantSearch::updateVariantCounts(int64_t finalTally) {
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
     do {
-    const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
-    if (result.IsSuccess()) {
-        const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
-        auto uniqueVariants = newAttributes.find("variantCount");
-        cout << "variant count: " << uniqueVariants->second.GetN() << endl;
-        break;
-    } else {
-        const Aws::DynamoDB::DynamoDBError error = result.GetError();
-        cout << "Item was not updated, received error: " << error.GetMessage() << endl;
-        if (error.ShouldRetry()) {
-            cout << "Retrying after 1 second..." << endl;
-            this_thread::sleep_for(chrono::seconds(1));
-            continue;
+        const Aws::DynamoDB::Model::UpdateItemOutcome& result = _dynamodbClient.UpdateItem(request);
+        if (result.IsSuccess()) {
+            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
+            auto uniqueVariants = newAttributes.find("variantCount");
+            cout << "variant count: " << uniqueVariants->second.GetN() << endl;
+            break;
         } else {
-            cout << "Not Retrying." << endl;
-            throw runtime_error("Error when updating datasets table");
+            const Aws::DynamoDB::DynamoDBError error = result.GetError();
+            cout << "Item was not updated, received error: " << error.GetMessage() << endl;
+            if (error.ShouldRetry()) {
+                cout << "Retrying after 1 second..." << endl;
+                this_thread::sleep_for(chrono::seconds(1));
+                continue;
+            } else {
+                cout << "Not Retrying." << endl;
+                throw runtime_error("Error when updating datasets table");
+            }
         }
-    }
     } while (true);
 }
 
