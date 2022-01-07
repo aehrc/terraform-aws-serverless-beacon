@@ -22,7 +22,6 @@ class vcfRegionData:
     filepath: str
     filename: str
     filesize: int
-    contig: str
     startRange: int
     endRange: int
 
@@ -32,11 +31,11 @@ class basePairRange:
     end: int
     filePaths: 'list[str]' = field(default_factory=list)
 
-def retrieveS3Objects(bucket: str) -> 'list[str]':
-    """Get a list of all keys in an S3 bucket."""
+def retrieveS3Objects(bucket: str, contig: str) -> 'list[str]':
+    """Get a list of all keys in a contig."""
     keys = []
 
-    kwargs = {'Bucket': bucket, 'Prefix': "vcf-summaries/"}
+    kwargs = {'Bucket': bucket, 'Prefix': f"vcf-summaries/contig/{contig}/"}
     while True:
         resp = s3.list_objects_v2(**kwargs)
         for obj in resp['Contents']:
@@ -49,38 +48,50 @@ def retrieveS3Objects(bucket: str) -> 'list[str]':
 
     return keys
 
+def getContigs() -> 'list[str]':
+    """Get a list of all contigs for which variants are available."""
+    contigs = []
+    kwargs = {
+        'Bucket': VARIANTS_BUCKET,
+        'Delimiter': '/',
+        'Prefix': f'vcf-summaries/contig/',
+    }
+    while True:
+        resp = s3.list_objects_v2(**kwargs)
+        contigs += [
+            prefix['Prefix'].split('/')[-2]
+            for prefix in resp.get('CommonPrefixes', [])
+        ]
+        if resp['IsTruncated']:
+            kwargs['ContinuationToken'] = resp['NextContinuationToken']
+        else:
+            break
+    return contigs
+
 def getFileNameInfo(filepath: str) -> vcfRegionData:
-    # Array looks like [ 'vcf-summaries', 'filename' , 'contig', '1', 'regions', '43400310-43749862-125506']
+    # Array looks like [ 'vcf-summaries', 'contig', '1', 'filename', 'regions', '43400310-43749862-125506']
     splitArray : list[str] = filepath.split('/')
-    contig: str = splitArray[-3]
-    filename: str = splitArray[-5]
+    filename: str = splitArray[-3]
 
     splitRange : list[str] = splitArray[-1].split('-')
     startRange: int = int(splitRange[0])
     endRange: int = int(splitRange[1])
     fileSize: int = int(splitRange[2])
     
-    return vcfRegionData(filepath, filename, fileSize, contig, startRange, endRange)
+    return vcfRegionData(filepath, filename, fileSize, startRange, endRange)
 
-def filterContigAndRange(regionData: 'list[vcfRegionData]', contig: int, start: int, end: int) -> 'tuple[int, list[vcfRegionData]]':
+def filterRange(regionData: 'list[vcfRegionData]', start: int, end: int) -> 'tuple[int, list[vcfRegionData]]':
     searchFiles: list[vcfRegionData] = []
     rangeSize: int = 0
     for rd in regionData:
-        isSameContig: bool = rd.contig == contig
-        isInRange: bool = (
-            (rd.startRange <= start and start <= rd.endRange) or # If the start point lies within the range
-            (rd.startRange <= end and end <= rd.endRange) or # If the end point lies within the range
-            (start < rd.startRange and rd.endRange < end) # If the start and end point encompass the range
-        )
-
-        if (isSameContig and isInRange):
+        if rd.startRange <= end and rd.endRange >= start: # If the two regions overlap
             searchFiles.append(rd)
             rangeSize = rangeSize + rd.filesize
     return rangeSize, searchFiles
 
 # Add a range to the rangeSlices array, return the starting point for the next loop
-def addRange(regionData: 'list[vcfRegionData]', contig: str, startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
-    rangeSize, fileList = filterContigAndRange(regionData, contig, startRange, endRange)
+def addRange(regionData: 'list[vcfRegionData]', startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
+    rangeSize, fileList = filterRange(regionData, startRange, endRange)
 
     while rangeSize > ABS_MAX_DATA_SPLIT:
         # catch issue where there could be no more items in the list, return the minimum list if this happens
@@ -88,7 +99,7 @@ def addRange(regionData: 'list[vcfRegionData]', contig: str, startRange: int, en
             # Keep all files less than than the endRange
             # Take the maximum of this result to be the new end
             newEnd = max(file.endRange for file in fileList if file.endRange < endRange)
-            rangeSize, fileList = filterContigAndRange(fileList, contig, startRange, newEnd)
+            rangeSize, fileList = filterRange(fileList, startRange, newEnd)
         except ValueError:
             print("Issue with reducing the dataset, Max value exceeded")
             newEnd = endRange
@@ -97,7 +108,7 @@ def addRange(regionData: 'list[vcfRegionData]', contig: str, startRange: int, en
             break
         endRange = newEnd
     
-    rangeSlices[contig].append(basePairRange(startRange, endRange, [file.filepath for file in fileList]))
+    rangeSlices.append(basePairRange(startRange, endRange, [file.filepath for file in fileList]))
     # print("Start R:", startRange, "End R:", endRange, f"({MIN_DATA_SPLIT} <= {rangeSize} <= {ABS_MAX_DATA_SPLIT}) =", MIN_DATA_SPLIT <= rangeSize <= ABS_MAX_DATA_SPLIT, [file.filepath for file in fileList])
 
     return endRange + 1, (regionData.index(fileList[-1]) + 1)
@@ -146,70 +157,47 @@ def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
             raise e
     return True
 
-def sortVcfRegion(elem: vcfRegionData):
-    return elem.contig + str(elem.startRange).zfill(MAX_BASE_PAIR_DIGITS)
-
-def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'dict[str, list[basePairRange]]':
-    rangeSlices : 'dict[str, list[basePairRange]]' = {} # This is the data structure we are trying to fill in
+def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'list[basePairRange]':
+    rangeSlices : 'list[basePairRange]' = [] # This is the data structure we are trying to fill in
     runningTotal: int = 0
-    contigEndTracker: int = 0
-    contig: str = regionData[0].contig
     startRange: int = regionData[0].startRange
     itemInc: int = 0
     minDataSplit: int = ABS_MAX_DATA_SPLIT - (regionData[0].filesize * 2)
 
     while startRange - 1 != regionData[-1].endRange:
         element = regionData[itemInc]
-        # Init the range slice with a new contig if needed
-        if contig not in rangeSlices:
-            rangeSlices[contig] = []
-
-        # If we are switching contig, finish the other range first
-        if contig != element.contig:
-            # Check to see if the range is valid, it could have just been added
-            if runningTotal != 0:
-                addRange(regionData, contig, startRange, contigEndTracker, rangeSlices)
-            # Reset variables ready for this contig
-            runningTotal = 0
-            contig = element.contig
-            startRange = element.startRange
-
-        contigEndTracker = element.endRange
         if runningTotal < minDataSplit:
             runningTotal = runningTotal + element.filesize
             itemInc = itemInc + 1 if itemInc + 1 < len(regionData) else itemInc
         else:
             # We have hit the minimum amount required, gather other files and return the next starting point
-            startRange, itemInc = addRange(regionData, contig, startRange, element.endRange, rangeSlices)
+            startRange, itemInc = addRange(regionData, startRange, element.endRange, rangeSlices)
             runningTotal = 0
 
     if runningTotal != 0:
-        addRange(regionData, contig, startRange, contigEndTracker, rangeSlices)
+        addRange(regionData, startRange, max(r.endRange for r in regionData), rangeSlices)
     
     return rangeSlices
 
-def insertDatabaseAndCallSNS(rangeSlices : 'dict[str, list[basePairRange]]', dataset: str) -> None:
-    for contig, baseRange in rangeSlices.items():
-        # Only send the SNS if the database update succeeds
-        if mark_updating(contig, baseRange, dataset):
-            for br in baseRange: 
-                message = {
-                    'bucket': VARIANTS_BUCKET,
-                    'rangeStart': br.start,
-                    'rangeEnd': br.end,
-                    'contig': contig,
-                    'targetFilepaths': br.filePaths,
-                    'dataset': dataset,
-                }
+def publishVariantSearch(contig, baseRanges : 'list[basePairRange]', dataset: str) -> None:
+    for baseRange in baseRanges:
+        message = {
+            'bucket': VARIANTS_BUCKET,
+            'rangeStart': baseRange.start,
+            'rangeEnd': baseRange.end,
+            'contig': contig,
+            'targetFilepaths': baseRange.filePaths,
+            'dataset': dataset,
+        }
 
-                kwargs = {
-                    'TopicArn': DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN,
-                    'Message': json.dumps(message),
-                }
-                print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
-                # continue # TODO
-                response = sns.publish(**kwargs)
-                print('Received Response: {}'.format(json.dumps(response)))
+        kwargs = {
+            'TopicArn': DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN,
+            'Message': json.dumps(message),
+        }
+        print('Publishing to SNS: {}'.format(json.dumps(kwargs)))
+        # continue # TODO
+        response = sns.publish(**kwargs)
+        print('Received Response: {}'.format(json.dumps(response)))
 
 def clearDatasetVariantCount(dataset: str) -> None:
     kwargs = {
@@ -232,21 +220,23 @@ def clearDatasetVariantCount(dataset: str) -> None:
 
 def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
-    filenames: list[str] = ['vcf-summaries/'+ fn[5:-7].replace('/', '%')+'/' for fn in filepaths]
+    filenames: list[str] = ['/'+ fn[5:-7].replace('/', '%')+'/' for fn in filepaths]
     # print('filenames:', filenames)
-    s3Objects: list[str] = retrieveS3Objects(VARIANTS_BUCKET)
-    # print('s3Objects:', s3Objects)
-
-    regionData: list[vcfRegionData] = []
-    for filepath in s3Objects:
-        if any([fn in filepath for fn in filenames]):
-            splitfilepath: vcfRegionData = getFileNameInfo(filepath)
-            regionData.append(splitfilepath)
-    regionData.sort(key=sortVcfRegion)
-    # print('regionData:', regionData)
-
-    rangeSlices : 'dict[str, list[basePairRange]]' = calcRangeSplits(regionData)
-    print(rangeSlices)
-
     clearDatasetVariantCount(dataset)
-    insertDatabaseAndCallSNS(rangeSlices, dataset)
+    contigs: list[str] = getContigs()
+    for contig in contigs:
+        s3Objects: list[str] = retrieveS3Objects(VARIANTS_BUCKET, contig)
+
+        regionData: list[vcfRegionData] = []
+        for filepath in s3Objects:
+            if any([fn in filepath for fn in filenames]):
+                splitfilepath: vcfRegionData = getFileNameInfo(filepath)
+                regionData.append(splitfilepath)
+        regionData.sort(key=lambda x: x.startRange)
+
+        rangeSlices : 'list[basePairRange]' = calcRangeSplits(regionData)
+        print(rangeSlices)
+
+        # Only send the SNS if the database update succeeds
+        if mark_updating(contig, rangeSlices, dataset):
+            publishVariantSearch(contig, rangeSlices, dataset)

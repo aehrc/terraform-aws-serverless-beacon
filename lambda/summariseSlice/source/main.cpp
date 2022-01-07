@@ -553,8 +553,8 @@ class writeDataToS3 {
 
     void saveNewFile() {
         if (vcfBuffer.size() > 0) {
-            string fileNameAppend = "/contig/" + contig + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
-            saveOutputToS3("vcf-summaries/" + s3BucketKey + fileNameAppend, s3Client, vcfBuffer);
+            string fileNameAppend = "vcf-summaries/contig/" + contig + "/" + s3BucketKey + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
+            saveOutputToS3(fileNameAppend, s3Client, vcfBuffer);
         }
     }
 

@@ -30,27 +30,32 @@ sns = boto3.client('sns')
 
 
 def delete_old_variant_files(location: str):
-    # Remove leading "s3://" and trailing "vcf.gz" and change "/" delimiters
-    key_prefix = 'vcf-summaries/' + location[5:-7].replace('/', '%') + '/'
-    list_kwargs = {
-        'Bucket': VARIANTS_BUCKET,
-        'MaxKeys': 1000,  # To ensure the numbers line up with the delete call
-        'Prefix': key_prefix,
-    }
-    while True:
-        print(f"Calling s3.list_objects_v2 with kwargs: {json.dumps(list_kwargs)}")
-        list_response = s3.list_objects_v2(**list_kwargs)
-        print(f"Received_response: {json.dumps(list_response, default=str)}")
-        objects = [
-            {'Key': obj['Key']}
-            for obj in list_response.get('Contents', [])
-        ]
-        if not objects:
-            break
+    contigs = get_contigs()
+    objects = []
+    for contig in contigs:
+        # Remove leading "s3://" and trailing "vcf.gz" and change "/" delimiters
+        key_prefix = f'vcf-summaries/contig/{contig}/' + location[5:-7].replace('/', '%') + '/'
+        list_kwargs = {
+            'Bucket': VARIANTS_BUCKET,
+            'Prefix': key_prefix,
+        }
+        while True:
+            print(f"Calling s3.list_objects_v2 with kwargs: {json.dumps(list_kwargs)}")
+            list_response = s3.list_objects_v2(**list_kwargs)
+            print(f"Received_response: {json.dumps(list_response, default=str)}")
+            objects += [
+                {'Key': obj['Key']}
+                for obj in list_response.get('Contents', [])
+            ]
+            if list_response['IsTruncated']:
+                list_kwargs['ContinuationToken'] = list_response['NextContinuationToken']
+            else:
+                break
+    while objects:
         delete_kwargs = {
             'Bucket': VARIANTS_BUCKET,
             'Delete': {
-                'Objects': objects,
+                'Objects': objects[:1000],
                 'Quiet': True,
             }
         }
@@ -58,8 +63,7 @@ def delete_old_variant_files(location: str):
         response = s3.delete_objects(**delete_kwargs)
         print(f"Received response {json.dumps(response, default=str)}")
         assert not response.get('Errors')
-        if not list_response['IsTruncated']:
-            break
+        objects = objects[1000:]
 
 
 def find_best_split(total_size, epsilon):
@@ -98,6 +102,27 @@ def get_chunk_boundaries(location):
         )
         for ref_name, ref in zip(index.names, index.refs)
     }
+
+
+def get_contigs():
+    """Get a list of all contigs for which variants are available."""
+    contigs = []
+    kwargs = {
+        'Bucket': VARIANTS_BUCKET,
+        'Delimiter': '/',
+        'Prefix': f'vcf-summaries/contig/',
+    }
+    while True:
+        resp = s3.list_objects_v2(**kwargs)
+        contigs += [
+            prefix['Prefix'].split('/')[-2]
+            for prefix in resp.get('CommonPrefixes', [])
+        ]
+        if resp['IsTruncated']:
+            kwargs['ContinuationToken'] = resp['NextContinuationToken']
+        else:
+            break
+    return contigs
 
 
 def get_sample_count(location, first_chunk_start):
