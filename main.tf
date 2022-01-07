@@ -4,8 +4,8 @@ locals {
   build_share_path = abspath("${path.module}/lambda/shared/source")
   build_gzip_path = abspath("${path.module}/lambda/shared/gzip")
 
-  maximum_load_file_size  = 100000000
-  vcf_processed_file_size = 5000
+  maximum_load_file_size  = 750000000
+  vcf_processed_file_size = 50000000
 }
 
 #
