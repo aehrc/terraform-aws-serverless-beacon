@@ -125,6 +125,9 @@ unsigned int gzip::proccesData(unsigned int buffOutBeg, unsigned int buffOutEnd)
             if (err < 0) {
                 cout << "Error: inflate " << err << endl;
                 break;
+            } else if (_fileSize - _dataRead + _zs.avail_in <= 8) {
+                // Only the gzip footer left now, so the stream is complete
+                break;
             }
         }
     }
