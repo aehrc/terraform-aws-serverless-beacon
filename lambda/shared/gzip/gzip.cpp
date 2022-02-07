@@ -116,6 +116,7 @@ unsigned int gzip::proccesData(unsigned int buffOutBeg, unsigned int buffOutEnd)
             }
 
             // otherwise we still have more data, start the decompression again
+            endOfInput();
             if ((err = inflateFile()) < 0) {
                 cout << "Error: inflateFile() " << err << endl;
                 break;
