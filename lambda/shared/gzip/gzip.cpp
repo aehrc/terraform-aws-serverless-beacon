@@ -13,7 +13,7 @@ gzip::gzip(iostream &result, long long contentLength, char *buffer, unsigned int
     _zs.avail_in = 0;
 
     // Check that the _fileSize hasn't overflowed from contentLength
-    if (contentLength > UINT_MAX) { throw runtime_error("Error: gzip is unable to proccess a contentLength of that magnitude"); }
+    if (contentLength > UINT_MAX) { throw runtime_error("gzip Error: unable to proccess a contentLength of that magnitude"); }
 }
 
 int gzip::deflateFile(int level) {
@@ -41,17 +41,17 @@ int gzip::deflateFile(int level) {
             _zs.next_out = (Bytef*)_fileData;
             ret = deflate(&_zs, flush);
             if (ret == Z_STREAM_ERROR) {
-                throw runtime_error("zlib Stream Error");
+                throw runtime_error("gzip Error: zlib Stream Error");
             }
             _file.write(_fileData, sizeof(_fileData) - _zs.avail_out);
         } while (_zs.avail_out == 0);
         if (_zs.avail_in != 0) {
-            throw runtime_error("zlib Buffer Error");
+            throw runtime_error("gzip Error: zlib Buffer Error");
         }
 
     } while (flush != Z_FINISH);
     if (ret != Z_STREAM_END) {
-        throw runtime_error("zlib Stream Not Finished");
+        throw runtime_error("gzip Error: zlib Stream Not Finished");
     }
 
     deflateEnd(&_zs);
@@ -61,7 +61,7 @@ int gzip::deflateFile(int level) {
 int gzip::inflateFile() {
     int err = 0;
     if ((err = inflateInit2(&_zs, 16+MAX_WBITS)) != Z_OK) {
-        cout << "Error: inflateInit2 " << err << endl;
+        cout << "gzip Error: inflateInit2 " << err << endl;
     }
     if (err >= 0) {
         _proccessingData = true;
@@ -81,9 +81,13 @@ bool gzip::hasMoreData() {
 unsigned int gzip::proccesData(unsigned int buffOutBeg, unsigned int buffOutEnd) {
     int err = 0;
 
+    if (buffOutBeg > buffOutEnd) {
+        throw runtime_error("gzip Error: proccesData input invalid");
+    }
+
     // Move unused data to the front of the buffer if there
     // is unprocessed data
-    if (buffOutBeg != buffOutEnd) {
+    if (buffOutBeg < buffOutEnd) {
         memcpy(&_buffer[0], &_buffer[buffOutBeg], buffOutEnd-buffOutBeg);
     }
 
@@ -118,13 +122,13 @@ unsigned int gzip::proccesData(unsigned int buffOutBeg, unsigned int buffOutEnd)
             // otherwise we still have more data, start the decompression again
             endOfInput();
             if ((err = inflateFile()) < 0) {
-                cout << "Error: inflateFile() " << err << endl;
+                cout << "gzip Error: inflateFile() " << err << endl;
                 break;
             }
         }  else {
             // If we get a negative number, it's a error and we should stop
             if (err < 0) {
-                cout << "Error: inflate " << err << endl;
+                cout << "gzip Error: inflate " << err << endl;
                 break;
             } else if (_fileSize - _dataRead + _zs.avail_in <= 8) {
                 // Only the gzip footer left now, so the stream is complete
