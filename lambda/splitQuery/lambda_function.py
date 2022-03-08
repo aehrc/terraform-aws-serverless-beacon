@@ -2,6 +2,7 @@ import json
 import os
 import queue
 import threading
+from collections import defaultdict
 
 import boto3
 
@@ -42,9 +43,12 @@ def perform_query(region, reference_bases, end_min, end_max, alternate_bases,
 
 def split_query(dataset_id, reference_bases, region_start,
                 region_end, end_min, end_max, alternate_bases, variant_type,
-                include_datasets, vcf_locations):
+                include_datasets, vcf_locations, vcf_groups):
     responses = queue.Queue()
     check_all = include_datasets in ('HIT', 'ALL')
+    # create a ids for each vcf group for identification
+    vcf_file_to_group_map = {loc:idx for idx, grp in enumerate(vcf_groups) for loc in grp}
+
     kwargs = {
         'reference_bases': reference_bases,
         'end_min': end_min,
@@ -74,7 +78,7 @@ def split_query(dataset_id, reference_bases, region_start,
     all_alleles_count = 0
     variants = set()
     call_count = 0
-    vcf_samples = {}
+    vcf_samples = defaultdict(set)
     exists = False
     while processed < num_threads and (check_all or not exists):
         response = responses.get()
@@ -90,10 +94,14 @@ def split_query(dataset_id, reference_bases, region_start,
                 variants.update(response['variants'])
                 call_count += response['call_count']
                 vcf_location = response['vcf_location']
-                if vcf_location in vcf_samples:
-                    vcf_samples[vcf_location].update(response['samples'])
-                else:
-                    vcf_samples[vcf_location] = set(response['samples'])
+                # separate unrelated samples into dintinct groups as per indicated by
+                vcf_group = vcf_file_to_group_map[vcf_location]
+
+                # for each sample group record the response
+                # a sample can have only one hit in one file (i.e., no duplicate variants)
+                # but different sample groups can have variants in different files (if submitted like that) 
+                vcf_samples[vcf_group].update(response['samples'])
+
     if (include_datasets == 'ALL' or (include_datasets == 'HIT' and exists)
             or (include_datasets == 'MISS' and not exists)):
         response_dict = {
@@ -131,6 +139,7 @@ def lambda_handler(event, context):
     variant_type = event['variant_type']
     include_datasets = event['include_datasets']
     vcf_locations = event['vcf_locations']
+    vcf_groups = event['vcf_groups']
     response = split_query(
         dataset_id=dataset_id,
         reference_bases=reference_bases,
@@ -142,6 +151,7 @@ def lambda_handler(event, context):
         variant_type=variant_type,
         include_datasets=include_datasets,
         vcf_locations=vcf_locations,
+        vcf_groups=vcf_groups
     )
     print('Returning response: {}'.format(json.dumps(response)))
     return response
