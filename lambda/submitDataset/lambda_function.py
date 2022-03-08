@@ -68,10 +68,13 @@ def create_dataset(attributes):
         'vcfLocations': {
             'SS': attributes['vcfLocations'],
         },
-        'vcfGroups': {
-            'L': attributes['vcfGroups']
-        }
     }
+
+    vcfGroups = attributes.get('vcfGroups')
+    if vcfGroups:
+        item['vcfGroups'] = {
+            'L': [{ 'SS': vcfGroup } for vcfGroup in attributes['vcfGroups']]
+        }
 
     description = attributes.get('description')
     if description:
@@ -211,7 +214,7 @@ def update_dataset(attributes):
     if 'vcfGroups' in attributes:
         update_set_expressions.append('vcfGroups=:vcfGroups')
         expression_attribute_values[':vcfGroups'] = {
-            'L': attributes['vcfGroups'],
+            'L': [{ 'SS': vcfGroup } for vcfGroup in attributes['vcfGroups']]
         }
 
     update_expression = 'SET {}'.format(', '.join(update_set_expressions))
