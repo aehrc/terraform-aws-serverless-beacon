@@ -613,6 +613,8 @@ components:
           minItems: 1
           items:
             type: array
+            items: 
+                type: string
             description: VCF files in the group.
         description:
           type: string
@@ -662,6 +664,8 @@ components:
           minItems: 1
           items:
             type: array
+            items: 
+                type: string
             description: VCF files in the group.
         description:
           type: string
