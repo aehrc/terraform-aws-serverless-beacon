@@ -46,8 +46,8 @@ def split_query(dataset_id, reference_bases, region_start,
                 include_datasets, vcf_locations, vcf_groups):
     responses = queue.Queue()
     check_all = include_datasets in ('HIT', 'ALL')
-    # create a ids for each vcf group for identification
-    vcf_file_to_group_map = {loc:idx for idx, grp in enumerate(vcf_groups) for loc in grp}
+    # create an id for each vcf group for identification
+    vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(vcf_groups) for loc in grp}
 
     kwargs = {
         'reference_bases': reference_bases,

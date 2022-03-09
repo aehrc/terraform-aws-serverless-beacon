@@ -150,10 +150,10 @@ def query_datasets(parameters):
                          for vcf in dataset['vcfLocations']['SS']
                          if vcf_chromosomes[vcf]}
         # record vcf grouping information using the relevant vcf files
-        vcf_groups = [_ for _ in [
-                                    [loc for loc in vcfg if loc in vcf_locations] 
-                                         for vcfg in dataset['vcfGroups']['SS']
-                                 ] if len(_) > 0]
+        vcf_groups = [grp for grp in [
+                                    [loc for loc in vcfg["SS"] if loc in vcf_locations]
+                                         for vcfg in dataset['vcfGroups']['L']
+                                 ] if len(grp) > 0]
 
         t = threading.Thread(target=perform_query,
                              kwargs={
