@@ -1,4 +1,5 @@
-from collections import Counter
+from collections import Counter, defaultdict
+from email.policy import default
 from initDuplicateVariantSearch import initDuplicateVariantSearch
 import json
 import os
@@ -23,7 +24,7 @@ sns = boto3.client('sns')
 def get_locations(dataset):
     kwargs = {
         'TableName': DATASETS_TABLE_NAME,
-        'ProjectionExpression': 'vcfLocations',
+        'ProjectionExpression': 'vcfLocations,vcfGroups',
         'ConsistentRead': True,
         'KeyConditionExpression': 'id = :id',
         'ExpressionAttributeValues': {
@@ -35,7 +36,11 @@ def get_locations(dataset):
     print("Querying table: {}".format(json.dumps(kwargs)))
     response = dynamodb.query(**kwargs)
     print("Received response: {}".format(json.dumps(response)))
-    return response['Items'][0].get('vcfLocations', {}).get('SS', [])
+    
+    vcf_locations = response['Items'][0].get('vcfLocations', {}).get('SS', [])
+    vcf_groups = [grp['SS'] for grp in response['Items'][0].get('vcfGroups', {}).get('L', [])]
+    
+    return vcf_locations, vcf_groups
 
 
 def get_locations_info(locations):
@@ -76,12 +81,20 @@ def get_locations_info(locations):
 
 
 def summarise_dataset(dataset):
-    vcf_locations = get_locations(dataset)
+    # sample counting must be done once and only once per vcf group
+    # assumption: all vcf in a group has the same samples 
+    # (i.e. VCFs are split only by chromosomes or a group of chromosomes, not samples)
+    vcf_locations, vcf_groups = get_locations(dataset)
     locations_info = get_locations_info(vcf_locations)
     new_locations = set(vcf_locations)
+    # create an id for each vcf group for identification
+    vcf_to_group_map = {loc: idx for idx, grp in enumerate(vcf_groups) for loc in grp}
+    # records if the vcf group is counted once
+    vcf_group_counted = defaultdict(lambda: False)
 
     counts = Counter()
     updated = True
+
     for location in locations_info:
         vcf_location = location['vcfLocation']['S']
         new_locations.remove(vcf_location)
@@ -91,7 +104,14 @@ def summarise_dataset(dataset):
             new_locations.add(vcf_location)
         elif updated:
             counts.update({count: int(location[count]['N'])
-                           for count in COUNTS})
+                           for count in COUNTS if count != 'sampleCount'})
+            
+            vcf_group = vcf_to_group_map[vcf_location]
+            # if the group's sample count is recorded
+            # update counter and flag group as recorded
+            if not vcf_group_counted[vcf_group]:
+                counts.update({'sampleCount': int(location['sampleCount']['N'])})
+                vcf_group_counted[vcf_group] = True
 
     print('newlocations:', new_locations)
     if new_locations:
