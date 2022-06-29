@@ -1069,11 +1069,11 @@ int main()
         config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
 
         auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
-        Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
-        Aws::S3::S3Client s3Client(credentialsProvider, config);
-        Aws::SNS::SNSClient snsClient(credentialsProvider, config);
-        auto handlerFunction = [&s3Client, &dynamodbClient, &snsClient](aws::lambda_runtime::invocation_request const& req) {
+        auto handlerFunction = [&credentialsProvider, &config](aws::lambda_runtime::invocation_request const& req) {
             std::cout << "Event Received: " << req.payload << std::endl;
+            Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
+            Aws::S3::S3Client s3Client(credentialsProvider, config);
+            Aws::SNS::SNSClient snsClient(credentialsProvider, config);
             return lambdaHandler(req, s3Client, dynamodbClient, snsClient);
             std::cout.flush();
         };

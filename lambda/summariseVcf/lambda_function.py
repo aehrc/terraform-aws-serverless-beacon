@@ -130,6 +130,7 @@ def get_sample_count(location, first_chunk_start):
     # We don't have the last byte, but we know blocks are no more than 64KB
     byterange = f'bytes=0-{block_first_byte+65335}'
     vcf_header = s3_get_object(location, Range=byterange)
+
     with gzip.GzipFile(mode='rb', fileobj=vcf_header) as header_stream:
         for line in header_stream:
             if not line.startswith(b'#'):
@@ -195,16 +196,20 @@ def next_newton_approximation(total_size, split_size):
 
 def partition_chunks(chunk_boundaries, slice_size):
     chunks = []
+    # for each ref
     for ref_chunk_boundaries in chunk_boundaries.values():
         start_virtual_offset = ref_chunk_boundaries[0]
         start_block_offset = start_virtual_offset >> 16
+        # for each virtual offset of this ref
         for virtual_offset in ref_chunk_boundaries:
+            # when the block offset has moved beyond slice_size
             if (virtual_offset >> 16) - start_block_offset >= slice_size:
+                # create a chunk
                 chunks.append((start_virtual_offset, virtual_offset))
                 start_virtual_offset = virtual_offset
                 start_block_offset = virtual_offset >> 16
+        # if last chunk boundary is not closed
         if ref_chunk_boundaries[-1] != start_virtual_offset:
-            # We have a partially complete slice
             chunks.append((start_virtual_offset, ref_chunk_boundaries[-1]))
     return chunks
 
@@ -246,6 +251,7 @@ def s3_get_object(s3_location, **extra_kwargs):
 
 
 def summarise_vcf(location):
+    # dictionary of form {ref: [sorted chunks]}
     chunk_boundaries = get_chunk_boundaries(location)
     first_chunk_start = min(boundaries[0] for boundaries in chunk_boundaries.values()) >> 16
     last_chunk_end = (max(boundaries[-1] for boundaries in chunk_boundaries.values()) >> 16) + 2**16
@@ -253,15 +259,21 @@ def summarise_vcf(location):
     total_size = last_chunk_end - first_chunk_start
     print(f"{total_size=}")
     avg_chunk_size = total_size / num_chunks
+
     best_split_size = find_best_split(total_size, avg_chunk_size / 2)
+
     if total_size / best_split_size > MAX_CONCURRENCY:
         best_split_size = total_size / MAX_CONCURRENCY
+
     slices = partition_chunks(chunk_boundaries, best_split_size)
     start_update = mark_updating(location, slices)
+
     if not start_update:
         return
     sample_count = get_sample_count(location, first_chunk_start)
     update_sample_count(location, sample_count)
+    # following step is a garbage cleanup step
+    # actual content added by summariseSlice
     delete_old_variant_files(location)
     publish_slice_updates(location, slices)
 
@@ -287,5 +299,6 @@ def update_sample_count(location, sample_count):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    # recevies the path of the vcf file
     location = event['Records'][0]['Sns']['Message']
     summarise_vcf(location)

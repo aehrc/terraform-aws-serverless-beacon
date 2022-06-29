@@ -17,6 +17,7 @@ s3 = boto3.client('s3')
 sns = boto3.client('sns')
 dynamodb = boto3.client('dynamodb')
 
+
 @dataclass
 class vcfRegionData:
     filepath: str
@@ -25,11 +26,13 @@ class vcfRegionData:
     startRange: int
     endRange: int
 
+
 @dataclass
 class basePairRange:
     start: int
     end: int
     filePaths: 'list[str]' = field(default_factory=list)
+
 
 def retrieveS3Objects(bucket: str, contig: str) -> 'list[str]':
     """Get a list of all keys in a contig."""
@@ -47,6 +50,7 @@ def retrieveS3Objects(bucket: str, contig: str) -> 'list[str]':
             break
 
     return keys
+
 
 def getContigs() -> 'list[str]':
     """Get a list of all contigs for which variants are available."""
@@ -68,6 +72,7 @@ def getContigs() -> 'list[str]':
             break
     return contigs
 
+
 def getFileNameInfo(filepath: str) -> vcfRegionData:
     # Array looks like [ 'vcf-summaries', 'contig', '1', 'filename', 'regions', '43400310-43749862-125506']
     splitArray : list[str] = filepath.split('/')
@@ -80,6 +85,7 @@ def getFileNameInfo(filepath: str) -> vcfRegionData:
     
     return vcfRegionData(filepath, filename, fileSize, startRange, endRange)
 
+
 def filterRange(regionData: 'list[vcfRegionData]', start: int, end: int) -> 'tuple[int, list[vcfRegionData]]':
     searchFiles: list[vcfRegionData] = []
     rangeSize: int = 0
@@ -88,6 +94,7 @@ def filterRange(regionData: 'list[vcfRegionData]', start: int, end: int) -> 'tup
             searchFiles.append(rd)
             rangeSize = rangeSize + rd.filesize
     return rangeSize, searchFiles
+
 
 # Add a range to the rangeSlices array, return the starting point for the next loop
 def addRange(regionData: 'list[vcfRegionData]', startRange: int, endRange: int, rangeSlices : 'dict[str, list[basePairRange]]') -> 'tuple[int, int]':
@@ -126,7 +133,6 @@ def addRange(regionData: 'list[vcfRegionData]', startRange: int, endRange: int, 
 # size of nested elements = 8*2 = 16
 # + 3
 # ( (409600 - 8 - 3) / 16 ) = 25,598 items in the array
-
 def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
     slice_strings = [struct.pack('QQ', s.start, s.end) for s in slices]
 
@@ -157,6 +163,7 @@ def mark_updating(contig: str, slices : 'list[basePairRange]', dataset: str):
             raise e
     return True
 
+
 def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'list[basePairRange]':
     rangeSlices : 'list[basePairRange]' = [] # This is the data structure we are trying to fill in
     runningTotal: int = 0
@@ -179,6 +186,7 @@ def calcRangeSplits(regionData: 'list[vcfRegionData]' ) -> 'list[basePairRange]'
     
     return rangeSlices
 
+
 def publishVariantSearch(contig, baseRanges : 'list[basePairRange]', dataset: str) -> None:
     for baseRange in baseRanges:
         message = {
@@ -199,6 +207,7 @@ def publishVariantSearch(contig, baseRanges : 'list[basePairRange]', dataset: st
         response = sns.publish(**kwargs)
         print('Received Response: {}'.format(json.dumps(response)))
 
+
 def clearDatasetVariantCount(dataset: str) -> None:
     kwargs = {
         'TableName': DATASETS_TABLE_NAME,
@@ -218,12 +227,14 @@ def clearDatasetVariantCount(dataset: str) -> None:
     except ClientError as e:
         raise e
 
+
 def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
     print('filepaths:', filepaths)
     filenames: list[str] = ['/'+ fn[5:-7].replace('/', '%')+'/' for fn in filepaths]
-    # print('filenames:', filenames)
+    # mark dataset variantCount as zero
     clearDatasetVariantCount(dataset)
     contigs: list[str] = getContigs()
+
     for contig in contigs:
         s3Objects: list[str] = retrieveS3Objects(VARIANTS_BUCKET, contig)
 

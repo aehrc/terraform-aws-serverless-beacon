@@ -131,7 +131,8 @@ def summarise_dataset(dataset):
     if updated:
         values = {':' + count: {'N': str(counts[count])} for count in COUNTS}
         datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
-        # start duplicate variant search
+        # start duplicate variant search, once after all updates are done
+        # this is only to count the unique variants
         initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
         # this will be {':callCount': {'NULL': True}, ':sampleCount': {'NULL': True}}
@@ -139,6 +140,7 @@ def summarise_dataset(dataset):
 
     # update the dataset record
     update_dataset(dataset, values, new_locations)
+    # summarise each of the vcf file
     for new_location in new_locations:
         summarise_vcf(new_location)
 
