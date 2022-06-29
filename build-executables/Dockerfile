@@ -1,9 +1,10 @@
-FROM lambci/lambda:build-python3.6
+FROM lambci/lambda:build-python3.9
 
 ENV AWS_DEFAULT_REGION ap-southeast-2
 
 RUN yum update
 
+# TODO update docker files
 RUN mkdir shared_resources
 
 RUN git clone --depth 1 --branch develop https://github.com/samtools/htslib.git
