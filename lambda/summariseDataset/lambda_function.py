@@ -44,9 +44,11 @@ def get_locations(dataset):
 
 
 def get_locations_info(locations):
+    # locations are the keys in VCF_SUMMARIES_TABLE_NAME
     items = []
     num_locations = len(locations)
     offset = 0
+    # project fields that needs to be updated/or have been updated
     kwargs = {
         'RequestItems': {
             VCF_SUMMARIES_TABLE_NAME: {
@@ -56,6 +58,7 @@ def get_locations_info(locations):
             },
         },
     }
+    # retrieve batches with batch size upto BATCH_GET_MAX_ITEMS
     while offset < num_locations:
         to_get = locations[offset:offset+BATCH_GET_MAX_ITEMS]
         kwargs['RequestItems'][VCF_SUMMARIES_TABLE_NAME]['Keys'] = [
@@ -66,6 +69,7 @@ def get_locations_info(locations):
             } for loc in to_get
         ]
         more_results = True
+        # retrieve items with batch_get_item
         while more_results:
             print("batch_get_item: {}".format(json.dumps(kwargs)))
             response = dynamodb.batch_get_item(**kwargs)
@@ -98,31 +102,42 @@ def summarise_dataset(dataset):
     for location in locations_info:
         vcf_location = location['vcfLocation']['S']
         new_locations.remove(vcf_location)
+        # the vcf summary is yet to be updated
+        # TODO use the variable value instead of in keyword (ORM support)
         if 'toUpdate' in location:
             updated = False
+        # if counts are not computed for the vcf
         elif any(count not in location for count in COUNTS):
             new_locations.add(vcf_location)
+        # if the vcf is updated
         elif updated:
+            # increment the counts using each vcf location to get total counts
             counts.update({count: int(location[count]['N'])
                            for count in COUNTS if count != 'sampleCount'})
             
+            # get the group id of vcf location
             vcf_group = vcf_to_group_map[vcf_location]
-            # if the group's sample count is recorded
+            # if the group's sample count is not recorded
             # update counter and flag group as recorded
             if not vcf_group_counted[vcf_group]:
                 counts.update({'sampleCount': int(location['sampleCount']['N'])})
                 vcf_group_counted[vcf_group] = True
 
     print('newlocations:', new_locations)
+    # if there are new locations updated=False
     if new_locations:
         updated = False
+    # if the dataset is updated (all vcfs summarised)
     if updated:
-        values = {':'+count: {'N': str(counts[count])} for count in COUNTS}
+        values = {':' + count: {'N': str(counts[count])} for count in COUNTS}
         datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
+        # start duplicate variant search
         initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
-        values = {':'+count: {'NULL': True} for count in COUNTS}
+        # this will be {':callCount': {'NULL': True}, ':sampleCount': {'NULL': True}}
+        values = {':' + count: {'NULL': True} for count in COUNTS}
 
+    # update the dataset record
     update_dataset(dataset, values, new_locations)
     for new_location in new_locations:
         summarise_vcf(new_location)
@@ -139,6 +154,7 @@ def summarise_vcf(location):
 
 
 def update_dataset(dataset_id, values, new_locations):
+    # update the counts in DATASETS_TABLE_NAME
     kwargs = {
         'TableName': DATASETS_TABLE_NAME,
         'Key': {
@@ -150,6 +166,7 @@ def update_dataset(dataset_id, values, new_locations):
                                                for count in COUNTS),
         'ExpressionAttributeValues': values,
     }
+    # if new locations are there, put them in the DATASETS_TABLE_NAME
     if new_locations:
         kwargs['UpdateExpression'] += ', toUpdateFiles=:toUpdateFiles'
         kwargs['ExpressionAttributeValues'][':toUpdateFiles'] = {
@@ -161,5 +178,6 @@ def update_dataset(dataset_id, values, new_locations):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    # only dataset id is received
     dataset = event['Records'][0]['Sns']['Message']
     summarise_dataset(dataset)
