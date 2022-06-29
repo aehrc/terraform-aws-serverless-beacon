@@ -3,7 +3,8 @@ import os
 import re
 import subprocess
 
-os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
+# uncomment below for debugging
+# os.environ['LD_DEBUG'] = 'all'
 
 BASES = [
     'A',

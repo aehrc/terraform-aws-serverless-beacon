@@ -13,14 +13,15 @@ BEACON_ID = os.environ['BEACON_ID']
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 
+# uncomment below for debugging
+# os.environ['LD_DEBUG'] = 'all'
+
 INCLUDE_DATASETS_VALUES = {
     'ALL',
     'HIT',
     'MISS',
     'NONE',
 }
-
-os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 
 base_pattern = re.compile('[ACGT]+|N')
 

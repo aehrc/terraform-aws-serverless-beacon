@@ -17,7 +17,8 @@ module "lambda-submitDataset" {
   function_name = "submitDataset"
   description = "Creates or updates a dataset and triggers summariseVcf."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
+  architectures = ["x86_64"]
   memory_size = 2048
   timeout = 60
   policy = {
@@ -32,6 +33,11 @@ module "lambda-submitDataset" {
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
     }
   }
+  
+  layers = [
+    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+  ]
 }
 
 #
@@ -221,6 +227,10 @@ module "lambda-queryDatasets" {
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
     }
   }
+
+  layers = [
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+  ]
 }
 
 #
@@ -265,4 +275,8 @@ module "lambda-performQuery" {
   }
   source_path = "${path.module}/lambda/performQuery"
   tags = var.common-tags
+
+  layers = [
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+  ]
 }
