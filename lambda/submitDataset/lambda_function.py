@@ -6,7 +6,7 @@ from jsonschema import Draft7Validator
 
 import boto3
 
-from api_response import bad_request, bundle_response, missing_parameter
+from api_response import bad_request, bundle_response
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
@@ -21,6 +21,8 @@ newSchema = json.load(open("new-schema.json"))
 updateSchema = json.load(open("update-schema.json"))
 
 
+# just checking if the tabix would work as expected on a valid vcf.gz file
+# validate if the index file exists too
 def check_vcf_locations(locations):
     errors = []
     for location in locations:
@@ -129,7 +131,9 @@ def submit_dataset(body_dict, method):
     validation_error = validate_request(body_dict, new)
     if validation_error:
         return bad_request(validation_error)
+
     if 'vcfLocations' in body_dict:
+        # validate vcf files if skipCheck is not specified 
         if 'skipCheck' not in body_dict:
             errors = check_vcf_locations(body_dict['vcfLocations'])
             if errors:
@@ -137,12 +141,15 @@ def submit_dataset(body_dict, method):
         summarise = True
     else:
         summarise = False
+    # handle data set submission or update
     if new:
         create_dataset(body_dict)
     else:
         update_dataset(body_dict)
+    
     if summarise:
         summarise_dataset(body_dict['id'])
+
     return bundle_response(200, {})
 
 
@@ -242,24 +249,26 @@ def update_dataset(attributes):
 
 def validate_request(parameters, new):
     validator = None
-
+    # validate request body with schema for a new submission or update
     if new:
         validator = Draft7Validator(newSchema)
     else:
         validator = Draft7Validator(updateSchema)
-    errors = sorted(validator.iter_errors(parameters), key=lambda e: e.path)
 
+    errors = sorted(validator.iter_errors(parameters), key=lambda e: e.path)
     return [error.message for error in errors]
 
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     event_body = event.get('body')
+
     if not event_body:
         return bad_request('No body sent with request.')
     try:
         body_dict = json.loads(event_body)
     except ValueError:
         return bad_request('Error parsing request body, Expected JSON.')
+
     method = event['httpMethod']
     return submit_dataset(body_dict, method)
