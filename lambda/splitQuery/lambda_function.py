@@ -61,6 +61,7 @@ def split_query(dataset_id, reference_bases, region_start,
     }
     threads = []
     split_start = region_start
+
     while split_start <= region_end:
         split_end = min(split_start + SPLIT_SIZE - 1, region_end)
         for vcf_location, chrom in vcf_locations.items():
@@ -80,6 +81,7 @@ def split_query(dataset_id, reference_bases, region_start,
     call_count = 0
     vcf_samples = defaultdict(set)
     exists = False
+
     while processed < num_threads and (check_all or not exists):
         response = responses.get()
         processed += 1

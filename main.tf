@@ -49,7 +49,7 @@ module "lambda-summariseDataset" {
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.7"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 60
   policy = {
@@ -181,7 +181,7 @@ module "lambda-getInfo" {
   function_name = "getInfo"
   description = "Returns basic information about the beacon and the datasets."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 28
   policy = {
@@ -211,7 +211,7 @@ module "lambda-queryDatasets" {
   function_name = "queryDatasets"
   description = "Invokes splitQuery for each dataset and returns result."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 28
   policy = {
@@ -242,7 +242,7 @@ module "lambda-splitQuery" {
   function_name = "splitQuery"
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 26
   policy = {
@@ -267,7 +267,7 @@ module "lambda-performQuery" {
   function_name = "performQuery"
   description = "Queries a slice of a vcf for a specified variant."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 24
   policy = {
