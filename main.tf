@@ -1,6 +1,7 @@
 locals {
   api_version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
+  build_cpp_path2 = abspath("${path.module}/build_cpp2.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
   build_gzip_path = abspath("${path.module}/lambda/shared/gzip")
 
@@ -169,6 +170,40 @@ module "lambda-duplicateVariantSearch" {
       VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
     }
+  }
+}
+
+# Following is just a template for c++ codes using latest terraform module
+module "lambda_functionDVS" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "duplicateVariantSearchDVS"
+  description = "Searches for duplicate variants across vcfs."
+  handler = "function"
+  runtime = "provided"
+  architectures = ["x86_64"]
+  memory_size = 1536
+  timeout = 900
+  attach_policy_json = true
+  policy_json =  data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
+
+  source_path = [
+    {
+      path     = "${path.module}/lambda/duplicateVariantSearchDVS",
+      commands = [
+        "sh ${local.build_cpp_path2} ./",
+        "cd build/function_binaries",
+        ":zip"
+      ]
+    }
+  ]
+
+  tags = var.common-tags
+
+  environment_variables = {
+    ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+    VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+    DATASETS_TABLE = aws_dynamodb_table.datasets.name
   }
 }
 
