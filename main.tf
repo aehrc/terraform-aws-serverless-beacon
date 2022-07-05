@@ -194,6 +194,9 @@ module "lambda_functionDVS" {
         "sh ${local.build_cpp_path2} ./",
         "cd build/function_binaries",
         ":zip"
+      ],
+      patterns = [
+        "source/*",
       ]
     }
   ]
