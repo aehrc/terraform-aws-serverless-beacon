@@ -1,5 +1,6 @@
 locals {
-  api_version = "v1.0.0"
+  api_version = "v2.0.0"
+  version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
   build_cpp_path2 = abspath("${path.module}/build_cpp2.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
@@ -231,6 +232,7 @@ module "lambda-getInfo" {
   environment = {
     variables = {
       BEACON_API_VERSION = local.api_version
+      VERSION = local.version
       BEACON_ID = var.beacon-id
       BEACON_NAME = var.beacon-name
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
