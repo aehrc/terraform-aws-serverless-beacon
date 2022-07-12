@@ -287,6 +287,51 @@ module "lambda-getMap" {
 }
 
 #
+# getEntryTypes Lambda Function
+#
+module "lambda-getEntryTypes" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getEntryTypes"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getEntryTypes.json
+  source_path = "${path.module}/lambda/getEntryTypes"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+  }
+}
+
+#
+# getAnalyses Lambda Function
+#
+module "lambda-getAnalyses" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getAnalyses"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getAnalyses.json
+  source_path = "${path.module}/lambda/getAnalyses"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 module "lambda-queryDatasets" {

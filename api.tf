@@ -316,12 +316,20 @@ resource aws_api_gateway_integration_response query-post {
 #
 resource aws_api_gateway_deployment BeaconApi {
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+  # Without enabling create_before_destroy, 
+  # API Gateway can return errors such as BadRequestException: 
+  # Active stages pointing to this deployment must be moved or deleted on recreation.
+  lifecycle {
+    create_before_destroy = true
+  }
   # taint deployment if any api resources change
   stage_description = md5(join("", [
     md5(file("${path.module}/api.tf")),
     md5(file("${path.module}/api-resource-info.tf")),
     md5(file("${path.module}/api-configuration.tf")),
     md5(file("${path.module}/api-map.tf")),
+    md5(file("${path.module}/api-entry-types.tf")),
+    md5(file("${path.module}/api-analyses.tf")),
     aws_api_gateway_method.submit-options.id,
     aws_api_gateway_integration.submit-options.id,
     aws_api_gateway_integration_response.submit-options.id,
@@ -365,6 +373,16 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration.map.id,
     aws_api_gateway_integration_response.map.id,
     aws_api_gateway_method_response.map.id,
+    # /entry_types
+    aws_api_gateway_method.entry_types.id,
+    aws_api_gateway_integration.entry_types.id,
+    aws_api_gateway_integration_response.entry_types.id,
+    aws_api_gateway_method_response.entry_types.id,
+    # /analyses
+    aws_api_gateway_method.analyses.id,
+    aws_api_gateway_integration.analyses.id,
+    aws_api_gateway_integration_response.analyses.id,
+    aws_api_gateway_method_response.analyses.id,
   ]))
 }
 

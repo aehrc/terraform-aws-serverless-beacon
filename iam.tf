@@ -260,6 +260,34 @@ data aws_iam_policy_document lambda-getMap {
 }
 
 #
+# getEntryTypes Lambda Function
+#
+data aws_iam_policy_document lambda-getEntryTypes {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+}
+
+#
+# getAnalyses Lambda Function
+#
+data aws_iam_policy_document lambda-getAnalyses {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 data aws_iam_policy_document lambda-queryDatasets {
@@ -314,32 +342,32 @@ data aws_iam_policy_document lambda-performQuery {
   }
 }
 
-#
-# API: / GET
-#
-resource aws_iam_role api-root-get {
-  name = "apiRootGetRole"
-  assume_role_policy = data.aws_iam_policy_document.main-apigateway.json
-  tags = var.common-tags
-}
+# #
+# # API: / GET
+# #
+# resource aws_iam_role api-root-get {
+#   name = "apiRootGetRole"
+#   assume_role_policy = data.aws_iam_policy_document.main-apigateway.json
+#   tags = var.common-tags
+# }
 
-resource aws_iam_role_policy_attachment api-root-get {
-  role = aws_iam_role.api-root-get.name
-  policy_arn = aws_iam_policy.api-root-get.arn
-}
+# resource aws_iam_role_policy_attachment api-root-get {
+#   role = aws_iam_role.api-root-get.name
+#   policy_arn = aws_iam_policy.api-root-get.arn
+# }
 
-resource aws_iam_policy api-root-get {
-  name_prefix = "api-root-get"
-  policy = data.aws_iam_policy_document.api-root-get.json
-}
+# resource aws_iam_policy api-root-get {
+#   name_prefix = "api-root-get"
+#   policy = data.aws_iam_policy_document.api-root-get.json
+# }
 
-data aws_iam_policy_document api-root-get {
-  statement {
-    actions = [
-      "dynamodb:Scan",
-    ]
-    resources = [
-      aws_dynamodb_table.datasets.arn,
-    ]
-  }
-}
+# data aws_iam_policy_document api-root-get {
+#   statement {
+#     actions = [
+#       "dynamodb:Scan",
+#     ]
+#     resources = [
+#       aws_dynamodb_table.datasets.arn,
+#     ]
+#   }
+# }

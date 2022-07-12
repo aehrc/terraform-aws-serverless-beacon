@@ -43,8 +43,7 @@ def get_config():
                 }
             }
         }
-    }
-        
+    }      
 
     return bundle_response(200, response)
 
