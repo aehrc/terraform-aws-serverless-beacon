@@ -76,7 +76,6 @@ module "lambda-summariseDataset" {
 #
 # summariseVcf Lambda Function
 #
-
 module "lambda-summariseVcf" {
   source = "github.com/bhosking/terraform-aws-lambda"
 
@@ -243,6 +242,50 @@ module "lambda-getInfo" {
 }
 
 #
+# getConfiguration Lambda Function
+#
+module "lambda-getConfiguration" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getConfiguration"
+  description = "Get the beacon configuration."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getConfiguration.json
+  source_path = "${path.module}/lambda/getConfiguration"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+  }
+}
+
+#
+# getMap Lambda Function
+#
+module "lambda-getMap" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getMap"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getMap.json
+  source_path = "${path.module}/lambda/getMap"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 module "lambda-queryDatasets" {
@@ -265,6 +308,7 @@ module "lambda-queryDatasets" {
       BEACON_ID = var.beacon-id
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
+      BEACON_API_VERSION = local.api_version
     }
   }
 
@@ -294,6 +338,7 @@ module "lambda-splitQuery" {
   environment = {
     variables = {
       PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
+      BEACON_API_VERSION = local.api_version
     }
   }
 }
@@ -319,4 +364,10 @@ module "lambda-performQuery" {
   layers = [
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
   ]
+
+  environment = {
+    variables = {
+      BEACON_API_VERSION = local.api_version
+    }
+  }
 }

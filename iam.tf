@@ -232,6 +232,34 @@ data aws_iam_policy_document lambda-getInfo {
 }
 
 #
+# getConfiguration Lambda Function
+#
+data aws_iam_policy_document lambda-getConfiguration {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+}
+
+#
+# getMap Lambda Function
+#
+data aws_iam_policy_document lambda-getMap {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 data aws_iam_policy_document lambda-queryDatasets {

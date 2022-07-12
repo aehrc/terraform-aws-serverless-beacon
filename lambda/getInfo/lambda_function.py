@@ -16,6 +16,8 @@ ORGANISATION_NAME = os.environ['ORGANISATION_NAME']
 
 def get_info():
     response = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "info": {},
         "meta": {
             "apiVersion": "string",
             "beaconId": "string",
