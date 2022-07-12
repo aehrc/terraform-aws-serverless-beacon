@@ -33,6 +33,7 @@ module "lambda-submitDataset" {
     variables = {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+      BEACON_API_VERSION = local.api_version
     }
   }
   
@@ -338,7 +339,6 @@ module "lambda-splitQuery" {
   environment = {
     variables = {
       PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
-      BEACON_API_VERSION = local.api_version
     }
   }
 }
