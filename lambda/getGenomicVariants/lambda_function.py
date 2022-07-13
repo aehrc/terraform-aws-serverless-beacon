@@ -30,14 +30,14 @@ def lambda_handler(event, context):
         requestedGranularity = event['body'].get("requestedGranularity", None)
 
     print('Event Received: {}'.format(json.dumps(event)))
-
-    if event['resource'] == '/analyses/{id}/g_variants':
+    
+    if event['resource'] == '/g_variants/{id}/biosamples':
         entry = responses.result_sets_response
-        entry['response']['resultSets'][0]['results'] = [entries.variant_entry]
+        entry['response']['resultSets'][0]['results'] = [entries.biosample_entry]
         response = bundle_response(200, entry)
     else:
         entry = responses.result_sets_response
-        entry['response']['resultSets'][0]['results'] = [entries.analysis_entry]
+        entry['response']['resultSets'][0]['results'] = [entries.variant_entry]
         response = bundle_response(200, entry)
 
     print('Returning Response: {}'.format(json.dumps(response)))

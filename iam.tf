@@ -288,6 +288,20 @@ data aws_iam_policy_document lambda-getAnalyses {
 }
 
 #
+# getGenomicVariants Lambda Function
+#
+data aws_iam_policy_document lambda-getGenomicVariants {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 data aws_iam_policy_document lambda-queryDatasets {

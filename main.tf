@@ -332,6 +332,29 @@ module "lambda-getAnalyses" {
 }
 
 #
+# getGenomicVariants Lambda Function
+#
+module "lambda-getGenomicVariants" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getGenomicVariants"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getGenomicVariants.json
+  source_path = "${path.module}/lambda/getGenomicVariants"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
+  }
+}
+
+#
 # queryDatasets Lambda Function
 #
 module "lambda-queryDatasets" {

@@ -330,6 +330,7 @@ resource aws_api_gateway_deployment BeaconApi {
     md5(file("${path.module}/api-map.tf")),
     md5(file("${path.module}/api-entry-types.tf")),
     md5(file("${path.module}/api-analyses.tf")),
+    md5(file("${path.module}/api-genomics-variants.tf")),
     aws_api_gateway_method.submit-options.id,
     aws_api_gateway_integration.submit-options.id,
     aws_api_gateway_integration_response.submit-options.id,
@@ -378,11 +379,16 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration.entry_types.id,
     aws_api_gateway_integration_response.entry_types.id,
     aws_api_gateway_method_response.entry_types.id,
-    # /analyses
+    # /analyses TODO update with other end points
     aws_api_gateway_method.analyses.id,
     aws_api_gateway_integration.analyses.id,
     aws_api_gateway_integration_response.analyses.id,
     aws_api_gateway_method_response.analyses.id,
+    # /g_variants TODO update with other end points
+    aws_api_gateway_method.g_variants.id,
+    aws_api_gateway_integration.g_variants.id,
+    aws_api_gateway_integration_response.g_variants.id,
+    aws_api_gateway_method_response.g_variants.id,
   ]))
 }
 
