@@ -26,659 +26,33 @@
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
-
+#include "vcf_chunk_reader.h"
+#include "constants.h"
+#include "write_data_to_s3.h"
 
 // #define INCLUDE_STOP_WATCH
 // #define DEBUG_ON
 
 using namespace std;
 
-const string VARIANTS_BUCKET = getenv("VARIANTS_BUCKET");
-const string OUTPUT_SIZE_LIMIT = getenv("VCF_S3_OUTPUT_SIZE_LIMIT");
-const string SLICE_GAP = getenv("MAX_SLICE_GAP");
-const size_t VCF_S3_OUTPUT_SIZE_LIMIT = static_cast<size_t>(atoi(OUTPUT_SIZE_LIMIT.c_str()));
-const int MAX_SLICE_GAP = atoi(SLICE_GAP.c_str());
-constexpr const char* TAG = "LAMBDA_ALLOC";
-constexpr uint_fast32_t BGZIP_MAX_BLOCKSIZE = 65536;
-constexpr uint_fast8_t BGZIP_BLOCK_START_LENGTH = 4;
-constexpr const uint8_t BGZIP_BLOCK_START[BGZIP_BLOCK_START_LENGTH] = {0x1f, 0x8b, 0x08, 0x04};
-constexpr uint_fast8_t BGZIP_FIELD_START_LENGTH = 4;
-constexpr const uint8_t BGZIP_FIELD_START[BGZIP_FIELD_START_LENGTH] = {'B', 'C', 0x02, 0x00};
-constexpr uint_fast16_t DOWNLOAD_SLICE_NUM = 4;  // Maximum number of concurrent downloads
-constexpr uint_fast64_t MAX_DOWNLOAD_SLICE_SIZE = 100000000;
-constexpr uint_fast8_t XLEN_OFFSET = 10;
-
-struct VcfChunk
-{
-    const uint_fast64_t startCompressed;
-    const uint_fast16_t startUncompressed;
-    const uint_fast64_t endCompressed;
-    const uint_fast16_t endUncompressed;
-    VcfChunk(uint64_t virtualStart, uint64_t virtualEnd)
-    :startCompressed(virtualStart >> 16), startUncompressed(virtualStart & 0xffff), endCompressed(virtualEnd >> 16), endUncompressed(virtualEnd & 0xffff) {}
-};
-
-
 struct RegionStats
 {
     uint_fast64_t numVariants;
     uint_fast64_t numCalls;
     RegionStats()
-    :numVariants(0), numCalls(0) {}
-};
-
-// A non-copying iostream.
-// See https://stackoverflow.com/questions/35322033/aws-c-sdk-uploadpart-times-out
-// https://stackoverflow.com/questions/13059091/creating-an-input-stream-from-constant-memory
-class StringViewStream: Aws::Utils::Stream::PreallocatedStreamBuf, public Aws::IOStream
-{
-    public:
-    StringViewStream(uint8_t* data, size_t nbytes)
-    :Aws::Utils::Stream::PreallocatedStreamBuf(data, nbytes), Aws::IOStream(this)
-    {}
-};
-
-
-// class TestStream: StaticStreamBuff, public Aws::IOStream
-// {
-//     public:
-//     TestStream(uint8_t* data, size_t nbytes)
-//     :StaticStreamBuff(data, nbytes), Aws::IOStream(this)
-//     {}
-
-//     template <typename T>
-//     StringViewStream& operator<< (const T &t) override
-//     {
-//         std::cout << "going in" << std::endl;
-//         return Aws::IOStream::operator<< <T>(t);
-//     }
-// };
-
-// void download(Aws::S3::S3Client const& s3Client, Aws::S3::Model::GetObjectRequest request)
-// {
-//     Aws::S3::Model::GetObjectOutcome response = s3Client.GetObject(request);
-//     if (!response.IsSuccess())
-//     {
-//         std::cout << "Could not download data." << std::endl;
-//     }
-//     size_t totalBytes = response.GetResult().GetContentLength();
-//     std::cout << "Finished download. Got " << totalBytes << " bytes." << std::endl;
-// }
-
-
-class Downloader
-{
-    Aws::S3::Model::GetObjectRequest m_request;
-    Aws::S3::S3Client m_s3Client;
-    std::thread m_thread;
-    public:
-    size_t downloadSize;
-    Downloader(Aws::S3::S3Client const& s3Client, Aws::String const& bucket, Aws::String const& key, uint8_t* windowStart, size_t numBytes)
-    :m_s3Client(s3Client), downloadSize(0)
-    {
-        m_request.SetBucket(bucket);
-        m_request.SetKey(key);
-        m_request.SetResponseStreamFactory([windowStart, numBytes]()
-        {
-            return Aws::New<StringViewStream>(TAG, windowStart, numBytes);
-        });
-    }
-
-    static void download(Aws::S3::S3Client const& s3Client, Aws::S3::Model::GetObjectRequest request, uint_fast64_t firstByte, size_t numBytes)
-    {
-        Aws::String byteRange = "bytes=" + std::to_string(firstByte) + "-" + std::to_string(firstByte + numBytes - 1);
-        request.SetRange(byteRange);
-        std::cout << "Attempting to download s3://" << request.GetBucket() << "/" << request.GetKey() << " with byterange: \"" << byteRange << "\"" << std::endl;
-        Aws::S3::Model::GetObjectOutcome response = s3Client.GetObject(request);
-        if (!response.IsSuccess())
-        {
-            std::cout << "Could not download data." << std::endl;
-        }
-        size_t totalBytes = response.GetResult().GetContentLength();
-        std::cout << "Finished download. Got " << totalBytes << " bytes." << std::endl;
-    }
-
-    void startDownload(uint_fast64_t firstByte, size_t numBytes)
-    {
-        if (numBytes > 0)
-        {
-            m_thread = std::thread(download, m_s3Client, m_request, firstByte, numBytes);
-            downloadSize = numBytes;
-        }
-    }
-
-    size_t join()
-    {
-        if (m_thread.joinable())
-        {
-            m_thread.join();
-            return downloadSize;
-        } else {
-            return 0;
-        }
-    }
-};
-
-// See http://samtools.github.io/hts-specs/SAMv1.pdf section 4.1 "The BGZF compression format"
-class VcfChunkReader
-{
-    public:
-    const size_t startCompressed;
-    const size_t totalBytes;
-    const size_t numBytes;
-    size_t requestedBytes;
-    uint8_t* gzipBytes;
-    size_t blockStart;
-    size_t nextBlockStart;
-    const size_t finalBlock;
-    const uint_fast32_t finalUncompressed;
-    unsigned char* inflateWindow;
-    char* uncompressedChars;
-    char* readBufferStart;
-    size_t readBufferLength;
-    Aws::Vector <char> readAltBuffer;
-    uint_fast64_t charPos;
-    z_stream zStream;
-    uint_fast16_t currentSlice;
-    Aws::Vector <Downloader> downloaders;
-    size_t windowIndex;
-    size_t windowStart;
-    size_t totalCSize;
-    uint_fast64_t totalUSize;
-    uint_fast16_t blockXlen;
-    size_t blockCompressedStart;
-    uint_fast32_t blockChars;
-#ifdef INCLUDE_STOP_WATCH
-    stop_watch stopWatch;
-#endif
-    uint reads;
-
-    public:
-    VcfChunkReader(Aws::String bucket, Aws::String key, Aws::S3::S3Client const& s3Client, VcfChunk chunk)
-    :startCompressed(chunk.startCompressed),
-     totalBytes(BGZIP_MAX_BLOCKSIZE + chunk.endCompressed - startCompressed),
-     numBytes(BGZIP_MAX_BLOCKSIZE + std::min(DOWNLOAD_SLICE_NUM * MAX_DOWNLOAD_SLICE_SIZE, totalBytes)),
-     requestedBytes(0), gzipBytes(new uint8_t[numBytes]),
-     nextBlockStart(BGZIP_MAX_BLOCKSIZE), finalBlock(chunk.endCompressed - startCompressed),
-     finalUncompressed(chunk.endUncompressed), uncompressedChars(new char[BGZIP_MAX_BLOCKSIZE]),
-     readBufferStart(uncompressedChars), readBufferLength(0),
-     charPos(0), currentSlice(1), windowIndex(0), windowStart(BGZIP_MAX_BLOCKSIZE), totalCSize(0),
-     totalUSize(0), blockChars(0)
-    {
-#ifdef INCLUDE_STOP_WATCH
-        stopWatch = stop_watch();
-#endif
-        reads = 0;
-        do {
-            downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
-            downloadNext();
-            if (windowIndex == 0) {
-                // Let the first download finish before starting the others so we can start processing right away
-                downloaders[windowIndex].join();
-            }
-            windowIndex++;
-        } while (requestedBytes + BGZIP_MAX_BLOCKSIZE < numBytes);
-        std::cout << "Downloading " << totalBytes << " bytes using " << windowIndex << " additional threads." << std::endl;
-        windowIndex = 0;
-        getNextBlock();
-
-        //Initialise z_stream
-        zStream.zalloc = Z_NULL;
-        zStream.zfree = Z_NULL;
-        zStream.opaque = Z_NULL;
-
-        seek(chunk.startUncompressed);
-    }
-
-    void addToReadAltBuffer(char* buf, size_t length, size_t& altBufferPos)
-    {
-        if (readAltBuffer.size() < altBufferPos + length)
-        {
-            readAltBuffer.resize(altBufferPos + length);
-        }
-        readBufferLength += length;
-        std::copy(buf, buf + length, readAltBuffer.begin() + altBufferPos);
-        altBufferPos += length;
-    }
-
-    void downloadNext()
-    {
-        downloaders[windowIndex].startDownload(startCompressed + requestedBytes, bytesToRequest());
-        requestedBytes += bytesToRequest();
-    }
-
-
-    uint_fast8_t get8(uint8_t* buf)
-    {
-        return static_cast<uint_fast8_t>(*buf);
-    }
-
-    uint_fast16_t get16(uint8_t* buf)
-    {
-        uint16_t value;
-        memcpy(&value, buf, 2);
-        return static_cast<uint_fast16_t>(le16toh(value));
-    }
-
-    uint_fast32_t get32(uint8_t* buf)
-    {
-        uint32_t value;
-        memcpy(&value, buf, 4);
-        return static_cast<uint_fast32_t>(le32toh(value));
-    }
-
-    void getBlockDetails()
-    {
-        if (memcmp(gzipBytes + blockStart, BGZIP_BLOCK_START, BGZIP_BLOCK_START_LENGTH) != 0)
-        {
-            std::cout << "Block " << blockStart << " does not start with correct bytes" << std::endl;
-        }
-        blockXlen = get16(gzipBytes + blockStart + XLEN_OFFSET);
-        blockCompressedStart = blockStart + XLEN_OFFSET + 2 + blockXlen;
-
-        bool bSizeFound = false;
-        uint8_t* fieldStart = gzipBytes + blockStart + XLEN_OFFSET + 2;
-        do {
-            if (memcmp(fieldStart, BGZIP_FIELD_START, BGZIP_FIELD_START_LENGTH) == 0)
-            {
-                nextBlockStart = blockStart + get16(fieldStart + BGZIP_FIELD_START_LENGTH) + 1;
-                totalCSize += nextBlockStart - blockStart;
-                bSizeFound = true;
-                break;
-            }
-            else {
-                fieldStart += get16(fieldStart + 2);
-            }
-        } while (fieldStart < gzipBytes + blockCompressedStart);
-        if (!bSizeFound)
-        {
-            std::cout << "Block " << blockStart << " does not have extra field for BSIZE" << std::endl;
-        }
-        blockChars = moreBlocks() ? get32(gzipBytes + nextBlockStart - 4) : finalUncompressed;
-        totalUSize += blockChars;
-    }
-
-    bool getNextBlock()
-    {
-        if (moreBlocks() && charPos >= blockChars)
-        {
-            charPos -= blockChars;
-            blockStart = nextBlockStart;
-            size_t nextWindow = windowStart + downloaders[windowIndex].downloadSize;
-            // Check if the next download window is coming up
-            if (nextWindow < blockStart + BGZIP_MAX_BLOCKSIZE)
-            {
-                if (windowIndex + 1 == downloaders.size())
-                {
-                    // If this is the final window in the buffer, move back to the start
-                    memcpy(gzipBytes + BGZIP_MAX_BLOCKSIZE + blockStart - nextWindow, gzipBytes + blockStart, nextWindow - blockStart);
-                    blockStart = BGZIP_MAX_BLOCKSIZE + blockStart - nextWindow;
-                    downloadNext();
-                    windowIndex = 0;
-                    windowStart = BGZIP_MAX_BLOCKSIZE;
-                    downloaders[windowIndex].join();
-                } else if (nextWindow < blockStart)
-                {
-                    // We're clear of the current download window, so we can overwrite it and move to the next.
-                    downloadNext();
-                    windowStart = nextWindow;
-                    windowIndex++;
-                } else {
-                    downloaders[windowIndex+1].join();
-                }
-            }
-            getBlockDetails();
-        }
-        return keepReading();
-    }
-
-    size_t getReadLength()
-    {
-        return readBufferLength;
-    }
-
-    const char* getReadStart()
-    {
-        return readBufferStart;
-    }
-
-    bool keepReading()
-    {
-        return moreBlocks() || charPos < blockChars;
-    }
-
-    bool moreBlocks()
-    {
-        return totalCSize <= finalBlock;
-    }
-
-    template <bool first=false>
-    void readBlock()
-    {
-        zStream.next_in = gzipBytes + blockCompressedStart;
-        zStream.avail_in = static_cast<uint>(nextBlockStart - blockStart - blockXlen - 20);
-        zStream.next_out = reinterpret_cast<unsigned char*>(uncompressedChars);
-        zStream.avail_out = static_cast<uint>(blockChars);
-        if (first)
-        {
-            inflateInit2(&zStream, -15);
-        } else {
-            inflateReset(&zStream);
-        }
-#ifdef INCLUDE_STOP_WATCH
-        stopWatch.start();
-#endif
-        inflate(&zStream, Z_FINISH);
-        reads++;
-#ifdef INCLUDE_STOP_WATCH
-        stopWatch.stop();
-        if (reads <= 10 || (reads > 15000 && reads <= 15010))
-        {
-            std::cout << "Inflate took: " << stopWatch << " to inflate " << nextBlockStart - blockStart - blockXlen - 20 << " bytes into " << blockChars << " bytes on read " << reads << std::endl;
-        }
-#endif
-    }
-
-    template <char charA, char charB>
-    char readPastChars()
-    {
-        readBufferStart = uncompressedChars + charPos;
-        readBufferLength = 0;
-        size_t altBufferPos = 0;
-        uint_fast64_t startCharPos;
-        do {
-            startCharPos = charPos;
-            while (charPos < blockChars)
-            {
-                if (uncompressedChars[charPos] == charA || uncompressedChars[charPos] == charB)
-                {
-                    if (readBufferStart != nullptr)
-                    {
-                        readBufferLength += charPos - startCharPos;
-                    } else {
-                        addToReadAltBuffer(uncompressedChars + startCharPos, charPos - startCharPos, altBufferPos);
-                        readBufferStart = readAltBuffer.data();
-                    }
-                    return uncompressedChars[charPos++];
-                } else {
-                    charPos++;
-                }
-            }
-            if (!moreBlocks())
-            {
-                return '\0';
-            }
-            addToReadAltBuffer(uncompressedChars + startCharPos, blockChars - startCharPos, altBufferPos);
-            readBufferStart = nullptr;
-            getNextBlock();
-            readBlock();
-        } while (true);
-    }
-
-    size_t bytesToRequest()
-    {
-        return std::min(MAX_DOWNLOAD_SLICE_SIZE, totalBytes - requestedBytes);
-    }
-
-    template <size_t N=1, char delim>
-    bool skipPast()
-    {
-        size_t num = N;
-        do {
-            while (charPos < blockChars)
-            {
-                if (uncompressedChars[charPos++] == delim && ((N==1)||(--num==0)))
-                {
-                    return true;
-                }
-            }
-            if (!moreBlocks())
-            {
-                return false;
-            }
-            getNextBlock();
-            readBlock();
-        } while (true);
-    }
-
-    uint_fast64_t skipPastAndCountChars(char delim)
-    {
-        uint_fast64_t numChars = 0;
-        do {
-            while (charPos < blockChars)
-            {
-                numChars += ((uncompressedChars[charPos] == '\t') || (uncompressedChars[charPos] == '/') || (uncompressedChars[charPos] == '|') || (uncompressedChars[charPos] == ';') || (uncompressedChars[charPos] == ':'));
-                if (uncompressedChars[charPos++] == delim)
-                {
-                    return numChars;
-                }
-            }
-            if (!moreBlocks())
-            {
-                return numChars;
-            }
-            getNextBlock();
-            readBlock();
-        } while (true);
-    }
-
-    bool seek(uint_fast64_t numChars)
-    {
-        charPos += numChars;
-        if (charPos < blockChars)
-        {
-            return keepReading();
-        }
-        while ((blockChars <= charPos) && getNextBlock())
-        {
-            // Skip through blocks until we reach the desired charPos
-        }
-        readBlock(); 
-        return keepReading();
-    }
-
-    ~VcfChunkReader()
-    {
-        inflateEnd(&zStream);
-        delete[] uncompressedChars;
-        delete[] gzipBytes;
-    }
-};
-
-class writeDataToS3 {
-    private:
-    string s3BucketKey;
-    Aws::S3::S3Client const& s3Client;
-    queue<generalutils::vcfData> vcfBuffer;
-    uint16_t startBasePairRegion;
-    string contig = "";
-
-    int stringToFile(char *fileBuffer, string &ref, string &alt) {
-        uint16_t length = (ref.size() + alt.size() + 1);
-        memcpy(&fileBuffer[0], reinterpret_cast<char*>(&length), sizeof(uint16_t));
-        string outString = ref + "_" + alt;
-        memcpy(&fileBuffer[2], outString.c_str(), length);
-        return length + sizeof(uint16_t); // Return the string length and the length int
-    }
-
-    bool saveOutputToS3(string objectName, Aws::S3::S3Client const& client, queue<generalutils::vcfData> &input) {
-        size_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT;
-        char *fileBuffer = new char[VCF_S3_OUTPUT_SIZE_LIMIT];
-        size_t bufferLength = 0;
-        size_t accBufferLength = 0;
-
-        const std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::StringStream>(TAG, std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-        while (!input.empty()) {
-            if (bufferLength + input.front().ref.size() + input.front().alt.size() + sizeof(input.front().pos) > bufferSize) {
-                gzip gz(*input_data, 0, fileBuffer, bufferLength);
-                gz.deflateFile(Z_BEST_COMPRESSION);
-                accBufferLength += bufferLength;
-                bufferLength = 0;
-            }
-            memcpy(&fileBuffer[bufferLength], reinterpret_cast<char*>(&input.front().pos), sizeof(input.front().pos));
-            bufferLength += sizeof(input.front().pos);
-            bufferLength += stringToFile(&fileBuffer[bufferLength], input.front().ref, input.front().alt);
-            input.pop();
-        }
-
-        if (bufferLength > 0) {
-            gzip gz(*input_data, 0, fileBuffer, bufferLength);
-            gz.deflateFile(Z_BEST_COMPRESSION);
-            accBufferLength += bufferLength;
-        }        
-        delete[] fileBuffer;
-
-        // input_data->write(gzipBuffer, bufferSize);
-        // input_data->seekg( 0, ios::end );
-        // objectName += "-" + to_string(input_data->tellg());
-        objectName += "-" + to_string(accBufferLength);
-
-        Aws::S3::Model::PutObjectRequest request;
-        request.SetBucket(VARIANTS_BUCKET);
-        request.SetKey(objectName);
-        request.SetBody(input_data);
-
-        Aws::S3::Model::PutObjectOutcome outcome = client.PutObject(request);
-
-        if (!outcome.IsSuccess()) {
-            cout << "Error: PutObjectBuffer: " << 
-                outcome.GetError().GetMessage() << endl;
-            return false;
-        }
-        else {
-            cout << "Success: Object '" << objectName << "' uploaded to bucket '" << VARIANTS_BUCKET << "'." << endl;
-            return true;
-        }
-    }
-
-    void saveNewFile() {
-        if (vcfBuffer.size() > 0) {
-            string fileNameAppend = "vcf-summaries/contig/" + contig + "/" + s3BucketKey + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
-            saveOutputToS3(fileNameAppend, s3Client, vcfBuffer);
-        }
-    }
-
-    string compressSeq(const char *s, size_t n) {
-        uint8_t contigBin;
-        if (n == 1) {
-            contigBin = generalutils::sequenceToBinary.at(s[0]);
-            return string(1, contigBin);
-        }
-
-
-        // TODO look into ways to compress this a little
-        // Ideas: DEL, INS, DUP could be compressed into one byte
-        // Remove ':' char
-        if (s[0] == '<' && s[n-1] == '>') {
-            // Return the contents of the variant genome
-            return string(&s[1], n-2);
-        }
-
-        string concat = "";
-        // Pack two chars into one byte by using custom compression
-        for (size_t i=0; i<n; i+=2) {
-            contigBin = generalutils::sequenceToBinary.at(s[i]);
-            if (i+1 < n) {
-                contigBin = contigBin << 4;
-                contigBin |= generalutils::sequenceToBinary.at(s[i+1]);
-            }
-            concat.append((char*)(&contigBin));
-        }
-        return concat;
-    }
-
-    public:
-    writeDataToS3(string location, Aws::S3::S3Client const& client):
-    s3Client(client) {
-        // Remove leading "s3://" and trailing ".vcf.gz"
-        s3BucketKey = location.substr(5, location.size() - 12);
-        replace(s3BucketKey.begin(), s3BucketKey.end(), '/', '%');
-    }
-
-    ~writeDataToS3() {
-        saveNewFile();
-    }
-
-    // Read upto the INFO field
-    void recordHeader(VcfChunkReader& reader) {
-        generalutils::vcfData d;
-        uint8_t loopPos = 0;
-
-        if (contig.length() != 0) {
-            reader.skipPast<1, '\t'>();
-            loopPos = 1;
-        }
-
-        do {
-            const char lastChar = reader.readPastChars<'\t', ','>();
-            if (lastChar == '\0') {
-                // EOF in the middle of CHROM POS REF ALT portion of vcf line, don't include this
-                break;
-            }
-            const char* firstChar_p = reader.getReadStart();
-            const size_t numChars = reader.getReadLength();
-            if (numChars >= 1) {
-                switch(++loopPos) {
-                    // one contig per read file
-                    case 1:
-                        contig = string(firstChar_p, numChars);
-                        break;
-                    case 2:
-                        d.pos = generalutils::fast_atoi<uint64_t>(firstChar_p, numChars);
-
-                        if (vcfBuffer.size() > 0) {
-                            if (d.pos < vcfBuffer.back().pos) {
-                                cout << "d.pos: " << d.pos << " vcfBuffer.back().pos: " << vcfBuffer.back().pos << endl;
-                                throw runtime_error("unsorted file");
-                            }
-
-                            // Remove large gaps in file data by saving a new file when a large gap is found
-                            if (d.pos > vcfBuffer.back().pos + MAX_SLICE_GAP) {
-                                saveNewFile();
-                            }
-                        }
-                        reader.skipPast<1, '\t'>();
-                        loopPos++;
-                        break;
-                    case 4:
-                        d.ref = compressSeq(firstChar_p, numChars);
-                        break;
-                    case 5:
-                        d.alt = compressSeq(firstChar_p, numChars);
-
-                        // If we have more ref to proccess decrement the loop so we get the next
-                        if (lastChar == ',') {
-                            loopPos--;
-                        }
-                        
-                        vcfBuffer.push(d);
-                        // cout << "last char: " << lastChar << " " << (lastChar == ',') << endl;
-                        break;
-                    default:
-                        break;
-                }
-            }
-        } while (loopPos <= 4);
-
-        // Skip the last two fields so we exit with the reader pointing to the INFO field
-        reader.skipPast<2, '\t'>();
-
-        // Save the buffer to a file if we have reached a size limit
-        if (vcfBuffer.size() > VCF_S3_OUTPUT_SIZE_LIMIT) {
-            saveNewFile();
-        }
-    }
+        : numVariants(0), numCalls(0) {}
 };
 
 // Function assumes reader is at the INFO part of the header
-void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
+void addCounts(VcfChunkReader &reader, RegionStats &regionStats)
 {
-    constexpr const char* acTag = "AC=";
-    constexpr const char* anTag = "AN=";
+    constexpr const char *acTag = "AC=";
+    constexpr const char *anTag = "AN=";
     bool foundAc = false;
     bool foundAn = false;
 
-    do {
+    do
+    {
         const char lastChar = reader.readPastChars<';', '\t'>();
         if (lastChar == '\0')
         {
@@ -689,7 +63,7 @@ void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
         if (numChars >= 4)
         {
             // Could be AC=x or AN=x
-            const char* firstChar_p = reader.getReadStart();
+            const char *firstChar_p = reader.getReadStart();
             if (memcmp(firstChar_p, acTag, 3) == 0)
             {
                 foundAc = true;
@@ -702,18 +76,22 @@ void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
                         regionStats.numVariants += 1;
                     }
                 }
-            } else if (memcmp(firstChar_p, anTag, 3) == 0) {
+            }
+            else if (memcmp(firstChar_p, anTag, 3) == 0)
+            {
                 foundAn = true;
-                regionStats.numCalls += atoui64(firstChar_p+3, (uint8_t)(numChars)-3);
+                regionStats.numCalls += atoui64(firstChar_p + 3, (uint8_t)(numChars)-3);
             }
 #ifdef DEBUG_ON
-            else {
+            else
+            {
                 std::cout << "Found unrecognised INFO field: \"" << Aws::String(firstChar_p, numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
             }
 #endif
         }
 #ifdef DEBUG_ON
-        else {
+        else
+        {
             std::cout << "Found short unrecognised INFO field: \"" << Aws::String(reader.getReadStart(), numChars) << "\" with lastChar: \"" << lastChar << "\" and charPos: " << reader.charPos << std::endl;
         }
 #endif
@@ -725,7 +103,7 @@ void addCounts(VcfChunkReader& reader, RegionStats& regionStats)
     } while (!(foundAc && foundAn));
 }
 
-Aws::String bundleResponse(Aws::String const& body, int statusCode)
+Aws::String bundleResponse(Aws::String const &body, int statusCode)
 {
     Aws::String outputString = "{\"headers\": {\"Access-Control-Allow-Origin\": \"*\"}, \"statusCode\": ";
     outputString.append(std::to_string(statusCode));
@@ -742,7 +120,7 @@ Aws::String bundleResponse(Aws::String const& body, int statusCode)
     return outputString;
 }
 
-Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location)
+Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String location)
 {
     Aws::DynamoDB::Model::ScanRequest request;
     request.SetTableName(getenv("DATASETS_TABLE"));
@@ -755,36 +133,43 @@ Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const
     expressionAttributeValues[":location"] = locationValue;
     request.SetExpressionAttributeValues(expressionAttributeValues);
     Aws::Vector<Aws::String> datasetIds;
-    do {
+    do
+    {
         std::cout << "Calling dynamodb::Scan with vcfLocations contains \"" << location << "\"" << std::endl;
-        const Aws::DynamoDB::Model::ScanOutcome& result = dynamodbClient.Scan(request);
+        const Aws::DynamoDB::Model::ScanOutcome &result = dynamodbClient.Scan(request);
         if (result.IsSuccess())
         {
             std::cout << "Got ids [";
-            for (const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue>& item : result.GetResult().GetItems())
+            for (const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> &item : result.GetResult().GetItems())
             {
                 auto datasetIdItr = item.find("id");
                 if (datasetIdItr != item.end())
                 {
                     datasetIds.push_back(datasetIdItr->second.GetS());
                     std::cout << "\"" << datasetIds.back() << "\", ";
-                } else {
+                }
+                else
+                {
                     // Why is there a dataset with no id here? Let's not let it ruin the others updating.
                     std::cout << "None (ignored), ";
                 }
             }
             std::cout << "]" << std::endl;
-            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue>& lastEvaluatedKey = result.GetResult().GetLastEvaluatedKey();
+            const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> &lastEvaluatedKey = result.GetResult().GetLastEvaluatedKey();
             if (lastEvaluatedKey.empty())
             {
                 std::cout << "No more ids to find" << std::endl;
                 return datasetIds;
-            } else {
+            }
+            else
+            {
                 std::cout << "More ids to find, querying for the rest..." << std::endl;
                 request.SetExclusiveStartKey(lastEvaluatedKey);
                 continue;
             }
-        } else {
+        }
+        else
+        {
             const Aws::DynamoDB::DynamoDBError error = result.GetError();
             std::cout << "Scan was not successful, received error: " << error.GetMessage() << std::endl;
             if (error.ShouldRetry())
@@ -792,7 +177,9 @@ Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const
                 std::cout << "Retrying after 1 second..." << std::endl;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
-            } else {
+            }
+            else
+            {
                 std::cout << "Not Retrying." << std::endl;
                 return datasetIds;
             }
@@ -800,13 +187,13 @@ Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const
     } while (true);
 }
 
-Aws::String getMessageString(aws::lambda_runtime::invocation_request const& req)
+Aws::String getMessageString(aws::lambda_runtime::invocation_request const &req)
 {
     Aws::Utils::Json::JsonValue json(req.payload);
     return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
 }
 
-const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String location, int64_t virtualStart, int64_t virtualEnd)
+const RegionStats getRegionStats(Aws::S3::S3Client const &s3Client, Aws::String location, int64_t virtualStart, int64_t virtualEnd)
 {
     VcfChunk chunk(virtualStart, virtualEnd);
 
@@ -817,8 +204,8 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     {
         if (location[j] == '/')
         {
-            bucket = location.substr(5, j-5);
-            key = location.substr(j+1);
+            bucket = location.substr(5, j - 5);
+            key = location.substr(j + 1);
             break;
         }
     }
@@ -858,13 +245,14 @@ const RegionStats getRegionStats(Aws::S3::S3Client const& s3Client, Aws::String 
     return regionStats;
 }
 
-void summariseDatasets(Aws::SNS::SNSClient const& snsClient, Aws::Vector<Aws::String> datasetIds)
+void summariseDatasets(Aws::SNS::SNSClient const &snsClient, Aws::Vector<Aws::String> datasetIds)
 {
     Aws::SNS::Model::PublishRequest request;
     request.SetTopicArn(getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN"));
-    for (Aws::String& datasetId: datasetIds)
+    for (Aws::String &datasetId : datasetIds)
     {
-        do {
+        do
+        {
             request.SetMessage(datasetId);
             std::cout << "Calling sns::Publish with TopicArn=\"" << request.GetTopicArn() << "\" and message=\"" << request.GetMessage() << "\"" << std::endl;
             Aws::SNS::Model::PublishOutcome result = snsClient.Publish(request);
@@ -872,7 +260,9 @@ void summariseDatasets(Aws::SNS::SNSClient const& snsClient, Aws::Vector<Aws::St
             {
                 std::cout << "Successfully published" << std::endl;
                 break;
-            } else {
+            }
+            else
+            {
                 const Aws::SNS::SNSError error = result.GetError();
                 std::cout << "Publish was not successful, received error: " << error.GetMessage() << std::endl;
                 if (error.ShouldRetry())
@@ -880,7 +270,9 @@ void summariseDatasets(Aws::SNS::SNSClient const& snsClient, Aws::Vector<Aws::St
                     std::cout << "Retrying after 1 second..." << std::endl;
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                     continue;
-                } else {
+                }
+                else
+                {
                     std::cout << "Not Retrying." << std::endl;
                     break;
                 }
@@ -889,7 +281,7 @@ void summariseDatasets(Aws::SNS::SNSClient const& snsClient, Aws::Vector<Aws::St
     }
 }
 
-bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String vcfLocation, Aws::String datasetId)
+bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String vcfLocation, Aws::String datasetId)
 {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("DATASETS_TABLE"));
@@ -901,7 +293,6 @@ bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aw
 
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
 
-
     Aws::DynamoDB::Model::AttributeValue vcfLocationSetValue;
     vcfLocationSetValue.SetSS(Aws::Vector<Aws::String>{vcfLocation});
     expressionAttributeValues[":vcfLocationSet"] = vcfLocationSetValue;
@@ -912,9 +303,10 @@ bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aw
 
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
-    do {
+    do
+    {
         std::cout << "Calling dynamodb::UpdateItem with key=\"" << datasetId << "\" and vcfLocation=\"" << vcfLocation << "\"" << std::endl;
-        const Aws::DynamoDB::Model::UpdateItemOutcome& result = dynamodbClient.UpdateItem(request);
+        const Aws::DynamoDB::Model::UpdateItemOutcome &result = dynamodbClient.UpdateItem(request);
         if (result.IsSuccess())
         {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
@@ -932,7 +324,9 @@ bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aw
             }
             std::cout << std::endl;
             return (toUpdateItr == newAttributes.end());
-        } else {
+        }
+        else
+        {
             const Aws::DynamoDB::DynamoDBError error = result.GetError();
             std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
             if (error.ShouldRetry())
@@ -940,7 +334,9 @@ bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aw
                 std::cout << "Retrying after 1 second..." << std::endl;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
-            } else {
+            }
+            else
+            {
                 std::cout << "Not Retrying." << std::endl;
                 return false;
             }
@@ -948,7 +344,7 @@ bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aw
     } while (true);
 }
 
-Aws::Vector<Aws::String> getDatasetsToUpdate(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location, Aws::Vector<Aws::String> datasetIds)
+Aws::Vector<Aws::String> getDatasetsToUpdate(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String location, Aws::Vector<Aws::String> datasetIds)
 {
     Aws::Vector<Aws::String> toUpdateIds;
     for (Aws::String datasetId : datasetIds)
@@ -961,8 +357,7 @@ Aws::Vector<Aws::String> getDatasetsToUpdate(Aws::DynamoDB::DynamoDBClient const
     return toUpdateIds;
 }
 
-
-bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
+bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
 {
     Aws::DynamoDB::Model::UpdateItemRequest request;
     request.SetTableName(getenv("VCF_SUMMARIES_TABLE"));
@@ -993,9 +388,10 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
 
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
-    do {
+    do
+    {
         std::cout << "Calling dynamodb::UpdateItem with key=\"" << location << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
-        const Aws::DynamoDB::Model::UpdateItemOutcome& result = dynamodbClient.UpdateItem(request);
+        const Aws::DynamoDB::Model::UpdateItemOutcome &result = dynamodbClient.UpdateItem(request);
         if (result.IsSuccess())
         {
             const Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> newAttributes = result.GetResult().GetAttributes();
@@ -1019,7 +415,9 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
             }
             std::cout << std::endl;
             return (toUpdateItr == newAttributes.end());
-        } else {
+        }
+        else
+        {
             const Aws::DynamoDB::DynamoDBError error = result.GetError();
             std::cout << "Item was not updated, received error: " << error.GetMessage() << std::endl;
             if (error.ShouldRetry())
@@ -1027,7 +425,9 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
                 std::cout << "Retrying after 1 second..." << std::endl;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
-            } else {
+            }
+            else
+            {
                 std::cout << "Not Retrying." << std::endl;
                 return false;
             }
@@ -1035,8 +435,8 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::
     } while (true);
 }
 
-static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req,
-    Aws::S3::S3Client const& s3Client, Aws::DynamoDB::DynamoDBClient const& dynamodbClient, Aws::SNS::SNSClient const& snsClient)
+static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const &req,
+                                                              Aws::S3::S3Client const &s3Client, Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::SNS::SNSClient const &snsClient)
 {
     Aws::String messageString = getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
@@ -1046,14 +446,16 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     int64_t virtualStart = messageView.GetInt64("virtual_start");
     int64_t virtualEnd = messageView.GetInt64("virtual_end");
     RegionStats regionStats = getRegionStats(s3Client, location, virtualStart, virtualEnd);
-    
+
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
         std::cout << "VCF has been completely summarised!" << std::endl;
         Aws::Vector<Aws::String> allDatasetIds = getAffectedDatasets(dynamodbClient, location);
         Aws::Vector<Aws::String> datasetsToUpdate = getDatasetsToUpdate(dynamodbClient, location, allDatasetIds);
         summariseDatasets(snsClient, datasetsToUpdate);
-    } else {
+    }
+    else
+    {
         std::cout << "VCF has not yet been completely summarised." << std::endl;
     }
     return aws::lambda_runtime::invocation_response::success(bundleResponse("Success", 200), "application/json");
@@ -1069,11 +471,12 @@ int main()
         config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
 
         auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
-        Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
-        Aws::S3::S3Client s3Client(credentialsProvider, config);
-        Aws::SNS::SNSClient snsClient(credentialsProvider, config);
-        auto handlerFunction = [&s3Client, &dynamodbClient, &snsClient](aws::lambda_runtime::invocation_request const& req) {
+        auto handlerFunction = [&credentialsProvider, &config](aws::lambda_runtime::invocation_request const &req)
+        {
             std::cout << "Event Received: " << req.payload << std::endl;
+            Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
+            Aws::S3::S3Client s3Client(credentialsProvider, config);
+            Aws::SNS::SNSClient snsClient(credentialsProvider, config);
             return lambdaHandler(req, s3Client, dynamodbClient, snsClient);
             std::cout.flush();
         };

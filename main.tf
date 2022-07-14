@@ -1,6 +1,8 @@
 locals {
-  api_version = "v1.0.0"
+  api_version = "v2.0.0"
+  version = "v1.0.0"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
+  build_cpp_path2 = abspath("${path.module}/build_cpp2.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
   build_gzip_path = abspath("${path.module}/lambda/shared/gzip")
 
@@ -17,7 +19,8 @@ module "lambda-submitDataset" {
   function_name = "submitDataset"
   description = "Creates or updates a dataset and triggers summariseVcf."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
+  architectures = ["x86_64"]
   memory_size = 2048
   timeout = 60
   policy = {
@@ -30,8 +33,14 @@ module "lambda-submitDataset" {
     variables = {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+      BEACON_API_VERSION = local.api_version
     }
   }
+  
+  layers = [
+    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+  ]
 }
 
 #
@@ -43,7 +52,7 @@ module "lambda-summariseDataset" {
   function_name = "summariseDataset"
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.7"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 60
   policy = {
@@ -68,7 +77,6 @@ module "lambda-summariseDataset" {
 #
 # summariseVcf Lambda Function
 #
-
 module "lambda-summariseVcf" {
   source = "github.com/bhosking/terraform-aws-lambda"
 
@@ -166,6 +174,43 @@ module "lambda-duplicateVariantSearch" {
   }
 }
 
+# Following is just a template for c++ codes using latest terraform module
+module "lambda_functionDVS" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "duplicateVariantSearchDVS"
+  description = "Searches for duplicate variants across vcfs."
+  handler = "function"
+  runtime = "provided"
+  architectures = ["x86_64"]
+  memory_size = 1536
+  timeout = 900
+  attach_policy_json = true
+  policy_json =  data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
+
+  source_path = [
+    {
+      path     = "${path.module}/lambda/duplicateVariantSearchDVS",
+      commands = [
+        "sh ${local.build_cpp_path2} ./",
+        "cd build/function_binaries",
+        ":zip"
+      ],
+      patterns = [
+        "source/*",
+      ]
+    }
+  ]
+
+  tags = var.common-tags
+
+  environment_variables = {
+    ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+    VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+    DATASETS_TABLE = aws_dynamodb_table.datasets.name
+  }
+}
+
 #
 # getInfo Lambda Function
 #
@@ -175,7 +220,7 @@ module "lambda-getInfo" {
   function_name = "getInfo"
   description = "Returns basic information about the beacon and the datasets."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 28
   policy = {
@@ -187,12 +232,125 @@ module "lambda-getInfo" {
   environment = {
     variables = {
       BEACON_API_VERSION = local.api_version
+      VERSION = local.version
       BEACON_ID = var.beacon-id
       BEACON_NAME = var.beacon-name
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       ORGANISATION_ID = var.organisation-id
       ORGANISATION_NAME = var.organisation-name
     }
+  }
+}
+
+#
+# getConfiguration Lambda Function
+#
+module "lambda-getConfiguration" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getConfiguration"
+  description = "Get the beacon configuration."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getConfiguration.json
+  source_path = "${path.module}/lambda/getConfiguration"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+  }
+}
+
+#
+# getMap Lambda Function
+#
+module "lambda-getMap" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getMap"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getMap.json
+  source_path = "${path.module}/lambda/getMap"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+  }
+}
+
+#
+# getEntryTypes Lambda Function
+#
+module "lambda-getEntryTypes" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getEntryTypes"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getEntryTypes.json
+  source_path = "${path.module}/lambda/getEntryTypes"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+  }
+}
+
+#
+# getAnalyses Lambda Function
+#
+module "lambda-getAnalyses" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getAnalyses"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getAnalyses.json
+  source_path = "${path.module}/lambda/getAnalyses"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
+  }
+}
+
+#
+# getGenomicVariants Lambda Function
+#
+module "lambda-getGenomicVariants" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getGenomicVariants"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  policy_json = data.aws_iam_policy_document.lambda-getGenomicVariants.json
+  source_path = "${path.module}/lambda/getGenomicVariants"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
   }
 }
 
@@ -205,7 +363,7 @@ module "lambda-queryDatasets" {
   function_name = "queryDatasets"
   description = "Invokes splitQuery for each dataset and returns result."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 28
   policy = {
@@ -219,8 +377,13 @@ module "lambda-queryDatasets" {
       BEACON_ID = var.beacon-id
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
+      BEACON_API_VERSION = local.api_version
     }
   }
+
+  layers = [
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+  ]
 }
 
 #
@@ -232,7 +395,7 @@ module "lambda-splitQuery" {
   function_name = "splitQuery"
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 26
   policy = {
@@ -257,7 +420,7 @@ module "lambda-performQuery" {
   function_name = "performQuery"
   description = "Queries a slice of a vcf for a specified variant."
   handler = "lambda_function.lambda_handler"
-  runtime = "python3.6"
+  runtime = "python3.9"
   memory_size = 2048
   timeout = 24
   policy = {
@@ -265,4 +428,14 @@ module "lambda-performQuery" {
   }
   source_path = "${path.module}/lambda/performQuery"
   tags = var.common-tags
+
+  layers = [
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+  ]
+
+  environment = {
+    variables = {
+      BEACON_API_VERSION = local.api_version
+    }
+  }
 }

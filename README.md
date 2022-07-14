@@ -10,6 +10,51 @@ The service intends to support beacon v1 according to the
 [ga4gh specification](https://github.com/ga4gh-beacon/specification).
 
 ## Installation
+
+### The environment
+
+Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
+
+```sh
+# install development essentials
+sudo yum install -y gcc10 gcc10-c++ git openssl-devel libcurl-devel
+sudo ln -s /usr/bin/gcc10-gcc /usr/bin/gcc
+sudo ln -s /usr/bin/gcc10-g++ /usr/bin/g++
+
+# Install CMake
+wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz
+tar -xvzf cmake-3.20.3.tar.gz
+cd cmake-3.20.3
+./bootstrap
+make
+sudo make install
+```
+
+### Initialising Essential Layers
+
+All the layers needed for the program to run are in layers folder.
+To add a new layer for immediate use with additional configs, run the following commands.
+
+Python layer
+```sh
+cd terraform-aws-serverless-beacon
+pip install --target layers/<Library Name>/python <Library Name>
+```
+
+Binary layer
+```sh
+# clone the repo somewhere else
+git clone <REPO> 
+cd <REPO>
+mkdir build && cd build && cmake .. && make && make install
+# copy the bin and lib folders to a folder inside layers
+cp bin terraform-aws-serverless-beacon/layers/<Library Name>/
+cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
+# troubleshoot with "ldd ./binary-name" to see what libaries needed
+```
+
+### Terraform Initialisation
+
 Install using `terraform init` to pull the module, followed by running
 Running `terraform apply` will create the infrastucture.
 For adding data to the beacon, see the API.

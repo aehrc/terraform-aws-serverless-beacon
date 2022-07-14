@@ -54,17 +54,6 @@ resource aws_lambda_permission SNSduplicateVariantSearch {
 }
 
 #
-# getInfo Lambda Function
-#
-resource aws_lambda_permission APIGetInfo {
-  statement_id = "AllowAPIGetInfoInvoke"
-  action = "lambda:InvokeFunction"
-  function_name = module.lambda-getInfo.function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/"
-}
-
-#
 # queryDatasets Lambda Function
 #
 resource aws_lambda_permission APIQueryDatasets {

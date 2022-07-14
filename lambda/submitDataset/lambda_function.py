@@ -2,20 +2,27 @@ import datetime
 import json
 import os
 import subprocess
+from jsonschema import Draft7Validator
 
 import boto3
 
-from api_response import bad_request, bundle_response, missing_parameter
+from api_response import bad_request, bundle_response
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 
-os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
+# uncomment below for debugging
+# os.environ['LD_DEBUG'] = 'all'
 
 dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
 
+newSchema = json.load(open("new-schema.json"))
+updateSchema = json.load(open("update-schema.json"))
 
+
+# just checking if the tabix would work as expected on a valid vcf.gz file
+# validate if the index file exists too
 def check_vcf_locations(locations):
     errors = []
     for location in locations:
@@ -70,6 +77,12 @@ def create_dataset(attributes):
         },
     }
 
+    vcfGroups = attributes.get('vcfGroups')
+    if vcfGroups:
+        item['vcfGroups'] = {
+            'L': [{ 'SS': vcfGroup } for vcfGroup in attributes['vcfGroups']]
+        }
+
     description = attributes.get('description')
     if description:
         item['description'] = {
@@ -118,7 +131,9 @@ def submit_dataset(body_dict, method):
     validation_error = validate_request(body_dict, new)
     if validation_error:
         return bad_request(validation_error)
+
     if 'vcfLocations' in body_dict:
+        # validate vcf files if skipCheck is not specified 
         if 'skipCheck' not in body_dict:
             errors = check_vcf_locations(body_dict['vcfLocations'])
             if errors:
@@ -126,12 +141,15 @@ def submit_dataset(body_dict, method):
         summarise = True
     else:
         summarise = False
+    # handle data set submission or update
     if new:
         create_dataset(body_dict)
     else:
         update_dataset(body_dict)
+    
     if summarise:
         summarise_dataset(body_dict['id'])
+
     return bundle_response(200, {})
 
 
@@ -204,6 +222,12 @@ def update_dataset(attributes):
         expression_attribute_values[':dataUseConditions'] = {
             'M': attributes['dataUseConditions'],
         }
+    
+    if 'vcfGroups' in attributes:
+        update_set_expressions.append('vcfGroups=:vcfGroups')
+        expression_attribute_values[':vcfGroups'] = {
+            'L': [{ 'SS': vcfGroup } for vcfGroup in attributes['vcfGroups']]
+        }
 
     update_expression = 'SET {}'.format(', '.join(update_set_expressions))
     kwargs = {
@@ -224,86 +248,27 @@ def update_dataset(attributes):
 
 
 def validate_request(parameters, new):
-    try:
-        dataset_id = parameters['id']
-    except KeyError:
-        return missing_parameter('id')
-    if not isinstance(dataset_id, str):
-        return 'id must be a string'
+    validator = None
+    # validate request body with schema for a new submission or update
+    if new:
+        validator = Draft7Validator(newSchema)
+    else:
+        validator = Draft7Validator(updateSchema)
 
-    if 'name' in parameters:
-        if not isinstance(parameters['name'], str):
-            return 'name must be a string'
-    elif new:
-        return missing_parameter('name')
-
-    if 'assemblyId' in parameters:
-        if not isinstance(parameters['assemblyId'], str):
-            return 'assemblyId must be a string'
-    elif new:
-        return missing_parameter('assemblyId')
-
-    if 'vcfLocations' in parameters:
-        vcf_locations = parameters['vcfLocations']
-        if not isinstance(vcf_locations, list):
-            return 'vcfLocations must be an array'
-        elif not vcf_locations:
-            return 'A dataset must have at least one vcf location'
-        elif not all(isinstance(loc, str) for loc in vcf_locations):
-            return 'Each element in vcfLocations must be a string'
-    elif new:
-        return missing_parameter('vcfLocations')
-
-    description = parameters.get('description')
-    if not isinstance(description, str) and description is not None:
-        return 'description must be a string or null'
-
-    version = parameters.get('version')
-    if not isinstance(version, str) and version is not None:
-        return 'version must be a string or null'
-
-    external_url = parameters.get('externalUrl')
-    if not isinstance(external_url, str) and external_url is not None:
-        return 'externalUrl must be a string or null'
-
-    info = parameters.get('info')
-    if info is not None:
-        # This a painful part of the spec - it will be fixed in v1.1.0
-        if not isinstance(info, list):
-            return 'info must be an array or null'
-        elif not all(isinstance(data, dict) for data in info):
-            return 'Each element in info must be a key-value object'
-        keys = {'key', 'value'}
-        if not all(set(data.keys()) == keys
-                   and all(isinstance(val, str) for val in data.values())
-                   for data in info):
-            return ('each object in info must consist of'
-                    ' {"key": "key_string", "value": "value_string"}')
-
-    data_use_conditions = parameters.get('dataUseConditions')
-    if data_use_conditions is not None:
-        if not isinstance(data_use_conditions, dict):
-            return 'dataUseConditions must be an object or null'
-        if (set(data_use_conditions.keys()) != {'consentCodeDataUse',
-                                                'adamDataUse'}
-            or not all(isinstance(val, dict)
-                       for val in data_use_conditions.values())):
-            return ('dataUseConditions object must be in the form:'
-                    '{"consentCodeDataUse": {consentCodeDataUse object},'
-                    ' "adamDataUse": {ADA-M object}}')
-        # Leave the validation of the individual data use objects to the client.
-
-    return ''
+    errors = sorted(validator.iter_errors(parameters), key=lambda e: e.path)
+    return [error.message for error in errors]
 
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     event_body = event.get('body')
+
     if not event_body:
         return bad_request('No body sent with request.')
     try:
         body_dict = json.loads(event_body)
     except ValueError:
         return bad_request('Error parsing request body, Expected JSON.')
+
     method = event['httpMethod']
     return submit_dataset(body_dict, method)

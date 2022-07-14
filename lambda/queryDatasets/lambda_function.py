@@ -13,14 +13,15 @@ BEACON_ID = os.environ['BEACON_ID']
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 
+# uncomment below for debugging
+# os.environ['LD_DEBUG'] = 'all'
+
 INCLUDE_DATASETS_VALUES = {
     'ALL',
     'HIT',
     'MISS',
     'NONE',
 }
-
-os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
 
 base_pattern = re.compile('[ACGT]+|N')
 
@@ -33,7 +34,7 @@ def get_datasets(assembly_id, dataset_ids):
     kwargs = {
         'TableName': 'Datasets',
         'IndexName': 'assembly_index',
-        'ProjectionExpression': 'id,vcfLocations',
+        'ProjectionExpression': 'id,vcfLocations,vcfGroups',
         'KeyConditionExpression': 'assemblyId = :assemblyId',
         'ExpressionAttributeValues': {
             ':assemblyId': {'S': assembly_id}
@@ -65,7 +66,7 @@ def get_vcf_chromosome_map(datasets, chromosome):
     return vcf_chromosome_map
 
 
-def perform_query(dataset_id, vcf_locations, reference_bases, region_start,
+def perform_query(dataset_id, vcf_locations, vcf_groups, reference_bases, region_start,
                   region_end, end_min, end_max, alternate_bases, variant_type,
                   include_datasets, responses):
 
@@ -80,6 +81,7 @@ def perform_query(dataset_id, vcf_locations, reference_bases, region_start,
         'variant_type': variant_type,
         'include_datasets': include_datasets,
         'vcf_locations': vcf_locations,
+        'vcf_groups': vcf_groups,
     })
     print("Invoking {lambda_name} with payload: {payload}".format(
         lambda_name=SPLIT_QUERY, payload=payload))
@@ -148,10 +150,17 @@ def query_datasets(parameters):
         vcf_locations = {vcf: vcf_chromosomes[vcf]
                          for vcf in dataset['vcfLocations']['SS']
                          if vcf_chromosomes[vcf]}
+        # record vcf grouping information using the relevant vcf files
+        vcf_groups = [grp for grp in [
+                                    [loc for loc in vcfg["SS"] if loc in vcf_locations]
+                                         for vcfg in dataset['vcfGroups']['L']
+                                 ] if len(grp) > 0]
+
         t = threading.Thread(target=perform_query,
                              kwargs={
                                  'dataset_id': dataset_id,
                                  'vcf_locations': vcf_locations,
+                                 'vcf_groups': vcf_groups,
                                  'reference_bases': reference_bases,
                                  'region_start': region_start,
                                  'region_end': region_end,
