@@ -2,6 +2,7 @@ import json, os
 
 HEADERS = {"Access-Control-Allow-Origin": "*"}
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
+BEACON_ID = os.environ['BEACON_ID']
 
 
 def bad_request(*, apiVersion=None, errorMessage=None, filters=[], pagination={}, requestParameters=None, requestedSchemas=None):
@@ -13,7 +14,7 @@ def bad_request(*, apiVersion=None, errorMessage=None, filters=[], pagination={}
         },
         "meta": {
             "apiVersion": BEACON_API_VERSION,
-            "beaconId": "org.example.beacon.v2",
+            "beaconId": BEACON_ID,
             "receivedRequestSummary": {
                 "apiVersion": apiVersion,
                 "filters": filters,

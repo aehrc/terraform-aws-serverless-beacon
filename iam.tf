@@ -293,11 +293,26 @@ data aws_iam_policy_document lambda-getAnalyses {
 data aws_iam_policy_document lambda-getGenomicVariants {
   statement {
     actions = [
-      "dynamodb:Scan",
+      "dynamodb:Query",
     ]
     resources = [
-      aws_dynamodb_table.datasets.arn,
+      "${aws_dynamodb_table.datasets.arn}/index/*",
     ]
+  }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-splitQuery.function_arn]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
   }
 }
 

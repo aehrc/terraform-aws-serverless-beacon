@@ -194,147 +194,147 @@ def query_datasets(parameters):
     return bundle_response(200, response_dict)
 
 
-def validate_request(parameters):
-    missing_parameters = set()
-    try:
-        reference_name = parameters['referenceName']
-    except KeyError:
-        return missing_parameter('referenceName')
-    if not isinstance(reference_name, str):
-        return "referenceName must be a string"
-    if reference_name not in CHROMOSOMES:
-        return "referenceName must be one of {}".format(','.join(CHROMOSOMES))
+# def validate_request(parameters):
+#     missing_parameters = set()
+#     try:
+#         reference_name = parameters['referenceName']
+#     except KeyError:
+#         return missing_parameter('referenceName')
+#     if not isinstance(reference_name, str):
+#         return "referenceName must be a string"
+#     if reference_name not in CHROMOSOMES:
+#         return "referenceName must be one of {}".format(','.join(CHROMOSOMES))
 
-    try:
-        reference_bases = parameters['referenceBases']
-    except KeyError:
-        return missing_parameter('referenceBases')
-    if not isinstance(reference_name, str):
-        return "referenceBases must be a string"
-    if not base_pattern.fullmatch(reference_bases):
-        return "referenceBases must be either [ACGT]* or N"
+#     try:
+#         reference_bases = parameters['referenceBases']
+#     except KeyError:
+#         return missing_parameter('referenceBases')
+#     if not isinstance(reference_name, str):
+#         return "referenceBases must be a string"
+#     if not base_pattern.fullmatch(reference_bases):
+#         return "referenceBases must be either [ACGT]* or N"
 
-    try:
-        assembly_id = parameters['assemblyId']
-    except KeyError:
-        return missing_parameter('assemblyId')
-    if not isinstance(assembly_id, str):
-        return "assemblyId must be a string"
+#     try:
+#         assembly_id = parameters['assemblyId']
+#     except KeyError:
+#         return missing_parameter('assemblyId')
+#     if not isinstance(assembly_id, str):
+#         return "assemblyId must be a string"
 
-    start = parameters.get('start')
-    if start is None:
-        missing_parameters.add('start')
-    elif not isinstance(start, int):
-            return "start must be an integer"
+#     start = parameters.get('start')
+#     if start is None:
+#         missing_parameters.add('start')
+#     elif not isinstance(start, int):
+#             return "start must be an integer"
 
-    end = parameters.get('end')
-    if end is None:
-        missing_parameters.add('end')
-        if 'start' not in missing_parameters and reference_bases == 'N':
-            return ("referenceBases must be [ACGT]* if start is specified but"
-                    " end is not specified")
-    else:
-        if 'start' in missing_parameters:
-            return "end may not be specified if start is not specified"
-        if not isinstance(end, int):
-            return "end must be an integer"
+#     end = parameters.get('end')
+#     if end is None:
+#         missing_parameters.add('end')
+#         if 'start' not in missing_parameters and reference_bases == 'N':
+#             return ("referenceBases must be [ACGT]* if start is specified but"
+#                     " end is not specified")
+#     else:
+#         if 'start' in missing_parameters:
+#             return "end may not be specified if start is not specified"
+#         if not isinstance(end, int):
+#             return "end must be an integer"
 
-    start_min = parameters.get('startMin')
-    if start_min is None:
-        if 'start' in missing_parameters:
-            return missing_parameter('start', 'startMin')
-        missing_parameters.add('startMin')
-    else:
-        if 'start' not in missing_parameters:
-            return "Only one of start and startMin may be specified"
-        if not isinstance(start_min, int):
-            return "startMin must be an integer"
+#     start_min = parameters.get('startMin')
+#     if start_min is None:
+#         if 'start' in missing_parameters:
+#             return missing_parameter('start', 'startMin')
+#         missing_parameters.add('startMin')
+#     else:
+#         if 'start' not in missing_parameters:
+#             return "Only one of start and startMin may be specified"
+#         if not isinstance(start_min, int):
+#             return "startMin must be an integer"
 
-    start_max = parameters.get('startMax')
-    if start_max is None:
-        if 'start' in missing_parameters:
-            return "If startMin is specified, startMax must also be specified"
-        missing_parameters.add('startMax')
-    elif not isinstance(start_max, int):
-        return "startMax must be an integer"
+#     start_max = parameters.get('startMax')
+#     if start_max is None:
+#         if 'start' in missing_parameters:
+#             return "If startMin is specified, startMax must also be specified"
+#         missing_parameters.add('startMax')
+#     elif not isinstance(start_max, int):
+#         return "startMax must be an integer"
 
-    end_min = parameters.get('endMin')
-    if end_min is None:
-        if 'start' in missing_parameters:
-            return "If startMin is specified, endMin must also be specified"
-        missing_parameters.add('endMin')
-    elif not isinstance(end_min, int):
-        return "endMin must be an integer"
+#     end_min = parameters.get('endMin')
+#     if end_min is None:
+#         if 'start' in missing_parameters:
+#             return "If startMin is specified, endMin must also be specified"
+#         missing_parameters.add('endMin')
+#     elif not isinstance(end_min, int):
+#         return "endMin must be an integer"
 
-    end_max = parameters.get('endMax')
-    if end_max is None:
-        if 'start' in missing_parameters:
-            return "If startMax is specified, endMax must also be specified"
-        missing_parameters.add('endMax')
-    elif not isinstance(end_max, int):
-        return "endMax must be an integer"
+#     end_max = parameters.get('endMax')
+#     if end_max is None:
+#         if 'start' in missing_parameters:
+#             return "If startMax is specified, endMax must also be specified"
+#         missing_parameters.add('endMax')
+#     elif not isinstance(end_max, int):
+#         return "endMax must be an integer"
 
-    alternate_bases = parameters.get('alternateBases')
-    if alternate_bases is None:
-        missing_parameters.add('alternateBases')
-    else:
-        if not isinstance(alternate_bases, str):
-            return "alternateBases must be a string"
-        if not base_pattern.fullmatch(alternate_bases):
-            return "alternateBases must be either [ACGT]* or N"
+#     alternate_bases = parameters.get('alternateBases')
+#     if alternate_bases is None:
+#         missing_parameters.add('alternateBases')
+#     else:
+#         if not isinstance(alternate_bases, str):
+#             return "alternateBases must be a string"
+#         if not base_pattern.fullmatch(alternate_bases):
+#             return "alternateBases must be either [ACGT]* or N"
 
-    variant_type = parameters.get('variantType')
-    if variant_type is None:
-        if 'alternateBases' in missing_parameters:
-            return missing_parameter('alternateBases', 'variantType')
-        missing_parameters.add('variantType')
+#     variant_type = parameters.get('variantType')
+#     if variant_type is None:
+#         if 'alternateBases' in missing_parameters:
+#             return missing_parameter('alternateBases', 'variantType')
+#         missing_parameters.add('variantType')
 
-    dataset_ids = parameters.get('datasetIds')
-    if dataset_ids is None:
-        missing_parameters.add('datasetIds')
-    else:
-        if not isinstance(dataset_ids, list):
-            return "datasetIds must be an array"
-        if not all(isinstance(dataset_id, str) for dataset_id in dataset_ids):
-            return "datasetIds must be an array of strings"
+#     dataset_ids = parameters.get('datasetIds')
+#     if dataset_ids is None:
+#         missing_parameters.add('datasetIds')
+#     else:
+#         if not isinstance(dataset_ids, list):
+#             return "datasetIds must be an array"
+#         if not all(isinstance(dataset_id, str) for dataset_id in dataset_ids):
+#             return "datasetIds must be an array of strings"
 
-    include_datasets = parameters.get('includeDatasetResponses')
-    if include_datasets is None:
-        missing_parameters.add('includeDatasetResponses')
-    elif include_datasets not in INCLUDE_DATASETS_VALUES:
-        return "includeDatasetResponses must be one of {}".format(
-            ', '.join(INCLUDE_DATASETS_VALUES))
+#     include_datasets = parameters.get('includeDatasetResponses')
+#     if include_datasets is None:
+#         missing_parameters.add('includeDatasetResponses')
+#     elif include_datasets not in INCLUDE_DATASETS_VALUES:
+#         return "includeDatasetResponses must be one of {}".format(
+#             ', '.join(INCLUDE_DATASETS_VALUES))
 
-    return ''
+#     return ''
 
 
-def lambda_handler(event, context):
-    print('Event Received: {}'.format(json.dumps(event)))
-    extra_params = {
-        'beaconId': BEACON_ID,
-    }
-    if event['httpMethod'] == 'POST':
-        event_body = event.get('body')
-        if not event_body:
-            return bad_request('No body sent with request.', extra_params)
-        try:
-            parameters = json.loads(event_body)
-        except ValueError:
-            return bad_request('Error parsing request body, Expected JSON.',
-                               extra_params)
-    else:  # method == 'GET'
-        parameters = event['queryStringParameters']
-        if not parameters:
-            return bad_request('No query parameters sent with request.',
-                               extra_params)
-        multi_values = event['multiValueQueryStringParameters']
-        parameters['datasetIds'] = multi_values.get('datasetIds')
-        for int_field in ('start', 'end', 'startMin', 'startMax', 'endMin',
-                          'endMax'):
-            if int_field in parameters:
-                try:
-                    parameters[int_field] = int(parameters[int_field])
-                except ValueError:
-                    # Cannot be formatted as an integer, handle in validation
-                    pass
-    return query_datasets(parameters)
+# def lambda_handler(event, context):
+#     print('Event Received: {}'.format(json.dumps(event)))
+#     extra_params = {
+#         'beaconId': BEACON_ID,
+#     }
+#     if event['httpMethod'] == 'POST':
+#         event_body = event.get('body')
+#         if not event_body:
+#             return bad_request('No body sent with request.', extra_params)
+#         try:
+#             parameters = json.loads(event_body)
+#         except ValueError:
+#             return bad_request('Error parsing request body, Expected JSON.',
+#                                extra_params)
+#     else:  # method == 'GET'
+#         parameters = event['queryStringParameters']
+#         if not parameters:
+#             return bad_request('No query parameters sent with request.',
+#                                extra_params)
+#         multi_values = event['multiValueQueryStringParameters']
+#         parameters['datasetIds'] = multi_values.get('datasetIds')
+#         for int_field in ('start', 'end', 'startMin', 'startMax', 'endMin',
+#                           'endMax'):
+#             if int_field in parameters:
+#                 try:
+#                     parameters[int_field] = int(parameters[int_field])
+#                 except ValueError:
+#                     # Cannot be formatted as an integer, handle in validation
+#                     pass
+#     return query_datasets(parameters)

@@ -1,26 +1,3 @@
-variant_entry = {
-    "variantInternalId": "GRCh37-1-55505652-G-A",
-    "variation": {
-        "alternateBases": "A",
-        "location": {
-            "interval": {
-                "end": {
-                    "type": "Number",
-                    "value": 5505653
-                },
-                "start": {
-                    "type": "Number",
-                    "value": 5505652
-                },
-                "type": "SequenceInterval"
-            },
-            "sequence_id": "refseq:NC_000001.10",
-            "type": "SequenceLocation"
-        },
-        "variantType": "SNP"
-    }
-}
-
 analysis_entry  = {
     "id": "BEex3",
     "name": "Basic Element example three",
@@ -46,5 +23,29 @@ biosample_entry = {
     "sampleOriginType": {
         "id": "UBERON:0000992",
         "label": "ovary"
+    }
+}
+
+variant_entry = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "variantInternalId": "GRCh37-1-55505652-G-A",
+    "variation": {
+        "alternateBases": "A",
+        "location": {
+            "interval": {
+                "end": {
+                    "type": "Number",
+                    "value": 5505653
+                },
+                "start": {
+                    "type": "Number",
+                    "value": 5505652
+                },
+                "type": "SequenceInterval"
+            },
+            "sequence_id": "refseq:NC_000001.10",
+            "type": "SequenceLocation"
+        },
+        "variantType": "SNP"
     }
 }

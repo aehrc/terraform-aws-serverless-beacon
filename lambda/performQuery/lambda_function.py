@@ -189,3 +189,18 @@ def lambda_handler(event, context):
                              vcf_location)
     print('Returning response: {}'.format(json.dumps(response)))
     return response
+
+
+if __name__ == '__main__':
+    event = {
+        "region": "5:10000001-10001001",
+        "reference_bases": "A",
+        "end_min": 10000001,
+        "end_max": 10001001,
+        "alternate_bases": "G",
+        "variant_type": None,
+        "include_details": True,
+        "vcf_location": "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
+    }
+
+    lambda_handler(event, dict())
