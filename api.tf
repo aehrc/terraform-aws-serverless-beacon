@@ -386,9 +386,13 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_method_response.analyses.id,
     # /g_variants TODO update with other end points
     aws_api_gateway_method.g_variants.id,
+    aws_api_gateway_method.g_variants_post.id,
     aws_api_gateway_integration.g_variants.id,
+    aws_api_gateway_integration.g_variants_post.id,
     aws_api_gateway_integration_response.g_variants.id,
+    aws_api_gateway_integration_response.g_variants_post.id,
     aws_api_gateway_method_response.g_variants.id,
+    aws_api_gateway_method_response.g_variants_post.id,
   ]))
 }
 

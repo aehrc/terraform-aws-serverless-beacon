@@ -29,6 +29,28 @@ resource aws_api_gateway_method_response g_variants {
   }
 }
 
+resource aws_api_gateway_method g_variants_post {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_resource.g_variants.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource aws_api_gateway_method_response g_variants_post {
+  rest_api_id = aws_api_gateway_method.g_variants_post.rest_api_id
+  resource_id = aws_api_gateway_method.g_variants_post.resource_id
+  http_method = aws_api_gateway_method.g_variants_post.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = true
+  }
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
 # 
 # /g_variants/{id}
 # 
@@ -100,7 +122,7 @@ resource aws_api_gateway_method_response g_variants-id-biosamples {
 }
 
 # enable CORS
-module cors-biosamples {
+module cors-g_variants {
   source = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
@@ -108,7 +130,7 @@ module cors-biosamples {
   api_resource_id = aws_api_gateway_resource.g_variants.id
 }
 
-module cors-biosamples-id {
+module cors-g_variants-id {
   source = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
@@ -116,7 +138,7 @@ module cors-biosamples-id {
   api_resource_id = aws_api_gateway_resource.g_variants-id.id
 }
 
-module cors-biosamples-id-biosamples {
+module cors-g_variants-id-biosamples {
   source = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
@@ -145,6 +167,28 @@ resource aws_api_gateway_integration_response g_variants {
   }
 
   depends_on = [aws_api_gateway_integration.g_variants]
+}
+
+resource aws_api_gateway_integration g_variants_post {
+  rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id             = aws_api_gateway_resource.g_variants.id
+  http_method             = aws_api_gateway_method.g_variants_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = module.lambda-getGenomicVariants.lambda_function_invoke_arn
+}
+
+resource aws_api_gateway_integration_response g_variants_post {
+  rest_api_id = aws_api_gateway_method.g_variants_post.rest_api_id
+  resource_id = aws_api_gateway_method.g_variants_post.resource_id
+  http_method = aws_api_gateway_method.g_variants_post.http_method
+  status_code = aws_api_gateway_method_response.g_variants_post.status_code
+
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [aws_api_gateway_integration.g_variants_post]
 }
 
 # wire up lambda g_variants/{id}
@@ -196,6 +240,14 @@ resource aws_api_gateway_integration_response  g_variants-id-biosamples {
 # permit lambda invokation
 resource aws_lambda_permission APIg_variants {
   statement_id = "AllowAPIg_variantsInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = module.lambda-getGenomicVariants.lambda_function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.g_variants.path_part}"
+}
+
+resource aws_lambda_permission APIg_variants_post {
+  statement_id = "AllowAPIg_variants_postInvoke"
   action = "lambda:InvokeFunction"
   function_name = module.lambda-getGenomicVariants.lambda_function_name
   principal = "apigateway.amazonaws.com"

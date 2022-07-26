@@ -343,6 +343,7 @@ module "lambda-getGenomicVariants" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
+  attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getGenomicVariants.json
   source_path = "${path.module}/lambda/getGenomicVariants"
 
@@ -351,7 +352,15 @@ module "lambda-getGenomicVariants" {
   environment_variables = {
     BEACON_API_VERSION = local.api_version
     BEACON_ID = var.beacon-id
+    DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
+    BEACON_API_VERSION = local.api_version
   }
+
+  layers = [
+    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
+  ]
 }
 
 #
