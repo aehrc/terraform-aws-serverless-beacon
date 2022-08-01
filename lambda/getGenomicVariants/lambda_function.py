@@ -21,9 +21,9 @@ dynamodb = boto3.client('dynamodb')
 aws_lambda = boto3.client('lambda')
 
 
-def perform_query(dataset_id, vcf_locations, vcf_groups, reference_bases, region_start,
+def split_query(dataset_id, vcf_locations, vcf_groups, reference_bases, region_start,
                   region_end, end_min, end_max, alternate_bases, variant_type,
-                  include_datasets, responses):
+                  include_datasets, requested_granularity, responses):
 
     payload = json.dumps({
         'dataset_id': dataset_id,
@@ -37,6 +37,7 @@ def perform_query(dataset_id, vcf_locations, vcf_groups, reference_bases, region
         'include_datasets': include_datasets,
         'vcf_locations': vcf_locations,
         'vcf_groups': vcf_groups,
+        'requested_granularity': requested_granularity
     })
     print(f"Invoking {SPLIT_QUERY} with payload: {payload}")
     response = aws_lambda.invoke(
@@ -106,8 +107,7 @@ def lambda_handler(event, context):
         requestedSchemas = params.get("requestedSchemas", None)
         skip = params.get("skip", None)
         limit = params.get("limit", None)
-        includeResultsetResponses = params.get(
-            "includeResultsetResponses", 'NONE')
+        includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
         start = params.get("start", None)
         end = params.get("end", None)
         assemblyId = params.get("assemblyId", None)
@@ -120,10 +120,11 @@ def lambda_handler(event, context):
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
         filters = params.get("filters", None)
+        requestedGranularity = query.get("requestedGranularity", "boolean")
 
     if (event['httpMethod'] == 'POST'):
         params = json.loads(event['body'])
-        print(f"POST params {params}", type(params))
+        print(f"POST params {params}")
         meta = params.get("meta", dict())
         query = params.get("query", dict())
         # meta data
@@ -131,7 +132,7 @@ def lambda_handler(event, context):
         requestedSchemas = meta.get("requestedSchemas", None)
         # query data
         requestParameters = query.get("requestParameters", None)
-        requestedGranularity = query.get("requestedGranularity", None)
+        requestedGranularity = query.get("requestedGranularity", "boolean")
         # pagination
         pagination = query.get("pagination", dict())
         skip = pagination.get("skip", 0)
@@ -164,6 +165,7 @@ def lambda_handler(event, context):
 
     if event["resource"] == "/g_variants":
         datasets = get_datasets(assemblyId)
+        # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
         vcf_chromosomes = get_vcf_chromosome_map(datasets, referenceName)
         if len(start) == 2:
             start_min, start_max = start
@@ -203,8 +205,9 @@ def lambda_handler(event, context):
                                         [loc for loc in vcfg["SS"] if loc in vcf_locations]
                                             for vcfg in dataset['vcfGroups']['L']
                                     ] if len(grp) > 0]
-            print(includeResultsetResponses)
-            thread = threading.Thread(target=perform_query,
+            
+            # call split query for each dataset found
+            thread = threading.Thread(target=split_query,
                                 kwargs={
                                     'dataset_id': dataset_id,
                                     'vcf_locations': vcf_locations,
@@ -217,43 +220,74 @@ def lambda_handler(event, context):
                                     'alternate_bases': alternateBases,
                                     'variant_type': variantType,
                                     'include_datasets': includeResultsetResponses,
-                                    'responses': thread_responses,
+                                    'requested_granularity': requestedGranularity,
+                                    'responses': thread_responses
                                 })
             thread.start()
             threads.append(thread)
 
         num_threads = len(threads)
         processed = 0
-        dataset_responses = []
         exists = False
-        while processed < num_threads and (includeResultsetResponses != 'NONE'
-                                        or not exists):
-            thread_response = thread_responses.get()
-            processed += 1
-            if 'exists' not in thread_response:
-                # function errored out, ignore
-                continue
-            exists = exists or thread_response['exists']
-            if thread_response.pop('include'):
-                dataset_responses.append(thread_response)
+        variantCount = 0
 
-        response = responses.boolean_response
-        response['responseSummary']['exists'] = exists
+        if requestedGranularity == 'boolean':
+            while processed < num_threads and (includeResultsetResponses != 'NONE' or not exists):
+                thread_response = thread_responses.get()
+                processed += 1
+                if 'exists' not in thread_response:
+                    # function errored out, ignore
+                    continue
+                exists = exists or thread_response['exists']
     
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-        # TODO implement following using the granularity
-        if len(dataset_responses) == 0:
-            # group results into datasets 
-            pass
-        else:
-            pass
-            # response = responses.result_sets_response
-            # for data in dataset_responses:
-            #     entry = entries.variant_entry
+            response = responses.boolean_response
+            response['responseSummary']['exists'] = exists
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
 
-            # response['responseSummary']['exists'] = exists
-            # response['responseSummary']['numTotalResults'] = len(dataset_responses)
+        if requestedGranularity == 'count':
+            while processed < num_threads and (includeResultsetResponses != 'NONE' or not exists):
+                thread_response = thread_responses.get()
+                processed += 1
+                if 'exists' not in thread_response:
+                    # function errored out, ignore
+                    continue
+                exists = exists or thread_response['exists']
+                variantCount += thread_response.get('variantCount', 0)
+
+            response = responses.counts_response
+            response['responseSummary']['exists'] = exists
+            response['responseSummary']['numTotalResults'] = variantCount
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
+
+        if requestedGranularity in ('record', 'aggregated'):
+            variants = set()
+            while processed < num_threads and (includeResultsetResponses != 'NONE' or not exists):
+                thread_response = thread_responses.get()
+                processed += 1
+                if 'exists' not in thread_response:
+                    # function errored out, ignore
+                    continue
+                exists = exists or thread_response['exists']
+                variantCount +=  thread_response['variantCount']
+                variants.update(thread_response['variants'])
+
+            results = list()
+            for variant in variants:
+                pos, ref, alt, typ = variant.split('\t')
+                results.append(entries.get_variant_entry(variant, assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
+
+            response = responses.get_result_sets_response(
+                resGranularity='record', 
+                setType='genomicVariant', 
+                exists=exists,
+                total=variantCount,
+                results=results
+                )
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
+    
 
     elif event['resource'] == '/g_variants/{id}/biosamples':
         entry = responses.result_sets_response

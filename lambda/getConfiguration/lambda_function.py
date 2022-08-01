@@ -21,61 +21,23 @@ def get_config():
         "response": {
             "$schema": "https://raw.githubusercontent.com/ga4gh-beacon/beacon-v2/main/framework/json/configuration/beaconConfigurationSchema.json",
             "entryTypes": {
-                "dataset": {
-                    "aCollectionOf": [
-                        # {
-                        #     "id": "exampleEntry",
-                        #     "name": "Example entries"
-                        # }
-                    ],
+                "genomicVariant": {
                     "additionallySupportedSchemas": [],
                     "defaultSchema": {
-                        "id": "datasetDefaultSchema",
-                        "name": "Default schema for datasets",
-                        "referenceToSchemaDefinition": "./datasets/defaultSchema.json",
-                        "schemaVersion": "v.2"
+                        "id": "ga4gh-beacon-variant-v2.0.0",
+                        "name": "Default schema for a genomic variation",
+                        "referenceToSchemaDefinition": "https://exampleBeacons.org/genomicVariations/defaultSchema.json",
+                        "schemaVersion": "v2.0.0"
                     },
-                    "description": "A Dataset is a collection of records, like rows in a database or cards in a cardholder.",
-                    "endpoint": "/datasets",
-                    "filteringTermsReference": "./datasets/filteringTerms.json",
-                    "id": "dataset",
-                    "name": "Dataset",
+                    "description": "The location of a sequence.",
+                    "id": "genomicVariant",
+                    "name": "Genomic Variants",
                     "ontologyTermForThisType": {
-                        "id": "NCIT:C47824",
-                        "label": "Data set"
+                        "id": "ENSGLOSSARY:0000092",
+                        "label": "Variant"
                     },
-                    "partOfSpecification": "Beacon v2.0"
-                },
-                "exampleEntry": {
-                    "additionallySupportedSchemas": [],
-                    "defaultSchema": {
-                        "id": "ExampleEntryTypeDefaultschema",
-                        "name": "Default schema for an example entries",
-                        "referenceToSchemaDefinition": "./exampleEntry/defaultSchema.json",
-                        "schemaVersion": "v.2"
-                    },
-                    "description": "A generic entry type to allow testing and playing with the specification.",
-                    "endpoint": "./exampleEntries",
-                    "filteringTermsReference": "./exampleEntry/filteringTerms.json",
-                    "id": "exampleEntry",
-                    "name": "Example Entry",
-                    "ontologyTermForThisType": {
-                        "id": "NCIT:C20181",
-                        "label": "Conceptual Entity"
-                    },
-                    "partOfSpecification": "Beacon v2.0"
+                    "partOfSpecification": "Beacon v2.0.0"
                 }
-            },
-            "maturityAttributes": {
-                "productionStatus": "DEV"
-            },
-            "securityAttributes": {
-                "defaultGranularity": "boolean",
-                "securityLevels": [
-                    "PUBLIC",
-                    # "REGISTERED",
-                    # "CONTROLLED"
-                ]
             }
         }
     }

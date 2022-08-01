@@ -59,6 +59,57 @@ result_sets_response = {
     }
 }
 
+
+# helper function
+def get_result_sets_response(*, 
+        reqAPI=BEACON_API_VERSION, 
+        reqGranularity='boolean', 
+        reqPagination={}, 
+        resGranularity='boolean', 
+        results=[], 
+        setType=None, 
+        info={},
+        exists=False,
+        total=0):
+
+    return { 
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "info": info,
+        "meta": {
+            "beaconId": BEACON_ID,
+            "apiVersion": BEACON_API_VERSION,
+            "returnedSchemas": [
+                {
+                    "entityType": "info",
+                    "schema": "beacon-map-v2.0.0"
+                }
+            ],
+            "returnedGranularity": resGranularity,
+            "receivedRequestSummary": {
+                "apiVersion": reqAPI,
+                "requestedSchemas": [], # TODO define this
+                "pagination": reqPagination,
+                "requestedGranularity": reqGranularity
+            }
+        },
+        "response": { # OUTPUT TARGET
+            "resultSets": [
+                {
+                    "exists": False,
+                    "id": "datasetB",
+                    "results": results,
+                    "resultsCount": 2,
+                    "resultsHandovers": [], # TODO update when available
+                    "setType": setType
+                }
+            ]
+        },
+        "responseSummary": {
+            "exists": exists,
+            "numTotalResults": total
+        }
+    }
+
 # returning counts
 counts_response = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",

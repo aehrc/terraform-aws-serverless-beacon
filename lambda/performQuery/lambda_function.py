@@ -19,28 +19,34 @@ get_all_calls = all_count_pattern.findall
 
 
 def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
-                  variant_type, include_details, vcf_location):
+                  variant_type, include_details, vcf_location, requested_granularity):
+    '''
+    :param requested_granularity: one of "boolean", "count", "aggregated", "record"
+    '''
+    # running setup of bcftools
     args = [
         'bcftools', 'query',
         '--regions', region,
-        '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\n',
+        '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
         vcf_location
     ]
-    query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp',
-                                     encoding='ascii')
+    query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
     v_prefix = '<{}'.format(variant_type)
-    first_bp = int(region[region.find(':')+1: region.find('-')])
-    last_bp = int(region[region.find('-')+1:])
+    # region is of form: "chrom:start-end"
+    first_bp = int(region[region.find(':') + 1: region.find('-')])
+    last_bp = int(region[region.find('-') + 1:])
     approx = reference_bases == 'N'
     exists = False
     variants = []
     call_count = 0
     all_alleles_count = 0
-    sample_indexes = []
+    sample_indices = set()
+    sample_names = []
+
+    # iterate through bcftools output
     for line in query_process.stdout:
         try:
-            (position, reference, all_alts, info_str,
-             genotypes) = line.split('\t')
+            (position, reference, all_alts, info_str, genotypes, samples) = line.split('\t')
         except ValueError as e:
             print(repr(line.split('\t')))
             raise e
@@ -52,13 +58,19 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
 
         ref_length = len(reference)
 
+        # must be within end range
         if not end_min <= pos + ref_length - 1 <= end_max:
             continue
 
-        if not approx and reference.upper() != reference_bases:
-            continue
+        # validation; if not N validate regex
+        if not approx:
+            rgx = re.compile('^' + reference_bases.replace('N', '[ACGTN]{1}') + '$')
+            if not rgx.match(reference.upper()):
+                continue
 
         alts = all_alts.split(',')
+
+        # alternate base not defined
         if alternate_bases is None:
             if variant_type == 'DEL':
                 hit_indexes = [i for i, alt in enumerate(alts)
@@ -99,6 +111,7 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
                 # For structural variants that aren't otherwise recognisable
                 hit_indexes = [i for i, alt in enumerate(alts)
                                if alt.startswith(v_prefix)]
+        # if alternate base defined
         else:
             if alternate_bases == 'N':
                 hit_indexes = [i for i, alt in enumerate(alts)
@@ -108,54 +121,63 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
                                if alt.upper() == alternate_bases]
         if not hit_indexes:
             continue
+        # hit_indexes are of form [0, 1] for ALT A,GC
 
         # Look through INFO for AC and AN, used for efficient calculations. Note
         # we cannot request them explicitly in the query, as bcftools will crash
         # if they aren't present.
         all_alt_counts = None
         total_count = None
+        variant_type = 'N/A'
+
         for info in info_str.split(';'):
-            if not all_alt_counts and info.startswith('AC='):
+            if info.startswith('AC='):
                 all_alt_counts = info[3:]
-                if total_count is not None:
-                    break
-            elif total_count is None and info.startswith('AN='):
+            elif info.startswith('AN='):
                 total_count = int(info[3:])
-                if all_alleles_count is not None:
-                    break
+            elif info.startswith('VT='):
+                variant_type = info[3:]
+
         all_calls = None
+        # if AC=X was there
         if all_alt_counts is not None:
-            alt_counts = all_alt_counts.split(',')
-            call_counts = [int(alt_counts[i]) for i in hit_indexes]
+            alt_counts = [int(c) for c in all_alt_counts.split(',')]
+            call_counts = [alt_counts[i] for i in hit_indexes]
+            # ["123 A G SNP"]
             variants += [
-                reference + position + alts[i]
-                for i in hit_indexes if alt_counts[i] != "0"
+                f'{position}\t{reference}\t{alts[i]}\t{variant_type}'
+                for i in hit_indexes 
+                if alt_counts[i] != 0
             ]
             call_count += sum(call_counts)
+        # otherwise
         else:
             # Much slower, but doesn't require INFO/AC
-            all_calls = get_all_calls(genotypes)
-            hit_set = set(str(i+1) for i in hit_indexes)
+            # parsing 0|0,0|0,0|0,0|0
+            all_calls = [int(g) for g in get_all_calls(genotypes)]
+            hit_set = {i + 1 for i in hit_indexes}
+            # ["123 A G SNP"]
             variants += [
-                reference + position + alts[int(i)-1]
+                f'{position}\t{reference}\t{alts[i]}\t{variant_type}'
                 for i in set(all_calls) & hit_set
             ]
             call_count += sum(1 for call in all_calls if call in hit_set)
+
+        # if there are actual variants
         if call_count:
-            if not exists:
-                exists = True
-                if not include_details:
-                    break
+            exists = True
+            if not include_details:
+                break
             hit_string = '|'.join(str(i + 1) for i in hit_indexes)
             pattern = re.compile(f'(^|[|/])({hit_string})([|/]|$)')
-            sample_indexes += [i for i, gt in enumerate(genotypes.split(','))
-                               if pattern.search(gt)]
+            if requested_granularity in ('record', 'aggregated'):
+                sample_indices.update([i for i, gt in enumerate(genotypes.split(',')) if pattern.search(gt)])
         # Used for calculating frequency. This will be a misleading value if the
-        #  alleles are spread over multiple vcf records. Ideally we should
-        #  return a dictionary for each matching record/allele, but for now the
-        #  beacon specification doesn't support it. A quick fix might be to
-        #  represent the frequency of any matching allele in the population of
-        #  haplotypes, but this could lead to an illegal value > 1.
+        # alleles are spread over multiple vcf records. Ideally we should
+        # return a dictionary for each matching record/allele, but for now the
+        # beacon specification doesn't support it. A quick fix might be to
+        # represent the frequency of any matching allele in the population of
+        # haplotypes, but this could lead to an illegal value > 1.
         if total_count is not None:
             all_alleles_count += total_count
         else:
@@ -164,13 +186,25 @@ def perform_query(reference_bases, region, end_min, end_max, alternate_bases,
                 all_calls = get_all_calls(genotypes)
             all_alleles_count += len(all_calls)
     query_process.stdout.close()
-    samples = list(set(sample_indexes))
+
+
+    if requested_granularity in ('record', 'aggregated'):
+        args = [
+            'bcftools', 'query',
+            '--list-samples',
+            vcf_location
+        ]
+        samples_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
+        sample_names = [line.strip() for n, line in enumerate(samples_process.stdout) if n in sample_indices]
+        samples_process.stdout.close()
+
     return {
         'exists': exists,
         'all_alleles_count': all_alleles_count,
         'variants': variants,
         'call_count': call_count,
-        'samples': samples,
+        'sample_indices': list(sample_indices),
+        'sample_names': sample_names
     }
 
 
@@ -184,10 +218,12 @@ def lambda_handler(event, context):
     variant_type = event['variant_type']
     include_details = event['include_details']
     vcf_location = event['vcf_location']
+    requested_granularity = event['requested_granularity']
+
     response = perform_query(reference_bases, region, end_min, end_max,
                              alternate_bases, variant_type, include_details,
-                             vcf_location)
-    print('Returning response: {}'.format(json.dumps(response)))
+                             vcf_location, requested_granularity)
+    print(f'Returning response: \n {json.dumps(response)}')
     return response
 
 
@@ -200,6 +236,7 @@ if __name__ == '__main__':
         "alternate_bases": "G",
         "variant_type": None,
         "include_details": True,
+        'requested_granularity': 'record',
         "vcf_location": "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
     }
 
