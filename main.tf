@@ -1,6 +1,6 @@
 locals {
   api_version = "v2.0.0"
-  version = "v1.0.0"
+  version = "v0.0.1"
   build_cpp_path = abspath("${path.module}/build_cpp.sh")
   build_cpp_path2 = abspath("${path.module}/build_cpp2.sh")
   build_share_path = abspath("${path.module}/lambda/shared/source")
