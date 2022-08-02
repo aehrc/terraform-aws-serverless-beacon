@@ -13,8 +13,20 @@ PERFORM_QUERY = os.environ['PERFORM_QUERY_LAMBDA']
 aws_lambda = boto3.client('lambda')
 
 
-def perform_query(region, reference_bases, end_min, end_max, alternate_bases,
-                  variant_type, include_details, requested_granularity, vcf_location, responses):
+def perform_query(
+        region, 
+        reference_bases, 
+        end_min, 
+        end_max, 
+        alternate_bases,
+        variant_type, 
+        include_details, 
+        requested_granularity, 
+        vcf_location, 
+        variant_min_length,
+        variant_max_length, 
+        responses):
+
     payload = json.dumps({
         'region': region,
         'reference_bases': reference_bases,
@@ -24,6 +36,8 @@ def perform_query(region, reference_bases, end_min, end_max, alternate_bases,
         'variant_type': variant_type,
         'include_details': include_details,
         'vcf_location': vcf_location,
+        'variant_min_length': variant_min_length,
+        'variant_max_length': variant_max_length,
         'requested_granularity': requested_granularity
     })
     print(f"Invoking {PERFORM_QUERY} with payload: {payload}")
@@ -39,14 +53,29 @@ def perform_query(region, reference_bases, end_min, end_max, alternate_bases,
     responses.put(response_dict)
 
 
-def split_query(dataset_id, reference_bases, region_start,
-                region_end, end_min, end_max, alternate_bases, variant_type,
-                include_datasets, vcf_locations, vcf_groups, requested_granularity):
+def split_query(dataset_id, 
+        reference_bases, 
+        region_start,
+        region_end, 
+        end_min, 
+        end_max, 
+        alternate_bases, 
+        variant_type,
+        include_datasets, 
+        vcf_locations, 
+        vcf_groups, 
+        requested_granularity,
+        variant_min_length,
+        variant_max_length):
+
     responses = queue.Queue()
     # to find HITs or ALL we must analyse all vcfs
     check_all = include_datasets in ('HIT', 'ALL')
     # create an id for each vcf group for identification
     vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(vcf_groups) for loc in grp}
+    vcf_group_to_file_map = {idx: loc for idx, grp in enumerate(vcf_groups) for loc in grp}
+
+    print(variant_min_length)
 
     kwargs = {
         'reference_bases': reference_bases,
@@ -55,6 +84,8 @@ def split_query(dataset_id, reference_bases, region_start,
         'alternate_bases': alternate_bases,
         'variant_type': variant_type,
         'requested_granularity': requested_granularity,
+        'variant_min_length': variant_min_length,
+        'variant_max_length': variant_max_length,
         # Don't bother recording details from MISS, they'll all be 0s
         'include_details': check_all,
         'responses': responses,
@@ -80,6 +111,7 @@ def split_query(dataset_id, reference_bases, region_start,
     processed = 0
     all_alleles_count = 0
     variants = set()
+    variants_vcf_map = defaultdict(set)
     call_count = 0
     vcf_samples = defaultdict(set)
     vcf_sample_names = defaultdict(set)
@@ -101,6 +133,8 @@ def split_query(dataset_id, reference_bases, region_start,
                 variants.update(response['variants'])
                 call_count += response['call_count']
                 vcf_location = response['vcf_location']
+                for variant in response['variants']:
+                    variants_vcf_map[variant].add(vcf_location)
                 sample_indices = response['sample_indices']
                 sample_names = response['sample_names']
                 # separate unrelated samples into dintinct groups as per indicated by
@@ -134,7 +168,8 @@ def split_query(dataset_id, reference_bases, region_start,
 
         if requested_granularity in ('record', 'aggregated'):
             response_dict['samples'] = list(set(s for sn in vcf_sample_names.values() for s in sn))
-            response_dict['variants'] = list(variants)
+            variants_vcf_map = {k: list(v) for k, v in variants_vcf_map.items()}
+            response_dict['variants'] = variants_vcf_map
     else:
         response_dict = {
             'include': False,
@@ -145,6 +180,7 @@ def split_query(dataset_id, reference_bases, region_start,
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    print(event)
 
     dataset_id = event['dataset_id']
     reference_bases = event['reference_bases']
@@ -158,6 +194,8 @@ def lambda_handler(event, context):
     vcf_locations = event['vcf_locations']
     vcf_groups = event['vcf_groups']
     requested_granularity = event['requested_granularity']
+    variant_min_length = event['variant_min_length']
+    variant_max_length = event['variant_max_length']
 
     response = split_query(
         dataset_id=dataset_id,
@@ -171,7 +209,9 @@ def lambda_handler(event, context):
         include_datasets=include_datasets,
         vcf_locations=vcf_locations,
         vcf_groups=vcf_groups,
-        requested_granularity=requested_granularity
+        requested_granularity=requested_granularity,
+        variant_min_length=variant_min_length,
+        variant_max_length=variant_max_length
     )
     print(response)
     print('Returning response: {}'.format(json.dumps(response)))
@@ -197,7 +237,9 @@ if __name__ == '__main__':
                 "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
             ]
         ],
-        "requested_granularity": "record"
+        "requested_granularity": "record",
+        "variant_min_length": 0,
+        "variant_max_length": -1
     }
 
     lambda_handler(event, dict())

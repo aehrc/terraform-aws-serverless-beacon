@@ -355,9 +355,11 @@ module "lambda-getGenomicVariants" {
     DATASETS_TABLE = aws_dynamodb_table.datasets.name
     SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
     BEACON_API_VERSION = local.api_version
+    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
   }
 
   layers = [
+    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
     "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
   ]

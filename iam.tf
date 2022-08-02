@@ -302,9 +302,26 @@ data aws_iam_policy_document lambda-getGenomicVariants {
 
   statement {
     actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+
+  statement {
+    actions = [
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.function_arn]
+  }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-performQuery.function_arn]
   }
 
   statement {

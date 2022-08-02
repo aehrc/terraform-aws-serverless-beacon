@@ -123,7 +123,8 @@ def create_dataset(attributes):
 
 
 def get_current_time():
-    return datetime.datetime.now().isoformat(timespec='seconds')
+    d = datetime.datetime.now(datetime.timezone.utc)
+    return d.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
 
 def submit_dataset(body_dict, method):

@@ -16,7 +16,21 @@ resource "aws_lambda_layer_version" "python_jsonschema_layer" {
 }
 
 ### pynamodb layer
-# TODO
+# data for the python pynamodb layer
+data "archive_file" "pynamodb_layer" {
+  type        = "zip"
+  source_dir = "${path.module}/layers/pynamodb/"
+  output_path = "${path.module}/pynamodb.zip"
+}
+
+# python pynamodb layer definition
+resource "aws_lambda_layer_version" "pynamodb_layer" {
+  filename   = data.archive_file.pynamodb_layer.output_path
+  layer_name = "pynamodb_layer"
+  source_code_hash = filebase64sha256("${data.archive_file.pynamodb_layer.output_path}")
+
+  compatible_runtimes = ["python3.7", "python3.8", "python3.9"]
+}
 
 ### jsonschema layer
 # data for the python jsonschema layer
