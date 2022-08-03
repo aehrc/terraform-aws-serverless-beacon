@@ -79,14 +79,14 @@ def submit_dataset(body_dict, method):
     new = method == 'POST'
     validation_error = validate_request(body_dict, new)
     if validation_error:
-        return bad_request(validation_error)
+        return bad_request(errorMessage=validation_error)
 
     if 'vcfLocations' in body_dict:
         # validate vcf files if skipCheck is not specified 
         if 'skipCheck' not in body_dict:
             errors = check_vcf_locations(body_dict['vcfLocations'])
             if errors:
-                return bad_request(errors)
+                return bad_request(errorMessage=errors)
         summarise = True
     else:
         summarise = False
@@ -148,11 +148,11 @@ def lambda_handler(event, context):
     event_body = event.get('body')
 
     if not event_body:
-        return bad_request('No body sent with request.')
+        return bad_request(errorMessage='No body sent with request.')
     try:
         body_dict = json.loads(event_body)
     except ValueError:
-        return bad_request('Error parsing request body, Expected JSON.')
+        return bad_request(errorMessage='Error parsing request body, Expected JSON.')
 
     method = event['httpMethod']
     return submit_dataset(body_dict, method)
