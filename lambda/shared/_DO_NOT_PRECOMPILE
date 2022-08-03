@@ -1,0 +1,4 @@
+please leave the shared libraries to compile on linkage
+* Easy debugging with -g with valgrind or GDB (otherwise it is a painful task)
+* Header only function inlining
+* Use generics

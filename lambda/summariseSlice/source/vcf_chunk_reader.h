@@ -7,7 +7,6 @@
 #include <zlib.h>
 #include <regex>
 #include <generalutils.hpp>
-#include <gzip.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/utils/memory/stl/AWSVector.h>

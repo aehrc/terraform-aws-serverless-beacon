@@ -7,6 +7,7 @@ from jsonschema import Draft7Validator
 import boto3
 
 from api_response import bad_request, bundle_response
+import pynamo_mappings as db
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
@@ -14,7 +15,6 @@ SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
 
-dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
 
 newSchema = json.load(open("new-schema.json"))
@@ -55,89 +55,38 @@ def check_vcf_locations(locations):
 
 
 def create_dataset(attributes):
-    current_time = get_current_time()
-    item = {
-        'id': {
-            'S': attributes['id'],
-        },
-        'createDateTime': {
-            'S': current_time,
-        },
-        'updateDateTime': {
-            'S': current_time,
-        },
-        'name': {
-            'S': attributes['name'],
-        },
-        'assemblyId': {
-            'S': attributes['assemblyId'],
-        },
-        'vcfLocations': {
-            'SS': attributes['vcfLocations'],
-        },
-    }
+    item = db.Dataset(attributes['id'])
+    item.name = attributes['name']
+    item.assemblyId = attributes['assemblyId']
+    item.vcfLocations = attributes['vcfLocations']
+    item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
+    item.description = attributes.get('description', '')
+    item.version = attributes.get('version', '')
+    item.externalUrl = attributes.get('externalUrl', '')
+    item.info = attributes.get('info', [])
+    item.dataUseConditions = attributes.get('dataUseConditions', {})
 
-    vcfGroups = attributes.get('vcfGroups')
-    if vcfGroups:
-        item['vcfGroups'] = {
-            'L': [{ 'SS': vcfGroup } for vcfGroup in attributes['vcfGroups']]
-        }
-
-    description = attributes.get('description')
-    if description:
-        item['description'] = {
-            'S': description,
-        }
-
-    version = attributes.get('version')
-    if version:
-        item['version'] = {
-            'S': version,
-        }
-
-    external_url = attributes.get('externalUrl')
-    if external_url:
-        item['externalUrl'] = {
-            'S': external_url,
-        }
-
-    info = attributes.get('info')
-    if info:
-        item['info'] = {
-            'M': info,
-        }
-
-    data_use_conditions = attributes.get('dataUseConditions')
-    if data_use_conditions:
-        item['dataUseConditions'] = {
-            'M': data_use_conditions,
-        }
-
-    kwargs = {
-        'TableName': DATASETS_TABLE_NAME,
-        'Item': item,
-    }
-
-    print("Putting item in table: {}".format(json.dumps(kwargs)))
-    dynamodb.put_item(**kwargs)
+    print(f"Putting item in table: {item.to_json()}")
+    item.save()
 
 
 def get_current_time():
-    return datetime.datetime.now().isoformat(timespec='seconds')
+    d = datetime.datetime.now(datetime.timezone.utc)
+    return d.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
 
 def submit_dataset(body_dict, method):
     new = method == 'POST'
     validation_error = validate_request(body_dict, new)
     if validation_error:
-        return bad_request(validation_error)
+        return bad_request(errorMessage=validation_error)
 
     if 'vcfLocations' in body_dict:
         # validate vcf files if skipCheck is not specified 
         if 'skipCheck' not in body_dict:
             errors = check_vcf_locations(body_dict['vcfLocations'])
             if errors:
-                return bad_request(errors)
+                return bad_request(errorMessage=errors)
         summarise = True
     else:
         summarise = False
@@ -164,88 +113,23 @@ def summarise_dataset(dataset):
 
 
 def update_dataset(attributes):
-    update_set_expressions = [
-        'updateDateTime=:updateDateTime',
-    ]
-    expression_attribute_values = {
-        ':updateDateTime': {
-            'S': get_current_time(),
-        }
-    }
-    expression_attribute_names = {}
+    item = db.Dataset.get(attributes['id'])
+    actions = []
+    actions += [db.Dataset.name.set(attributes['name'])] if attributes.get('name', False) else []
+    actions += [db.Dataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
+    actions += [db.Dataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
+    actions += [db.Dataset.description.set(attributes['description'])] if attributes.get('description', False) else []
+    actions += [db.Dataset.version.set(attributes['version'])] if attributes.get('version', False) else []
+    actions += [db.Dataset.externalUrl.set(attributes['externalUrl'])] if attributes.get('externalUrl', False) else []
+    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [db.Dataset.dataUseConditions.set(attributes['dataUseConditions'])] if attributes.get('dataUseConditions', False) else []
+    actions += [db.Dataset.vcfGroups.set(attributes['vcfGroups'])] if attributes.get('vcfGroups', False) else []
+    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
 
-    if 'name' in attributes:
-        update_set_expressions.append('#name=:name')
-        expression_attribute_names['#name'] = 'name'
-        expression_attribute_values[':name'] = {
-            'S': attributes['name'],
-        }
-
-    if 'assemblyId' in attributes:
-        update_set_expressions.append('assemblyId=:assemblyId')
-        expression_attribute_values[':assemblyId'] = {
-            'S': attributes['assemblyId'],
-        }
-
-    if 'vcfLocations' in attributes:
-        update_set_expressions.append('vcfLocations=:vcfLocations')
-        expression_attribute_values[':vcfLocations'] = {
-            'SS': attributes['vcfLocations'],
-        }
-
-    if 'description' in attributes:
-        update_set_expressions.append('description=:description')
-        expression_attribute_values[':description'] = {
-            'S': attributes['description'],
-        }
-
-    if 'version' in attributes:
-        update_set_expressions.append('version=:version')
-        expression_attribute_values[':version'] = {
-            'S': attributes['version'],
-        }
-
-    if 'externalUrl' in attributes:
-        update_set_expressions.append('externalUrl=:externalUrl')
-        expression_attribute_values[':externalUrl'] = {
-            'S': attributes['externalUrl'],
-        }
-
-    if 'info' in attributes:
-        update_set_expressions.append('info=:info')
-        expression_attribute_values[':info'] = {
-            'L': attributes['info'],
-        }
-
-    if 'dataUseConditions' in attributes:
-        update_set_expressions.append('dataUseConditions=:dataUseConditions')
-        expression_attribute_values[':dataUseConditions'] = {
-            'M': attributes['dataUseConditions'],
-        }
-    
-    if 'vcfGroups' in attributes:
-        update_set_expressions.append('vcfGroups=:vcfGroups')
-        expression_attribute_values[':vcfGroups'] = {
-            'L': [{ 'SS': vcfGroup } for vcfGroup in attributes['vcfGroups']]
-        }
-
-    update_expression = 'SET {}'.format(', '.join(update_set_expressions))
-    kwargs = {
-        'TableName': DATASETS_TABLE_NAME,
-        'Key': {
-            'id': {
-                'S': attributes['id'],
-            },
-        },
-        'UpdateExpression': update_expression,
-        'ExpressionAttributeValues': expression_attribute_values,
-    }
-    if expression_attribute_names:
-        kwargs['ExpressionAttributeNames'] = expression_attribute_names
-    print("Updating table: {kwargs}".format(kwargs=json.dumps(kwargs)))
-
-    dynamodb.update_item(**kwargs)
-
+    print(f"Updating table: {item.to_json()}")
+    item.update(actions=actions)
 
 def validate_request(parameters, new):
     validator = None
@@ -264,11 +148,11 @@ def lambda_handler(event, context):
     event_body = event.get('body')
 
     if not event_body:
-        return bad_request('No body sent with request.')
+        return bad_request(errorMessage='No body sent with request.')
     try:
         body_dict = json.loads(event_body)
     except ValueError:
-        return bad_request('Error parsing request body, Expected JSON.')
+        return bad_request(errorMessage='Error parsing request body, Expected JSON.')
 
     method = event['httpMethod']
     return submit_dataset(body_dict, method)

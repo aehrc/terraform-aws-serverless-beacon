@@ -19,8 +19,10 @@ data aws_iam_policy_document main-apigateway {
 data aws_iam_policy_document lambda-submitDataset {
   statement {
     actions = [
+      "dynamodb:DescribeTable",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
+      "dynamodb:GetItem",
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -302,9 +304,26 @@ data aws_iam_policy_document lambda-getGenomicVariants {
 
   statement {
     actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+
+  statement {
+    actions = [
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.function_arn]
+  }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-performQuery.function_arn]
   }
 
   statement {
