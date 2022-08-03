@@ -14,7 +14,7 @@ locals {
 # submitDataset Lambda Function
 #
 module "lambda-submitDataset" {
-  source = "github.com/bhosking/terraform-aws-lambda"
+  source = "terraform-aws-modules/lambda/aws"
 
   function_name = "submitDataset"
   description = "Creates or updates a dataset and triggers summariseVcf."
@@ -23,21 +23,21 @@ module "lambda-submitDataset" {
   architectures = ["x86_64"]
   memory_size = 2048
   timeout = 60
-  policy = {
-    json = data.aws_iam_policy_document.lambda-submitDataset.json
-  }
+  attach_policy_json = true
+  policy_json = data.aws_iam_policy_document.lambda-submitDataset.json
   source_path = "${path.module}/lambda/submitDataset"
+
   tags = var.common-tags
 
-  environment = {
-    variables = {
-      DATASETS_TABLE = aws_dynamodb_table.datasets.name
-      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-      BEACON_API_VERSION = local.api_version
-    }
+  environment_variables = {
+    DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
   }
   
   layers = [
+    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
     "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
   ]
@@ -254,6 +254,7 @@ module "lambda-getConfiguration" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
+  attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getConfiguration.json
   source_path = "${path.module}/lambda/getConfiguration"
 
@@ -276,6 +277,7 @@ module "lambda-getMap" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
+  attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getMap.json
   source_path = "${path.module}/lambda/getMap"
 
@@ -298,6 +300,7 @@ module "lambda-getEntryTypes" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
+  attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getEntryTypes.json
   source_path = "${path.module}/lambda/getEntryTypes"
 
@@ -320,6 +323,7 @@ module "lambda-getAnalyses" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
+  attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getAnalyses.json
   source_path = "${path.module}/lambda/getAnalyses"
 

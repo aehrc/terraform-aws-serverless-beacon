@@ -4,7 +4,7 @@
 resource aws_lambda_permission APISubmitDataset {
   statement_id = "AllowAPISubmitDatasetInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-submitDataset.function_name
+  function_name = module.lambda-submitDataset.lambda_function_arn
   principal = "apigateway.amazonaws.com"
   source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.submit.path_part}"
 }
