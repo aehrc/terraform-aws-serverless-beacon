@@ -3,8 +3,10 @@ import os
 import queue
 import threading
 from collections import defaultdict
-
 import boto3
+import jsons
+
+import lambda_payloads as payloads
 
 
 SPLIT_SIZE = 1000000
@@ -53,50 +55,34 @@ def perform_query(
     responses.put(response_dict)
 
 
-def split_query(dataset_id, 
-        reference_bases, 
-        region_start,
-        region_end, 
-        end_min, 
-        end_max, 
-        alternate_bases, 
-        variant_type,
-        include_datasets, 
-        vcf_locations, 
-        vcf_groups, 
-        requested_granularity,
-        variant_min_length,
-        variant_max_length):
-
+def split_query(splitQueryPayload):
     responses = queue.Queue()
     # to find HITs or ALL we must analyse all vcfs
-    check_all = include_datasets in ('HIT', 'ALL')
+    check_all = splitQueryPayload.include_datasets in ('HIT', 'ALL')
     # create an id for each vcf group for identification
-    vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(vcf_groups) for loc in grp}
-    vcf_group_to_file_map = {idx: loc for idx, grp in enumerate(vcf_groups) for loc in grp}
-
-    print(variant_min_length)
+    vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(splitQueryPayload.vcf_groups) for loc in grp}
+    vcf_group_to_file_map = {idx: loc for idx, grp in enumerate(splitQueryPayload.vcf_groups) for loc in grp}
 
     kwargs = {
-        'reference_bases': reference_bases,
-        'end_min': end_min,
-        'end_max': end_max,
-        'alternate_bases': alternate_bases,
-        'variant_type': variant_type,
-        'requested_granularity': requested_granularity,
-        'variant_min_length': variant_min_length,
-        'variant_max_length': variant_max_length,
+        'reference_bases': splitQueryPayload.reference_bases,
+        'end_min': splitQueryPayload.end_min,
+        'end_max': splitQueryPayload.end_max,
+        'alternate_bases': splitQueryPayload.alternate_bases,
+        'variant_type': splitQueryPayload.variant_type,
+        'requested_granularity': splitQueryPayload.requested_granularity,
+        'variant_min_length': splitQueryPayload.variant_min_length,
+        'variant_max_length': splitQueryPayload.variant_max_length,
         # Don't bother recording details from MISS, they'll all be 0s
         'include_details': check_all,
         'responses': responses,
     }
     threads = []
-    split_start = region_start
+    split_start = splitQueryPayload.region_start
 
-    while split_start <= region_end:
-        split_end = min(split_start + SPLIT_SIZE - 1, region_end)
+    while split_start <= splitQueryPayload.region_end:
+        split_end = min(split_start + SPLIT_SIZE - 1, splitQueryPayload.region_end)
         # perform query on this split of the vcf
-        for vcf_location, chrom in vcf_locations.items():
+        for vcf_location, chrom in splitQueryPayload.vcf_locations.items():
             # region for bcftools
             kwargs['region'] = '{}:{}-{}'.format(chrom, split_start,
                                                  split_end)
@@ -146,13 +132,13 @@ def split_query(dataset_id,
                 vcf_samples[vcf_group].update(sample_indices)
                 vcf_sample_names[vcf_group].update(sample_names)
 
-    if (include_datasets == 'ALL' or (include_datasets == 'HIT' and exists)
+    if (splitQueryPayload.include_datasets == 'ALL' or (splitQueryPayload.include_datasets == 'HIT' and exists)
         # if we want all datasets or HITs given we have hits
         or 
         # if we want to include MISS and variants found found
-        (include_datasets == 'MISS' and not exists)):
+        (splitQueryPayload.include_datasets == 'MISS' and not exists)):
         response_dict = {
-            'datasetId': dataset_id,
+            'datasetId': splitQueryPayload.dataset_id,
             'exists': exists,
             'frequency': ((all_alleles_count or call_count and None)
                           and call_count / all_alleles_count),
@@ -166,7 +152,7 @@ def split_query(dataset_id,
             'error': None,
         }
 
-        if requested_granularity in ('record', 'aggregated'):
+        if splitQueryPayload.requested_granularity in ('record', 'aggregated'):
             response_dict['samples'] = list(set(s for sn in vcf_sample_names.values() for s in sn))
             variants_vcf_map = {k: list(v) for k, v in variants_vcf_map.items()}
             response_dict['variants'] = variants_vcf_map
@@ -180,41 +166,10 @@ def split_query(dataset_id,
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
-    print(event)
-
-    dataset_id = event['dataset_id']
-    reference_bases = event['reference_bases']
-    region_start = event['region_start']
-    region_end = event['region_end']
-    end_min = event['end_min']
-    end_max = event['end_max']
-    alternate_bases = event['alternate_bases']
-    variant_type = event['variant_type']
-    include_datasets = event['include_datasets']
-    vcf_locations = event['vcf_locations']
-    vcf_groups = event['vcf_groups']
-    requested_granularity = event['requested_granularity']
-    variant_min_length = event['variant_min_length']
-    variant_max_length = event['variant_max_length']
-
-    response = split_query(
-        dataset_id=dataset_id,
-        reference_bases=reference_bases,
-        region_start=region_start,
-        region_end=region_end,
-        end_min=end_min,
-        end_max=end_max,
-        alternate_bases=alternate_bases,
-        variant_type=variant_type,
-        include_datasets=include_datasets,
-        vcf_locations=vcf_locations,
-        vcf_groups=vcf_groups,
-        requested_granularity=requested_granularity,
-        variant_min_length=variant_min_length,
-        variant_max_length=variant_max_length
-    )
-    print(response)
+    splitQueryPayload = jsons.load(event, payloads.SplitQueryPayload)
+    response = split_query(splitQueryPayload)
     print('Returning response: {}'.format(json.dumps(response)))
+
     return response
 
 

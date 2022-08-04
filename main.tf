@@ -424,6 +424,10 @@ module "lambda-splitQuery" {
       PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
     }
   }
+
+  layers = [
+    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
+  ]
 }
 
 #
@@ -446,6 +450,7 @@ module "lambda-performQuery" {
 
   layers = [
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
   ]
 
   environment = {
