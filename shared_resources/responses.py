@@ -59,8 +59,67 @@ result_sets_response = {
     }
 }
 
+# returning counts
+counts_response = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "info": {
 
-# helper function
+    },
+    "meta": {
+        "beaconId": BEACON_ID,
+        "apiVersion": BEACON_API_VERSION,
+        "returnedSchemas": [
+            {
+                "entityType": "info",
+                "schema": "beacon-map-v2.0.0"
+            }
+        ],
+        "returnedGranularity": "count",
+        "receivedRequestSummary": {
+            "apiVersion": "get from request",  # TODO
+            "requestedSchemas": [],  # TODO
+            "pagination": {},  # TODO
+            "requestedGranularity": "record"  # TODO
+        }
+    },
+    "responseSummary": {
+        "exists": True,
+        "numTotalResults": 100 # OUTPUT TARGET
+    }
+}
+
+# returning boolean
+boolean_response = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "info": {
+
+    },
+    "meta": {
+        "beaconId": BEACON_ID,
+        "apiVersion": BEACON_API_VERSION,
+        "returnedSchemas": [
+            {
+                "entityType": "info",
+                "schema": "beacon-map-v2.0.0"
+            }
+        ],
+        "returnedGranularity": "boolean",
+        "receivedRequestSummary": {
+            "apiVersion": "get from request",  # TODO
+            "requestedSchemas": [],  # TODO
+            "pagination": {},  # TODO
+            "requestedGranularity": "record"  # TODO
+        }
+    },
+    "responseSummary": {
+        "exists": True # OUTPUT TARGET
+    }
+}
+
+
+# Helpers start
+
+
 def get_result_sets_response(*, 
         reqAPI=BEACON_API_VERSION, 
         reqGranularity='boolean', 
@@ -95,10 +154,10 @@ def get_result_sets_response(*,
         "response": { # OUTPUT TARGET
             "resultSets": [
                 {
-                    "exists": False,
-                    "id": "datasetB",
+                    "exists": len(results) > 0,
+                    "id": "redacted",
                     "results": results,
-                    "resultsCount": 2,
+                    "resultsCount": len(results),
                     "resultsHandovers": [], # TODO update when available
                     "setType": setType
                 }
@@ -110,36 +169,12 @@ def get_result_sets_response(*,
         }
     }
 
-# returning counts
-counts_response = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "info": {
 
-    },
-    "meta": {
-        "beaconId": BEACON_ID,
-        "apiVersion": BEACON_API_VERSION,
-        "returnedSchemas": [
-            {
-                "entityType": "info",
-                "schema": "beacon-map-v2.0.0"
-            }
-        ],
-        "returnedGranularity": "count",
-        "receivedRequestSummary": {
-            "apiVersion": "get from request",  # TODO
-            "requestedSchemas": [],  # TODO
-            "pagination": {},  # TODO
-            "requestedGranularity": "record"  # TODO
-        }
-    },
-    "responseSummary": {
-        "exists": True,
-        "numTotalResults": 100 # OUTPUT TARGET
-    }
-}
-
-def get_counts_response(exists, count):
+def get_counts_response(*, 
+        reqAPI=BEACON_API_VERSION, 
+        reqGranularity='count',
+        exists=False,
+        count=0):
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {
@@ -156,10 +191,10 @@ def get_counts_response(exists, count):
             ],
             "returnedGranularity": "count",
             "receivedRequestSummary": {
-                "apiVersion": "get from request",  # TODO
+                "apiVersion": reqAPI,  # TODO
                 "requestedSchemas": [],  # TODO
-                "pagination": {},  # TODO
-                "requestedGranularity": "record"  # TODO
+                "pagination":{},
+                "requestedGranularity": reqGranularity
             }
         },
         "responseSummary": {
@@ -168,35 +203,11 @@ def get_counts_response(exists, count):
         }
     }
 
-# returning boolean
-boolean_response = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "info": {
 
-    },
-    "meta": {
-        "beaconId": BEACON_ID,
-        "apiVersion": BEACON_API_VERSION,
-        "returnedSchemas": [
-            {
-                "entityType": "info",
-                "schema": "beacon-map-v2.0.0"
-            }
-        ],
-        "returnedGranularity": "boolean",
-        "receivedRequestSummary": {
-            "apiVersion": "get from request",  # TODO
-            "requestedSchemas": [],  # TODO
-            "pagination": {},  # TODO
-            "requestedGranularity": "record"  # TODO
-        }
-    },
-    "responseSummary": {
-        "exists": True # OUTPUT TARGET
-    }
-}
-
-def get_boolean_response(exists):
+def get_boolean_response(*, 
+        reqAPI=BEACON_API_VERSION, 
+        reqGranularity='boolean',
+        exists=False):
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {
@@ -213,13 +224,15 @@ def get_boolean_response(exists):
             ],
             "returnedGranularity": "boolean",
             "receivedRequestSummary": {
-                "apiVersion": "get from request",  # TODO
+                "apiVersion": reqAPI,  # TODO
                 "requestedSchemas": [],  # TODO
                 "pagination": {},  # TODO
-                "requestedGranularity": "record"  # TODO
+                "requestedGranularity": reqGranularity
             }
         },
         "responseSummary": {
             "exists": exists
         }
     }
+
+# Helpers end

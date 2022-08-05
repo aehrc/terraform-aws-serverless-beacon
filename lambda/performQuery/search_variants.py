@@ -1,9 +1,18 @@
+import os
+import jsons
 import re
 import subprocess
+from uuid import uuid4
+import boto3
+from botocore.exceptions import ClientError
 
 from lambda_payloads import PerformQueryPayload
+from lambda_responses import PerformQueryResponse
+import pynamo_mappings as db
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
+VARIANTS_BUCKET = os.environ['VARIANTS_BUCKET']
+
 
 BASES = [
     'A',
@@ -15,33 +24,34 @@ BASES = [
 
 all_count_pattern = re.compile('[0-9]+')
 get_all_calls = all_count_pattern.findall
+s3 = boto3.client('s3')
 
 
-def perform_query(performQueryPayload: PerformQueryPayload):
+def perform_query(payload: PerformQueryPayload):
     '''
     :param requested_granularity: one of "boolean", "count", "aggregated", "record"
     '''
     # running setup of bcftools
     args = [
         'bcftools', 'query',
-        '--regions', performQueryPayload.region,
+        '--regions', payload.region,
         '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
-        performQueryPayload.vcf_location
+        payload.vcf_location
     ]
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
-    v_prefix = '<{}'.format(performQueryPayload.variant_type)
+    v_prefix = '<{}'.format(payload.variant_type)
     # region is of form: "chrom:start-end"
-    first_bp = int(performQueryPayload.region[performQueryPayload.region.find(':') + 1: performQueryPayload.region.find('-')])
-    last_bp = int(performQueryPayload.region[performQueryPayload.region.find('-') + 1:])
-    chrom = performQueryPayload.region[:performQueryPayload.region.find(':')]
-    approx = performQueryPayload.reference_bases == 'N'
+    first_bp = int(payload.region[payload.region.find(':') + 1: payload.region.find('-')])
+    last_bp = int(payload.region[payload.region.find('-') + 1:])
+    chrom = payload.region[:payload.region.find(':')]
+    approx = payload.reference_bases == 'N'
     exists = False
     variants = []
     call_count = 0
     all_alleles_count = 0
     sample_indices = set()
     sample_names = []
-    variant_max_length = float('inf') if performQueryPayload.variant_max_length < 0 else performQueryPayload.variant_max_length
+    variant_max_length = float('inf') if payload.variant_max_length < 0 else payload.variant_max_length
 
     # iterate through bcftools output
     for line in query_process.stdout:
@@ -59,19 +69,19 @@ def perform_query(performQueryPayload: PerformQueryPayload):
         ref_length = len(reference)
 
         # must be within end range
-        if not performQueryPayload.end_min <= pos + ref_length - 1 <= performQueryPayload.end_max:
+        if not payload.end_min <= pos + ref_length - 1 <= payload.end_max:
             continue
 
         # validation; if not N validate regex
         if not approx:
-            rgx = re.compile('^' + performQueryPayload.reference_bases.replace('N', '[ACGTN]{1}') + '$')
+            rgx = re.compile('^' + payload.reference_bases.replace('N', '[ACGTN]{1}') + '$')
             if not rgx.match(reference.upper()):
                 continue
 
         alts = all_alts.split(',')
 
         # alternate base not defined
-        if performQueryPayload.alternate_bases is None:
+        if payload.alternate_bases is None:
             if variant_type == 'DEL':
                 hit_indexes = [
                     i for i, alt in enumerate(alts)
@@ -81,7 +91,7 @@ def perform_query(performQueryPayload: PerformQueryPayload):
                         else len(alt) < ref_length
                     )
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
             elif variant_type == 'INS':
                 hit_indexes = [
@@ -92,7 +102,7 @@ def perform_query(performQueryPayload: PerformQueryPayload):
                         else len(alt) > ref_length
                     )
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
             elif variant_type == 'DUP':
                 pattern = re.compile('({}){{2,}}'.format(reference))
@@ -103,7 +113,7 @@ def perform_query(performQueryPayload: PerformQueryPayload):
                         if alt.startswith('<') else pattern.fullmatch(alt)
                     )
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
             elif variant_type == 'DUP:TANDEM':
                 tandem = reference + reference
@@ -114,7 +124,7 @@ def perform_query(performQueryPayload: PerformQueryPayload):
                         if alt.startswith('<') else alt == tandem
                     )
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
             elif variant_type == 'CNV':
                 pattern = re.compile('\.|({})*'.format(reference))
@@ -128,7 +138,7 @@ def perform_query(performQueryPayload: PerformQueryPayload):
                         ) if alt.startswith('<')  else pattern.fullmatch(alt)
                     )
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
             else:
                 # For structural variants that aren't otherwise recognisable
@@ -136,24 +146,24 @@ def perform_query(performQueryPayload: PerformQueryPayload):
                     i for i, alt in enumerate(alts)
                     if alt.startswith(v_prefix)
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
         # if alternate base defined
         # here we should check for the asked variant lengths
         else:
-            if performQueryPayload.alternate_bases == 'N':
+            if payload.alternate_bases == 'N':
                 hit_indexes = [
                     i for i, alt in enumerate(alts)
                     if alt.upper() in BASES 
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
             else:
                 hit_indexes = [
                     i for i, alt in enumerate(alts)
-                    if alt.upper() == performQueryPayload.alternate_bases
+                    if alt.upper() == payload.alternate_bases
                     and 
-                    performQueryPayload.variant_min_length <= len(alt) <= variant_max_length
+                    payload.variant_min_length <= len(alt) <= variant_max_length
                 ]
         if not hit_indexes:
             continue
@@ -202,11 +212,11 @@ def perform_query(performQueryPayload: PerformQueryPayload):
         # if there are actual variants
         if call_count:
             exists = True
-            if not performQueryPayload.include_details:
+            if not payload.include_details:
                 break
             hit_string = '|'.join(str(i + 1) for i in hit_indexes)
             pattern = re.compile(f'(^|[|/])({hit_string})([|/]|$)')
-            if performQueryPayload.requested_granularity in ('record', 'aggregated'):
+            if payload.requested_granularity in ('record', 'aggregated'):
                 sample_indices.update([i for i, gt in enumerate(genotypes.split(',')) if pattern.search(gt)])
         # Used for calculating frequency. This will be a misleading value if the
         # alleles are spread over multiple vcf records. Ideally we should
@@ -223,22 +233,47 @@ def perform_query(performQueryPayload: PerformQueryPayload):
             all_alleles_count += len(all_calls)
     query_process.stdout.close()
 
-
-    if performQueryPayload.requested_granularity in ('record', 'aggregated'):
+    if payload.requested_granularity in ('record', 'aggregated'):
         args = [
             'bcftools', 'query',
             '--list-samples',
-            performQueryPayload.vcf_location
+            payload.vcf_location
         ]
         samples_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
         sample_names = [line.strip() for n, line in enumerate(samples_process.stdout) if n in sample_indices]
         samples_process.stdout.close()
 
-    return {
-        'exists': exists,
-        'all_alleles_count': all_alleles_count,
-        'variants': variants,
-        'call_count': call_count,
-        'sample_indices': list(sample_indices),
-        'sample_names': sample_names
-    }
+    response = PerformQueryResponse(
+        exists = exists,
+        dataset_id = payload.dataset_id,
+        vcf_location =  payload.vcf_location,
+        all_alleles_count = all_alleles_count,
+        variants = variants,
+        call_count = call_count,
+        sample_indices = list(sample_indices),
+        sample_names = sample_names
+    )
+
+    try:
+        uuid = uuid4().hex
+        key = f'variant-queries/{uuid}.json'
+        s3.put_object(
+            Body = response.dumps().encode(),
+            Bucket = VARIANTS_BUCKET,
+            Key = key
+        )
+
+        print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
+        query = db.VariantQuery(payload.query_id)
+        result = db.VariantResponse(payload.query_id)
+        result.responseNumber = query.getResponseNumber()
+        s3loc = db.S3Location()
+        s3loc.bucket = VARIANTS_BUCKET
+        s3loc.key = key
+        result.responseLocation = s3loc
+        result.save()
+        query.markFinished()
+    except ClientError as e:
+        print(f"Error: {e}")
+
+    return response

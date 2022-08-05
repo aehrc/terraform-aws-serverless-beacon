@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import jsonschema
 import queue
@@ -6,64 +7,47 @@ import boto3
 import os
 import hashlib
 import base64
+import jsons
+from uuid import uuid4
+import time
 
 import pynamo_mappings as db
 from api_response import bundle_response, bad_request
 from chrom_matching import get_matching_chromosome, get_vcf_chromosomes
 import responses
 import entries
+from lambda_payloads import SplitQueryPayload
+from lambda_responses import PerformQueryResponse
 
 
+SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
+REQUEST_TIMEOUT = 10 # seconds 
 
 dynamodb = boto3.client('dynamodb')
 aws_lambda = boto3.client('lambda')
+s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def split_query(dataset_id, 
-        vcf_locations, 
-        vcf_groups, 
-        reference_bases, 
-        region_start,
-        region_end, 
-        end_min, 
-        end_max, 
-        alternate_bases, 
-        variant_type,
-        include_datasets, 
-        requested_granularity, 
-        variant_min_length,
-        variant_max_length,
-        responses):
+def get_split_query_fan_out(region_start, region_end):
+    fan_out = 0
+    split_start = region_start
+    while split_start <= region_end:
+        fan_out += 1
+        split_start += SPLIT_SIZE
+    return fan_out
 
-    payload = json.dumps({
-        'dataset_id': dataset_id,
-        'reference_bases': reference_bases,
-        'region_start': region_start,
-        'region_end': region_end,
-        'end_min': end_min,
-        'end_max': end_max,
-        'alternate_bases': alternate_bases,
-        'variant_type': variant_type,
-        'include_datasets': include_datasets,
-        'vcf_locations': vcf_locations,
-        'vcf_groups': vcf_groups,
-        'requested_granularity': requested_granularity,
-        'variant_min_length': variant_min_length,
-        'variant_max_length': variant_max_length
-    })
-    print(f"Invoking {SPLIT_QUERY} with payload: {payload}")
-    response = aws_lambda.invoke(
+
+def split_query(payload: SplitQueryPayload, responses):
+    print(f"Invoking {SPLIT_QUERY} with payload: {jsons.dump(payload)}")
+    aws_lambda.invoke(
         FunctionName=SPLIT_QUERY,
-        Payload=payload,
+        InvocationType='Event',
+        Payload=jsons.dumps(payload),
     )
-    response_json = response['Payload'].read()
-    print(f"dataset_id {dataset_id} received payload: {response_json}")
-    response_dict = json.loads(response_json)
-    responses.put(response_dict)
 
 
 def get_vcf_chromosome_map(all_vcfs, chromosome):
@@ -150,6 +134,7 @@ def route(event):
 
 
     datasets = get_datasets(assemblyId)
+    check_all = includeResultsetResponses in ('HIT', 'ALL')
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
     vcfs = { location for dataset in datasets for location in dataset.vcfLocations }
     vcf_chromosomes = get_vcf_chromosome_map(vcfs, referenceName)
@@ -180,9 +165,20 @@ def route(event):
     # threading
     thread_responses = queue.Queue()
     threads = []
+    query_id = uuid4().hex
+
+    # TODO define variant id and fix; currently consider variant id to be from a unique vcf, chrom, pos, typ
     # TODO optimise this further dataset_id -> vcfs -> vcf_id (do not use vcf index as additions and removals with 
     # make the indices inconsistent between requests)
     vcf_dataset_uuid = dict()
+    dataset_variant_groups = dict()
+
+    # record the query event on DB
+    query_record = db.VariantQuery(query_id)
+    query_record.save()
+    perform_query_fan_out = 0
+    split_query_fan_out = get_split_query_fan_out(start_min, start_max)
+
     # parallelism across datasets
     for dataset in datasets:
         vcf_locations = {
@@ -200,88 +196,126 @@ def route(event):
             ] 
             if len(grp) > 0
         ]
-        
+        # vcf groups being searched for
+        dataset_variant_groups[dataset.id] = vcf_groups
+
+        # record perform query fan out size
+        perform_query_fan_out += split_query_fan_out * len(vcf_locations)
+        query_record.update(actions=[
+            db.VariantQuery.fanOut.set(query_record.fanOut + perform_query_fan_out)
+        ])
+
         # call split query for each dataset found
-        thread = threading.Thread(target=split_query,
-                            kwargs={
-                                'dataset_id': dataset.id,
-                                'vcf_locations': vcf_locations,
-                                'vcf_groups': vcf_groups,
-                                'reference_bases': referenceBases,
-                                'region_start': start_min,
-                                'region_end': start_max,
-                                'end_min': end_min,
-                                'end_max': end_max,
-                                'alternate_bases': alternateBases,
-                                'variant_type': variantType,
-                                'include_datasets': includeResultsetResponses,
-                                'requested_granularity': requestedGranularity,
-                                'responses': thread_responses,
-                                'variant_min_length': variantMinLength,
-                                'variant_max_length': variantMaxLength,
-                            })
+        payload = SplitQueryPayload(
+                dataset_id=dataset.id,
+                query_id=query_id,
+                vcf_locations=vcf_locations,
+                vcf_groups=vcf_groups,
+                reference_bases=referenceBases,
+                region_start=start_min,
+                region_end=start_max,
+                end_min=end_min,
+                end_max=end_max,
+                alternate_bases=alternateBases,
+                variant_type=variantType,
+                include_datasets=includeResultsetResponses,
+                requested_granularity=requestedGranularity,
+                variant_min_length=variantMinLength,
+                variant_max_length=variantMaxLength
+            )
+        thread = threading.Thread(
+                target=split_query,
+                kwargs={
+                    'payload': payload,
+                    'responses': thread_responses,
+                }
+            )
         thread.start()
         threads.append(thread)
 
-    num_threads = len(threads)
-    processed = 0
     exists = False
-    variantCount = 0
+    variants = set()
+    results = list()
+    dataset_vcf_group_map = dict()
+
+    # dict of key dataset.id and value=dict with key=vcf val=groupId
+    for k, vgs in dataset_variant_groups.items():
+        dataset_vcf_group_map[k] = { v : n for n, vg in enumerate(vgs) for v in vg }
+
+    # wait while all the threads complete
+    for thread in threads:
+        thread.join()
+
+    start_time = time.time()
+    query_results = dict()
+    last_read_position = 0
+
+    while time.time() - start_time < REQUEST_TIMEOUT:
+        try:
+            for item in db.VariantResponse.variantResponseIndex.query(query_id, db.VariantResponse.responseNumber > last_read_position):
+                query_results[item.responseNumber] = item.responseLocation
+                last_read_position = item.responseNumber
+            query_record.refresh()
+            if query_record.fanOut == 0:
+                print("Query fan in completed")
+                break
+        except:
+            print("Errored")
+            break
+        time.sleep(1)
+
+    # key=pos-ref-alt
+    # val=counts
+    variant_call_counts = defaultdict(int)
+    variant_allele_counts = defaultdict(int)
+    
+    for _, loc in query_results.items():
+        print(loc.bucket, loc.key)
+        obj = s3.get_object(
+            Bucket=loc.bucket,
+            Key=loc.key,
+        )
+        query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
+        exists = exists or query_response.exists
+
+        # immediately return the boolean response if exists
+        if requestedGranularity == 'boolean' and exists:
+            response = responses.get_boolean_response(exists=exists)
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
+        else:
+            exists = exists or query_response.exists
+            if exists:
+                exists = True
+                if check_all:
+                    variants.update(query_response.variants)
+                    vcf_location = query_response.vcf_location
+
+                    for variant in query_response.variants:
+                        chrom, pos, ref, alt, typ = variant.split('\t')
+                        idx = f'{pos}_{ref}_{alt}'
+                        variant_call_counts[idx] += query_response.call_count
+                        variant_allele_counts[idx] += query_response.all_alleles_count
+                        internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
+                        results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
 
     if requestedGranularity == 'boolean':
-        while processed < num_threads and (includeResultsetResponses != 'NONE' or not exists):
-            thread_response = thread_responses.get()
-            processed += 1
-            if 'exists' not in thread_response:
-                # function errored out, ignore
-                continue
-            exists = exists or thread_response['exists']
-
-        response = responses.boolean_response
-        response['responseSummary']['exists'] = exists
+        response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        while processed < num_threads and (includeResultsetResponses != 'NONE' or not exists):
-            thread_response = thread_responses.get()
-            processed += 1
-            if 'exists' not in thread_response:
-                # function errored out, ignore
-                continue
-            exists = exists or thread_response['exists']
-            variantCount += thread_response.get('variantCount', 0)
-
-        response = responses.counts_response
-        response['responseSummary']['exists'] = exists
-        response['responseSummary']['numTotalResults'] = variantCount
+        response = responses.get_counts_response(exists=exists, count=len(variants))
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        variants = dict()
-        while processed < num_threads and (includeResultsetResponses != 'NONE' or not exists):
-            thread_response = thread_responses.get()
-            processed += 1
-            if 'exists' not in thread_response:
-                # function errored out, ignore
-                continue
-            exists = exists or thread_response['exists']
-            variantCount +=  thread_response['variantCount']
-            variants.update(thread_response['variants'])
-
-        results = list()
-        for variant, vcfs in variants.items():
-            chrom, pos, ref, alt, typ = variant.split('\t')
-            for loc in vcfs:
-                results.append(entries.get_variant_entry(base64.b64encode(f'{variant}\t{vcf_dataset_uuid[loc]}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
-
         response = responses.get_result_sets_response(
             resGranularity='record', 
             setType='genomicVariant', 
             exists=exists,
-            total=variantCount,
+            total=len(variants),
             results=results
-            )
+        )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)

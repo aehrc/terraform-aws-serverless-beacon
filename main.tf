@@ -357,12 +357,15 @@ module "lambda-getGenomicVariants" {
     BEACON_API_VERSION = local.api_version
     BEACON_ID = var.beacon-id
     DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+    VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
     SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
     BEACON_API_VERSION = local.api_version
     PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
   }
 
   layers = [
+    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
     "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
     "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
@@ -451,11 +454,16 @@ module "lambda-performQuery" {
   layers = [
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
     "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
+    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
   ]
 
   environment = {
     variables = {
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+      VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
       BEACON_API_VERSION = local.api_version
+      VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     }
   }
 }

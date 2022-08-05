@@ -22,19 +22,9 @@ get_all_calls = all_count_pattern.findall
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     performQueryPayload = jsons.load(event, PerformQueryPayload)
-    mode = performQueryPayload.mode
-
-    if mode == 'search':
-        print('Running in search mode')
-        response = search_variants.perform_query(performQueryPayload)
-        print(f'Returning response: \n {json.dumps(response)}')
-        return response
-
-    if mode == 'unique':
-        print('Running in unique mode')
-        response = search_variant.perform_query(performQueryPayload)
-        print(f'Returning response: \n {json.dumps(response)}')
-        return response
+    response = search_variants.perform_query(performQueryPayload)
+    print(f'Returning response: \n {response.dump()}')
+    return response.dump()
 
 
 if __name__ == '__main__':
@@ -46,20 +36,11 @@ if __name__ == '__main__':
         "alternate_bases": "G",
         "variant_type": None,
         "include_details": True,
+        "dataset_id": 'test',
         'requested_granularity': 'record',
         'variant_min_length': 0,
         'variant_max_length': -1,
         "vcf_location": "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
     }
-
-    # event = {
-    #     "mode": "unique",
-    #     "position": 10000658,
-    #     "chrom": "5",
-    #     "reference_bases": "A",
-    #     "alternate_bases": "G",
-    #     "vcf_location": "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz",
-    #     "requested_granularity": "boolean"
-    # }
 
     lambda_handler(event, dict())

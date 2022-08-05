@@ -17,14 +17,14 @@ all_count_pattern = re.compile('[0-9]+')
 get_all_calls = all_count_pattern.findall
 
 
-def perform_query(performQueryPayload: PerformQueryPayload):
+def perform_query(payload: PerformQueryPayload):
     # running setup of bcftools
     # TODO dynamically decide format (include biosamples)
     args = [
         'bcftools', 'query',
-        '--regions', f'{performQueryPayload.chrom}:{performQueryPayload.position}-{performQueryPayload.position+1}',
+        '--regions', f'{payload.chrom}:{payload.position}-{payload.position+1}',
         '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
-        performQueryPayload.vcf_location
+        payload.vcf_location
     ]
     print(' '.join(args))
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
@@ -45,13 +45,13 @@ def perform_query(performQueryPayload: PerformQueryPayload):
 
         pos = int(pos)
         # Ensure each variant will only be found by one process
-        if pos != performQueryPayload.position or performQueryPayload.reference_bases != reference:
+        if pos != payload.position or payload.reference_bases != reference:
             continue
 
         alts = all_alts.split(',')
         hit_indexes = [
                 i for i, alt in enumerate(alts)
-                if alt.upper() == performQueryPayload.alternate_bases
+                if alt.upper() == payload.alternate_bases
         ]
         if not hit_indexes:
             continue
@@ -89,7 +89,7 @@ def perform_query(performQueryPayload: PerformQueryPayload):
             hit_string = '|'.join(str(i + 1) for i in hit_indexes)
             pattern = re.compile(f'(^|[|/])({hit_string})([|/]|$)')
             
-            if performQueryPayload.requested_granularity in ('record', 'aggregated'):
+            if payload.requested_granularity in ('record', 'aggregated'):
                 sample_indices.update([i for i, gt in enumerate(genotypes.split(',')) if pattern.search(gt)])
        
         # Used for calculating frequency. This will be a misleading value if the

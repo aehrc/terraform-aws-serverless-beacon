@@ -1,10 +1,14 @@
 import jsons
 
+# TODO
+# Add comments explaining the variables
+
 
 # payload accepted by SplitQuery lambda
-class SplitQueryPayload:
+class SplitQueryPayload(jsons.JsonSerializable):
     def __init__(self, *, 
             dataset_id,
+            query_id,
             reference_bases,
             region_start,
             region_end,
@@ -20,6 +24,7 @@ class SplitQueryPayload:
             variant_max_length
         ):
         self.dataset_id = dataset_id
+        self.query_id = query_id
         self.reference_bases = reference_bases
         self.region_start = region_start
         self.region_end = region_end
@@ -35,9 +40,10 @@ class SplitQueryPayload:
         self.variant_max_length = variant_max_length
 
 
-class PerformQueryPayload():
+class PerformQueryPayload(jsons.JsonSerializable):
     def __init__(self, *,
-            mode='search',
+            dataset_id=None,
+            query_id='test',
             region=None,
             reference_bases=None,
             end_min=None,
@@ -49,10 +55,9 @@ class PerformQueryPayload():
             variant_min_length=None,
             variant_max_length=None,
             vcf_location=None,
-            position=None,
-            chrom=None
         ):
-        self.mode = mode
+        self.dataset_id = dataset_id
+        self.query_id = query_id
         self.region = region
         self.reference_bases = reference_bases
         self.end_min = end_min
@@ -64,5 +69,3 @@ class PerformQueryPayload():
         self.variant_min_length = variant_min_length
         self.variant_max_length = variant_max_length
         self.vcf_location = vcf_location      
-        self.position = position
-        self.chrom = chrom

@@ -51,7 +51,10 @@ def get_vcf_chromosomes(vcf):
     except subprocess.CalledProcessError as e:
         print(e)
         tabix_output = ''
-    clear_tmp()
+    try:
+        clear_tmp()
+    except:
+        pass
     return tabix_output.split('\n')[:-1]
 
 
