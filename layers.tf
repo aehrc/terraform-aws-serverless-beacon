@@ -48,3 +48,20 @@ resource "aws_lambda_layer_version" "binaries_layer" {
 
   compatible_runtimes = ["python3.7", "python3.8", "python3.9"]
 }
+
+### jsons layer
+# data for the python jsonschema layer
+data "archive_file" "python_jsons_layer" {
+  type        = "zip"
+  source_dir = "${path.module}/layers/jsons/"
+  output_path = "${path.module}/python_jsons.zip"
+}
+
+# python jsonschema layer definition
+resource "aws_lambda_layer_version" "python_jsons_layer" {
+  filename   = data.archive_file.python_jsons_layer.output_path
+  layer_name = "python_jsons_layer"
+  source_code_hash = filebase64sha256("${data.archive_file.python_jsons_layer.output_path}")
+
+  compatible_runtimes = ["python3.7", "python3.8", "python3.9"]
+}

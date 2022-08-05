@@ -10,3 +10,7 @@ remote_state.tf
 *.pyc
 build
 libraries
+
+# csi/tbi files from tests
+*.csi
+*.tbi

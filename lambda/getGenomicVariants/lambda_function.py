@@ -32,7 +32,7 @@ if __name__ == '__main__':
     #     "body": json.dumps({
     #         "query": {
     #             "requestParameters": {
-    #             "assemblyId": "MTD-1",
+    #             "assemblyId": "GRCH38",
     #             "includeResultsetResponses": "HIT",
     #             "start": [
     #                 10000000,
@@ -45,7 +45,8 @@ if __name__ == '__main__':
     #             "referenceBases": "A",
     #             "referenceName": "5",
     #             "alternateBases": "G"
-    #             }
+    #             },
+    #             "requestedGranularity": "record"
     #         }
     #     })
     # }
@@ -53,11 +54,15 @@ if __name__ == '__main__':
     event = {
         "resource": "/g_variants/{id}",
         "path": "/g_variants/{id}",
-        "httpMethod": "POST",
+        "httpMethod": "GET",
         "pathParameters": {
-            "id": "NQkxMDAwMDY1OAlBCUcJU05QCXRlc3Qtd2ljCTMzMTBiODRhNDdhOTdhNzYxODA4YmZlODZmYWZmNTBm",
+            "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
         },
-        "body": "{}"
+        "queryStringParameters": {
+            "requestedGranularity": "record"
+        },
+        "body": json.dumps({
+        })
     }
 
     print(lambda_handler(event, dict()))

@@ -299,6 +299,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
     ]
   }
 
@@ -306,10 +307,22 @@ data aws_iam_policy_document lambda-getGenomicVariants {
     actions = [
       "dynamodb:DescribeTable",
       "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
+      aws_dynamodb_table.variant_queries.arn,
+      aws_dynamodb_table.variant_query_responses.arn,
     ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
   }
 
   statement {
@@ -383,7 +396,22 @@ data aws_iam_policy_document lambda-splitQuery {
 data aws_iam_policy_document lambda-performQuery {
   statement {
     actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:GetItem",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+      aws_dynamodb_table.variant_queries.arn,
+      aws_dynamodb_table.variant_query_responses.arn,
+    ]
+  }
+
+  statement {
+    actions = [
       "s3:GetObject",
+      "s3:PutObject",
       "s3:ListBucket",
     ]
     resources = ["*"]
