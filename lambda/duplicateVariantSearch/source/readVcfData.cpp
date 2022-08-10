@@ -7,7 +7,7 @@ Aws::Vector<Aws::String> ReadVcfData::getVcfData(Aws::String bucket, Aws::String
     generalutils::vcfData vcf;
     Aws::Vector<Aws::String> fileData;
 
-    Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(bucket, targetFilepath, client);
+    Aws::S3::Model::GetObjectOutcome response = awsutils::getS3Object(bucket, targetFilepath);
     Aws::IOStream &stream = response.GetResult().GetBody();
     gzip inputGzip = gzip(stream, response.GetResult().GetContentLength(), streamBuffer, sizeof(streamBuffer));
     inputGzip.inflateFile();

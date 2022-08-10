@@ -18,7 +18,7 @@ def lambda_handler(event, context):
     #     entry['response']['resultSets'][0]['results'] = [
     #         entries.biosample_entry]
     #     return from script
-    # else:
+    # else event['resource'] == '/g_variants/{id}/individuals':
     #     entry = responses.result_sets_response
     #     entry['response']['resultSets'][0]['results'] = [entries.variant_entry]
     #     return from script

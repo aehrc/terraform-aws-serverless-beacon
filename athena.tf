@@ -1,0 +1,198 @@
+# 
+# Metadata tables on AWS Athena
+# AWS docs to refer;
+# SerDe types from https://docs.aws.amazon.com/athena/latest/ug/athena-ug.pdf
+# Glue docs; https://docs.aws.amazon.com/glue/latest/dg/glue-dg.pdf
+# 
+resource "aws_glue_catalog_database" "metadata-database" {
+  name = "sbeacon-metadata"
+}
+
+resource "aws_glue_catalog_table" "sbeacon-individuals" {
+  name          = "sbeacon-individuals"
+  database_name = aws_glue_catalog_database.metadata-database.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    "orc.compress" = "SNAPPY"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/individuals"
+    input_format = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+
+
+    ser_de_info {
+      name                  = "ORC"
+      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+
+      parameters = {
+        "serialization.format" = 1
+      }
+    }
+
+    columns {
+      name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "datasetIds"
+      type = "string"
+    }
+
+    columns {
+      name = "diseases"
+      type = "string"
+    }
+
+    columns {
+      name = "ethnicity"
+      type = "string"
+    }
+
+    columns {
+      name = "exposures"
+      type = "string"
+    }
+
+    columns {
+      name = "geographicOrigin"
+      type = "string"
+    }
+
+    columns {
+      name = "info"
+      type = "string"
+    }
+
+    columns {
+      name = "interventionsOrProcedures"
+      type = "string"
+    }
+
+    columns {
+      name = "karyotypicSex"
+      type = "string"
+    }
+
+    columns {
+      name = "measures"
+      type = "string"
+    }
+
+    columns {
+      name = "pedigrees"
+      type = "string"
+    }
+
+    columns {
+      name = "phenotypicFeatures"
+      type = "string"
+    }
+
+    columns {
+      name = "sex"
+      type = "string"
+    }
+
+    columns {
+      name = "treatments"
+      type = "string"
+    }
+  }
+}
+
+resource "aws_glue_crawler" "sbeacon-crawler" {
+  database_name = aws_glue_catalog_database.metadata-database.name
+  name          = "sbeacon-crawler"
+  role          = aws_iam_role.glue_role.arn
+
+  catalog_target {
+    database_name = aws_glue_catalog_database.metadata-database.name
+    tables        = [aws_glue_catalog_table.sbeacon-individuals.name]
+  }
+
+  schema_change_policy {
+    delete_behavior = "LOG"
+  }
+
+  configuration = <<EOF
+{
+  "Version":1.0,
+  "Grouping": {
+    "TableGroupingPolicy": "CombineCompatibleSchemas"
+  }
+}
+EOF
+}
+
+resource "aws_athena_workgroup" "sbeacon-workgroup" {
+  name          = "query_workgroup"
+  force_destroy = true
+
+  configuration {
+    enforce_workgroup_configuration    = true
+    publish_cloudwatch_metrics_enabled = true
+
+    result_configuration {
+      output_location = "s3://${aws_s3_bucket.metadata-bucket.bucket}/query-results/"
+    }
+  }
+}
+
+#
+# Glue crawler IAM policies
+# Official docs are not super complete refer to below
+# https://www.xerris.com/insights/building-modern-data-warehouses-with-s3-glue-and-athena-part-3/
+#
+resource "aws_iam_role" "glue_role" {
+  name               = "glue_role"
+  assume_role_policy = data.aws_iam_policy_document.glue.json
+}
+
+data "aws_iam_policy_document" "glue" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["glue.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "extra-glue-policy-document" {
+  statement {
+    actions = [
+    "s3:GetBucketLocation", "s3:ListBucket", "s3:ListAllMyBuckets", "s3:GetBucketAcl", "s3:GetObject"]
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "extra-glue-policy" {
+  name        = "extra-glue-policy"
+  description = "Extra permissions"
+  policy      = data.aws_iam_policy_document.extra-glue-policy-document.json
+
+}
+
+resource "aws_iam_role_policy_attachment" "glue-extra-policy-attachment" {
+  role       = aws_iam_role.glue_role.name
+  policy_arn = aws_iam_policy.extra-glue-policy.arn
+}
+
+data "aws_iam_policy" "AWSGlueServiceRole" {
+  arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
+
+resource "aws_iam_role_policy_attachment" "glue-service-role-attachment" {
+  role       = aws_iam_role.glue_role.name
+  policy_arn = data.aws_iam_policy.AWSGlueServiceRole.arn
+}

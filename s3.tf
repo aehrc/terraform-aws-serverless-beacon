@@ -11,3 +11,14 @@ resource "aws_s3_bucket_acl" "variants_bucket_acl" {
   bucket = aws_s3_bucket.variants-bucket.id
   acl    = "private"
 }
+
+resource "aws_s3_bucket" "metadata-bucket" {
+  bucket_prefix = var.metadata-bucket-prefix
+  force_destroy = true
+  tags = var.common-tags
+}
+
+resource "aws_s3_bucket_acl" "metadata" {
+  bucket = aws_s3_bucket.metadata-bucket.id
+  acl    = "private"
+}

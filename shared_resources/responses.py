@@ -1,5 +1,6 @@
 import os
 
+
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 

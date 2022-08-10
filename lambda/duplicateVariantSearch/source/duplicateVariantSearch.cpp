@@ -6,6 +6,9 @@
 #include "stopwatch.h"
 // #define INCLUDE_STOP_WATCH
 
+const char *VARIANT_DUPLICATES_TABLE = getenv("VARIANT_DUPLICATES_TABLE");
+const char *DATASETS_TABLE = getenv("DATASETS_TABLE");
+
 DuplicateVariantSearch::DuplicateVariantSearch(
     Aws::S3::S3Client &client,
     Aws::DynamoDB::DynamoDBClient &dynamodbClient,
@@ -81,7 +84,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
 
 void DuplicateVariantSearch::updateVariantCounts(int64_t finalTally) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(getenv("DATASETS_TABLE"));
+    request.SetTableName(DATASETS_TABLE);
     Aws::DynamoDB::Model::AttributeValue keyValue;
     keyValue.SetS(_dataset);
     request.AddKey("id", keyValue);
@@ -123,7 +126,7 @@ int64_t DuplicateVariantSearch::updateVariantDuplicates(size_t totalCount) {
     key["datasetKey"] = sortKey;
 
     Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(getenv("VARIANT_DUPLICATES_TABLE"));
+    request.SetTableName(VARIANT_DUPLICATES_TABLE);
     request.WithKey(key);
     request.SetUpdateExpression("ADD variantCount :numVariants DELETE toUpdate :sliceStringSet");
     request.SetConditionExpression("contains(toUpdate, :sliceString)");

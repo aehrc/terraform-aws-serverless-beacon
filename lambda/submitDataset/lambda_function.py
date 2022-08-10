@@ -7,7 +7,9 @@ from jsonschema import Draft7Validator
 import boto3
 
 from api_response import bad_request, bundle_response
-import pynamo_mappings as db
+from chrom_matching import get_vcf_chromosomes
+from dynamodb.datasets import Dataset, VcfChromosomeMap
+
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
@@ -17,8 +19,8 @@ SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 
 sns = boto3.client('sns')
 
-newSchema = json.load(open("new-schema.json"))
-updateSchema = json.load(open("update-schema.json"))
+newSchema = json.load(open("./schemas/submitDataset-schema-new.json"))
+updateSchema = json.load(open("./schemas/submitDataset-schema-update.json"))
 
 
 # just checking if the tabix would work as expected on a valid vcf.gz file
@@ -55,7 +57,7 @@ def check_vcf_locations(locations):
 
 
 def create_dataset(attributes):
-    item = db.Dataset(attributes['id'])
+    item = Dataset(attributes['id'])
     item.name = attributes['name']
     item.assemblyId = attributes['assemblyId']
     item.vcfLocations = attributes['vcfLocations']
@@ -65,6 +67,13 @@ def create_dataset(attributes):
     item.externalUrl = attributes.get('externalUrl', '')
     item.info = attributes.get('info', [])
     item.dataUseConditions = attributes.get('dataUseConditions', {})
+
+    for vcf in set(item.vcfLocations):
+        chroms = get_vcf_chromosomes(vcf)
+        vcfm = VcfChromosomeMap()
+        vcfm.vcf = vcf
+        vcfm.chromosomes = chroms
+        item.vcfChromosomeMap.append(vcfm)
 
     print(f"Putting item in table: {item.to_json()}")
     item.save()
@@ -113,20 +122,20 @@ def summarise_dataset(dataset):
 
 
 def update_dataset(attributes):
-    item = db.Dataset.get(attributes['id'])
+    item = Dataset.get(attributes['id'])
     actions = []
-    actions += [db.Dataset.name.set(attributes['name'])] if attributes.get('name', False) else []
-    actions += [db.Dataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
-    actions += [db.Dataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
-    actions += [db.Dataset.description.set(attributes['description'])] if attributes.get('description', False) else []
-    actions += [db.Dataset.version.set(attributes['version'])] if attributes.get('version', False) else []
-    actions += [db.Dataset.externalUrl.set(attributes['externalUrl'])] if attributes.get('externalUrl', False) else []
-    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
-    actions += [db.Dataset.dataUseConditions.set(attributes['dataUseConditions'])] if attributes.get('dataUseConditions', False) else []
-    actions += [db.Dataset.vcfGroups.set(attributes['vcfGroups'])] if attributes.get('vcfGroups', False) else []
-    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
-    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
-    actions += [db.Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [Dataset.name.set(attributes['name'])] if attributes.get('name', False) else []
+    actions += [Dataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
+    actions += [Dataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
+    actions += [Dataset.description.set(attributes['description'])] if attributes.get('description', False) else []
+    actions += [Dataset.version.set(attributes['version'])] if attributes.get('version', False) else []
+    actions += [Dataset.externalUrl.set(attributes['externalUrl'])] if attributes.get('externalUrl', False) else []
+    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [Dataset.dataUseConditions.set(attributes['dataUseConditions'])] if attributes.get('dataUseConditions', False) else []
+    actions += [Dataset.vcfGroups.set(attributes['vcfGroups'])] if attributes.get('vcfGroups', False) else []
+    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
 
     print(f"Updating table: {item.to_json()}")
     item.update(actions=actions)

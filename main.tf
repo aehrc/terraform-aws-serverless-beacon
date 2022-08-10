@@ -22,7 +22,7 @@ module "lambda-submitDataset" {
   runtime = "python3.9"
   architectures = ["x86_64"]
   memory_size = 2048
-  timeout = 60
+  timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-submitDataset.json
   source_path = "${path.module}/lambda/submitDataset"
@@ -54,7 +54,7 @@ module "lambda-summariseDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 2048
-  timeout = 60
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseDataset.json
   }
@@ -85,7 +85,7 @@ module "lambda-summariseVcf" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 2048
-  timeout = 60
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseVcf.json
   }
@@ -112,8 +112,8 @@ module "lambda-summariseSlice" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 768
-  timeout = 60
+  memory_size = 2048
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json
   }
@@ -151,7 +151,7 @@ module "lambda-duplicateVariantSearch" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 1536
+  memory_size = 8192
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
@@ -222,7 +222,7 @@ module "lambda-getInfo" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 2048
-  timeout = 28
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-getInfo.json
   }

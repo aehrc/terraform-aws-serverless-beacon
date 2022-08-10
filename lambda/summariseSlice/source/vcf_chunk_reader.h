@@ -66,7 +66,7 @@ public:
     uint reads;
 
 public:
-    VcfChunkReader(Aws::String bucket, Aws::String key, Aws::S3::S3Client const &s3Client, VcfChunk chunk)
+    VcfChunkReader(Aws::String bucket, Aws::String key, VcfChunk chunk)
         : startCompressed(chunk.startCompressed),
           totalBytes(BGZIP_MAX_BLOCKSIZE + chunk.endCompressed - startCompressed),
           numBytes(BGZIP_MAX_BLOCKSIZE + std::min(DOWNLOAD_SLICE_NUM * MAX_DOWNLOAD_SLICE_SIZE, totalBytes)),
@@ -83,7 +83,7 @@ public:
         reads = 0;
         do
         {
-            downloaders.push_back(Downloader(s3Client, bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
+            downloaders.push_back(Downloader(bucket, key, gzipBytes + BGZIP_MAX_BLOCKSIZE + requestedBytes, bytesToRequest()));
             downloadNext();
             if (windowIndex == 0)
             {

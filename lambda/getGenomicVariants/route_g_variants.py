@@ -11,7 +11,8 @@ import jsons
 from uuid import uuid4
 import time
 
-import pynamo_mappings as db
+from dynamodb.variant_queries import VariantQuery, VariantResponse
+from dynamodb.datasets import Dataset
 from api_response import bundle_response, bad_request
 from chrom_matching import get_matching_chromosome, get_vcf_chromosomes
 import responses
@@ -60,7 +61,7 @@ def get_vcf_chromosome_map(all_vcfs, chromosome):
 
 def get_datasets(assembly_id, dataset_ids=None):
     items = []
-    for item in db.Dataset.datasetIndex.query(assembly_id):
+    for item in Dataset.datasetIndex.query(assembly_id):
         items.append(item)
     # TODO support more advanced querying
     if dataset_ids:
@@ -174,7 +175,7 @@ def route(event):
     dataset_variant_groups = dict()
 
     # record the query event on DB
-    query_record = db.VariantQuery(query_id)
+    query_record = VariantQuery(query_id)
     query_record.save()
     perform_query_fan_out = 0
     split_query_fan_out = get_split_query_fan_out(start_min, start_max)
@@ -202,7 +203,7 @@ def route(event):
         # record perform query fan out size
         perform_query_fan_out += split_query_fan_out * len(vcf_locations)
         query_record.update(actions=[
-            db.VariantQuery.fanOut.set(query_record.fanOut + perform_query_fan_out)
+            VariantQuery.fanOut.set(query_record.fanOut + perform_query_fan_out)
         ])
 
         # call split query for each dataset found
@@ -252,7 +253,7 @@ def route(event):
 
     while time.time() - start_time < REQUEST_TIMEOUT:
         try:
-            for item in db.VariantResponse.variantResponseIndex.query(query_id, db.VariantResponse.responseNumber > last_read_position):
+            for item in VariantResponse.variantResponseIndex.query(query_id, VariantResponse.responseNumber > last_read_position):
                 query_results[item.responseNumber] = item.responseLocation
                 last_read_position = item.responseNumber
             query_record.refresh()
