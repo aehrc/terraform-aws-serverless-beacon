@@ -1,4 +1,3 @@
-from email.policy import default
 import os
 from datetime import datetime, timezone
 

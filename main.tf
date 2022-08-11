@@ -312,6 +312,33 @@ module "lambda-getEntryTypes" {
 }
 
 #
+# getFilteringTerms Lambda Function
+#
+module "lambda-getFilteringTerms" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getFilteringTerms"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_json = true
+  policy_json = data.aws_iam_policy_document.lambda-getFilteringTerms.json
+  source_path = "${path.module}/lambda/getFilteringTerms"
+
+  tags = var.common-tags
+
+  environment_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
+    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
+    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
+  }
+}
+
+#
 # getAnalyses Lambda Function
 #
 module "lambda-getAnalyses" {

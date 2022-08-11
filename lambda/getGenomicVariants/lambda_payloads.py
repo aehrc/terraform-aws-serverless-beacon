@@ -1,1 +1,0 @@
-../../shared_resources/lambda_payloads.py

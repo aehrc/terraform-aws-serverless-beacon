@@ -17,8 +17,8 @@ from dynamodb.datasets import Dataset
 from dynamodb.variant_queries import VariantQuery, VariantResponse
 import responses
 import entries
-from lambda_payloads import SplitQueryPayload
-from lambda_responses import PerformQueryResponse
+from payloads.lambda_payloads import SplitQueryPayload
+from payloads.lambda_responses import PerformQueryResponse
 
 
 SPLIT_SIZE = 1000000

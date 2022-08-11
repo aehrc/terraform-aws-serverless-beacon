@@ -5,7 +5,7 @@ import subprocess
 
 import search_variants
 import search_variant
-from lambda_payloads import PerformQueryPayload
+from payloads.lambda_payloads import PerformQueryPayload
 
 BASES = [
     'A',

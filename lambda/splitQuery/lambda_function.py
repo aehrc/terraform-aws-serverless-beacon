@@ -6,7 +6,7 @@ from collections import defaultdict
 import boto3
 import jsons
 
-from lambda_payloads import SplitQueryPayload, PerformQueryPayload
+from payloads.lambda_payloads import SplitQueryPayload, PerformQueryPayload
 
 
 SPLIT_SIZE = 1000000

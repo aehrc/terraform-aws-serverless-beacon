@@ -18,10 +18,9 @@ def lambda_handler(event, context):
     #     entry['response']['resultSets'][0]['results'] = [
     #         entries.biosample_entry]
     #     return from script
-    # else event['resource'] == '/g_variants/{id}/individuals':
-    #     entry = responses.result_sets_response
-    #     entry['response']['resultSets'][0]['results'] = [entries.variant_entry]
-    #     return from script
+
+    elif event['resource'] == '/g_variants/{id}/individuals':
+        return route_g_variants_id(event)
 
 
 if __name__ == '__main__':

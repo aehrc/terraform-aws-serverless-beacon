@@ -331,6 +331,7 @@ resource aws_api_gateway_deployment BeaconApi {
     md5(file("${path.module}/api-entry-types.tf")),
     md5(file("${path.module}/api-analyses.tf")),
     md5(file("${path.module}/api-genomics-variants.tf")),
+    md5(file("${path.module}/api-filtering-terms.tf")),
     aws_api_gateway_method.submit-options.id,
     aws_api_gateway_integration.submit-options.id,
     aws_api_gateway_integration_response.submit-options.id,
@@ -379,12 +380,17 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration.entry_types.id,
     aws_api_gateway_integration_response.entry_types.id,
     aws_api_gateway_method_response.entry_types.id,
+    # /filtering_terms
+    aws_api_gateway_method.filtering_terms.id,
+    aws_api_gateway_integration.filtering_terms.id,
+    aws_api_gateway_integration_response.filtering_terms.id,
+    aws_api_gateway_method_response.filtering_terms.id,
     # /analyses TODO update with other end points
     aws_api_gateway_method.analyses.id,
     aws_api_gateway_integration.analyses.id,
     aws_api_gateway_integration_response.analyses.id,
     aws_api_gateway_method_response.analyses.id,
-    # /g_variants TODO update with other end points
+    # /g_variants
     aws_api_gateway_method.g_variants.id,
     aws_api_gateway_method.g_variants_post.id,
     aws_api_gateway_integration.g_variants.id,
@@ -393,6 +399,33 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration_response.g_variants_post.id,
     aws_api_gateway_method_response.g_variants.id,
     aws_api_gateway_method_response.g_variants_post.id,
+    # /g_variants/{id}
+    aws_api_gateway_method.g_variants-id.id,
+    aws_api_gateway_method.g_variants-id_post.id,
+    aws_api_gateway_integration.g_variants-id.id,
+    aws_api_gateway_integration.g_variants-id_post.id,
+    aws_api_gateway_integration_response.g_variants-id.id,
+    aws_api_gateway_integration_response.g_variants-id_post.id,
+    aws_api_gateway_method_response.g_variants-id.id,
+    aws_api_gateway_method_response.g_variants-id_post.id,
+        # /g_variants/{id}/biosamples
+    aws_api_gateway_method.g_variants-id-biosamples.id,
+    aws_api_gateway_method.g_variants-id-biosamples_post.id,
+    aws_api_gateway_integration.g_variants-id-biosamples.id,
+    aws_api_gateway_integration.g_variants-id-biosamples_post.id,
+    aws_api_gateway_integration_response.g_variants-id-biosamples.id,
+    aws_api_gateway_integration_response.g_variants-id-biosamples_post.id,
+    aws_api_gateway_method_response.g_variants-id-biosamples.id,
+    aws_api_gateway_method_response.g_variants-id-biosamples_post.id,
+        # /g_variants/{id}/individuals
+    aws_api_gateway_method.g_variants-id-individuals.id,
+    aws_api_gateway_method.g_variants-id-individuals_post.id,
+    aws_api_gateway_integration.g_variants-id-individuals.id,
+    aws_api_gateway_integration.g_variants-id-individuals_post.id,
+    aws_api_gateway_integration_response.g_variants-id-individuals.id,
+    aws_api_gateway_integration_response.g_variants-id-individuals_post.id,
+    aws_api_gateway_method_response.g_variants-id-individuals.id,
+    aws_api_gateway_method_response.g_variants-id-individuals_post.id,
   ]))
 }
 

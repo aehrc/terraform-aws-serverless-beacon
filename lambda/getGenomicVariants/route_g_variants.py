@@ -17,8 +17,8 @@ from api_response import bundle_response, bad_request
 from chrom_matching import get_matching_chromosome
 import responses
 import entries
-from lambda_payloads import SplitQueryPayload
-from lambda_responses import PerformQueryResponse
+from payloads.lambda_payloads import SplitQueryPayload
+from payloads.lambda_responses import PerformQueryResponse
 
 
 SPLIT_SIZE = 1000000

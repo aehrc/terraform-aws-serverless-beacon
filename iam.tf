@@ -276,6 +276,50 @@ data aws_iam_policy_document lambda-getEntryTypes {
 }
 
 #
+# getFilteringTerms Lambda Function
+#
+data aws_iam_policy_document lambda-getFilteringTerms {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "athena:GetQueryExecution",
+      "athena:GetQueryResults",
+      "athena:StartQueryExecution"
+    ]
+    resources = [
+      aws_athena_workgroup.sbeacon-workgroup.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "glue:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:*",
+    ]
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
+    ]
+  }
+}
+
+#
 # getAnalyses Lambda Function
 #
 data aws_iam_policy_document lambda-getAnalyses {

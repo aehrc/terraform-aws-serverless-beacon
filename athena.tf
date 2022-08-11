@@ -30,7 +30,8 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
       serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
 
       parameters = {
-        "serialization.format" = 1
+        "serialization.format" = 1,
+        "orc.column.index.access" = false
       }
     }
 
