@@ -20,7 +20,8 @@ resource aws_dynamodb_table datasets {
     non_key_attributes = [
       "id",
       "vcfLocations",
-      "vcfGroups"
+      "vcfGroups",
+      "vcfChromosomeMap"
     ]
     projection_type = "INCLUDE"
   }

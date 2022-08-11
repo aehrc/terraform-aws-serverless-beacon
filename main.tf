@@ -21,7 +21,7 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   architectures = ["x86_64"]
-  memory_size = 2048
+  memory_size = 128
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-submitDataset.json
@@ -53,7 +53,7 @@ module "lambda-summariseDataset" {
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseDataset.json
@@ -84,7 +84,7 @@ module "lambda-summariseVcf" {
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseVcf.json
@@ -112,7 +112,7 @@ module "lambda-summariseSlice" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 2048
+  memory_size = 1500
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json
@@ -151,7 +151,7 @@ module "lambda-duplicateVariantSearch" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 8192
+  memory_size = 5000
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
@@ -221,7 +221,7 @@ module "lambda-getInfo" {
   description = "Returns basic information about the beacon and the datasets."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-getInfo.json
@@ -414,7 +414,7 @@ module "lambda-splitQuery" {
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 26
   policy = {
     json = data.aws_iam_policy_document.lambda-splitQuery.json
@@ -443,7 +443,7 @@ module "lambda-performQuery" {
   description = "Queries a slice of a vcf for a specified variant."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 24
   policy = {
     json = data.aws_iam_policy_document.lambda-performQuery.json

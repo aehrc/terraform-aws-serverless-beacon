@@ -25,44 +25,44 @@ def lambda_handler(event, context):
 
 
 if __name__ == '__main__':
-    # event = {
-    #     "resource": "/g_variants",
-    #     "path": "/g_variants",
-    #     "httpMethod": "POST",
-    #     "body": json.dumps({
-    #         "query": {
-    #             "requestParameters": {
-    #             "assemblyId": "GRCH38",
-    #             "includeResultsetResponses": "HIT",
-    #             "start": [
-    #                 10000000,
-    #                 10001000
-    #             ],
-    #             "end": [
-    #                 10000000,
-    #                 10001000
-    #             ],
-    #             "referenceBases": "A",
-    #             "referenceName": "5",
-    #             "alternateBases": "G"
-    #             },
-    #             "requestedGranularity": "record"
-    #         }
-    #     })
-    # }
-
     event = {
-        "resource": "/g_variants/{id}",
-        "path": "/g_variants/{id}",
-        "httpMethod": "GET",
-        "pathParameters": {
-            "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
-        },
-        "queryStringParameters": {
-            "requestedGranularity": "record"
-        },
+        "resource": "/g_variants",
+        "path": "/g_variants",
+        "httpMethod": "POST",
         "body": json.dumps({
+            "query": {
+                "requestParameters": {
+                "assemblyId": "GRCH38",
+                "includeResultsetResponses": "HIT",
+                "start": [
+                    10000000,
+                    10001000
+                ],
+                "end": [
+                    10000000,
+                    10001000
+                ],
+                "referenceBases": "A",
+                "referenceName": "5",
+                "alternateBases": "G"
+                },
+                "requestedGranularity": "record"
+            }
         })
     }
+
+    # event = {
+    #     "resource": "/g_variants/{id}",
+    #     "path": "/g_variants/{id}",
+    #     "httpMethod": "GET",
+    #     "pathParameters": {
+    #         "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
+    #     },
+    #     "queryStringParameters": {
+    #         "requestedGranularity": "record"
+    #     },
+    #     "body": json.dumps({
+    #     })
+    # }
 
     print(lambda_handler(event, dict()))

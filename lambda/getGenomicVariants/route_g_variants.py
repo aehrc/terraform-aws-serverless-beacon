@@ -14,7 +14,7 @@ import time
 from dynamodb.variant_queries import VariantQuery, VariantResponse
 from dynamodb.datasets import Dataset
 from api_response import bundle_response, bad_request
-from chrom_matching import get_matching_chromosome, get_vcf_chromosomes
+from chrom_matching import get_matching_chromosome
 import responses
 import entries
 from lambda_payloads import SplitQueryPayload
@@ -49,14 +49,6 @@ def split_query(payload: SplitQueryPayload, responses):
         InvocationType='Event',
         Payload=jsons.dumps(payload),
     )
-
-
-def get_vcf_chromosome_map(all_vcfs, chromosome):
-    vcf_chromosome_map = {}
-    for vcf in all_vcfs:
-        vcf_chromosomes = get_vcf_chromosomes(vcf)
-        vcf_chromosome_map[vcf] = get_matching_chromosome(vcf_chromosomes, chromosome)
-    return vcf_chromosome_map
 
 
 def get_datasets(assembly_id, dataset_ids=None):
@@ -135,10 +127,10 @@ def route(event):
 
 
     datasets = get_datasets(assemblyId)
-    check_all = includeResultsetResponses in ('HIT', 'ALL')
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
-    vcfs = { location for dataset in datasets for location in dataset.vcfLocations }
-    vcf_chromosomes = get_vcf_chromosome_map(vcfs, referenceName)
+    vcf_chromosomes = { vcfm.vcf: get_matching_chromosome(vcfm.chromosomes, referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap }
+    check_all = includeResultsetResponses in ('HIT', 'ALL')
+
     if len(start) == 2:
         start_min, start_max = start
     else:
