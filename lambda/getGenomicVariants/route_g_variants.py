@@ -13,10 +13,10 @@ import time
 
 from dynamodb.variant_queries import VariantQuery, VariantResponse
 from dynamodb.datasets import Dataset
-from api_response import bundle_response, bad_request
-from chrom_matching import get_matching_chromosome
-import responses
-import entries
+from apiutils.api_response import bundle_response, bad_request
+from utils.chrom_matching import get_matching_chromosome
+import apiutils.responses as responses
+import apiutils.entries as entries
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
 

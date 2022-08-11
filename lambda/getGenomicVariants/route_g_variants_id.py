@@ -11,12 +11,12 @@ import jsons
 from uuid import uuid4
 import time
 
-from api_response import bundle_response, bad_request
-from chrom_matching import get_matching_chromosome, get_vcf_chromosomes
+from apiutils.api_response import bundle_response, bad_request
+from utils.chrom_matching import get_matching_chromosome, get_vcf_chromosomes
 from dynamodb.datasets import Dataset
 from dynamodb.variant_queries import VariantQuery, VariantResponse
-import responses
-import entries
+import apiutils.responses as responses
+import apiutils.entries as entries
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
 

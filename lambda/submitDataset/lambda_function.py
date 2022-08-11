@@ -6,8 +6,8 @@ from jsonschema import Draft7Validator
 
 import boto3
 
-from api_response import bad_request, bundle_response
-from chrom_matching import get_vcf_chromosomes
+from apiutils.api_response import bad_request, bundle_response
+from utils.chrom_matching import get_vcf_chromosomes
 from dynamodb.datasets import Dataset, VcfChromosomeMap
 
 

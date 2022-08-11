@@ -3,7 +3,7 @@ import os
 import boto3
 import time
 
-from api_response import bundle_response
+from apiutils.api_response import bundle_response
 
 
 athena = boto3.client('athena')

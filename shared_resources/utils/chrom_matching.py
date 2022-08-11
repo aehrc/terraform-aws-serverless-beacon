@@ -1,6 +1,6 @@
 import subprocess
 
-from lambda_utils import clear_tmp
+from .lambda_utils import clear_tmp
 
 
 CHROMOSOME_ALIASES = {

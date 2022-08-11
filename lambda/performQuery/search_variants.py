@@ -6,8 +6,8 @@ from uuid import uuid4
 import boto3
 from botocore.exceptions import ClientError
 
-from lambda_payloads import PerformQueryPayload
-from lambda_responses import PerformQueryResponse
+from payloads.lambda_payloads import PerformQueryPayload
+from payloads.lambda_responses import PerformQueryResponse
 import dynamodb.variant_queries as db
 
 

@@ -389,6 +389,9 @@ module "lambda-getGenomicVariants" {
     SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
     BEACON_API_VERSION = local.api_version
     PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
+    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
+    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
   }
 
   layers = [
@@ -396,38 +399,6 @@ module "lambda-getGenomicVariants" {
     "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
     "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
     "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
-  ]
-}
-
-#
-# queryDatasets Lambda Function
-#
-module "lambda-queryDatasets" {
-  source = "github.com/bhosking/terraform-aws-lambda"
-
-  function_name = "queryDatasets"
-  description = "Invokes splitQuery for each dataset and returns result."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 2048
-  timeout = 28
-  policy = {
-    json = data.aws_iam_policy_document.lambda-queryDatasets.json
-  }
-  source_path = "${path.module}/lambda/queryDatasets"
-  tags = var.common-tags
-
-  environment = {
-    variables = {
-      BEACON_ID = var.beacon-id
-      DATASETS_TABLE = aws_dynamodb_table.datasets.name
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
-      BEACON_API_VERSION = local.api_version
-    }
-  }
-
-  layers = [
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
   ]
 }
 

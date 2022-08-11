@@ -3,7 +3,8 @@ import os
 from time import time
 from datetime import datetime
 
-from api_response import bundle_response
+from apiutils.api_response import bundle_response
+
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 VERSION = os.environ['VERSION']

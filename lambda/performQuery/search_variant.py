@@ -1,7 +1,7 @@
 import re
 import subprocess
 
-from lambda_payloads import PerformQueryPayload
+from payloads.lambda_payloads import PerformQueryPayload
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
 
