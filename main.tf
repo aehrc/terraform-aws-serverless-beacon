@@ -8,6 +8,25 @@ locals {
 
   maximum_load_file_size  = 750000000
   vcf_processed_file_size = 50000000
+
+  # TODO use the following organisation to refactor the IAM policy assignment
+  # this makes the code simpler
+  # sbeacon info variables
+  sbeacon_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
+  }
+  # athena related variables
+  athena_variables = {
+    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
+    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
+  }
+  # layers
+  binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
+  pynamodb_layer = "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}"
+  python_jsonschema_layer = "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}"
+  python_jsons_layer = "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}"
 }
 
 #
@@ -37,9 +56,9 @@ module "lambda-submitDataset" {
   }
   
   layers = [
-    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
-    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+    local.pynamodb_layer,
+    local.python_jsonschema_layer,
+    local.binaries_layer,
   ]
 }
 
@@ -323,19 +342,20 @@ module "lambda-getFilteringTerms" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getFilteringTerms.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getFilteringTerms.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/getFilteringTerms"
 
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
-    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
-    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
-  }
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables
+  )
 }
 
 #
@@ -374,31 +394,33 @@ module "lambda-getGenomicVariants" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getGenomicVariants.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getGenomicVariants.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/getGenomicVariants"
 
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
-    VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
-    SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
-    BEACON_API_VERSION = local.api_version
-    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
-    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
-    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
-    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
-  }
+  environment_variables = merge(
+    {
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+      VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
+      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables
+  )
 
   layers = [
-    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
-    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
-    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
+    local.python_jsons_layer,
+    local.pynamodb_layer,
+    local.binaries_layer,
+    local.python_jsonschema_layer,
   ]
 }
 
@@ -427,7 +449,7 @@ module "lambda-splitQuery" {
   }
 
   layers = [
-    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
+    local.python_jsons_layer,
   ]
 }
 
@@ -450,9 +472,9 @@ module "lambda-performQuery" {
   tags = var.common-tags
 
   layers = [
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
-    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
-    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
+    local.binaries_layer,
+    local.python_jsons_layer,
+    local.pynamodb_layer,
   ]
 
   environment = {

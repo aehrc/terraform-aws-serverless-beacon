@@ -15,7 +15,7 @@ PERFORM_QUERY = os.environ['PERFORM_QUERY_LAMBDA']
 aws_lambda = boto3.client('lambda')
 
 
-def perform_query(payload, responses):
+def perform_query(payload):
 
     print(f"Invoking {PERFORM_QUERY} with payload: {jsons.dump(payload)}")
     response = aws_lambda.invoke(
@@ -48,8 +48,8 @@ def split_query(split_payload: SplitQueryPayload):
         split_end = min(split_start + SPLIT_SIZE - 1, split_payload.region_end)
         # perform query on this split of the vcf
         for vcf_location, chrom in split_payload.vcf_locations.items():
-            # region for bcftools
             payload = PerformQueryPayload(
+                passthrough=split_payload.passthrough,
                 dataset_id=split_payload.dataset_id,
                 query_id=split_payload.query_id,
                 reference_bases=split_payload.reference_bases,
@@ -61,15 +61,13 @@ def split_query(split_payload: SplitQueryPayload):
                 variant_min_length=split_payload.variant_min_length,
                 variant_max_length=split_payload.variant_max_length,
                 include_details=check_all,
+                # region for bcftools
                 region=f'{chrom}:{split_start}-{split_end}',
                 vcf_location=vcf_location
             )
             t = threading.Thread(
                     target=perform_query, 
-                    kwargs={
-                        'payload': payload, 
-                        'responses': responses
-                    }
+                    kwargs={ 'payload': payload }
                 )
             t.start()
             threads.append(t)

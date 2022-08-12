@@ -109,7 +109,7 @@ boolean_response = {
             "apiVersion": "get from request",  # TODO
             "requestedSchemas": [],  # TODO
             "pagination": {},  # TODO
-            "requestedGranularity": "record"  # TODO
+            "requestedGranularity": "boolean"  # TODO
         }
     },
     "responseSummary": {
@@ -123,9 +123,7 @@ boolean_response = {
 
 def get_result_sets_response(*, 
         reqAPI=BEACON_API_VERSION, 
-        reqGranularity='boolean', 
         reqPagination={}, 
-        resGranularity='boolean', 
         results=[], 
         setType=None, 
         info={},
@@ -144,12 +142,12 @@ def get_result_sets_response(*,
                     "schema": "beacon-map-v2.0.0"
                 }
             ],
-            "returnedGranularity": resGranularity,
+            "returnedGranularity": 'record',
             "receivedRequestSummary": {
                 "apiVersion": reqAPI,
                 "requestedSchemas": [], # TODO define this
                 "pagination": reqPagination,
-                "requestedGranularity": reqGranularity
+                "requestedGranularity": 'record'
             }
         },
         "response": { # OUTPUT TARGET

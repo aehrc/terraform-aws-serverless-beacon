@@ -287,36 +287,6 @@ data aws_iam_policy_document lambda-getFilteringTerms {
       aws_dynamodb_table.datasets.arn,
     ]
   }
-
-  statement {
-    actions = [
-      "athena:GetQueryExecution",
-      "athena:GetQueryResults",
-      "athena:StartQueryExecution"
-    ]
-    resources = [
-      aws_athena_workgroup.sbeacon-workgroup.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "glue:*"
-    ]
-    resources = [
-      "*"
-    ]
-  }
-
-  statement {
-    actions = [
-      "s3:*",
-    ]
-    resources = [
-      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
-      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
-    ]
-  }
 }
 
 #
@@ -429,5 +399,42 @@ data aws_iam_policy_document lambda-performQuery {
       "s3:ListBucket",
     ]
     resources = ["*"]
+  }
+}
+
+# 
+# Generic IAM policies
+# 
+
+# Athena Full Access
+data aws_iam_policy_document athena-full-access {
+  statement {
+    actions = [
+      "athena:GetQueryExecution",
+      "athena:GetQueryResults",
+      "athena:StartQueryExecution"
+    ]
+    resources = [
+      aws_athena_workgroup.sbeacon-workgroup.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "glue:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:*",
+    ]
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
+    ]
   }
 }

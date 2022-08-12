@@ -7,6 +7,9 @@ import jsons
 # payload accepted by SplitQuery lambda
 class SplitQueryPayload(jsons.JsonSerializable):
     def __init__(self, *, 
+            # passthrough variable holds arbitrary data
+            # can be used to pass params to splitquery
+            passthrough={},
             dataset_id,
             query_id,
             reference_bases,
@@ -23,6 +26,7 @@ class SplitQueryPayload(jsons.JsonSerializable):
             variant_min_length,
             variant_max_length
         ):
+        self.passthrough = passthrough
         self.dataset_id = dataset_id
         self.query_id = query_id
         self.reference_bases = reference_bases
@@ -42,6 +46,8 @@ class SplitQueryPayload(jsons.JsonSerializable):
 
 class PerformQueryPayload(jsons.JsonSerializable):
     def __init__(self, *,
+            # passthrough variable holds arbitrary data
+            passthrough={},
             dataset_id=None,
             query_id='test',
             region=None,
@@ -56,6 +62,7 @@ class PerformQueryPayload(jsons.JsonSerializable):
             variant_max_length=None,
             vcf_location=None,
         ):
+        self.passthrough = passthrough
         self.dataset_id = dataset_id
         self.query_id = query_id
         self.region = region

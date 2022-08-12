@@ -62,6 +62,9 @@ def get_entry_types():
                         "label": "Variant"
                     },
                     "partOfSpecification": "Beacon v2.0.0"
+                },
+                "individual": {
+                    
                 }
             }
         }

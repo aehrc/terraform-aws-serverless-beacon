@@ -28,9 +28,9 @@ def fetch_athena_data():
         ''',
         # ClientRequestToken='string',
         QueryExecutionContext={
-            'Database': 'sbeacon-metadata'
+            'Database': METADATA_DATABASE
         },
-        WorkGroup='query_workgroup'
+        WorkGroup=ATHENA_WORKGROUP
     )
 
     retries = 0

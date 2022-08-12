@@ -31,7 +31,8 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
 
       parameters = {
         "serialization.format" = 1,
-        "orc.column.index.access" = false
+        "orc.column.index.access" = "FALSE"
+        "hive.orc.use-column-names" = "TRUE"
       }
     }
 
@@ -41,7 +42,7 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "datasetIds"
+      name = "samplename"
       type = "string"
     }
 
@@ -61,7 +62,7 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "geographicOrigin"
+      name = "geographicorigin"
       type = "string"
     }
 
@@ -71,12 +72,12 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "interventionsOrProcedures"
+      name = "interventionsorprocedures"
       type = "string"
     }
 
     columns {
-      name = "karyotypicSex"
+      name = "karyotypicsex"
       type = "string"
     }
 
@@ -91,7 +92,7 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "phenotypicFeatures"
+      name = "phenotypicfeatures"
       type = "string"
     }
 
@@ -104,6 +105,18 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
       name = "treatments"
       type = "string"
     }
+  }
+
+  # to optimise performance
+  # (mostly to reduce cost)
+  # individual records are per dataset
+  # because different datasets may associate 
+  # with different ontology terms
+  # such associations will be lost if we kept one individual
+  # record for all datasets that they appear 
+  partition_keys {
+    name = "datasetid"
+    type = "string"
   }
 }
 
@@ -126,7 +139,10 @@ resource "aws_glue_crawler" "sbeacon-crawler" {
   "Version":1.0,
   "Grouping": {
     "TableGroupingPolicy": "CombineCompatibleSchemas"
-  }
+  },
+  "CrawlerOutput": {
+      "Partitions": { "AddOrUpdateBehavior": "InheritFromTable" }
+   }
 }
 EOF
 }
