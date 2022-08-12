@@ -11,13 +11,15 @@ import jsons
 from uuid import uuid4
 import time
 
-import pynamo_mappings as db
-from api_response import bundle_response, bad_request
-from chrom_matching import get_matching_chromosome, get_vcf_chromosomes
-import responses
-import entries
-from lambda_payloads import SplitQueryPayload
-from lambda_responses import PerformQueryResponse
+from dynamodb.variant_queries import VariantQuery, VariantResponse
+from dynamodb.datasets import Dataset
+from local_utils import split_query, get_split_query_fan_out
+from apiutils.api_response import bundle_response, bad_request
+from utils.chrom_matching import get_matching_chromosome
+import apiutils.responses as responses
+import apiutils.entries as entries
+from payloads.lambda_payloads import SplitQueryPayload
+from payloads.lambda_responses import PerformQueryResponse
 
 
 SPLIT_SIZE = 1000000
@@ -32,35 +34,9 @@ s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def get_split_query_fan_out(region_start, region_end):
-    fan_out = 0
-    split_start = region_start
-    while split_start <= region_end:
-        fan_out += 1
-        split_start += SPLIT_SIZE
-    return fan_out
-
-
-def split_query(payload: SplitQueryPayload, responses):
-    print(f"Invoking {SPLIT_QUERY} with payload: {jsons.dump(payload)}")
-    aws_lambda.invoke(
-        FunctionName=SPLIT_QUERY,
-        InvocationType='Event',
-        Payload=jsons.dumps(payload),
-    )
-
-
-def get_vcf_chromosome_map(all_vcfs, chromosome):
-    vcf_chromosome_map = {}
-    for vcf in all_vcfs:
-        vcf_chromosomes = get_vcf_chromosomes(vcf)
-        vcf_chromosome_map[vcf] = get_matching_chromosome(vcf_chromosomes, chromosome)
-    return vcf_chromosome_map
-
-
 def get_datasets(assembly_id, dataset_ids=None):
     items = []
-    for item in db.Dataset.datasetIndex.query(assembly_id):
+    for item in Dataset.datasetIndex.query(assembly_id):
         items.append(item)
     # TODO support more advanced querying
     if dataset_ids:
@@ -134,10 +110,10 @@ def route(event):
 
 
     datasets = get_datasets(assemblyId)
-    check_all = includeResultsetResponses in ('HIT', 'ALL')
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
-    vcfs = { location for dataset in datasets for location in dataset.vcfLocations }
-    vcf_chromosomes = get_vcf_chromosome_map(vcfs, referenceName)
+    vcf_chromosomes = { vcfm.vcf: get_matching_chromosome(vcfm.chromosomes, referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap }
+    check_all = includeResultsetResponses in ('HIT', 'ALL')
+
     if len(start) == 2:
         start_min, start_max = start
     else:
@@ -174,9 +150,8 @@ def route(event):
     dataset_variant_groups = dict()
 
     # record the query event on DB
-    query_record = db.VariantQuery(query_id)
+    query_record = VariantQuery(query_id)
     query_record.save()
-    perform_query_fan_out = 0
     split_query_fan_out = get_split_query_fan_out(start_min, start_max)
 
     # parallelism across datasets
@@ -200,9 +175,9 @@ def route(event):
         dataset_variant_groups[dataset.id] = vcf_groups
 
         # record perform query fan out size
-        perform_query_fan_out += split_query_fan_out * len(vcf_locations)
+        perform_query_fan_out = split_query_fan_out * len(vcf_locations)
         query_record.update(actions=[
-            db.VariantQuery.fanOut.set(query_record.fanOut + perform_query_fan_out)
+            VariantQuery.fanOut.set(query_record.fanOut + perform_query_fan_out)
         ])
 
         # call split query for each dataset found
@@ -225,10 +200,7 @@ def route(event):
             )
         thread = threading.Thread(
                 target=split_query,
-                kwargs={
-                    'payload': payload,
-                    'responses': thread_responses,
-                }
+                kwargs={ 'payload': payload }
             )
         thread.start()
         threads.append(thread)
@@ -252,7 +224,7 @@ def route(event):
 
     while time.time() - start_time < REQUEST_TIMEOUT:
         try:
-            for item in db.VariantResponse.variantResponseIndex.query(query_id, db.VariantResponse.responseNumber > last_read_position):
+            for item in VariantResponse.variantResponseIndex.query(query_id, VariantResponse.responseNumber > last_read_position):
                 query_results[item.responseNumber] = item.responseLocation
                 last_read_position = item.responseNumber
             query_record.refresh()
@@ -289,7 +261,6 @@ def route(event):
                 exists = True
                 if check_all:
                     variants.update(query_response.variants)
-                    vcf_location = query_response.vcf_location
 
                     for variant in query_response.variants:
                         chrom, pos, ref, alt, typ = variant.split('\t')
@@ -311,7 +282,6 @@ def route(event):
 
     if requestedGranularity in ('record', 'aggregated'):
         response = responses.get_result_sets_response(
-            resGranularity='record', 
             setType='genomicVariant', 
             exists=exists,
             total=len(variants),

@@ -276,6 +276,20 @@ data aws_iam_policy_document lambda-getEntryTypes {
 }
 
 #
+# getFilteringTerms Lambda Function
+#
+data aws_iam_policy_document lambda-getFilteringTerms {
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+    ]
+  }
+}
+
+#
 # getAnalyses Lambda Function
 #
 data aws_iam_policy_document lambda-getAnalyses {
@@ -349,35 +363,6 @@ data aws_iam_policy_document lambda-getGenomicVariants {
 }
 
 #
-# queryDatasets Lambda Function
-#
-data aws_iam_policy_document lambda-queryDatasets {
-  statement {
-    actions = [
-      "dynamodb:Query",
-    ]
-    resources = [
-      "${aws_dynamodb_table.datasets.arn}/index/*",
-    ]
-  }
-
-  statement {
-    actions = [
-      "lambda:InvokeFunction",
-    ]
-    resources = [module.lambda-splitQuery.function_arn]
-  }
-
-  statement {
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
-    ]
-    resources = ["*"]
-  }
-}
-
-#
 # splitQuery Lambda Function
 #
 data aws_iam_policy_document lambda-splitQuery {
@@ -388,7 +373,6 @@ data aws_iam_policy_document lambda-splitQuery {
     resources = [module.lambda-performQuery.function_arn]
   }
 }
-
 
 #
 # performQuery Lambda Function
@@ -418,32 +402,39 @@ data aws_iam_policy_document lambda-performQuery {
   }
 }
 
-# #
-# # API: / GET
-# #
-# resource aws_iam_role api-root-get {
-#   name = "apiRootGetRole"
-#   assume_role_policy = data.aws_iam_policy_document.main-apigateway.json
-#   tags = var.common-tags
-# }
+# 
+# Generic IAM policies
+# 
 
-# resource aws_iam_role_policy_attachment api-root-get {
-#   role = aws_iam_role.api-root-get.name
-#   policy_arn = aws_iam_policy.api-root-get.arn
-# }
+# Athena Full Access
+data aws_iam_policy_document athena-full-access {
+  statement {
+    actions = [
+      "athena:GetQueryExecution",
+      "athena:GetQueryResults",
+      "athena:StartQueryExecution"
+    ]
+    resources = [
+      aws_athena_workgroup.sbeacon-workgroup.arn,
+    ]
+  }
 
-# resource aws_iam_policy api-root-get {
-#   name_prefix = "api-root-get"
-#   policy = data.aws_iam_policy_document.api-root-get.json
-# }
+  statement {
+    actions = [
+      "glue:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
 
-# data aws_iam_policy_document api-root-get {
-#   statement {
-#     actions = [
-#       "dynamodb:Scan",
-#     ]
-#     resources = [
-#       aws_dynamodb_table.datasets.arn,
-#     ]
-#   }
-# }
+  statement {
+    actions = [
+      "s3:*",
+    ]
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
+    ]
+  }
+}

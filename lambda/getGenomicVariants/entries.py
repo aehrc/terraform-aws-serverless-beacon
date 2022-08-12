@@ -1,1 +1,0 @@
-../../shared_resources/entries.py

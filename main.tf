@@ -8,6 +8,25 @@ locals {
 
   maximum_load_file_size  = 750000000
   vcf_processed_file_size = 50000000
+
+  # TODO use the following organisation to refactor the IAM policy assignment
+  # this makes the code simpler
+  # sbeacon info variables
+  sbeacon_variables = {
+    BEACON_API_VERSION = local.api_version
+    BEACON_ID = var.beacon-id
+  }
+  # athena related variables
+  athena_variables = {
+    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
+    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
+  }
+  # layers
+  binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
+  pynamodb_layer = "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}"
+  python_jsonschema_layer = "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}"
+  python_jsons_layer = "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}"
 }
 
 #
@@ -21,8 +40,8 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   architectures = ["x86_64"]
-  memory_size = 2048
-  timeout = 60
+  memory_size = 128
+  timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-submitDataset.json
   source_path = "${path.module}/lambda/submitDataset"
@@ -37,9 +56,9 @@ module "lambda-submitDataset" {
   }
   
   layers = [
-    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
-    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+    local.pynamodb_layer,
+    local.python_jsonschema_layer,
+    local.binaries_layer,
   ]
 }
 
@@ -53,8 +72,8 @@ module "lambda-summariseDataset" {
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
-  timeout = 60
+  memory_size = 128
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseDataset.json
   }
@@ -84,8 +103,8 @@ module "lambda-summariseVcf" {
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
-  timeout = 60
+  memory_size = 128
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseVcf.json
   }
@@ -112,8 +131,8 @@ module "lambda-summariseSlice" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 768
-  timeout = 60
+  memory_size = 1500
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-summariseSlice.json
   }
@@ -151,7 +170,7 @@ module "lambda-duplicateVariantSearch" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 1536
+  memory_size = 5000
   timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
@@ -221,8 +240,8 @@ module "lambda-getInfo" {
   description = "Returns basic information about the beacon and the datasets."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
-  timeout = 28
+  memory_size = 128
+  timeout = 900
   policy = {
     json = data.aws_iam_policy_document.lambda-getInfo.json
   }
@@ -312,6 +331,34 @@ module "lambda-getEntryTypes" {
 }
 
 #
+# getFilteringTerms Lambda Function
+#
+module "lambda-getFilteringTerms" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getFilteringTerms"
+  description = "Get the beacon map."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getFilteringTerms.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
+  source_path = "${path.module}/lambda/getFilteringTerms"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables
+  )
+}
+
+#
 # getAnalyses Lambda Function
 #
 module "lambda-getAnalyses" {
@@ -347,60 +394,33 @@ module "lambda-getGenomicVariants" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getGenomicVariants.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getGenomicVariants.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/getGenomicVariants"
 
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
-    VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
-    SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
-    BEACON_API_VERSION = local.api_version
-    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
-  }
-
-  layers = [
-    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
-    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
-    "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}",
-  ]
-}
-
-#
-# queryDatasets Lambda Function
-#
-module "lambda-queryDatasets" {
-  source = "github.com/bhosking/terraform-aws-lambda"
-
-  function_name = "queryDatasets"
-  description = "Invokes splitQuery for each dataset and returns result."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 2048
-  timeout = 28
-  policy = {
-    json = data.aws_iam_policy_document.lambda-queryDatasets.json
-  }
-  source_path = "${path.module}/lambda/queryDatasets"
-  tags = var.common-tags
-
-  environment = {
-    variables = {
-      BEACON_ID = var.beacon-id
+  environment_variables = merge(
+    {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+      VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
-      BEACON_API_VERSION = local.api_version
-    }
-  }
+      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables
+  )
 
   layers = [
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
+    local.python_jsons_layer,
+    local.pynamodb_layer,
+    local.binaries_layer,
+    local.python_jsonschema_layer,
   ]
 }
 
@@ -414,7 +434,7 @@ module "lambda-splitQuery" {
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 26
   policy = {
     json = data.aws_iam_policy_document.lambda-splitQuery.json
@@ -429,7 +449,7 @@ module "lambda-splitQuery" {
   }
 
   layers = [
-    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
+    local.python_jsons_layer,
   ]
 }
 
@@ -443,7 +463,7 @@ module "lambda-performQuery" {
   description = "Queries a slice of a vcf for a specified variant."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 128
   timeout = 24
   policy = {
     json = data.aws_iam_policy_document.lambda-performQuery.json
@@ -452,9 +472,9 @@ module "lambda-performQuery" {
   tags = var.common-tags
 
   layers = [
-    "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}",
-    "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}",
-    "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}",
+    local.binaries_layer,
+    local.python_jsons_layer,
+    local.pynamodb_layer,
   ]
 
   environment = {

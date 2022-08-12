@@ -7,6 +7,7 @@
 #include <regex>
 #include <generalutils.hpp>
 #include <gzip.hpp>
+#include <awsutils.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/s3/S3Client.h>
@@ -22,7 +23,6 @@ class writeDataToS3
 {
 private:
     string s3BucketKey;
-    Aws::S3::S3Client const &s3Client;
     queue<generalutils::vcfData> vcfBuffer;
     uint16_t startBasePairRegion;
     string contig = "";
@@ -36,7 +36,7 @@ private:
         return length + sizeof(uint16_t); // Return the string length and the length int
     }
 
-    bool saveOutputToS3(string objectName, Aws::S3::S3Client const &client, queue<generalutils::vcfData> &input)
+    bool saveOutputToS3(string objectName, queue<generalutils::vcfData> &input)
     {
         size_t bufferSize = VCF_S3_OUTPUT_SIZE_LIMIT;
         char *fileBuffer = new char[VCF_S3_OUTPUT_SIZE_LIMIT];
@@ -77,7 +77,7 @@ private:
         request.SetKey(objectName);
         request.SetBody(input_data);
 
-        Aws::S3::Model::PutObjectOutcome outcome = client.PutObject(request);
+        Aws::S3::Model::PutObjectOutcome outcome = awsutils::getNewClient().PutObject(request);
 
         if (!outcome.IsSuccess())
         {
@@ -96,7 +96,7 @@ private:
         if (vcfBuffer.size() > 0)
         {
             string fileNameAppend = "vcf-summaries/contig/" + contig + "/" + s3BucketKey + "/regions/" + to_string(vcfBuffer.front().pos) + "-" + to_string(vcfBuffer.back().pos);
-            saveOutputToS3(fileNameAppend, s3Client, vcfBuffer);
+            saveOutputToS3(fileNameAppend, vcfBuffer);
         }
     }
 
@@ -134,7 +134,7 @@ private:
     }
 
 public:
-    writeDataToS3(string location, Aws::S3::S3Client const &client) : s3Client(client)
+    writeDataToS3(string location)
     {
         // Remove leading "s3://" and trailing ".vcf.gz"
         s3BucketKey = location.substr(5, location.size() - 12);

@@ -4,8 +4,8 @@ import re
 import subprocess
 
 import search_variants
-import search_variant
-from lambda_payloads import PerformQueryPayload
+import search_variant_samples
+from payloads.lambda_payloads import PerformQueryPayload
 
 BASES = [
     'A',
@@ -22,25 +22,35 @@ get_all_calls = all_count_pattern.findall
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     performQueryPayload = jsons.load(event, PerformQueryPayload)
-    response = search_variants.perform_query(performQueryPayload)
+    # switch operations
+    if performQueryPayload.passthrough.get('samplesOnly', False):
+        response = search_variant_samples.perform_query(performQueryPayload)
+    else:
+        response = search_variants.perform_query(performQueryPayload)
+
     print(f'Returning response: \n {response.dump()}')
     return response.dump()
 
 
 if __name__ == '__main__':
     event = {
-        "region": "5:10000001-10001001",
-        "reference_bases": "A",
-        "end_min": 10000001,
-        "end_max": 10001001,
         "alternate_bases": "G",
-        "variant_type": None,
+        "dataset_id": "pop-2-wic",
+        "end_max": 10000659,
+        "end_min": 10000658,
         "include_details": True,
-        "dataset_id": 'test',
-        'requested_granularity': 'record',
-        'variant_min_length': 0,
-        'variant_max_length': -1,
+        "passthrough": {
+            'samplesOnly': True
+        },
+        "query_id": "ac0163962988414ca28f1d5138867b40",
+        "reference_bases": "A",
+        "region": "5:10000658-10000659",
+        "requested_granularity": "record",
+        "variant_max_length": -1,
+        "variant_min_length": 0,
+        "variant_type": None,
         "vcf_location": "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
     }
+
 
     lambda_handler(event, dict())

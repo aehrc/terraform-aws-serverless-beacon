@@ -29,3 +29,9 @@ variable "variants-bucket-prefix" {
     description = "S3 bucket for storing vcf summaries used for duplicate variant searches"
     default     = ""
 }
+
+variable "metadata-bucket-prefix" {
+  type        = string
+  description = "S3 bucket for storing metadata"
+  default     = ""
+}

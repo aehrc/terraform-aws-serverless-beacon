@@ -1,7 +1,7 @@
 import json
 import os
 
-from api_response import bundle_response
+from apiutils.api_response import bundle_response
 
 
 def get_config():

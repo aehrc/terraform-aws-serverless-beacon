@@ -54,28 +54,6 @@ resource aws_lambda_permission SNSduplicateVariantSearch {
 }
 
 #
-# queryDatasets Lambda Function
-#
-resource aws_lambda_permission APIQueryDatasets {
-  statement_id = "AllowAPIQueryDatasetsInvoke"
-  action = "lambda:InvokeFunction"
-  function_name = module.lambda-queryDatasets.function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.query.path_part}"
-}
-
-#
-# splitQuery Lambda Function
-#
-resource aws_lambda_permission QueryDatasetsLambdaSplitQuery {
-  statement_id = "AllowQueryDatasetsLambdaSplitQueryInvoke"
-  action = "lambda:InvokeFunction"
-  function_name = module.lambda-splitQuery.function_name
-  principal = "lambda.amazonaws.com"
-  source_arn = module.lambda-queryDatasets.function_arn
-}
-
-#
 # performQuery Lambda Function
 #
 resource aws_lambda_permission SplitQueryLambdaPerformQuery {

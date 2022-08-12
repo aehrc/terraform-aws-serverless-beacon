@@ -7,6 +7,7 @@
 #include <zlib.h>
 #include <regex>
 #include <generalutils.hpp>
+#include <awsutils.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
@@ -38,12 +39,12 @@ class Downloader
 {
     Aws::S3::Model::GetObjectRequest m_request;
     Aws::S3::S3Client m_s3Client;
-    std::thread m_thread;
+    thread m_thread;
 
 public:
     size_t downloadSize;
-    Downloader(Aws::S3::S3Client const &s3Client, Aws::String const &bucket, Aws::String const &key, uint8_t *windowStart, size_t numBytes)
-        : m_s3Client(s3Client), downloadSize(0)
+    Downloader(Aws::String const &bucket, Aws::String const &key, uint8_t *windowStart, size_t numBytes)
+        : m_s3Client(awsutils::getNewClient()), downloadSize(0)
     {
         m_request.SetBucket(bucket);
         m_request.SetKey(key);
@@ -53,23 +54,24 @@ public:
 
     static void download(Aws::S3::S3Client const &s3Client, Aws::S3::Model::GetObjectRequest request, uint_fast64_t firstByte, size_t numBytes)
     {
-        Aws::String byteRange = "bytes=" + std::to_string(firstByte) + "-" + std::to_string(firstByte + numBytes - 1);
+        Aws::String byteRange = "bytes=" + to_string(firstByte) + "-" + to_string(firstByte + numBytes - 1);
         request.SetRange(byteRange);
-        std::cout << "Attempting to download s3://" << request.GetBucket() << "/" << request.GetKey() << " with byterange: \"" << byteRange << "\"" << std::endl;
+        cout << "Attempting to download s3://" << request.GetBucket() << "/" << request.GetKey() << " with byterange: \"" << byteRange << "\"" << endl;
         Aws::S3::Model::GetObjectOutcome response = s3Client.GetObject(request);
         if (!response.IsSuccess())
         {
-            std::cout << "Could not download data." << std::endl;
+            cout << "Could not download data." << endl;
+            cout << response.GetError().GetMessage() << endl;
         }
         size_t totalBytes = response.GetResult().GetContentLength();
-        std::cout << "Finished download. Got " << totalBytes << " bytes." << std::endl;
+        cout << "Finished download. Got " << totalBytes << " bytes." << endl;
     }
 
     void startDownload(uint_fast64_t firstByte, size_t numBytes)
     {
         if (numBytes > 0)
         {
-            m_thread = std::thread(download, m_s3Client, m_request, firstByte, numBytes);
+            m_thread = thread(download, m_s3Client, m_request, firstByte, numBytes);
             downloadSize = numBytes;
         }
     }

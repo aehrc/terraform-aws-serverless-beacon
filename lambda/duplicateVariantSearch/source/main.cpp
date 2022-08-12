@@ -27,7 +27,6 @@ Aws::String bundleResponse(Aws::String const& body, int statusCode)
 }
 
 
-
 static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const& req, Aws::S3::S3Client &s3Client, Aws::DynamoDB::DynamoDBClient &dynamodbClient)
 {
     Aws::String messageString = awsutils::getMessageString(req);

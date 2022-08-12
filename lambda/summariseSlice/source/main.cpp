@@ -33,6 +33,10 @@
 // #define INCLUDE_STOP_WATCH
 // #define DEBUG_ON
 
+const char *DATASETS_TABLE = getenv("DATASETS_TABLE");
+const char *ASSEMBLY_GSI = getenv("ASSEMBLY_GSI");
+const char *SUMMARISE_DATASET_SNS_TOPIC_ARN = getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN");
+
 using namespace std;
 
 struct RegionStats
@@ -123,8 +127,8 @@ Aws::String bundleResponse(Aws::String const &body, int statusCode)
 Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String location)
 {
     Aws::DynamoDB::Model::ScanRequest request;
-    request.SetTableName(getenv("DATASETS_TABLE"));
-    request.SetIndexName(getenv("ASSEMBLY_GSI"));
+    request.SetTableName(DATASETS_TABLE);
+    request.SetIndexName(ASSEMBLY_GSI);
     request.SetProjectionExpression("id");
     request.SetFilterExpression("contains(vcfLocations, :location)");
     Aws::Map<Aws::String, Aws::DynamoDB::Model::AttributeValue> expressionAttributeValues;
@@ -193,7 +197,7 @@ Aws::String getMessageString(aws::lambda_runtime::invocation_request const &req)
     return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
 }
 
-const RegionStats getRegionStats(Aws::S3::S3Client const &s3Client, Aws::String location, int64_t virtualStart, int64_t virtualEnd)
+const RegionStats getRegionStats(Aws::String location, int64_t virtualStart, int64_t virtualEnd)
 {
     VcfChunk chunk(virtualStart, virtualEnd);
 
@@ -213,9 +217,9 @@ const RegionStats getRegionStats(Aws::S3::S3Client const &s3Client, Aws::String 
     stop_watch s = stop_watch();
     s.start();
 #endif
-    VcfChunkReader vcfChunkReader(bucket, key, s3Client, chunk);
+    VcfChunkReader vcfChunkReader(bucket, key, chunk);
     std::cout << "Loaded Reader" << std::endl;
-    writeDataToS3 s3Data = writeDataToS3(location, s3Client);
+    writeDataToS3 s3Data = writeDataToS3(location);
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
     RegionStats regionStats = RegionStats();
@@ -247,8 +251,9 @@ const RegionStats getRegionStats(Aws::S3::S3Client const &s3Client, Aws::String 
 
 void summariseDatasets(Aws::SNS::SNSClient const &snsClient, Aws::Vector<Aws::String> datasetIds)
 {
+    // TODO use the util here
     Aws::SNS::Model::PublishRequest request;
-    request.SetTopicArn(getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN"));
+    request.SetTopicArn(SUMMARISE_DATASET_SNS_TOPIC_ARN);
     for (Aws::String &datasetId : datasetIds)
     {
         do
@@ -284,7 +289,7 @@ void summariseDatasets(Aws::SNS::SNSClient const &snsClient, Aws::Vector<Aws::St
 bool updateFileInDataset(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String vcfLocation, Aws::String datasetId)
 {
     Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(getenv("DATASETS_TABLE"));
+    request.SetTableName(DATASETS_TABLE);
     Aws::DynamoDB::Model::AttributeValue keyValue;
     keyValue.SetS(datasetId);
     request.AddKey("id", keyValue);
@@ -435,8 +440,10 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::
     } while (true);
 }
 
-static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtime::invocation_request const &req,
-                                                              Aws::S3::S3Client const &s3Client, Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::SNS::SNSClient const &snsClient)
+static aws::lambda_runtime::invocation_response lambdaHandler(
+    aws::lambda_runtime::invocation_request const &req,
+    Aws::DynamoDB::DynamoDBClient const &dynamodbClient,
+    Aws::SNS::SNSClient const &snsClient)
 {
     Aws::String messageString = getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
@@ -445,7 +452,7 @@ static aws::lambda_runtime::invocation_response lambdaHandler(aws::lambda_runtim
     Aws::String location = messageView.GetString("location");
     int64_t virtualStart = messageView.GetInt64("virtual_start");
     int64_t virtualEnd = messageView.GetInt64("virtual_end");
-    RegionStats regionStats = getRegionStats(s3Client, location, virtualStart, virtualEnd);
+    RegionStats regionStats = getRegionStats(location, virtualStart, virtualEnd);
 
     if (updateVcfSummary(dynamodbClient, location, virtualStart, virtualEnd, regionStats))
     {
@@ -475,9 +482,8 @@ int main()
         {
             std::cout << "Event Received: " << req.payload << std::endl;
             Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
-            Aws::S3::S3Client s3Client(credentialsProvider, config);
             Aws::SNS::SNSClient snsClient(credentialsProvider, config);
-            return lambdaHandler(req, s3Client, dynamodbClient, snsClient);
+            return lambdaHandler(req, dynamodbClient, snsClient);
             std::cout.flush();
         };
         aws::lambda_runtime::run_handler(handlerFunction);

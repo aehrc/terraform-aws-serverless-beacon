@@ -1,7 +1,7 @@
 import json
 import os
 
-from api_response import bundle_response
+from apiutils.api_response import bundle_response
 
 
 def get_entry_types():
@@ -62,6 +62,9 @@ def get_entry_types():
                         "label": "Variant"
                     },
                     "partOfSpecification": "Beacon v2.0.0"
+                },
+                "individual": {
+                    
                 }
             }
         }

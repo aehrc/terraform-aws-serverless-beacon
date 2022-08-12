@@ -1,8 +1,10 @@
 import json
 import os
 
-from api_response import bundle_response
-import responses, entries
+from apiutils.api_response import bundle_response
+import apiutils.responses as  responses
+import apiutils.entries as entries
+
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']

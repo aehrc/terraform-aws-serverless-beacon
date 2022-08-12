@@ -6,9 +6,11 @@ from uuid import uuid4
 import boto3
 from botocore.exceptions import ClientError
 
-from lambda_payloads import PerformQueryPayload
-from lambda_responses import PerformQueryResponse
-import pynamo_mappings as db
+from payloads.lambda_payloads import PerformQueryPayload
+from payloads.lambda_responses import PerformQueryResponse
+import dynamodb.variant_queries as db
+
+
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
 VARIANTS_BUCKET = os.environ['VARIANTS_BUCKET']
