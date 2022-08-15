@@ -1,7 +1,10 @@
 import json
 import os
+from unittest import result
 import boto3
 import time
+import threading
+import queue
 
 from apiutils.api_response import bundle_response
 
@@ -10,22 +13,89 @@ athena = boto3.client('athena')
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
+ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
+# contains the aggregate query for all the ontology terms
+QUERIES = [
+    f'''
+    SELECT distinct CAST(term AS varchar) AS term, CAST(label AS varchar), CAST(type AS varchar) 
+    FROM (
+        SELECT distinct json_extract(biosamplestatus, '$.id') AS term, json_extract(biosamplestatus, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(biosamplestatus, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(histologicaldiagnosis, '$.id') AS term, json_extract(histologicaldiagnosis, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(histologicaldiagnosis, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(obtentionprocedure, '$.code.id') AS term, json_extract(obtentionprocedure, '$.code.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(obtentionprocedure, '$.code.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(pathologicalstage, '$.id') AS term, json_extract(pathologicalstage, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(pathologicalstage, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(pathologicaltnmfinding, '$.id') AS term, json_extract(pathologicaltnmfinding, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(pathologicaltnmfinding, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(sampleorigindetail, '$.id') AS term, json_extract(sampleorigindetail, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(sampleorigindetail, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(sampleorigintype, '$.id') AS term, json_extract(sampleorigintype, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(sampleorigintype, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(sampleprocessing, '$.id') AS term, json_extract(sampleprocessing, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(sampleprocessing, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(tumorprogression, '$.id') AS term, json_extract(tumorprogression, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}"
+        WHERE json_extract(tumorprogression, '$.id') 
+        IS NOT NULL
+    ) 
+    ORDER BY term 
+    ASC;
+    ''',
+    f'''
+    SELECT distinct CAST(term AS varchar) AS term, CAST(label AS varchar), CAST(type AS varchar) FROM (
+        SELECT distinct json_extract(ethnicity, '$.id') AS term, json_extract(ethnicity, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"
+        WHERE json_extract(ethnicity, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(geographicorigin, '$.id') AS term, json_extract(geographicorigin, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"
+        WHERE json_extract(geographicorigin, '$.id') 
+        IS NOT NULL
+            UNION
+        SELECT distinct json_extract(sex, '$.id') AS term, json_extract(sex, '$.label') AS label, 'string' AS type 
+        FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"
+        WHERE json_extract(sex, '$.id') 
+        IS NOT NULL
+    ) 
+    ORDER BY term 
+    ASC;
+    '''
+]
 
 
-def fetch_athena_data():
+def fetch_athena_data(query, results):
     response = athena.start_query_execution(
-        QueryString='''
-        select distinct cast(term as varchar) as term, cast(label as varchar), cast(type as varchar) from (
-        select distinct json_extract(ethnicity, '$.id') as term, json_extract(ethnicity, '$.label') as label, 'string' as type from "sbeacon-metadata"."sbeacon-individuals"
-        union
-        select distinct json_extract(geographicorigin, '$.id') as term, json_extract(geographicorigin, '$.label') as label, 'string' as type from "sbeacon-metadata"."sbeacon-individuals"
-        union
-        select distinct json_extract(sex, '$.id') as term, json_extract(sex, '$.label') as label, 'string' as type from "sbeacon-metadata"."sbeacon-individuals"
-        ) order by term asc;
-        ''',
+        QueryString=query,
         # ClientRequestToken='string',
         QueryExecutionContext={
             'Database': METADATA_DATABASE
@@ -66,10 +136,11 @@ def fetch_athena_data():
                     "label": label,
                     "type": typ
                 })
-            return filteringTerms
+            results.put(filteringTerms)
+            return
 
 
-def get_entry_types():
+def get_entry_types(terms):
     response =     {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {},
@@ -79,7 +150,7 @@ def get_entry_types():
             "returnedSchemas": []
         },
         "response": {
-            "filteringTerms": fetch_athena_data(),
+            "filteringTerms": terms,
             "resources": [
                 {
                     "id": "NA",
@@ -98,7 +169,25 @@ def get_entry_types():
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
-    response = get_entry_types()
+    threads = []
+    results = queue.Queue()
+    
+    for query in QUERIES:
+        thread = threading.Thread(
+                target=fetch_athena_data,
+                kwargs={ 'query': query , 'results': results }
+            )
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+
+    response = get_entry_types(
+        sorted(
+            [term for terms in list(results.queue) for term in terms],
+            key=lambda term: term['id']
+        )
+    )
     print('Returning Response: {}'.format(json.dumps(response)))
     return response
 
