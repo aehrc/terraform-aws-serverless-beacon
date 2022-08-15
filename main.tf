@@ -303,9 +303,7 @@ module "lambda-getMap" {
 
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-  }
+  environment_variables = local.sbeacon_variables
 }
 
 #

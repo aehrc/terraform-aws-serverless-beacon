@@ -95,13 +95,25 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
 
-### Query Endpoints Progress
+### Implemented Endpoints
 
-* `/g_variants` - Variant searching as per V2 spec (Without metadata)
-* `/g_variants/{id}` - TODO
-* `/g_variants/{id}/biosamples` - TODO
-* `/g_variants/{id}/individuals` - TODO
+#### Variant searching
 
+* GET/POST `/g_variants` - variant querying
+* GET/POST `/g_variants/{id}` - Search for unique variants 
+* GET/POST `/g_variants/{id}/biosamples` - Biosamples having the unique variant
+* GET/POST `/g_variants/{id}/individuals` - Individuals having the unique variant
+
+#### Generic Endpoints
+* GET/POST `/` or `/info` - get beacon information
+* GET/POST `/map` - get beacon map
+* GET/POST `/filtering_terms` - get ontology terms
+* GET/POST `/entry_types` - get types returned by the beacon
+
+#### In-progress
+
+* Individuals
+* Biosamples
 
 <!-- under development -->
 
