@@ -20,16 +20,17 @@ import apiutils.responses as responses
 import apiutils.entries as entries
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
-from athena.individual import Individual
+from athena.biosample import Biosample
 
 SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 REQUEST_TIMEOUT = 10 # seconds 
+ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
 dynamodb = boto3.client('dynamodb')
 aws_lambda = boto3.client('lambda')
@@ -72,22 +73,24 @@ def run_query(query):
                 # NextToken='string',
                 MaxResults=1000
             )
-            return Individual.parse_array(data['ResultSet']['Rows'])
+            return Biosample.parse_array(data['ResultSet']['Rows'])
 
 
 # TODO break into many queries (ATHENA SQL LIMIT)
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
 def get_queries(datasetId, sampleNames):
     query = f'''
-    SELECT * 
-    FROM 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" 
+    SELECT "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".* 
+    FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" JOIN "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}" 
+    ON 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".id
+        =
+        "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".individualid
     WHERE 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}' 
-        AND 
-            samplename 
-        IN 
-            ({','.join([f"'{sn}'" for sn in sampleNames])});
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}'
+        AND
+            "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"."samplename" 
+        IN ({','.join([f"'{sn}'" for sn in sampleNames])});
     '''
     return query
 

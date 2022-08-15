@@ -18,9 +18,10 @@ locals {
   }
   # athena related variables
   athena_variables = {
+    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
     METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
     INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
-    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
+    BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
