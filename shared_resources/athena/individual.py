@@ -96,18 +96,6 @@ class Individual(jsons.JsonSerializable):
 
 
     @classmethod
-    def update_athena_table(cls):
-        response = athena.start_query_execution(
-            QueryString=f'MSCK REPAIR TABLE `{INDIVIDUALS_TABLE}`',
-            # ClientRequestToken='string',
-            QueryExecutionContext={
-                'Database': METADATA_DATABASE
-            },
-            WorkGroup=ATHENA_WORKGROUP
-        )
-
-
-    @classmethod
     def upload_array(cls, array):
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls.table_columns]) + '>'
         partition = f'datasetid={array[0].datasetId}'
@@ -124,7 +112,6 @@ class Individual(jsons.JsonSerializable):
                     )
                     writer.write(row)
 
-        cls.update_athena_table()
 
 if __name__ == '__main__':
     pass

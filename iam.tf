@@ -49,6 +49,13 @@ data aws_iam_policy_document lambda-submitDataset {
     ]
     resources = ["*"]
   }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-indexer.lambda_function_arn]
+  }
 }
 
 #
@@ -411,6 +418,8 @@ data aws_iam_policy_document lambda-performQuery {
 # 
 
 # Athena Full Access
+# Grants access to perform queries and write to s3
+# Also enables access to read query results from s3
 data aws_iam_policy_document athena-full-access {
   statement {
     actions = [

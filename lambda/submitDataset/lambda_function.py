@@ -18,11 +18,13 @@ from athena.biosample import Biosample
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
+INDEXER_LAMBDA = os.environ['INDEXER_LAMBDA']
 
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
 
 sns = boto3.client('sns')
+aws_lambda = boto3.client('lambda')
 
 newSchema = "./schemas/submitDataset-schema-new.json"
 updateSchema = "./schemas/submitDataset-schema-update.json"
@@ -87,6 +89,12 @@ def create_dataset(attributes):
     # upload to s3
     Individual.upload_array(individuals)
     Biosample.upload_array(biosamples, item.id)
+
+    aws_lambda.invoke(
+        FunctionName=INDEXER_LAMBDA,
+        InvocationType='Event',
+        Payload=jsons.dumps(dict()),
+    )
 
     # TODO check essetial params to match up with the individual
     # for biosample in biosamples:

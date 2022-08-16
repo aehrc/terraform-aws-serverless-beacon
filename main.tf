@@ -9,6 +9,8 @@ locals {
   maximum_load_file_size  = 750000000
   vcf_processed_file_size = 50000000
 
+  # lambda ARNs for invokation
+  INDEXER_LAMBDA = module.lambda-indexer.lambda_function_name
   # TODO use the following organisation to refactor the IAM policy assignment
   # this makes the code simpler
   # sbeacon info variables
@@ -56,6 +58,7 @@ module "lambda-submitDataset" {
     {
       DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+      INDEXER_LAMBDA = local.INDEXER_LAMBDA
     }, 
     local.sbeacon_variables, 
     local.athena_variables
@@ -359,6 +362,10 @@ module "lambda-getFilteringTerms" {
     local.sbeacon_variables,
     local.athena_variables
   )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -513,4 +520,8 @@ module "lambda-indexer" {
     local.sbeacon_variables,
     local.athena_variables
   )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
