@@ -22,3 +22,14 @@ resource "aws_s3_bucket_acl" "metadata" {
   bucket = aws_s3_bucket.metadata-bucket.id
   acl    = "private"
 }
+
+resource "aws_s3_bucket" "lambda-layers-bucket" {
+  bucket_prefix = var.lambda-layers-bucket-prefix
+  force_destroy = true
+  tags = var.common-tags
+}
+
+resource "aws_s3_bucket_acl" "lambda-layers" {
+  bucket = aws_s3_bucket.lambda-layers-bucket.id
+  acl    = "private"
+}

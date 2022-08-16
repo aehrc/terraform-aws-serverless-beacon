@@ -1,17 +1,33 @@
+from typing import List
 import jsons
 import boto3
 import json
+
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
-class OntologyTerm(jsons.JsonSerializable):
-    id: str
-    label: str
-
-
 class Individual(jsons.JsonSerializable):
+    # for saving to database order matter
+    table_columns = [
+        'id',
+        'samplename',
+        'diseases',
+        'ethnicity',
+        'exposures',
+        'geographicorigin',
+        'info',
+        'interventionsorprocedures',
+        'karyotypicsex',
+        'measures',
+        'pedigrees',
+        'phenotypicfeatures',
+        'sex',
+        'treatments'
+    ]
+
+
     def __init__(
                 self,
                 *,
@@ -70,6 +86,21 @@ class Individual(jsons.JsonSerializable):
 
         return individuals
 
+
+    @classmethod
+    def upload_array(cls, array):
+        table = { k: [] for k in cls.table_columns }
+        for individual in array:
+            for k, v in individual.dump().items():
+                k = k.lower()
+                if k == 'datasetid':
+                    continue
+                if isinstance(v, str):
+                    table[k].append(v)
+                else:
+                    table[k].append(json.dumps(v))
+        
+        # table = pa.table(table)
 
 if __name__ == '__main__':
     pass

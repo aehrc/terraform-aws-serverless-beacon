@@ -2,13 +2,18 @@ import datetime
 import json
 import os
 import subprocess
+from typing import List
 from jsonschema import Draft7Validator
+import jsons
+import tempfile
 
 import boto3
 
 from apiutils.api_response import bad_request, bundle_response
 from utils.chrom_matching import get_vcf_chromosomes
 from dynamodb.datasets import Dataset, VcfChromosomeMap
+from athena.individual import Individual
+from athena.biosample import Biosample
 
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
@@ -67,6 +72,12 @@ def create_dataset(attributes):
     item.externalUrl = attributes.get('externalUrl', '')
     item.info = attributes.get('info', [])
     item.dataUseConditions = attributes.get('dataUseConditions', {})
+
+    individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
+    for individual in individuals:
+        individual.datasetId = item.id
+    biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
+
 
     for vcf in set(item.vcfLocations):
         chroms = get_vcf_chromosomes(vcf)

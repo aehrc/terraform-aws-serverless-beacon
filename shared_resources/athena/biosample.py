@@ -77,5 +77,10 @@ class Biosample(jsons.JsonSerializable):
         return biosamples
 
 
+    @classmethod
+    def upload_array(cls, array):
+        pass
+
+
 if __name__ == '__main__':
     pass

@@ -232,7 +232,6 @@ def route(event):
 
     if requestedGranularity in ('record', 'aggregated'):
         response = responses.get_result_sets_response(
-            resGranularity='record', 
             setType='genomicVariant', 
             exists=exists,
             total=len(variants),

@@ -14,3 +14,6 @@ libraries
 # csi/tbi files from tests
 *.csi
 *.tbi
+
+# python lambda layers
+layers/python_libraries

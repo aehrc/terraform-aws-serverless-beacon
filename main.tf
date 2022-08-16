@@ -25,9 +25,7 @@ locals {
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
-  pynamodb_layer = "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}"
-  python_jsonschema_layer = "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}"
-  python_jsons_layer = "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}"
+  python_libraries_layer = module.python_libraries_layer.lambda_layer_arn
 }
 
 #
@@ -57,9 +55,8 @@ module "lambda-submitDataset" {
   }
   
   layers = [
-    local.pynamodb_layer,
-    local.python_jsonschema_layer,
-    local.binaries_layer,
+    local.python_libraries_layer,
+    local.binaries_layer
   ]
 }
 
@@ -416,10 +413,8 @@ module "lambda-getGenomicVariants" {
   )
 
   layers = [
-    local.python_jsons_layer,
-    local.pynamodb_layer,
-    local.binaries_layer,
-    local.python_jsonschema_layer,
+    local.python_libraries_layer,
+    local.binaries_layer
   ]
 }
 
@@ -448,7 +443,7 @@ module "lambda-splitQuery" {
   }
 
   layers = [
-    local.python_jsons_layer,
+    local.python_libraries_layer
   ]
 }
 
@@ -472,8 +467,7 @@ module "lambda-performQuery" {
 
   layers = [
     local.binaries_layer,
-    local.python_jsons_layer,
-    local.pynamodb_layer,
+    local.python_libraries_layer
   ]
 
   environment = {
