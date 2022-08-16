@@ -16,4 +16,4 @@ libraries
 *.tbi
 
 # python lambda layers
-layers/python_libraries
+layers/python_libraries/python
