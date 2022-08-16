@@ -3,7 +3,7 @@ import json
 import os
 import subprocess
 from typing import List
-from jsonschema import Draft7Validator
+from jsonschema import Draft7Validator, RefResolver
 import jsons
 import tempfile
 
@@ -24,9 +24,15 @@ SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 
 sns = boto3.client('sns')
 
-newSchema = json.load(open("./schemas/submitDataset-schema-new.json"))
-updateSchema = json.load(open("./schemas/submitDataset-schema-update.json"))
-
+newSchema = "./schemas/submitDataset-schema-new.json"
+updateSchema = "./schemas/submitDataset-schema-update.json"
+# get schema dir
+schema_dir = os.path.dirname(os.path.abspath(newSchema))
+# loading schemas
+newSchema = json.load(open(newSchema))
+updateSchema = json.load(open(updateSchema))
+resolveNew = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = newSchema)
+resolveUpdate = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = updateSchema)
 
 # just checking if the tabix would work as expected on a valid vcf.gz file
 # validate if the index file exists too
@@ -65,7 +71,7 @@ def create_dataset(attributes):
     item = Dataset(attributes['id'])
     item.name = attributes['name']
     item.assemblyId = attributes['assemblyId']
-    item.vcfLocations = attributes['vcfLocations']
+    item.vcfLocations = attributes.get('vcfLocations', [])
     item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
     item.description = attributes.get('description', '')
     item.version = attributes.get('version', '')
@@ -78,6 +84,13 @@ def create_dataset(attributes):
         individual.datasetId = item.id
     biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
 
+    # upload to s3
+    Individual.upload_array(individuals)
+    Biosample.upload_array(biosamples, item.id)
+
+    # TODO check essetial params to match up with the individual
+    # for biosample in biosamples:
+    #     biosample.datasetId = item.id
 
     for vcf in set(item.vcfLocations):
         chroms = get_vcf_chromosomes(vcf)
@@ -155,9 +168,9 @@ def validate_request(parameters, new):
     validator = None
     # validate request body with schema for a new submission or update
     if new:
-        validator = Draft7Validator(newSchema)
+        validator = Draft7Validator(newSchema, resolver=resolveNew)
     else:
-        validator = Draft7Validator(updateSchema)
+        validator = Draft7Validator(updateSchema, resolver=resolveUpdate)
 
     errors = sorted(validator.iter_errors(parameters), key=lambda e: e.path)
     return [error.message for error in errors]

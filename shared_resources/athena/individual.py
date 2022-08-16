@@ -1,8 +1,16 @@
-from typing import List
 import jsons
 import boto3
 import json
+import pyorc
+import os
 
+from smart_open import open as sopen
+
+
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
@@ -12,17 +20,17 @@ class Individual(jsons.JsonSerializable):
     # for saving to database order matter
     table_columns = [
         'id',
-        'samplename',
+        'sampleName',
         'diseases',
         'ethnicity',
         'exposures',
-        'geographicorigin',
+        'geographicOrigin',
         'info',
-        'interventionsorprocedures',
-        'karyotypicsex',
+        'interventionsOrProcedures',
+        'karyotypicSex',
         'measures',
         'pedigrees',
-        'phenotypicfeatures',
+        'phenotypicFeatures',
         'sex',
         'treatments'
     ]
@@ -88,19 +96,35 @@ class Individual(jsons.JsonSerializable):
 
 
     @classmethod
+    def update_athena_table(cls):
+        response = athena.start_query_execution(
+            QueryString=f'MSCK REPAIR TABLE `{INDIVIDUALS_TABLE}`',
+            # ClientRequestToken='string',
+            QueryExecutionContext={
+                'Database': METADATA_DATABASE
+            },
+            WorkGroup=ATHENA_WORKGROUP
+        )
+
+
+    @classmethod
     def upload_array(cls, array):
-        table = { k: [] for k in cls.table_columns }
-        for individual in array:
-            for k, v in individual.dump().items():
-                k = k.lower()
-                if k == 'datasetid':
-                    continue
-                if isinstance(v, str):
-                    table[k].append(v)
-                else:
-                    table[k].append(json.dumps(v))
+        header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls.table_columns]) + '>'
+        partition = f'datasetid={array[0].datasetId}'
+        key = f'{array[0].datasetId}-individuals'
         
-        # table = pa.table(table)
+        with sopen(f's3://{METADATA_BUCKET}/individuals/{partition}/{key}', 'wb') as s3file:
+            with pyorc.Writer(s3file, header) as writer:
+                for individual in array:
+                    row = tuple(
+                        individual.__dict__[k] 
+                        if type(individual.__dict__[k]) == str
+                        else json.dumps(individual.__dict__[k])
+                        for k in cls.table_columns
+                    )
+                    writer.write(row)
+
+        cls.update_athena_table()
 
 if __name__ == '__main__':
     pass

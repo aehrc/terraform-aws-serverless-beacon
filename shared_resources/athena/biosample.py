@@ -1,13 +1,44 @@
 import jsons
 import boto3
 import json
+import pyorc
+import os
 
+from smart_open import open as sopen
+
+
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
 class Biosample(jsons.JsonSerializable):
+    # for saving to database order matter
+    table_columns = [
+        'id',
+        'individualId',
+        'biosampleStatus',
+        'collectionDate',
+        'collectionMoment',
+        'diagnosticMarkers',
+        'histologicalDiagnosis',
+        'measurements',
+        'obtentionProcedure',
+        'pathologicalStage',
+        'pathologicalTnmFinding',
+        'phenotypicFeatures',
+        'sampleOriginDetail',
+        'sampleOriginType',
+        'sampleProcessing',
+        'sampleStorage',
+        'tumorGrade',
+        'tumorProgression',
+        'info',
+        'notes'
+    ]
+
+
     def __init__(
                 self,
                 *,
@@ -78,8 +109,20 @@ class Biosample(jsons.JsonSerializable):
 
 
     @classmethod
-    def upload_array(cls, array):
-        pass
+    def upload_array(cls, array, datasetId):
+        header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls.table_columns]) + '>'
+        key = f'{datasetId}-biosamples'
+        
+        with sopen(f's3://{METADATA_BUCKET}/biosamples/{key}', 'wb') as s3file:
+            with pyorc.Writer(s3file, header) as writer:
+                for biosample in array:
+                    row = tuple(
+                        biosample.__dict__[k] 
+                        if type(biosample.__dict__[k]) == str
+                        else json.dumps(biosample.__dict__[k])
+                        for k in cls.table_columns
+                    )
+                    writer.write(row)
 
 
 if __name__ == '__main__':

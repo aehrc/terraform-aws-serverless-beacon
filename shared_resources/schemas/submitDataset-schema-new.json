@@ -72,13 +72,13 @@
         },
         "individuals": {
             "items": {
-                "$ref": "./individual-schema.json"
+                "$ref": "individual-schema.json"
             },
             "type": "array"
         },
         "biosamples": {
             "items": {
-                "$ref": "./biosample-schema.json"
+                "$ref": "biosample-schema.json"
             },
             "type": "array"
         }

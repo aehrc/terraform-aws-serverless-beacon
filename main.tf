@@ -20,6 +20,7 @@ locals {
   athena_variables = {
     ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
     METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    METADATA_BUCKET = aws_s3_bucket.metadata-bucket.bucket
     INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
     BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
   }
@@ -41,18 +42,24 @@ module "lambda-submitDataset" {
   architectures = ["x86_64"]
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-submitDataset.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-submitDataset.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/submitDataset"
 
   tags = var.common-tags
 
-  environment_variables = {
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-  }
+  environment_variables = merge(
+    {
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+    }, 
+    local.sbeacon_variables, 
+    local.athena_variables
+  )
   
   layers = [
     local.python_libraries_layer,
@@ -479,4 +486,31 @@ module "lambda-performQuery" {
       VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     }
   }
+}
+
+#
+# indexer Lambda Function
+#
+module "lambda-indexer" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "indexer"
+  description = "Run the indexing tasks."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 1
+  source_path = "${path.module}/lambda/indexer"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables
+  )
 }

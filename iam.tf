@@ -41,7 +41,11 @@ data aws_iam_policy_document lambda-submitDataset {
   statement {
     actions = [
       "s3:GetObject",
+      "s3:PutObject",
       "s3:ListBucket",
+      "s3:CreateMultipartUpload",
+      "s3:UploadPart",
+      "s3:CompleteMultipartUpload",
     ]
     resources = ["*"]
   }
