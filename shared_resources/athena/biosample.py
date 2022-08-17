@@ -114,7 +114,12 @@ class Biosample(jsons.JsonSerializable):
         key = f'{datasetId}-biosamples'
         
         with sopen(f's3://{METADATA_BUCKET}/biosamples/{key}', 'wb') as s3file:
-            with pyorc.Writer(s3file, header) as writer:
+            with pyorc.Writer(
+                s3file, 
+                header, 
+                compression=pyorc.CompressionKind.SNAPPY, 
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+                bloom_filter_columns=[cls.table_columns[2:]]) as writer:
                 for biosample in array:
                     row = tuple(
                         biosample.__dict__[k] 

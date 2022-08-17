@@ -102,7 +102,12 @@ class Individual(jsons.JsonSerializable):
         key = f'{array[0].datasetId}-individuals'
         
         with sopen(f's3://{METADATA_BUCKET}/individuals/{partition}/{key}', 'wb') as s3file:
-            with pyorc.Writer(s3file, header) as writer:
+            with pyorc.Writer(
+                s3file, 
+                header, 
+                compression=pyorc.CompressionKind.SNAPPY, 
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+                bloom_filter_columns=[cls.table_columns[2:]]) as writer:
                 for individual in array:
                     row = tuple(
                         individual.__dict__[k] 
