@@ -79,19 +79,17 @@ def run_query(query):
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
 def get_queries(datasetId, sampleNames):
     query = f'''
-    SELECT * FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" WHERE datasetid='{datasetId}' AND samplename IN ({','.join(
-        [f"'{sn}'" for sn in sampleNames]
-    )});
+    SELECT * 
+    FROM 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" 
+    WHERE 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}' 
+        AND 
+            samplename 
+        IN 
+            ({','.join([f"'{sn}'" for sn in sampleNames])});
     '''
     return query
-
-
-def get_vcf_chromosome_map(all_vcfs, chromosome):
-    vcf_chromosome_map = {}
-    for vcf in all_vcfs:
-        vcf_chromosomes = get_vcf_chromosomes(vcf)
-        vcf_chromosome_map[vcf] = get_matching_chromosome(vcf_chromosomes, chromosome)
-    return vcf_chromosome_map
 
 
 def get_datasets(assembly_id, dataset_ids=None):

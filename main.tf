@@ -9,6 +9,8 @@ locals {
   maximum_load_file_size  = 750000000
   vcf_processed_file_size = 50000000
 
+  # lambda ARNs for invokation
+  INDEXER_LAMBDA = module.lambda-indexer.lambda_function_name
   # TODO use the following organisation to refactor the IAM policy assignment
   # this makes the code simpler
   # sbeacon info variables
@@ -18,15 +20,15 @@ locals {
   }
   # athena related variables
   athena_variables = {
-    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
-    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
     ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
+    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    METADATA_BUCKET = aws_s3_bucket.metadata-bucket.bucket
+    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
+    BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
-  pynamodb_layer = "${aws_lambda_layer_version.pynamodb_layer.layer_arn}:${aws_lambda_layer_version.pynamodb_layer.version}"
-  python_jsonschema_layer = "${aws_lambda_layer_version.python_jsonschema_layer.layer_arn}:${aws_lambda_layer_version.python_jsonschema_layer.version}"
-  python_jsons_layer = "${aws_lambda_layer_version.python_jsons_layer.layer_arn}:${aws_lambda_layer_version.python_jsons_layer.version}"
+  python_libraries_layer = module.python_libraries_layer.lambda_layer_arn
 }
 
 #
@@ -42,23 +44,29 @@ module "lambda-submitDataset" {
   architectures = ["x86_64"]
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-submitDataset.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-submitDataset.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/submitDataset"
 
   tags = var.common-tags
 
-  environment_variables = {
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-  }
+  environment_variables = merge(
+    {
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+      INDEXER_LAMBDA = local.INDEXER_LAMBDA
+    }, 
+    local.sbeacon_variables, 
+    local.athena_variables
+  )
   
   layers = [
-    local.pynamodb_layer,
-    local.python_jsonschema_layer,
-    local.binaries_layer,
+    local.python_libraries_layer,
+    local.binaries_layer
   ]
 }
 
@@ -302,9 +310,7 @@ module "lambda-getMap" {
 
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-  }
+  environment_variables = local.sbeacon_variables
 }
 
 #
@@ -356,6 +362,10 @@ module "lambda-getFilteringTerms" {
     local.sbeacon_variables,
     local.athena_variables
   )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -417,10 +427,8 @@ module "lambda-getGenomicVariants" {
   )
 
   layers = [
-    local.python_jsons_layer,
-    local.pynamodb_layer,
-    local.binaries_layer,
-    local.python_jsonschema_layer,
+    local.python_libraries_layer,
+    local.binaries_layer
   ]
 }
 
@@ -449,7 +457,7 @@ module "lambda-splitQuery" {
   }
 
   layers = [
-    local.python_jsons_layer,
+    local.python_libraries_layer
   ]
 }
 
@@ -473,8 +481,7 @@ module "lambda-performQuery" {
 
   layers = [
     local.binaries_layer,
-    local.python_jsons_layer,
-    local.pynamodb_layer,
+    local.python_libraries_layer
   ]
 
   environment = {
@@ -486,4 +493,35 @@ module "lambda-performQuery" {
       VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     }
   }
+}
+
+#
+# indexer Lambda Function
+#
+module "lambda-indexer" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "indexer"
+  description = "Run the indexing tasks."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 1
+  source_path = "${path.module}/lambda/indexer"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }

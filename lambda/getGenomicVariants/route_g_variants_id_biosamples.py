@@ -12,7 +12,7 @@ from uuid import uuid4
 import time
 
 from apiutils.api_response import bundle_response, bad_request
-from utils.chrom_matching import get_matching_chromosome
+from utils.chrom_matching import get_matching_chromosome, get_vcf_chromosomes
 from local_utils import split_query, get_split_query_fan_out
 from dynamodb.datasets import Dataset
 from dynamodb.variant_queries import VariantQuery, VariantResponse
@@ -20,18 +20,79 @@ import apiutils.responses as responses
 import apiutils.entries as entries
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
-
+from athena.biosample import Biosample
 
 SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 REQUEST_TIMEOUT = 10 # seconds 
+ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
+BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
 dynamodb = boto3.client('dynamodb')
 aws_lambda = boto3.client('lambda')
+athena = boto3.client('athena')
 s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
+
+
+def run_query(query):
+    response = athena.start_query_execution(
+        QueryString=query,
+        # ClientRequestToken='string',
+        QueryExecutionContext={
+            'Database': METADATA_DATABASE
+        },
+        WorkGroup='query_workgroup'
+    )
+
+    retries = 0
+    while True:
+        exec = athena.get_query_execution(
+            QueryExecutionId=response['QueryExecutionId']
+        )
+        status = exec['QueryExecution']['Status']['State']
+        
+        if status in ('QUEUED', 'RUNNING'):
+            time.sleep(1 * (2**retries))
+            retries += 1
+
+            if retries == 4:
+                print('Timed out')
+                return []
+            continue
+        elif status in ('FAILED', 'CANCELLED'):
+            print('Error: ', exec['QueryExecution']['Status'])
+            return []
+        else:
+            data = athena.get_query_results(
+                QueryExecutionId=response['QueryExecutionId'],
+                # NextToken='string',
+                MaxResults=1000
+            )
+            return Biosample.parse_array(data['ResultSet']['Rows'])
+
+
+# TODO break into many queries (ATHENA SQL LIMIT)
+# https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
+def get_queries(datasetId, sampleNames):
+    query = f'''
+    SELECT "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".* 
+    FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" JOIN "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}" 
+    ON 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".id
+        =
+        "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".individualid
+    WHERE 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}'
+        AND
+            "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"."samplename" 
+        IN ({','.join([f"'{sn}'" for sn in sampleNames])});
+    '''
+    return query
 
 
 def get_datasets(assembly_id, dataset_ids=None):
@@ -88,7 +149,6 @@ def route(event):
     end_max = pos + len(alternateBases)
 
     # threading
-    thread_responses = queue.Queue()
     threads = []
     query_id = uuid4().hex
 
@@ -131,6 +191,9 @@ def route(event):
 
         # call split query for each dataset found
         payload = SplitQueryPayload(
+                passthrough={
+                    'samplesOnly': True
+                },
                 dataset_id=dataset.id,
                 query_id=query_id,
                 vcf_locations=vcf_locations,
@@ -155,13 +218,6 @@ def route(event):
         threads.append(thread)
 
     exists = False
-    variants = set()
-    results = list()
-    dataset_vcf_group_map = dict()
-
-    # dict of key dataset.id and value=dict with key=vcf val=groupId
-    for k, vgs in dataset_variant_groups.items():
-        dataset_vcf_group_map[k] = { v : n for n, vg in enumerate(vgs) for v in vg }
 
     # wait while all the threads complete
     for thread in threads:
@@ -185,10 +241,8 @@ def route(event):
             break
         time.sleep(1)
 
-    # key=pos-ref-alt
-    # val=counts
-    variant_call_counts = defaultdict(int)
-    variant_allele_counts = defaultdict(int)
+    dataset_samples = defaultdict(set)
+    count = 0
     
     for _, loc in query_results.items():
         print(loc.bucket, loc.key)
@@ -201,7 +255,7 @@ def route(event):
 
         # immediately return the boolean response if exists
         if requestedGranularity == 'boolean' and exists:
-            response = responses.boolean_response
+            response = responses.get_boolean_response(exists=exists)
             response['responseSummary']['exists'] = exists
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response)
@@ -209,16 +263,8 @@ def route(event):
             exists = exists or query_response.exists
             if exists:
                 exists = True
-                variants.update(query_response.variants)
-                vcf_location = query_response.vcf_location
-
-                for variant in query_response.variants:
-                    chrom, pos, ref, alt, typ = variant.split('\t')
-                    idx = f'{pos}_{ref}_{alt}'
-                    variant_call_counts[idx] += query_response.call_count
-                    variant_allele_counts[idx] += query_response.all_alleles_count
-                    internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
-                    results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
+                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+                count += query_response.call_count
 
     if requestedGranularity == 'boolean':
         response = responses.get_boolean_response(exists=exists)
@@ -226,16 +272,29 @@ def route(event):
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        response = responses.get_counts_response(exists=exists, count=len(variants))
+        response = responses.get_counts_response(exists=exists, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
-
+    
     if requestedGranularity in ('record', 'aggregated'):
+        individuals = []
+        for dataset_id, sample_names in dataset_samples.items():
+            if (len(sample_names)) > 0:
+                individuals += run_query(get_queries(dataset_id, sample_names))
+
         response = responses.get_result_sets_response(
-            setType='genomicVariant', 
+            setType='individual', 
             exists=exists,
-            total=len(variants),
-            results=results
+            total=count,
+            results=jsons.dump(individuals)
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
+
+
+if __name__ == '__main__':
+    data = {'all_alleles_count': 200, 'call_count': 100, 'dataset_id': 'test-wic', 'exists': True, 'sample_indices': [], 'sample_names': ['HG00096', 'HG00097', 'HG00099', 'HG00100', 'HG00101', 'HG00102', 'HG00103', 'HG00105', 'HG00106', 'HG00107', 'HG00108', 'HG00109', 'HG00110', 'HG00111', 'HG00112', 'HG00113', 'HG00114', 'HG00115', 'HG00116', 'HG00117', 'HG00118', 'HG00119', 'HG00120', 'HG00121', 'HG00122', 'HG00123', 'HG00125', 'HG00126', 'HG00127', 'HG00128', 'HG00129', 'HG00130', 'HG00131', 'HG00132', 'HG00133', 'HG00136', 'HG00137', 'HG00138', 'HG00139', 'HG00140', 'HG00141', 'HG00142', 'HG00143', 'HG00145', 'HG00146', 'HG00148', 'HG00149', 'HG00150', 'HG00151', 'HG00154', 'HG00155', 'HG00157', 'HG00158', 'HG00159', 'HG00160', 'HG00171', 'HG00173', 'HG00174', 'HG00176', 'HG00177', 'HG00178', 'HG00179', 'HG00180', 'HG00181', 'HG00182', 'HG00183', 'HG00185', 'HG00186', 'HG00187', 'HG00188', 'HG00189', 'HG00190', 'HG00231', 'HG00232', 'HG00233', 'HG00234', 'HG00235', 'HG00236', 'HG00237', 'HG00238', 'HG00239', 'HG00240', 'HG00242', 'HG00243', 'HG00244', 'HG00245', 'HG00246', 'HG00250', 'HG00251', 'HG00252', 'HG00253', 'HG00254', 'HG00255', 'HG00256', 'HG00257', 'HG00258', 'HG00259', 'HG00260', 'HG00261', 'HG00262'], 'variants': [], 'vcf_location': 's3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz'}
+    query = get_queries(data['dataset_id'], data['sample_names'])
+    print(query)
+    data = run_query(query)
+    print(jsons.dump(data))

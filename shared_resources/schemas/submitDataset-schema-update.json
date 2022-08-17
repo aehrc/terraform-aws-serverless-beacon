@@ -69,6 +69,18 @@
                 "consentCodeDataUse",
                 "adamDataUse"
             ]
+        },
+        "individuals": {
+            "items": {
+                "$ref": "./individual-schema.json"
+            },
+            "type": "array"
+        },
+        "biosamples": {
+            "items": {
+                "$ref": "./biosample-schema.json"
+            },
+            "type": "array"
         }
     },
     "required": [

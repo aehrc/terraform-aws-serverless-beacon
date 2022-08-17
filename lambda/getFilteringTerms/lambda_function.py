@@ -1,75 +1,18 @@
 import json
 import os
-import boto3
-import time
+import pickle
+
+from smart_open import open as sopen 
 
 from apiutils.api_response import bundle_response
 
 
-athena = boto3.client('athena')
-
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
-METADATA_DATABASE = os.environ['METADATA_DATABASE']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
-def fetch_athena_data():
-    response = athena.start_query_execution(
-        QueryString='''
-        select distinct cast(term as varchar) as term, cast(label as varchar), cast(type as varchar) from (
-        select distinct json_extract(ethnicity, '$.id') as term, json_extract(ethnicity, '$.label') as label, 'string' as type from "sbeacon-metadata"."sbeacon-individuals"
-        union
-        select distinct json_extract(geographicorigin, '$.id') as term, json_extract(geographicorigin, '$.label') as label, 'string' as type from "sbeacon-metadata"."sbeacon-individuals"
-        union
-        select distinct json_extract(sex, '$.id') as term, json_extract(sex, '$.label') as label, 'string' as type from "sbeacon-metadata"."sbeacon-individuals"
-        ) order by term asc;
-        ''',
-        # ClientRequestToken='string',
-        QueryExecutionContext={
-            'Database': METADATA_DATABASE
-        },
-        WorkGroup=ATHENA_WORKGROUP
-    )
-
-    retries = 0
-    while True:
-        exec = athena.get_query_execution(
-            QueryExecutionId=response['QueryExecutionId']
-        )
-        status = exec['QueryExecution']['Status']['State']
-        
-        if status in ('QUEUED', 'RUNNING'):
-            time.sleep(1 * (2**retries))
-            retries += 1
-
-            if retries == 4:
-                print('Timed out')
-                return []
-            continue
-        elif status in ('FAILED', 'CANCELLED'):
-            print('Error: ', exec['QueryExecution']['Status'])
-            return []
-        else:
-            data = athena.get_query_results(
-                QueryExecutionId=response['QueryExecutionId'],
-                # NextToken='string',
-                MaxResults=1000
-            )
-            filteringTerms = []
-            for row in data['ResultSet']['Rows'][1:]:
-                term, label, typ = row['Data']
-                term, label, typ = term['VarCharValue'], label['VarCharValue'], typ['VarCharValue']
-                filteringTerms.append({
-                    "id": term,
-                    "label": label,
-                    "type": typ
-                })
-            return filteringTerms
-
-
-def get_entry_types():
+def get_entry_types(terms):
     response =     {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {},
@@ -79,7 +22,7 @@ def get_entry_types():
             "returnedSchemas": []
         },
         "response": {
-            "filteringTerms": fetch_athena_data(),
+            "filteringTerms": terms,
             "resources": [
                 {
                     "id": "NA",
@@ -97,10 +40,17 @@ def get_entry_types():
 
 
 def lambda_handler(event, context):
-    print('Event Received: {}'.format(json.dumps(event)))
-    response = get_entry_types()
-    print('Returning Response: {}'.format(json.dumps(response)))
-    return response
+    with sopen(f's3://{METADATA_BUCKET}/indexes/filtering_terms.pkl', 'rb') as fi:
+        data = pickle.load(fi)
+    
+        response = get_entry_types(
+            sorted(
+                [term for term in data],
+                key=lambda term: term['id']
+            )
+        )
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return response
 
 
 if __name__ == '__main__':

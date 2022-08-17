@@ -39,6 +39,15 @@ git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
 cd terraform-aws-serverless-beacon
 ```
 
+Install the following libraries for lambda layers
+```sh
+pip install smart_open --target layers/python_libraries/python --upgrade
+pip install jsons --target layers/python_libraries/python --upgrade
+pip install jsonschema --target layers/python_libraries/python --upgrade
+pip install pynamodb --target layers/python_libraries/python --upgrade
+pip install pyorc --target layers/python_libraries/python --upgrade
+```
+
 Now set the AWS access keys and token as needed.
 ```sh
 export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"
@@ -46,8 +55,7 @@ export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"
 export AWS_SESSION_TOKEN="AWS_SESSION_TOKEN"
 ```
 
-Install using `terraform init` to pull the module, followed by running `terraform apply` will create the infrastucture. For adding data to the beacon, see the API. To shut down the entire service run `terraform destroy`. Any created datasets
-will be lost (but not the VCFs on which they are based).
+Install using `terraform init` to pull the module, followed by running `terraform apply` will create the infrastucture. For adding data to the beacon, see the API. To shut down the entire service run `terraform destroy`. Any created datasets will be lost (but not the VCFs on which they are based).
 
 ```sh
 terraform init
@@ -95,13 +103,25 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
 
-### Query Endpoints Progress
+### Implemented Endpoints
 
-* `/g_variants` - Variant searching as per V2 spec (Without metadata)
-* `/g_variants/{id}` - TODO
-* `/g_variants/{id}/biosamples` - TODO
-* `/g_variants/{id}/individuals` - TODO
+#### Variant searching
 
+* GET/POST `/g_variants` - variant querying
+* GET/POST `/g_variants/{id}` - Search for unique variants 
+* GET/POST `/g_variants/{id}/biosamples` - Biosamples having the unique variant
+* GET/POST `/g_variants/{id}/individuals` - Individuals having the unique variant
+
+#### Generic Endpoints
+* GET/POST `/` or `/info` - get beacon information
+* GET/POST `/map` - get beacon map
+* GET/POST `/filtering_terms` - get ontology terms
+* GET/POST `/entry_types` - get types returned by the beacon
+
+#### In-progress
+
+* Individuals
+* Biosamples
 
 <!-- under development -->
 

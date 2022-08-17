@@ -3,6 +3,7 @@ import json
 from route_g_variants import route as route_g_variants
 from route_g_variants_id import route as route_g_variants_id
 from route_g_variants_id_individuals import route as route_g_variants_id_individuals
+from route_g_variants_id_biosamples import route as route_g_variants_id_biosamples
 
 
 def lambda_handler(event, context):
@@ -17,12 +18,8 @@ def lambda_handler(event, context):
     elif event['resource'] == '/g_variants/{id}/individuals':
         return route_g_variants_id_individuals(event)
 
-    # elif event['resource'] == '/g_variants/{id}/biosamples':
-    #     entry = responses.result_sets_response
-    #     entry['response']['resultSets'][0]['results'] = [
-    #         entries.biosample_entry]
-    #     return from script
-
+    elif event['resource'] == '/g_variants/{id}/biosamples':
+        return route_g_variants_id_biosamples(event)
 
 
 if __name__ == '__main__':
@@ -66,15 +63,29 @@ if __name__ == '__main__':
     #     })
     # }
 
+    # event = {
+    #     "resource": "/g_variants/{id}/individuals",
+    #     "path": "/g_variants/{id}/individuals",
+    #     "httpMethod": "GET",
+    #     "pathParameters": {
+    #         "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
+    #     },
+    #     "queryStringParameters": {
+    #         "requestedGranularity": "count"
+    #     },
+    #     "body": json.dumps({
+    #     })
+    # }
+
     event = {
-        "resource": "/g_variants/{id}/individuals",
-        "path": "/g_variants/{id}/individuals",
+        "resource": "/g_variants/{id}/biosamples",
+        "path": "/g_variants/{id}/biosamples",
         "httpMethod": "GET",
         "pathParameters": {
             "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
         },
         "queryStringParameters": {
-            "requestedGranularity": "count"
+            "requestedGranularity": "record"
         },
         "body": json.dumps({
         })

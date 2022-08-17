@@ -35,3 +35,9 @@ variable "metadata-bucket-prefix" {
   description = "S3 bucket for storing metadata"
   default     = ""
 }
+
+variable "lambda-layers-bucket-prefix" {
+  type        = string
+  description = "S3 bucket for storing lambda layers"
+  default     = ""
+}

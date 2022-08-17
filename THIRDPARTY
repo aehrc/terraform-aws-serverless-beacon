@@ -8,6 +8,7 @@ applies to:
   - pynamodb/PynamoDB, Copyright (c) 2014 Jharrod LaFon
   - python-jsonschema/jsonschema, Copyright (c) 2013 Julian Berman
   - ramonhagenaars/jsons, Copyright (c) 2018 Ramon Hagenaars
+  - RaRe-Technologies/smart_open, Copyright (c) 2015 Radim Řehůřek
 -----------------------------------------------------------------------------
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

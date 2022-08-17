@@ -5,11 +5,14 @@
 # Glue docs; https://docs.aws.amazon.com/glue/latest/dg/glue-dg.pdf
 # 
 resource "aws_glue_catalog_database" "metadata-database" {
-  name = "sbeacon-metadata"
+  name = "sbeacon_metadata"
 }
 
+# 
+# Athena does not support - in database names, use _ instead
+# 
 resource "aws_glue_catalog_table" "sbeacon-individuals" {
-  name          = "sbeacon-individuals"
+  name          = "sbeacon_individuals"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -120,6 +123,135 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
   }
 }
 
+resource "aws_glue_catalog_table" "sbeacon-biosamples" {
+  name          = "sbeacon_biosamples"
+  database_name = aws_glue_catalog_database.metadata-database.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    "orc.compress" = "SNAPPY"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/biosamples"
+    input_format = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+
+
+    ser_de_info {
+      name                  = "ORC"
+      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+
+      parameters = {
+        "serialization.format" = 1,
+        "orc.column.index.access" = "FALSE"
+        "hive.orc.use-column-names" = "TRUE"
+      }
+    }
+    columns {
+      name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "individualid"
+      type = "string"
+    }
+
+    columns {
+      name = "biosamplestatus"
+      type = "string"
+    }
+
+    columns {
+      name = "collectiondate"
+      type = "string"
+    }
+
+    columns {
+      name = "collectionmoment"
+      type = "string"
+    }
+
+    columns {
+      name = "diagnosticmarkers"
+      type = "string"
+    }
+
+    columns {
+      name = "histologicaldiagnosis"
+      type = "string"
+    }
+
+    columns {
+      name = "measurements"
+      type = "string"
+    }
+
+    columns {
+      name = "obtentionprocedure"
+      type = "string"
+    }
+
+    columns {
+      name = "pathologicalstage"
+      type = "string"
+    }
+
+    columns {
+      name = "pathologicaltnmfinding"
+      type = "string"
+    }
+
+    columns {
+      name = "phenotypicfeatures"
+      type = "string"
+    }
+
+    columns {
+      name = "sampleorigindetail"
+      type = "string"
+    }
+
+    columns {
+      name = "sampleorigintype"
+      type = "string"
+    }
+
+    columns {
+      name = "sampleprocessing"
+      type = "string"
+    }
+
+    columns {
+      name = "samplestorage"
+      type = "string"
+    }
+
+    columns {
+      name = "tumorgrade"
+      type = "string"
+    }
+
+    columns {
+      name = "tumorprogression"
+      type = "string"
+    }
+
+    columns {
+      name = "info"
+      type = "string"
+    }
+
+    columns {
+      name = "notes"
+      type = "string"
+    }
+  }
+}
+
 resource "aws_glue_crawler" "sbeacon-crawler" {
   database_name = aws_glue_catalog_database.metadata-database.name
   name          = "sbeacon-crawler"
@@ -127,7 +259,10 @@ resource "aws_glue_crawler" "sbeacon-crawler" {
 
   catalog_target {
     database_name = aws_glue_catalog_database.metadata-database.name
-    tables        = [aws_glue_catalog_table.sbeacon-individuals.name]
+    tables        = [
+      aws_glue_catalog_table.sbeacon-individuals.name,
+      aws_glue_catalog_table.sbeacon-biosamples.name
+    ]
   }
 
   schema_change_policy {

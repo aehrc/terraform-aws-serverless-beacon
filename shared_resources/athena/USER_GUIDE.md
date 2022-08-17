@@ -10,6 +10,7 @@ If you manually add data as file uploads to athena, you must run the crawler. It
 
 Manual uploads must be avoided at all costs, unless you upload column ordered ORCs!
 Once you upload the ORCs, if they have partitions, crawler must be run again to build the partition index.
+To avoid this you can run `MSCK REPAIR TABLE <table_name>;` from console. This will update the partitions from s3.
 
 > No caution needed when added data via SQL!
 
