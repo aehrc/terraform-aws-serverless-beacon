@@ -93,8 +93,8 @@ Please make a copy of `backend.tf.template` with suited parameters and rename as
 
 ### Data ingestion API
 
-* Submit dataset - please follow the JSON schema at [./lambda/submitDataset/new-schema.json](./lambda/submitDataset/new-schema.json)
-* Update dataset - please follow the JSON schema at [./lambda/submitDataset/update-schema.json](./lambda/submitDataset/update-schema.json)
+* Submit dataset - please follow the JSON schema at [./shared_resources/schemas/submitDataset-schema-new.json](./shared_resources/schemas/submitDataset-schema-new.json)
+* Update dataset - please follow the JSON schema at [./shared_resources/schemas/submitDataset-schema-update.json](./shared_resources/schemas/submitDataset-schema-update.json)
 
 ### Query API
 
