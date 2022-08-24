@@ -3,13 +3,14 @@ import json
 import jsonschema
 import queue
 import threading
-import boto3
 import os
 import hashlib
 import base64
 import jsons
 from uuid import uuid4
 import time
+
+import boto3
 
 from dynamodb.variant_queries import VariantQuery, VariantResponse
 from dynamodb.datasets import Dataset
@@ -64,7 +65,7 @@ def route(event):
         allele = params.get("allele", None)
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
-        filters = params.get("filters", None)
+        filters = params.get("filters", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if (event['httpMethod'] == 'POST'):
@@ -104,11 +105,14 @@ def route(event):
         allele = requestParameters.get("allele", None)
         geneId = requestParameters.get("geneId", None)
         aminoacidChange = requestParameters.get("aminoacidChange", None)
-        filters = requestParameters.get("filters", None)
+        filters = requestParameters.get("filters", [])
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = requestParameters.get("includeResultsetResponses", 'NONE')
 
-
+    if len(filters) > 0:
+        # supporting ontology terms
+        pass
+        
     datasets = get_datasets(assemblyId)
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
     vcf_chromosomes = { vcfm.vcf: get_matching_chromosome(vcfm.chromosomes, referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap }

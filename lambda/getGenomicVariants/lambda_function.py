@@ -63,23 +63,9 @@ if __name__ == '__main__':
     #     })
     # }
 
-    # event = {
-    #     "resource": "/g_variants/{id}/individuals",
-    #     "path": "/g_variants/{id}/individuals",
-    #     "httpMethod": "GET",
-    #     "pathParameters": {
-    #         "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
-    #     },
-    #     "queryStringParameters": {
-    #         "requestedGranularity": "count"
-    #     },
-    #     "body": json.dumps({
-    #     })
-    # }
-
     event = {
-        "resource": "/g_variants/{id}/biosamples",
-        "path": "/g_variants/{id}/biosamples",
+        "resource": "/g_variants/{id}/individuals",
+        "path": "/g_variants/{id}/individuals",
         "httpMethod": "GET",
         "pathParameters": {
             "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
@@ -90,5 +76,19 @@ if __name__ == '__main__':
         "body": json.dumps({
         })
     }
+
+    # event = {
+    #     "resource": "/g_variants/{id}/biosamples",
+    #     "path": "/g_variants/{id}/biosamples",
+    #     "httpMethod": "GET",
+    #     "pathParameters": {
+    #         "id": "R1JDSDM4CTUJMTAwMDAzMTkJQQlU"
+    #     },
+    #     "queryStringParameters": {
+    #         "requestedGranularity": "record"
+    #     },
+    #     "body": json.dumps({
+    #     })
+    # }
 
     print(lambda_handler(event, dict()))

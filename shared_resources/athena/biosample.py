@@ -43,6 +43,7 @@ class Biosample(jsons.JsonSerializable):
                 self,
                 *,
                 id='',
+                datasetid='',
                 individualId='',
                 biosampleStatus={},
                 collectionDate=[],
@@ -64,6 +65,7 @@ class Biosample(jsons.JsonSerializable):
                 notes=[]
             ):
         self.id = id
+        self.datasetid = datasetid
         self.individualId = individualId
         self.biosampleStatus = biosampleStatus
         self.collectionDate = collectionDate
@@ -109,17 +111,18 @@ class Biosample(jsons.JsonSerializable):
 
 
     @classmethod
-    def upload_array(cls, array, datasetId):
+    def upload_array(cls, array):
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls.table_columns]) + '>'
-        key = f'{datasetId}-biosamples'
+        partition = f'datasetid={array[0].datasetId}'
+        key = f'{array[0].datasetId}-biosamples'
         
-        with sopen(f's3://{METADATA_BUCKET}/biosamples/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/biosamples/{partition}/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[cls.table_columns[2:]]) as writer:
+                bloom_filter_columns=[c.lower() for c in cls.table_columns[2:]]) as writer:
                 for biosample in array:
                     row = tuple(
                         biosample.__dict__[k] 

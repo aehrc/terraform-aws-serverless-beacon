@@ -107,7 +107,7 @@ class Individual(jsons.JsonSerializable):
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[cls.table_columns[2:]]) as writer:
+                bloom_filter_columns=[c.lower() for c in cls.table_columns[2:]]) as writer:
                 for individual in array:
                     row = tuple(
                         individual.__dict__[k] 

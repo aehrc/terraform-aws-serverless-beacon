@@ -250,6 +250,11 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
       type = "string"
     }
   }
+  
+  partition_keys {
+    name = "datasetid"
+    type = "string"
+  }
 }
 
 resource "aws_glue_crawler" "sbeacon-crawler" {

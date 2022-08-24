@@ -1,31 +1,19 @@
-from collections import defaultdict
-import json
-import jsonschema
-import queue
-import threading
-import boto3
 import os
-import hashlib
-import base64
 import jsons
-from uuid import uuid4
-import time
+import pickle
 
-from apiutils.api_response import bundle_response, bad_request
-from utils.chrom_matching import get_matching_chromosome, get_vcf_chromosomes
-from dynamodb.datasets import Dataset
-from dynamodb.variant_queries import VariantQuery, VariantResponse
-import apiutils.responses as responses
-import apiutils.entries as entries
+from smart_open import open as sopen
+import boto3
+
 from payloads.lambda_payloads import SplitQueryPayload
-from payloads.lambda_responses import PerformQueryResponse
 
 
 SPLIT_SIZE = 1000000
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 aws_lambda = boto3.client('lambda')
-
+onto_index_cache = None
 
 def get_split_query_fan_out(region_start, region_end):
     fan_out = 0
@@ -43,3 +31,15 @@ def split_query(payload: SplitQueryPayload):
         InvocationType='Event',
         Payload=jsons.dumps(payload),
     )
+
+
+def get_filtering_terms_index():
+    global onto_index_cache
+    if onto_index_cache is None:
+        with sopen(f's3://{METADATA_BUCKET}/indexes/onto_index.pkl', 'rb') as idx:
+            onto_index_cache = pickle.load(idx)
+    return onto_index_cache
+
+
+if __name__ == '__main__':
+    print(get_filtering_terms_index())

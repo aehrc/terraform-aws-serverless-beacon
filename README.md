@@ -55,6 +55,8 @@ export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"
 export AWS_SESSION_TOKEN="AWS_SESSION_TOKEN"
 ```
 
+Make sure you have a terraform version newer than `Terraform v1.1.6`.
+
 Install using `terraform init` to pull the module, followed by running `terraform apply` will create the infrastucture. For adding data to the beacon, see the API. To shut down the entire service run `terraform destroy`. Any created datasets will be lost (but not the VCFs on which they are based).
 
 ```sh
