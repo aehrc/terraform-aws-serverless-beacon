@@ -67,13 +67,15 @@ def perform_query(payload: PerformQueryPayload):
             genotypes = genotypes.strip(',').split(',')
 
             for index, genotype in enumerate(genotypes):
-                genotype = genotype.split('|')
+                if genotype == '.':
+                    continue
+                genotype = get_all_calls(genotype)
                 all_alleles_count += len(genotype)
 
                 if alt_index in { int(allele) for allele in genotype }:
-                   sample_indices.add(index) 
-        except:
-            pass
+                    sample_indices.add(index) 
+        except Exception as e:
+            print('Errored', e)
 
     query_process.stdout.close()
 

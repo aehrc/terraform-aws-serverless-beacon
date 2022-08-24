@@ -81,24 +81,25 @@ def create_dataset(attributes):
     item.info = attributes.get('info', [])
     item.dataUseConditions = attributes.get('dataUseConditions', {})
 
+
     individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
+    biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
+    
+    # setting dataset id
     for individual in individuals:
         individual.datasetId = item.id
-    biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
+    for biosample in biosamples:
+        biosample.datasetId = item.id
 
     # upload to s3
     Individual.upload_array(individuals)
-    Biosample.upload_array(biosamples, item.id)
+    Biosample.upload_array(biosamples)
 
     aws_lambda.invoke(
         FunctionName=INDEXER_LAMBDA,
         InvocationType='Event',
         Payload=jsons.dumps(dict()),
     )
-
-    # TODO check essetial params to match up with the individual
-    # for biosample in biosamples:
-    #     biosample.datasetId = item.id
 
     for vcf in set(item.vcfLocations):
         chroms = get_vcf_chromosomes(vcf)

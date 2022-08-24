@@ -38,7 +38,7 @@ s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def run_query(query):
+def run_query(query, queue):
     response = athena.start_query_execution(
         QueryString=query,
         # ClientRequestToken='string',
@@ -56,7 +56,7 @@ def run_query(query):
         status = exec['QueryExecution']['Status']['State']
         
         if status in ('QUEUED', 'RUNNING'):
-            time.sleep(1 * (2**retries))
+            time.sleep(2)
             retries += 1
 
             if retries == 4:
@@ -72,7 +72,7 @@ def run_query(query):
                 # NextToken='string',
                 MaxResults=1000
             )
-            return Individual.parse_array(data['ResultSet']['Rows'])
+            return queue.put(Individual.parse_array(data['ResultSet']['Rows']))
 
 
 # TODO break into many queries (ATHENA SQL LIMIT)
@@ -240,6 +240,8 @@ def route(event):
 
     dataset_samples = defaultdict(set)
     count = 0
+
+
     
     for _, loc in query_results.items():
         print(loc.bucket, loc.key)
@@ -274,10 +276,22 @@ def route(event):
         return bundle_response(200, response)
     
     if requestedGranularity in ('record', 'aggregated'):
-        individuals = []
+        individuals = queue.Queue()
+        threads = []
         for dataset_id, sample_names in dataset_samples.items():
             if (len(sample_names)) > 0:
-                individuals += run_query(get_queries(dataset_id, sample_names))
+                thread = threading.Thread(
+                    target=run_query,
+                    kwargs={ 
+                        'query': get_queries(dataset_id, sample_names),
+                        'queue': individuals
+                    }
+                )
+                thread.start()
+                threads.append(thread)
+
+        [thread.join() for thread in threads]
+        individuals = list(individuals.queue)
 
         response = responses.get_result_sets_response(
             setType='individual', 

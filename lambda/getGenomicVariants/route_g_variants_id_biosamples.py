@@ -39,7 +39,7 @@ s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def run_query(query):
+def run_query(query, queue):
     response = athena.start_query_execution(
         QueryString=query,
         # ClientRequestToken='string',
@@ -57,7 +57,7 @@ def run_query(query):
         status = exec['QueryExecution']['Status']['State']
         
         if status in ('QUEUED', 'RUNNING'):
-            time.sleep(1 * (2**retries))
+            time.sleep(2)
             retries += 1
 
             if retries == 4:
@@ -73,7 +73,7 @@ def run_query(query):
                 # NextToken='string',
                 MaxResults=1000
             )
-            return Biosample.parse_array(data['ResultSet']['Rows'])
+            return queue.put(Biosample.parse_array(data['ResultSet']['Rows']))
 
 
 # TODO break into many queries (ATHENA SQL LIMIT)
@@ -88,6 +88,8 @@ def get_queries(datasetId, sampleNames):
         "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".individualid
     WHERE 
         "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}'
+        AND 
+        "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".datasetid='{datasetId}'
         AND
             "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"."samplename" 
         IN ({','.join([f"'{sn}'" for sn in sampleNames])});
@@ -276,17 +278,30 @@ def route(event):
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
     
+
     if requestedGranularity in ('record', 'aggregated'):
-        individuals = []
+        biosamples = queue.Queue()
+        threads = []
         for dataset_id, sample_names in dataset_samples.items():
             if (len(sample_names)) > 0:
-                individuals += run_query(get_queries(dataset_id, sample_names))
+                thread = threading.Thread(
+                    target=run_query,
+                    kwargs={ 
+                        'query': get_queries(dataset_id, sample_names),
+                        'queue': biosamples
+                    }
+                )
+                thread.start()
+                threads.append(thread)
+        
+        [thread.join() for thread in threads]
+        biosamples = list(biosamples.queue)
 
         response = responses.get_result_sets_response(
-            setType='individual', 
+            setType='biosample', 
             exists=exists,
             total=count,
-            results=jsons.dump(individuals)
+            results=jsons.dump(biosamples)
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
