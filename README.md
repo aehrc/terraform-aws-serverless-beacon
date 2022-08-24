@@ -15,7 +15,7 @@ The service intends to support beacon v2 according to the
 
 Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
 
-```sh
+```bash
 # install development essentials
 sudo yum install -y gcc10 gcc10-c++ git openssl-devel libcurl-devel
 sudo ln -s /usr/bin/gcc10-gcc /usr/bin/gcc
@@ -34,13 +34,28 @@ sudo make install
 
 Clone the codebase from our repository to your local machine (or EC2). Make sure you export the AWS access keys or you're running from an AWS IAM power access authorized EC2 instance.
 
-```sh
+```bash
 git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
 cd terraform-aws-serverless-beacon
 ```
 
+Install the essential AWS C++ SDKs and initialise the other libraries using the following command.
+
+```bash
+$ ./init.sh -march=haswell -O3
+```
+
+You'll also need to do this if lambda functions start to display "Error: Runtime exited with error: signal: illegal instruction (core dumped)".
+In this case it's likely AWS Lambda has moved onto a different architecture from haswell (Family 6, Model 63). You can use cat /proc/cpuinfo
+in a lambda environment to find the new CPU family and model numbers, or just change -march=haswell to -msse4.2 or -mpopcnt for less optimisation.
+
+```bash
+$ ./init.sh -msse4.2 -O3
+```
+
 Install the following libraries for lambda layers
-```sh
+
+```bash
 pip install smart_open --target layers/python_libraries/python --upgrade
 pip install jsons --target layers/python_libraries/python --upgrade
 pip install jsonschema --target layers/python_libraries/python --upgrade
@@ -49,7 +64,7 @@ pip install pyorc --target layers/python_libraries/python --upgrade
 ```
 
 Now set the AWS access keys and token as needed.
-```sh
+```bash
 export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"
 export AWS_SESSION_TOKEN="AWS_SESSION_TOKEN"
@@ -59,7 +74,7 @@ Make sure you have a terraform version newer than `Terraform v1.1.6`.
 
 Install using `terraform init` to pull the module, followed by running `terraform apply` will create the infrastucture. For adding data to the beacon, see the API. To shut down the entire service run `terraform destroy`. Any created datasets will be lost (but not the VCFs on which they are based).
 
-```sh
+```bash
 terraform init
 terraform plan # should finish without errors
 terraform apply
@@ -70,13 +85,13 @@ terraform apply
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands.
 
 * Python layer
-```sh
+```bash
 cd terraform-aws-serverless-beacon
 pip install --target layers/<Library Name>/python <Library Name>
 ```
 
 * Binary layer
-```sh
+```bash
 # clone the repo somewhere else
 git clone <REPO> 
 cd <REPO>
