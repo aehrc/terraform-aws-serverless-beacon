@@ -264,7 +264,7 @@ def route(event):
             setType='biosample', 
             exists=exists,
             total=count,
-            results=jsons.dump(biosamples)
+            results=jsons.dump(biosamples, strip_privates=True)
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)

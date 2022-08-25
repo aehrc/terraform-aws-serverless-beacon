@@ -65,6 +65,9 @@ def get_entry_types():
                 },
                 "individual": {
                     
+                },
+                "biosample": {
+                    
                 }
             }
         }

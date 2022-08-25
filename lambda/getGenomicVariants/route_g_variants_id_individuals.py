@@ -260,7 +260,7 @@ def route(event):
             setType='individual', 
             exists=exists,
             total=count,
-            results=jsons.dump(individuals)
+            results=jsons.dump(individuals, strip_privates=True)
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)

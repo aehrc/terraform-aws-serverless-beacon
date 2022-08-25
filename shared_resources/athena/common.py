@@ -6,15 +6,26 @@ import time
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
 athena = boto3.client('athena')
 
+# Perform database level operations based on the queries
+
 
 class AthenaModel:
+    '''
+    This is a higher level abstraction class
+    user is only required to write queries in the following form
+    
+    SELECT * FROM "{{database}}"."{{table}}" WHERE <CONDITIONS>;
+
+    table name is fetched from the child class, database is injected
+    in this class. Helps write cleaner code without so many constants 
+    repeated everywhere.
+    '''
     @classmethod
     def get_by_query(cls, query, queue=None):
+        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
         if queue is None:
             return cls.parse_array(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None))
         else:
@@ -22,7 +33,8 @@ class AthenaModel:
 
     
     @classmethod
-    def get_count_by_query(cls, query, queue=None):
+    def get_existence_by_query(cls, query, queue=None):
+        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
         if queue is None:
             return len(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)) > 1
         else:
@@ -30,7 +42,8 @@ class AthenaModel:
 
 
     @classmethod
-    def get_existence_by_query(cls, query, queue=None):
+    def get_count_by_query(cls, query, queue=None):
+        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
         if queue is None:
             return int(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)[1]['Data'][0]['VarCharValue'])
         else:
