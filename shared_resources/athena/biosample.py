@@ -6,8 +6,14 @@ import os
 
 from smart_open import open as sopen
 
+from .common import run_query
+
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
+ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
+BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
@@ -85,6 +91,14 @@ class Biosample(jsons.JsonSerializable):
         self.tumorProgression = tumorProgression
         self.info = info
         self.notes = notes
+
+
+    @classmethod
+    def get_biosamples_by_query(cls, query, queue=None):
+        if queue is None:
+            return Biosample.parse_array(run_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None))
+        else:
+            queue.put(Biosample.parse_array(run_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)))
 
     
     @classmethod

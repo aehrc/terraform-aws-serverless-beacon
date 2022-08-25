@@ -374,6 +374,65 @@ data aws_iam_policy_document lambda-getGenomicVariants {
 }
 
 #
+# getIndividuals Lambda Function
+#
+data aws_iam_policy_document lambda-getIndividuals {
+  statement {
+    actions = [
+      "dynamodb:Query",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+      aws_dynamodb_table.variant_queries.arn,
+      aws_dynamodb_table.variant_query_responses.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-splitQuery.function_arn]
+  }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-performQuery.function_arn]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
+}
+
+#
 # splitQuery Lambda Function
 #
 data aws_iam_policy_document lambda-splitQuery {

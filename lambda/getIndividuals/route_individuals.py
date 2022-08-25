@@ -3,7 +3,6 @@ import json
 import jsonschema
 import queue
 import threading
-import boto3
 import os
 import hashlib
 import base64
@@ -11,48 +10,29 @@ import jsons
 from uuid import uuid4
 import time
 
-from apiutils.api_response import bundle_response, bad_request
-from utils.chrom_matching import get_matching_chromosome, get_vcf_chromosomes
-from local_utils import split_query, get_split_query_fan_out
-from dynamodb.datasets import Dataset
+import boto3
+
 from dynamodb.variant_queries import VariantQuery, VariantResponse
+from dynamodb.datasets import Dataset
+from local_utils import split_query, get_split_query_fan_out
+from apiutils.api_response import bundle_response, bad_request
+from utils.chrom_matching import get_matching_chromosome
 import apiutils.responses as responses
 import apiutils.entries as entries
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
-from athena.individual import Individual
+
 
 SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 REQUEST_TIMEOUT = 10 # seconds 
-METADATA_DATABASE = os.environ['METADATA_DATABASE']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 
 dynamodb = boto3.client('dynamodb')
 aws_lambda = boto3.client('lambda')
-athena = boto3.client('athena')
 s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
-
-
-# TODO break into many queries (ATHENA SQL LIMIT)
-# https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
-def get_queries(datasetId, sampleNames):
-    query = f'''
-    SELECT * 
-    FROM 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" 
-    WHERE 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}' 
-        AND 
-            samplename 
-        IN 
-            ({','.join([f"'{sn}'" for sn in sampleNames])});
-    '''
-    return query
 
 
 def get_datasets(assembly_id, dataset_ids=None):
@@ -67,14 +47,29 @@ def get_datasets(assembly_id, dataset_ids=None):
 
 def route(event):
     if (event['httpMethod'] == 'GET'):
-        params = event.get('queryStringParameters', dict()) or dict()
+        params = event['queryStringParameters']
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
+        skip = params.get("skip", None)
+        limit = params.get("limit", None)
+        includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
+        start = params.get("start", None)
+        end = params.get("end", None)
+        assemblyId = params.get("assemblyId", None)
+        referenceName = params.get("referenceName", None)
+        referenceBases = params.get("referenceBases", None)
+        alternateBases = params.get("alternateBases", None)
+        variantMinLength = params.get("variantMinLength", 0)
+        variantMaxLength = params.get("variantMaxLength", -1)
+        allele = params.get("allele", None)
+        geneid = params.get("geneid", None)
+        aminoacidchange = params.get("aminoacidchange", None)
+        filters = params.get("filters", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if (event['httpMethod'] == 'POST'):
-        params = json.loads(event.get('body', "{}")) or dict()
+        params = json.loads(event['body'])
         print(f"POST params {params}")
         meta = params.get("meta", dict())
         query = params.get("query", dict())
@@ -82,7 +77,16 @@ def route(event):
         apiVersion = meta.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = meta.get("requestedSchemas", [])
         # query data
+        requestParameters = query.get("requestParameters", None)
         requestedGranularity = query.get("requestedGranularity", "boolean")
+        # pagination
+        pagination = query.get("pagination", dict())
+        skip = pagination.get("skip", 0)
+        limit = pagination.get("limit", 100)
+        currentPage = pagination.get("currentPage", None)
+        previousPage = pagination.get("previousPage", None)
+        nextPage = pagination.get("nextPage", None)
+        # query request params
         requestParameters = query.get("requestParameters", dict())
         # validate query request
         validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
@@ -90,25 +94,56 @@ def route(event):
         if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
             return bad_request(errorMessage= "\n".join([error.message for error in errors]))
             # raise error
+        start = requestParameters.get("start", None)
+        end = requestParameters.get("end", None)
+        assemblyId = requestParameters.get("assemblyId", None)
+        referenceName = requestParameters.get("referenceName", None)
+        referenceBases = requestParameters.get("referenceBases", None)
+        alternateBases = requestParameters.get("alternateBases", None)
+        variantMinLength = requestParameters.get("variantMinLength", 0)
+        variantMaxLength = requestParameters.get("variantMaxLength", -1)
+        allele = requestParameters.get("allele", None)
+        geneId = requestParameters.get("geneId", None)
+        aminoacidChange = requestParameters.get("aminoacidChange", None)
+        filters = requestParameters.get("filters", [])
+        variantType = requestParameters.get("variantType", None)
+        includeResultsetResponses = requestParameters.get("includeResultsetResponses", 'NONE')
 
-    variant_id = event["pathParameters"].get("id", None)
-    if variant_id is None:
-        return bad_request(errorMessage="Request missing variant ID")
-    
-    dataset_hash = base64.b64decode(variant_id.encode()).decode()
-    assemblyId, referenceName, pos, referenceBases, alternateBases = dataset_hash.split('\t')
-    pos = int(pos)
+    if len(filters) > 0:
+        # supporting ontology terms
+        pass
+        
     datasets = get_datasets(assemblyId)
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
     vcf_chromosomes = { vcfm.vcf: get_matching_chromosome(vcfm.chromosomes, referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap }
-    includeResultsetResponses = 'ALL'
+    check_all = includeResultsetResponses in ('HIT', 'ALL')
 
-    start_min = pos
-    start_max = pos + len(alternateBases)
-    end_min = pos
-    end_max = pos + len(alternateBases)
+    if len(start) == 2:
+        start_min, start_max = start
+    else:
+        start_min = start_max = start[0]
+    if len(end) == 2:
+        end_min, end_max = start
+    else:
+        end_min = end_max = end[0]
+    start_min += 1
+    start_max += 1
+    end_min += 1
+    end_max += 1
 
+    if referenceBases != 'N':
+        # For specific reference bases region may be smaller
+        max_offset = len(referenceBases) - 1
+        end_max = min(start_max + max_offset, end_max)
+        start_min = max(end_min - max_offset, start_min)
+        if end_min > end_max or start_min > start_max:
+            # Region search will find nothing, search a dummy region
+            start_min = 2000000000
+            start_max = start_min
+            end_min = start_min + max_offset
+            end_max = end_min
     # threading
+    thread_responses = queue.Queue()
     threads = []
     query_id = uuid4().hex
 
@@ -151,9 +186,6 @@ def route(event):
 
         # call split query for each dataset found
         payload = SplitQueryPayload(
-                passthrough={
-                    'samplesOnly': True
-                },
                 dataset_id=dataset.id,
                 query_id=query_id,
                 vcf_locations=vcf_locations,
@@ -164,11 +196,11 @@ def route(event):
                 end_min=end_min,
                 end_max=end_max,
                 alternate_bases=alternateBases,
-                variant_type=None,
+                variant_type=variantType,
                 include_datasets=includeResultsetResponses,
                 requested_granularity=requestedGranularity,
-                variant_min_length=0,
-                variant_max_length=-1
+                variant_min_length=variantMinLength,
+                variant_max_length=variantMaxLength
             )
         thread = threading.Thread(
                 target=split_query,
@@ -178,6 +210,13 @@ def route(event):
         threads.append(thread)
 
     exists = False
+    variants = set()
+    results = list()
+    dataset_vcf_group_map = dict()
+
+    # dict of key dataset.id and value=dict with key=vcf val=groupId
+    for k, vgs in dataset_variant_groups.items():
+        dataset_vcf_group_map[k] = { v : n for n, vg in enumerate(vgs) for v in vg }
 
     # wait while all the threads complete
     for thread in threads:
@@ -201,10 +240,10 @@ def route(event):
             break
         time.sleep(1)
 
-    dataset_samples = defaultdict(set)
-    count = 0
-
-
+    # key=pos-ref-alt
+    # val=counts
+    variant_call_counts = defaultdict(int)
+    variant_allele_counts = defaultdict(int)
     
     for _, loc in query_results.items():
         print(loc.bucket, loc.key)
@@ -218,15 +257,22 @@ def route(event):
         # immediately return the boolean response if exists
         if requestedGranularity == 'boolean' and exists:
             response = responses.get_boolean_response(exists=exists)
-            response['responseSummary']['exists'] = exists
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response)
         else:
             exists = exists or query_response.exists
             if exists:
                 exists = True
-                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
-                count += query_response.call_count
+                if check_all:
+                    variants.update(query_response.variants)
+
+                    for variant in query_response.variants:
+                        chrom, pos, ref, alt, typ = variant.split('\t')
+                        idx = f'{pos}_{ref}_{alt}'
+                        variant_call_counts[idx] += query_response.call_count
+                        variant_allele_counts[idx] += query_response.all_alleles_count
+                        internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
+                        results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
 
     if requestedGranularity == 'boolean':
         response = responses.get_boolean_response(exists=exists)
@@ -234,37 +280,16 @@ def route(event):
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        response = responses.get_counts_response(exists=exists, count=count)
+        response = responses.get_counts_response(exists=exists, count=len(variants))
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
-    
+
     if requestedGranularity in ('record', 'aggregated'):
-        individuals = queue.Queue()
-        threads = []
-        for dataset_id, sample_names in dataset_samples.items():
-            if (len(sample_names)) > 0:
-                thread = threading.Thread(
-                    target=Individual.get_individuals_by_query,
-                    kwargs={ 
-                        'query': get_queries(dataset_id, sample_names),
-                        'queue': individuals
-                    }
-                )
-                thread.start()
-                threads.append(thread)
-
-        [thread.join() for thread in threads]
-        individuals = list(individuals.queue)
-
         response = responses.get_result_sets_response(
-            setType='individual', 
+            setType='genomicVariant', 
             exists=exists,
-            total=count,
-            results=jsons.dump(individuals)
+            total=len(variants),
+            results=results
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
-
-
-if __name__ == '__main__':
-    pass

@@ -399,7 +399,7 @@ module "lambda-getGenomicVariants" {
   source = "terraform-aws-modules/lambda/aws"
 
   function_name = "getGenomicVariants"
-  description = "Get the beacon map."
+  description = "Get the variants."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
   memory_size = 128
@@ -427,8 +427,46 @@ module "lambda-getGenomicVariants" {
   )
 
   layers = [
-    local.python_libraries_layer,
-    local.binaries_layer
+    local.python_libraries_layer
+  ]
+}
+
+#
+# getIndividuals Lambda Function
+#
+module "lambda-getIndividuals" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getIndividuals"
+  description = "Get the individuals."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getIndividuals.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
+  source_path = "${path.module}/lambda/getIndividuals"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    {
+      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+      VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.function_name
+      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
   ]
 }
 
