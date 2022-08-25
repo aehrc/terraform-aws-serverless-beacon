@@ -12,7 +12,7 @@ from uuid import uuid4
 import time
 
 from apiutils.api_response import bundle_response, bad_request
-from utils.chrom_matching import get_matching_chromosome, get_vcf_chromosomes
+from utils.chrom_matching import get_matching_chromosome
 from local_utils import split_query, get_split_query_fan_out
 from dynamodb.datasets import Dataset
 from dynamodb.variant_queries import VariantQuery, VariantResponse
@@ -248,7 +248,7 @@ def route(event):
         for dataset_id, sample_names in dataset_samples.items():
             if (len(sample_names)) > 0:
                 thread = threading.Thread(
-                    target=Biosample.get_biosamples_by_query,
+                    target=Biosample.get_by_query,
                     kwargs={ 
                         'query': get_queries(dataset_id, sample_names),
                         'queue': biosamples

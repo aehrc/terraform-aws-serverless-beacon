@@ -6,7 +6,7 @@ import os
 
 from smart_open import open as sopen
 
-from .common import run_query
+from .common import AthenaModel
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
@@ -19,7 +19,7 @@ s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
-class Individual(jsons.JsonSerializable):
+class Individual(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     table_columns = [
         'id',
@@ -76,14 +76,6 @@ class Individual(jsons.JsonSerializable):
 
     
     @classmethod
-    def get_individuals_by_query(cls, query, queue=None):
-        if queue is None:
-            return Individual.parse_array(run_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None))
-        else:
-            queue.put(Individual.parse_array(run_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)))
-
-    
-    @classmethod
     def parse_array(cls, array):
         individuals = []
         var_list = list()
@@ -127,15 +119,6 @@ class Individual(jsons.JsonSerializable):
                         for k in cls.table_columns
                     )
                     writer.write(row)
-
-
-    @classmethod
-    def get_all_individuals(skip=0, limit=100):
-        query = f'''
-            SELECT * FROM "{METADATA_DATABASE}","{INDIVIDUALS_TABLE}"
-            OFFSET {skip}
-            LIMIT {limit}
-        '''
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ import os
 
 from smart_open import open as sopen
 
-from .common import run_query
+from .common import AthenaModel
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
@@ -19,7 +19,7 @@ s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
-class Biosample(jsons.JsonSerializable):
+class Biosample(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     table_columns = [
         'id',
@@ -91,14 +91,6 @@ class Biosample(jsons.JsonSerializable):
         self.tumorProgression = tumorProgression
         self.info = info
         self.notes = notes
-
-
-    @classmethod
-    def get_biosamples_by_query(cls, query, queue=None):
-        if queue is None:
-            return Biosample.parse_array(run_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None))
-        else:
-            queue.put(Biosample.parse_array(run_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)))
 
     
     @classmethod
