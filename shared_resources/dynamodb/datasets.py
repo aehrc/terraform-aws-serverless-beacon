@@ -62,44 +62,4 @@ class Dataset(Model):
 
 
 if __name__ == '__main__':
-    # these are tests
-    for item in Dataset.datasetIndex.query('MTD-1'):
-        for loc in item.vcfLocations:
-            print(loc)
-    # item = Dataset.get('test-wic')
-    # print(item.assemblyId)
-
-    # d = Dataset('pynamodb-test')
-    # d.assemblyId = 'pynamodb-assembly-id-test'
-    # d.name = 'pynamodb-name-test'
-    # d.sampleCount = 100
-    # d.callCount = 99
-    # d.variantCount = 999
-    # d.vcfGroups = list()
-    # d.vcfGroups.append(['vcf1', 'vcf2'])
-    # d.vcfGroups.append(['vcf3'])
-    # d.vcfLocations = set()
-    # d.vcfLocations.add('vcf1')
-    # d.vcfLocations.add('vcf2')
-    # d.vcfLocations.add('vcf3')
-    # d.save()
-
-    # e = Dataset.get('pynamodb-test')
-    # print('e.callCount ', e.callCount)
-    # print('e.updateDateTime ', e.updateDateTime)
-    # time.sleep(2)
-    # e.update(actions=[
-    #     Dataset.callCount.set(e.callCount + 1),
-    #     # Dataset.updateDateTime.set(get_current_time_utc())
-    # ])
-    # print('e.callCount ', e.callCount)
-    # print('e.updateDateTime ', e.updateDateTime)
-
-    # time.sleep(2)
-
-    # Dataset('pynamodb-test').update(actions=[
-    #     Dataset.callCount.set(165),
-    # ])
-    # f = Dataset.get('pynamodb-test')
-    # print('f.callCount ', f.callCount)
-    # print('f.updateDateTime ', f.updateDateTime)
+    pass

@@ -71,16 +71,4 @@ class VariantResponse(Model):
 
 
 if __name__ == '__main__':
-    q = VariantQuery()
-    q.save()
-
-    print(q.id, q.responses)
-    q.markFinished()
-    print(q.id, q.responses)
-
-    vr = VariantResponse()
-    rl = S3Location()
-    rl.bucket = 'mybucket'
-    rl.key = 'mykey'
-    vr.responseLocation = rl
-    vr.save()
+    pass

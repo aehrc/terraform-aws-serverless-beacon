@@ -8,6 +8,8 @@ import pickle
 
 from smart_open import open as sopen
 
+from dynamodb.onto_index import OntoData
+
 
 athena = boto3.client('athena')
 
@@ -19,6 +21,7 @@ INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 ONTO_INDEX_QUERY = open('helper_queries.sql').read().strip()
+
 
 def update_athena_partitions():
     athena.start_query_execution(
@@ -84,10 +87,14 @@ def onto_index():
                     "label": row['Data'][1].get('VarCharValue', ''),
                     "type": row['Data'][2]['VarCharValue']
                 })
-            with sopen(f's3://{METADATA_BUCKET}/indexes/onto_index.pkl', 'wb') as fo:
-                pickle.dump(dict(onto_tables), fo)
-            with sopen(f's3://{METADATA_BUCKET}/indexes/filtering_terms.pkl', 'wb') as fo:
-                pickle.dump(filtering_terms, fo)
+                entry = OntoData.make_index_entry(
+                    term=row['Data'][0]['VarCharValue'],
+                    tableName=row['Data'][3]['VarCharValue'],
+                    columnName=row['Data'][4]['VarCharValue'],
+                    type=row['Data'][2]['VarCharValue'],
+                    label= row['Data'][1].get('VarCharValue', '')
+                )
+                entry.save()
             return
 
 

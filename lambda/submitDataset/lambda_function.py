@@ -92,14 +92,17 @@ def create_dataset(attributes):
         biosample.datasetId = item.id
 
     # upload to s3
-    Individual.upload_array(individuals)
-    Biosample.upload_array(biosamples)
+    if len(individuals) > 0:
+        Individual.upload_array(individuals)
+    if len(biosamples) > 0: 
+        Biosample.upload_array(biosamples)
 
-    aws_lambda.invoke(
-        FunctionName=INDEXER_LAMBDA,
-        InvocationType='Event',
-        Payload=jsons.dumps(dict()),
-    )
+    if any([len(individuals) > 0, len(biosamples) > 0]):
+        aws_lambda.invoke(
+            FunctionName=INDEXER_LAMBDA,
+            InvocationType='Event',
+            Payload=jsons.dumps(dict()),
+        )
 
     for vcf in set(item.vcfLocations):
         chroms = get_vcf_chromosomes(vcf)

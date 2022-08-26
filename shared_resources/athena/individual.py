@@ -98,6 +98,8 @@ class Individual(jsons.JsonSerializable, AthenaModel):
 
     @classmethod
     def upload_array(cls, array):
+        if len(array) == 0:
+            return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         partition = f'datasetid={array[0].datasetId}'
         key = f'{array[0].datasetId}-individuals'

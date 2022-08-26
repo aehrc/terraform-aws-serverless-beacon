@@ -344,24 +344,16 @@ data aws_iam_policy_document lambda-getGenomicVariants {
 
   statement {
     actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
+      "lambda:InvokeFunction",
     ]
-    resources = ["*"]
+    resources = [module.lambda-splitQuery.lambda_function_arn]
   }
 
   statement {
     actions = [
       "lambda:InvokeFunction",
     ]
-    resources = [module.lambda-splitQuery.function_arn]
-  }
-
-  statement {
-    actions = [
-      "lambda:InvokeFunction",
-    ]
-    resources = [module.lambda-performQuery.function_arn]
+    resources = [module.lambda-performQuery.lambda_function_arn]
   }
 
   statement {
@@ -413,22 +405,7 @@ data aws_iam_policy_document lambda-getIndividuals {
     actions = [
       "lambda:InvokeFunction",
     ]
-    resources = [module.lambda-splitQuery.function_arn]
-  }
-
-  statement {
-    actions = [
-      "lambda:InvokeFunction",
-    ]
-    resources = [module.lambda-performQuery.function_arn]
-  }
-
-  statement {
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
-    ]
-    resources = ["*"]
+    resources = [module.lambda-performQuery.lambda_function_arn]
   }
 }
 
@@ -440,7 +417,7 @@ data aws_iam_policy_document lambda-splitQuery {
     actions = [
       "lambda:InvokeFunction",
     ]
-    resources = [module.lambda-performQuery.function_arn]
+    resources = [module.lambda-performQuery.lambda_function_arn]
   }
 }
 

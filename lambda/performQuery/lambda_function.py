@@ -1,7 +1,6 @@
 import json
 import jsons
 import re
-import subprocess
 
 import search_variants
 import search_variant_samples
