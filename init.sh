@@ -1,5 +1,10 @@
+#!/usr/bin/bash
 # argument optional, will be passed into add_compile_options()
 # e.g ./init.sh '-march=ivybridge'
+
+# 
+# Housekeeping and cleanups
+# 
 
 set -ex
 REPOSITORY_DIRECTORY="${PWD}"
@@ -29,6 +34,9 @@ mkdir "${LIBRARIES}"
 mkdir "${INCLUDE}"
 mkdir "${SOURCE}"
 
+# 
+# Runtime libraries for CPP development
+# 
 
 # Build the C++ AWS SDK libraries
 cd "${SOURCE}"
@@ -57,3 +65,35 @@ cmake .. -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=OFF \
   -DCMAKE_INSTALL_PREFIX=${INCLUDE}
 make install
+
+#
+# building lambda layers
+#
+
+# tabix
+cd ${SOURCE}
+git clone --recursive --depth 1 --branch develop https://github.com/samtools/htslib.git 
+cd htslib && autoreconf && ./configure --enable-libcurl && make
+cd ${REPOSITORY_DIRECTORY}
+mkdir -p layers/binaries/lib
+mkdir -p layers/binaries/bin
+ldd ${SOURCE}/htslib/tabix | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
+cp ${SOURCE}/htslib/tabix ./layers/binaries/bin/
+
+# bcftools
+cd ${SOURCE}
+git clone --recursive --depth 1 --branch develop https://github.com/samtools/bcftools.git
+cd bcftools && autoreconf && ./configure && make
+cd ${REPOSITORY_DIRECTORY}
+mkdir -p layers/binaries/lib
+mkdir -p layers/binaries/bin
+ldd ${SOURCE}/bcftools | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
+cp ${SOURCE}/bcftools/bcftools ./layers/binaries/bin/
+
+# python libraries layer
+cd ${REPOSITORY_DIRECTORY}
+pip install smart_open --target layers/python_libraries/python --upgrade
+pip install jsons --target layers/python_libraries/python --upgrade
+pip install jsonschema --target layers/python_libraries/python --upgrade
+pip install pynamodb --target layers/python_libraries/python --upgrade
+pip install pyorc --target layers/python_libraries/python --upgrade

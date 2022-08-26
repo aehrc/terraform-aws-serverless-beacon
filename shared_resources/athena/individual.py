@@ -6,19 +6,20 @@ import os
 
 from smart_open import open as sopen
 
+from .common import AthenaModel
+
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
-METADATA_DATABASE = os.environ['METADATA_DATABASE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
-class Individual(jsons.JsonSerializable):
+class Individual(jsons.JsonSerializable, AthenaModel):
+    _table_name = INDIVIDUALS_TABLE
     # for saving to database order matter
-    table_columns = [
+    _table_columns = [
         'id',
         'sampleName',
         'diseases',
@@ -88,7 +89,7 @@ class Individual(jsons.JsonSerializable):
                 try:
                     val = json.loads(val['VarCharValue'])
                 except:
-                    pass
+                    val = val.get('VarCharValue', '')
                 individual.__dict__[case_map[attr]] = val
             individuals.append(individual)
 
@@ -97,7 +98,7 @@ class Individual(jsons.JsonSerializable):
 
     @classmethod
     def upload_array(cls, array):
-        header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls.table_columns]) + '>'
+        header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         partition = f'datasetid={array[0].datasetId}'
         key = f'{array[0].datasetId}-individuals'
         
@@ -107,13 +108,13 @@ class Individual(jsons.JsonSerializable):
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[c.lower() for c in cls.table_columns[2:]]) as writer:
+                bloom_filter_columns=[c.lower() for c in cls._table_columns[2:]]) as writer:
                 for individual in array:
                     row = tuple(
                         individual.__dict__[k] 
                         if type(individual.__dict__[k]) == str
                         else json.dumps(individual.__dict__[k])
-                        for k in cls.table_columns
+                        for k in cls._table_columns
                     )
                     writer.write(row)
 
