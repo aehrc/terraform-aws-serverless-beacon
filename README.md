@@ -27,7 +27,7 @@ Run the following shell commands to setup necessary build tools. Valid for Amazo
 ```bash
 # install development essentials
 sudo yum install -y gcc10 gcc10-c++ git openssl-devel libcurl-devel wget bzip2-devel lzma-sdk xz-devel
-sudo rm /usr/bin/gcc /usr/bin/g++
+sudo rm /usr/bin/gcc /usr/bin/g++ /usr/bin/c++
 sudo ln -s /usr/bin/gcc10-gcc /usr/bin/gcc
 sudo ln -s /usr/bin/gcc10-g++ /usr/bin/g++
 pip install --upgrade pip
@@ -39,6 +39,13 @@ cd cmake-3.20.3
 ./bootstrap
 make
 sudo make install
+```
+
+Make sure you have a terraform version newer than `Terraform v1.1.6` if you're not using the docker image. Run the following command to get the terraform binary.
+
+```bash
+wget https://releases.hashicorp.com/terraform/1.2.8/terraform_1.2.8_linux_386.zip
+sudo unzip terraform_1.2.8_linux_386.zip -d /usr/bin/
 ```
 
 ### Option 2: Using the docker image
@@ -57,28 +64,25 @@ docker run --rm -it -v `pwd`:`pwd` -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:lat
 
 ## Deployment
 
-Install the essential AWS C++ SDKs and initialise the other libraries using the following command.
+Once you have configured the development environment or the docker container, install the essential AWS C++ SDKs and initialise the other libraries using the following command. Do this only once or as core C++ libraries change.
 
 ```bash
 $ ./init.sh -march=haswell -O3
 ```
 
-You'll also need to do this if lambda functions start to display "Error: Runtime exited with error: signal: illegal instruction (core dumped)".
-In this case it's likely AWS Lambda has moved onto a different architecture from haswell (Family 6, Model 63). You can use cat /proc/cpuinfo
-in a lambda environment to find the new CPU family and model numbers, or just change -march=haswell to -msse4.2 or -mpopcnt for less optimisation.
+You'll also need to do this if lambda functions start to display "Error: Runtime exited with error: signal: illegal instruction (core dumped)". In this case it's likely AWS Lambda has moved onto a different architecture from haswell (Family 6, Model 63). You can use cat /proc/cpuinfo in a lambda environment to find the new CPU family and model numbers, or just change -march=haswell to -msse4.2 or -mpopcnt for less optimisation.
 
 ```bash
 $ ./init.sh -msse4.2 -O3
 ```
 
-Now set the AWS access keys and token as needed.
+Now set the AWS access keys and token as needed. Since docker uses the same user permissions this may not be needed if you're using an authorised EC2 instance.
+
 ```bash
 export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"
 export AWS_SESSION_TOKEN="AWS_SESSION_TOKEN"
 ```
-
-Make sure you have a terraform version newer than `Terraform v1.1.6`.
 
 Install using `terraform init` to pull the module, followed by running `terraform apply` will create the infrastucture. For adding data to the beacon, see the API. To shut down the entire service run `terraform destroy`. Any created datasets will be lost (but not the VCFs on which they are based).
 
@@ -90,7 +94,7 @@ terraform apply
 
 ## Development
 
-All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands.
+All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands. Once the decision to use the library is finalised update the `init.sh` script to automate the process.
 
 * Python layer
 ```bash
@@ -104,10 +108,14 @@ pip install --target layers/<Library Name>/python <Library Name>
 git clone <REPO> 
 cd <REPO>
 mkdir build && cd build && cmake .. && make && make install
+
 # copy the bin and lib folders to a folder inside layers
 cp bin terraform-aws-serverless-beacon/layers/<Library Name>/
 cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
+
 # troubleshoot with "ldd ./binary-name" to see what libaries needed
+# you can use the following command to copy the libraries to binaries/lib/
+<binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
 ```
 
 * Collaborative development

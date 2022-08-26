@@ -1,3 +1,7 @@
+provider "aws" {
+  region = "us-east-1"
+}
+
 locals {
   api_version = "v2.0.0"
   version = "v0.0.1"
