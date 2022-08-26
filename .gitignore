@@ -17,3 +17,5 @@ libraries
 
 # python lambda layers
 layers/python_libraries/python
+layers/binaries/bin/*
+layers/binaries/lib/*

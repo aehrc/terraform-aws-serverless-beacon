@@ -11,15 +11,26 @@ The service intends to support beacon v2 according to the
 
 ## Installation
 
-### The environment
+You can use either local development or a docker environment for development and deployment. First download the reqpository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
+
+```bash
+git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
+cd terraform-aws-serverless-beacon
+```
+
+### Option 1: Setting up the development environment
+
+Skip to next section if you're only interested in deployment or using a different architecture compared to AWS lambda environment.
 
 Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
 
 ```bash
 # install development essentials
-sudo yum install -y gcc10 gcc10-c++ git openssl-devel libcurl-devel
+sudo yum install -y gcc10 gcc10-c++ git openssl-devel libcurl-devel wget bzip2-devel lzma-sdk xz-devel
+sudo rm /usr/bin/gcc /usr/bin/g++
 sudo ln -s /usr/bin/gcc10-gcc /usr/bin/gcc
 sudo ln -s /usr/bin/gcc10-g++ /usr/bin/g++
+pip install --upgrade pip
 
 # Install CMake
 wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz
@@ -30,14 +41,21 @@ make
 sudo make install
 ```
 
-### Deployment
+### Option 2: Using the docker image
 
-Clone the codebase from our repository to your local machine (or EC2). Make sure you export the AWS access keys or you're running from an AWS IAM power access authorized EC2 instance.
+Initialise the docker container using the following command.
 
 ```bash
-git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
-cd terraform-aws-serverless-beacon
+docker build -t csiro/sbeacon ./docker
 ```
+
+This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
+
+```bash
+docker run --rm -it -v `pwd`:`pwd` -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:latest /bin/bash
+```
+
+## Deployment
 
 Install the essential AWS C++ SDKs and initialise the other libraries using the following command.
 
@@ -51,16 +69,6 @@ in a lambda environment to find the new CPU family and model numbers, or just ch
 
 ```bash
 $ ./init.sh -msse4.2 -O3
-```
-
-Install the following libraries for lambda layers
-
-```bash
-pip install smart_open --target layers/python_libraries/python --upgrade
-pip install jsons --target layers/python_libraries/python --upgrade
-pip install jsonschema --target layers/python_libraries/python --upgrade
-pip install pynamodb --target layers/python_libraries/python --upgrade
-pip install pyorc --target layers/python_libraries/python --upgrade
 ```
 
 Now set the AWS access keys and token as needed.
@@ -80,7 +88,7 @@ terraform plan # should finish without errors
 terraform apply
 ```
 
-### Development
+## Development
 
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands.
 
@@ -120,22 +128,22 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
 
-### Implemented Endpoints
+## Implemented Endpoints
 
-#### Variant searching
+### Variant searching
 
 * GET/POST `/g_variants` - variant querying
 * GET/POST `/g_variants/{id}` - Search for unique variants 
 * GET/POST `/g_variants/{id}/biosamples` - Biosamples having the unique variant
 * GET/POST `/g_variants/{id}/individuals` - Individuals having the unique variant
 
-#### Generic Endpoints
+### Generic Endpoints
 * GET/POST `/` or `/info` - get beacon information
 * GET/POST `/map` - get beacon map
 * GET/POST `/filtering_terms` - get ontology terms
 * GET/POST `/entry_types` - get types returned by the beacon
 
-#### In-progress
+### In-progress
 
 * Individuals
 * Biosamples
