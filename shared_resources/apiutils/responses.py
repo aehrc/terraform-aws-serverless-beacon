@@ -27,7 +27,13 @@ result_sets_response = {
         "receivedRequestSummary": {
             "apiVersion": "get from request",  # TODO
             "requestedSchemas": [],  # TODO
-            "pagination": {},  # TODO
+            "pagination": {
+                "currentPage": "",
+                "limit": "",
+                "nextPage": "",
+                "previousPage": "",
+                "skip": ""
+            },
             "requestedGranularity": "record"  # TODO
         }
     },

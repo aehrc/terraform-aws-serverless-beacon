@@ -47,7 +47,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 self,
                 *,
                 id='',
-                datasetid='',
+                datasetId='',
                 individualId='',
                 biosampleStatus={},
                 collectionDate=[],
@@ -69,7 +69,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 notes=[]
             ):
         self.id = id
-        self.datasetid = datasetid
+        self.datasetId = datasetId
         self.individualId = individualId
         self.biosampleStatus = biosampleStatus
         self.collectionDate = collectionDate

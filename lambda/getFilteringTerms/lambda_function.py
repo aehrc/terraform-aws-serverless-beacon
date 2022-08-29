@@ -1,8 +1,8 @@
 import json
 import os
-import pickle
+import base64
 
-from smart_open import open as sopen 
+from dynamodb.onto_index import OntoData
 
 from apiutils.api_response import bundle_response
 
@@ -12,14 +12,24 @@ BEACON_ID = os.environ['BEACON_ID']
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
-def get_entry_types(terms):
+def get_entry_types(terms, limit=500, nextPage=None, previousPage=None):
     response =     {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {},
         "meta": {
             "apiVersion": BEACON_API_VERSION,
             "beaconId": BEACON_ID,
-            "returnedSchemas": []
+            "returnedSchemas": [],
+            "receivedRequestSummary": {
+                "apiVersion": "get from request",  # TODO
+                "requestedSchemas": [],  # TODO
+                "pagination": {
+                    "limit": limit,
+                    "nextPage": nextPage,
+                    "previousPage": previousPage,
+                },
+                "requestedGranularity": "record"  # TODO
+            }
         },
         "response": {
             "filteringTerms": terms,
@@ -40,18 +50,28 @@ def get_entry_types(terms):
 
 
 def lambda_handler(event, context):
-    with sopen(f's3://{METADATA_BUCKET}/indexes/filtering_terms.pkl', 'rb') as fi:
-        data = pickle.load(fi)
-    
-        response = get_entry_types(
-            sorted(
-                [term for term in data],
-                key=lambda term: term['id']
-            )
+    if (event['httpMethod'] == 'GET'):
+        params = event['queryStringParameters'] or dict()
+        skip = params.get("skip", None)
+        limit = params.get("limit", None)
+        
+    results = OntoData.scan(limit=limit)
+    response = get_entry_types(
+        sorted(
+            [
+                {
+                'id': result.term,
+                'label': result.label,
+                'type': result.type,
+                } 
+                for result in results
+            ],
+            key=lambda x: x['id']
         )
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return response
+    )
+    print('Returning Response: {}'.format(json.dumps(response)))
+    return response
 
 
 if __name__ == '__main__':
-    lambda_handler({}, {})
+    pass

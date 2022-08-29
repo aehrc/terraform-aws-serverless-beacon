@@ -295,7 +295,7 @@ data aws_iam_policy_document lambda-getFilteringTerms {
       "dynamodb:Scan",
     ]
     resources = [
-      aws_dynamodb_table.datasets.arn,
+      aws_dynamodb_table.ontology_terms.arn,
     ]
   }
 }
