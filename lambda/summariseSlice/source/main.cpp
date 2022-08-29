@@ -212,7 +212,6 @@ const RegionStats getRegionStats(Aws::String location, int64_t virtualStart, int
     stop_watch s = stop_watch();
     s.start();
 #endif
-    std::cout << "Before Loaded Reader" << std::endl << std::flush;
     VcfChunkReader vcfChunkReader(bucket, key, chunk);
     std::cout << "Loaded Reader" << std::endl << std::flush;
     writeDataToS3 s3Data = writeDataToS3(location);

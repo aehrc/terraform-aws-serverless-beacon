@@ -191,41 +191,9 @@ module "lambda-summariseSlice" {
   }
 }
 
-# #
-# # duplicateVariantSearch Lambda Function
-# #
-# module "lambda-duplicateVariantSearch" {
-#   source = "github.com/bhosking/terraform-aws-lambda"
-
-#   function_name = "duplicateVariantSearch"
-#   description = "Searches for duplicate variants across vcfs."
-#   handler = "function"
-#   runtime = "provided"
-#   architectures = ["x86_64"]
-#   memory_size = 5000
-#   timeout = 900
-#   policy = {
-#     json = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
-#   }
-#   source_path = "${path.module}/lambda/duplicateVariantSearch/source"
-#   build_command = "${local.build_cpp_path} $source $filename"
-#   build_paths = [
-#     local.build_cpp_path,
-#     local.shared_source_path,
-#     local.gzip_source_path,
-#   ]
-#   tags = var.common-tags
-
-#   environment = {
-#     variables = {
-#       ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-#       VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
-#       DATASETS_TABLE = aws_dynamodb_table.datasets.name
-#     }
-#   }
-# }
-
-# Following is just a template for c++ codes using latest terraform module
+#
+# duplicateVariantSearch Lambda Function
+#
 module "lambda-duplicateVariantSearch" {
   source = "terraform-aws-modules/lambda/aws"
 
