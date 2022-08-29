@@ -39,15 +39,17 @@ def retrieveS3Objects(bucket: str, contig: str) -> 'list[str]':
     keys = []
 
     kwargs = {'Bucket': bucket, 'Prefix': f"vcf-summaries/contig/{contig}/"}
-    while True:
-        resp = s3.list_objects_v2(**kwargs)
-        for obj in resp['Contents']:
-            keys.append(obj['Key'])
+    objects_left = True
 
-        try:
-            kwargs['ContinuationToken'] = resp['NextContinuationToken']
-        except KeyError:
-            break
+    while objects_left:
+        response = s3.list_objects_v2(**kwargs)
+        if response['KeyCount'] == 0:
+            return []
+        for obj in response['Contents']:
+            keys.append(obj['Key'])
+        objects_left = response['IsTruncated']
+        if objects_left:
+            kwargs['ContinuationToken'] = response['NextContinuationToken']
 
     return keys
 
@@ -60,16 +62,18 @@ def getContigs() -> 'list[str]':
         'Delimiter': '/',
         'Prefix': f'vcf-summaries/contig/',
     }
-    while True:
-        resp = s3.list_objects_v2(**kwargs)
+    objects_left = True
+
+    while objects_left:
+        response = s3.list_objects_v2(**kwargs)
         contigs += [
             prefix['Prefix'].split('/')[-2]
-            for prefix in resp.get('CommonPrefixes', [])
+            for prefix in response.get('CommonPrefixes', [])
         ]
-        if resp['IsTruncated']:
-            kwargs['ContinuationToken'] = resp['NextContinuationToken']
-        else:
-            break
+        objects_left = response['IsTruncated']
+        if objects_left:
+            kwargs['ContinuationToken'] = response['NextContinuationToken']
+
     return contigs
 
 
@@ -243,11 +247,9 @@ def initDuplicateVariantSearch(dataset: str, filepaths: 'list[str]') -> None:
             if any([fn in filepath for fn in filenames]):
                 splitfilepath: vcfRegionData = getFileNameInfo(filepath)
                 regionData.append(splitfilepath)
-        regionData.sort(key=lambda x: x.startRange)
-
-        rangeSlices : 'list[basePairRange]' = calcRangeSplits(regionData)
-        print(rangeSlices)
-
-        # Only send the SNS if the database update succeeds
-        if mark_updating(contig, rangeSlices, dataset):
-            publishVariantSearch(contig, rangeSlices, dataset)
+        if (len(regionData) > 0):
+            regionData.sort(key=lambda x: x.startRange)
+            rangeSlices : 'list[basePairRange]' = calcRangeSplits(regionData)
+            # Only send the SNS if the database update succeeds
+            if mark_updating(contig, rangeSlices, dataset):
+                publishVariantSearch(contig, rangeSlices, dataset)
