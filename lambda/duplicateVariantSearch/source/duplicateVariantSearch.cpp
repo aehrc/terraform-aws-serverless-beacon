@@ -29,6 +29,7 @@ DuplicateVariantSearch::DuplicateVariantSearch(
     _dataset(dataset) {}
 
 void DuplicateVariantSearch::searchForDuplicates() {
+    // TODO download to ephermeral storage to avoid memory overshoot
     size_t numThreads = min(static_cast<size_t>(thread::hardware_concurrency() * 2), _targetFilepaths.GetLength());
     unordered_set<string> uniqueVariants;
 
@@ -46,7 +47,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
         // Each loop get process a downloaded file and/or begin downloading a file
         if (assignedFiles < _targetFilepaths.GetLength()) {
             // While there are files to download, download a new file
-            taskList[assignedFiles % numThreads] = pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[assignedFiles].AsString(), ref(_s3Client), _rangeStart, _rangeEnd);
+            taskList[assignedFiles % numThreads] = pool.enqueue_task(ReadVcfData::getVcfData, _bucket, _targetFilepaths[assignedFiles].AsString(), _rangeStart, _rangeEnd);
             assignedFiles++;
         }
         if (assignedFiles >= numThreads) {

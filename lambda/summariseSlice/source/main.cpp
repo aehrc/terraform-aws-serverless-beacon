@@ -6,6 +6,7 @@
 #include <regex>
 #include <generalutils.hpp>
 #include <gzip.hpp>
+#include <awsutils.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -22,7 +23,6 @@
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/sns/SNSClient.h>
 #include <aws/sns/model/PublishRequest.h>
-#include <aws/s3/model/PutObjectRequest.h>
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
@@ -36,6 +36,7 @@
 const char *DATASETS_TABLE = getenv("DATASETS_TABLE");
 const char *ASSEMBLY_GSI = getenv("ASSEMBLY_GSI");
 const char *SUMMARISE_DATASET_SNS_TOPIC_ARN = getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN");
+const char *VCF_SUMMARIES_TABLE = getenv("VCF_SUMMARIES_TABLE");
 
 using namespace std;
 
@@ -191,12 +192,6 @@ Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const
     } while (true);
 }
 
-Aws::String getMessageString(aws::lambda_runtime::invocation_request const &req)
-{
-    Aws::Utils::Json::JsonValue json(req.payload);
-    return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
-}
-
 const RegionStats getRegionStats(Aws::String location, int64_t virtualStart, int64_t virtualEnd)
 {
     VcfChunk chunk(virtualStart, virtualEnd);
@@ -217,8 +212,9 @@ const RegionStats getRegionStats(Aws::String location, int64_t virtualStart, int
     stop_watch s = stop_watch();
     s.start();
 #endif
+    std::cout << "Before Loaded Reader" << std::endl << std::flush;
     VcfChunkReader vcfChunkReader(bucket, key, chunk);
-    std::cout << "Loaded Reader" << std::endl;
+    std::cout << "Loaded Reader" << std::endl << std::flush;
     writeDataToS3 s3Data = writeDataToS3(location);
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
@@ -365,7 +361,7 @@ Aws::Vector<Aws::String> getDatasetsToUpdate(Aws::DynamoDB::DynamoDBClient const
 bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
 {
     Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(getenv("VCF_SUMMARIES_TABLE"));
+    request.SetTableName(VCF_SUMMARIES_TABLE);
     Aws::DynamoDB::Model::AttributeValue keyValue;
     keyValue.SetS(location);
     request.AddKey("vcfLocation", keyValue);
@@ -442,10 +438,11 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::
 
 static aws::lambda_runtime::invocation_response lambdaHandler(
     aws::lambda_runtime::invocation_request const &req,
+    // string const &req,
     Aws::DynamoDB::DynamoDBClient const &dynamodbClient,
     Aws::SNS::SNSClient const &snsClient)
 {
-    Aws::String messageString = getMessageString(req);
+    Aws::String messageString = awsutils::getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
     Aws::Utils::Json::JsonValue message(messageString);
     Aws::Utils::Json::JsonView messageView = message.View();
@@ -488,6 +485,8 @@ int main()
         };
         aws::lambda_runtime::run_handler(handlerFunction);
     }
+    // string req = "{\n    \"Records\": [\n        {\n            \"EventSource\": \"aws:sns\",\n            \"EventVersion\": \"1.0\",\n            \"EventSubscriptionArn\": \"arn:aws:sns:us-east-1:361439923243:summariseSlice:b9e01117-8264-4cd8-bfb3-631839f91403\",\n            \"Sns\": {\n                \"Type\": \"Notification\",\n                \"MessageId\": \"5fef7144-84a4-5213-a35a-2ac2a0ae0bd2\",\n                \"TopicArn\": \"arn:aws:sns:us-east-1:361439923243:summariseSlice\",\n                \"Subject\": null,\n                \"Message\": \"{\\\"location\\\": \\\"s3://vcf-simulations/population-1-chr21-100-samples-seed-0-21-full.vcf.gz\\\", \\\"virtual_start\\\": 3546251591680, \\\"virtual_end\\\": 5323904656990}\",\n                \"Timestamp\": \"2022-08-29T02:17:46.764Z\",\n                \"SignatureVersion\": \"1\",\n                \"Signature\": \"5C//p2CQG0peyIYWxHNN/HsYnmmTMw3XqV8tN5QhdQ+6mhcdIxpSlbOo7g5xWGmd+a4xb/HMDAG+og5iukio+7phPuLjfnYGhnAENBSTdgD/66GSSiBfgbV2I8cVyCsRh9SWAhE+/vIgmJnynp8gqE/LeVLfg+M+J1T5Pavv1jm4feHCUwaxd7RtynYvf8Nl6kXGfupRqxSJhDODaf59IL0M6Iyq+FvAkYIR9MMNypNGJ4UMDUcOlX+nbJDIzevehdBYnW8ryhCrPII+3tjVvRSe83gYc5yP/SCQkQZxQZlieH4ypEBXwMyyiqKd36AGAv20WEiDZss4yS19ckzihw==\",\n                \"SigningCertUrl\": \"https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem\",\n                \"UnsubscribeUrl\": \"https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:361439923243:summariseSlice:b9e01117-8264-4cd8-bfb3-631839f91403\",\n                \"MessageAttributes\": {}\n            }\n        }\n    ]\n}";
+    // lambdaHandler(req, dynamodbClient, snsClient);
     Aws::ShutdownAPI(options);
     return 0;
 }

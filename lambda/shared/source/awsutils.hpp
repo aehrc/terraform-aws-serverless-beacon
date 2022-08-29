@@ -29,6 +29,7 @@ class awsutils {
     static Aws::S3::Model::GetObjectOutcome getS3Object(Aws::String bucket, Aws::String key);
     // JSON utils
     static Aws::String getMessageString(aws::lambda_runtime::invocation_request const& req);
+    static Aws::String getMessageString(string const &req);
     // SNS utils
     static void publishSnsRequest(Aws::SNS::SNSClient const& snsClient, const char * topicArn,  Aws::Utils::Json::JsonValue message);
 };

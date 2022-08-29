@@ -7,7 +7,6 @@
 using namespace std;
 
 constexpr const char* TAG = "LAMBDA_ALLOC";
-constexpr int VCF_SEARCH_BASE_PAIR_RANGE = 5000;
 
 Aws::String bundleResponse(Aws::String const& body, int statusCode)
 {

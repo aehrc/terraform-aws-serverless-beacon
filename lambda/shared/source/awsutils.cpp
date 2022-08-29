@@ -10,6 +10,12 @@ Aws::String awsutils::getMessageString(aws::lambda_runtime::invocation_request c
     return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
 }
 
+Aws::String awsutils::getMessageString(string const &req)
+{
+    Aws::Utils::Json::JsonValue json(req);
+    return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
+}
+
 // End JSON utils
 
 // Start S3 utils

@@ -146,7 +146,7 @@ module "lambda-summariseSlice" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 1500
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-summariseSlice.json
@@ -234,7 +234,7 @@ module "lambda-duplicateVariantSearch" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 1536
+  memory_size = 8192
   timeout = 900
   attach_policy_json = true
   policy_json =  data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
@@ -253,7 +253,7 @@ module "lambda-duplicateVariantSearch" {
       ]
     },
     {
-      path     = "${path.module}/lambda/duplicateVariantSearch/source/",
+      path     = "${path.module}/lambda/duplicateVariantSearch/",
       commands = [
         "bash ${local.build_cpp_path} ./",
         "cd build/function_binaries",
