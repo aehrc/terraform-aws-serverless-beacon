@@ -183,3 +183,7 @@ def lambda_handler(event, context):
     # only dataset id is received
     dataset = event['Records'][0]['Sns']['Message']
     summarise_dataset(dataset)
+
+
+if __name__ == '__main__':
+    pass
