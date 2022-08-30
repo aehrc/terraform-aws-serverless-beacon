@@ -50,7 +50,7 @@ class AthenaModel:
             queue.put(int(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)[1]['Data'][0]['VarCharValue']))
 
 
-def run_custom_query(query, database, workgroup, queue=None):
+def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None):
     response = athena.start_query_execution(
         QueryString=query,
         # ClientRequestToken='string',

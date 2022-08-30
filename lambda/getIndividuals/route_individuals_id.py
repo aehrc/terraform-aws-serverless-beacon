@@ -32,8 +32,6 @@ def route(event):
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
-        includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        filters = params.get("filters", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if (event['httpMethod'] == 'POST'):
@@ -54,9 +52,6 @@ def route(event):
         # if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
         #     return bad_request(errorMessage= "\n".join([error.message for error in errors]))
             # raise error
-        filters = requestParameters.get("filters", [])
-        variantType = requestParameters.get("variantType", None)
-        includeResultsetResponses = requestParameters.get("includeResultsetResponses", 'NONE')
     
     individual_id = event["pathParameters"].get("id", None)
     

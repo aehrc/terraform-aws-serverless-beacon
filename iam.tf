@@ -376,6 +376,7 @@ data aws_iam_policy_document lambda-getIndividuals {
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
       "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
     ]
   }
 
@@ -390,6 +391,7 @@ data aws_iam_policy_document lambda-getIndividuals {
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
       aws_dynamodb_table.variant_query_responses.arn,
+      aws_dynamodb_table.ontology_terms.arn,
     ]
   }
 

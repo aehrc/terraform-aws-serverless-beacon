@@ -28,6 +28,7 @@ locals {
     METADATA_BUCKET = aws_s3_bucket.metadata-bucket.bucket
     INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
     BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
+    TERMS_TABLE = aws_glue_catalog_table.sbeacon-terms.name
   }
   # dynamodb variables
   dynamodb_variables = {

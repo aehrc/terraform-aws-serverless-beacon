@@ -127,6 +127,13 @@ boolean_response = {
 # Helpers start
 
 
+def get_pagination_object(skip, limit):
+    return {
+        "limit": limit,
+        "skip": skip
+    }
+
+
 def get_result_sets_response(*, 
         reqAPI=BEACON_API_VERSION, 
         reqPagination={}, 

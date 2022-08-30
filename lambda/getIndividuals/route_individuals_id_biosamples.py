@@ -8,37 +8,43 @@ import boto3
 from apiutils.api_response import bundle_response, bad_request
 import apiutils.responses as responses
 from athena.biosample import Biosample
+from dynamodb.onto_index import OntoData
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
+BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
 s3 = boto3.client('s3')
 # requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def get_bool_query(id):
+def get_bool_query(id, conditions=[]):
     query = f'''
     SELECT 1 FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}' limit 1;
+    WHERE "individualid"='{id}'
+    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    LIMIT 1;
     '''
 
     return query
 
 
-def get_count_query(id):
+def get_count_query(id, conditions=[]):
     query = f'''
     SELECT COUNT(*) FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}';
+    WHERE "individualid"='{id}'
+    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
     '''
 
     return query
 
 
-def get_record_query(id, skip, limit):
+def get_record_query(id, skip, limit, conditions=[]):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
     WHERE "individualid"='{id}'
+    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     OFFSET {skip}
     LIMIT {limit};
     '''
@@ -55,7 +61,7 @@ def route(event):
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
         includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        filters = params.get("filters", [])
+        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if (event['httpMethod'] == 'POST'):
@@ -85,9 +91,23 @@ def route(event):
             # raise error
         filters = requestParameters.get("filters", [])
         variantType = requestParameters.get("variantType", None)
-        includeResultsetResponses = requestParameters.get("includeResultsetResponses", 'NONE')
+        includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     individual_id = event["pathParameters"].get("id", None)
+    
+    term_columns = []
+    if len(filters) > 0:
+        # supporting ontology terms
+        for fil in filters:
+            for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
+                term_columns.append((item.term, item.columnName))
+   
+    sql_conditions = []
+    for term, col in term_columns:
+        cond = f'''
+            CAST(JSON_EXTRACT("{col}", '$.id') as varchar)='{term}' 
+        '''
+        sql_conditions.append(cond)
     
     if requestedGranularity == 'boolean':
         query = get_bool_query(individual_id)
@@ -110,6 +130,7 @@ def route(event):
             setType='individuals', 
             exists=len(biosamples)>0,
             total=len(biosamples),
+            reqPagination=responses.get_pagination_object(skip, limit),
             results=jsons.dump(biosamples, strip_privates=True)
         )
         print('Returning Response: {}'.format(json.dumps(response)))

@@ -3,10 +3,9 @@ import os
 import boto3
 import time
 import threading
-import queue
-import pickle
 
 from smart_open import open as sopen
+import pyorc
 
 from dynamodb.onto_index import OntoData
 
@@ -23,9 +22,9 @@ METADATA_BUCKET = os.environ['METADATA_BUCKET']
 ONTO_INDEX_QUERY = open('helper_queries.sql').read().strip()
 
 
-def update_athena_partitions():
+def update_athena_partitions(table):
     athena.start_query_execution(
-        QueryString=f'MSCK REPAIR TABLE `{INDIVIDUALS_TABLE}`',
+        QueryString=f'MSCK REPAIR TABLE `{table}`',
         # ClientRequestToken='string',
         QueryExecutionContext={
             'Database': METADATA_DATABASE
@@ -74,38 +73,45 @@ def onto_index():
             onto_tables = defaultdict(list)
             filtering_terms = []
 
-            for row in data:
-                onto_tables[row['Data'][0]['VarCharValue']].append(
-                    (
-                        row['Data'][3]['VarCharValue'], 
-                        row['Data'][4]['VarCharValue']
-                    )
-                )
-                filtering_terms.append({
-                    "id": row['Data'][0]['VarCharValue'],
-                    # only field that can be empty
-                    "label": row['Data'][1].get('VarCharValue', ''),
-                    "type": row['Data'][2]['VarCharValue']
-                })
-                entry = OntoData.make_index_entry(
-                    term=row['Data'][0]['VarCharValue'],
-                    tableName=row['Data'][3]['VarCharValue'],
-                    columnName=row['Data'][4]['VarCharValue'],
-                    type=row['Data'][2]['VarCharValue'],
-                    label= row['Data'][1].get('VarCharValue', '')
-                )
-                entry.save()
+            with sopen(f's3://{METADATA_BUCKET}/terms/terms.orc', 'wb') as s3file:
+                header = 'struct<term:string,label:string,type:string,table:string>'
+                with pyorc.Writer(s3file, 
+                    header, 
+                    compression=pyorc.CompressionKind.SNAPPY, 
+                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION) as writer:
+                    for row in data:
+                        onto_tables[row['Data'][0]['VarCharValue']].append(
+                            (
+                                row['Data'][3]['VarCharValue'], 
+                                row['Data'][4]['VarCharValue']
+                            )
+                        )
+                        filtering_terms.append({
+                            "id": row['Data'][0]['VarCharValue'],
+                            # only field that can be empty
+                            "label": row['Data'][1].get('VarCharValue', ''),
+                            "type": row['Data'][2]['VarCharValue']
+                        })
+                        entry = OntoData.make_index_entry(
+                            term=row['Data'][0]['VarCharValue'],
+                            tableName=row['Data'][3]['VarCharValue'],
+                            columnName=row['Data'][4]['VarCharValue'],
+                            type=row['Data'][2]['VarCharValue'],
+                            label= row['Data'][1].get('VarCharValue', '')
+                        )
+                        writer.write((entry.term, entry.label, entry.type, entry.tableName))
+                        entry.save()
             return
 
 
 def lambda_handler(event, context):
-    t_1 = threading.Thread(target=update_athena_partitions)
-    t_2 = threading.Thread(target=onto_index)
-    t_1.start()
-    t_2.start()
+    threads = []
+    for table in (INDIVIDUALS_TABLE, BIOSAMPLES_TABLE):
+        threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
+    threads.append(threading.Thread(target=onto_index))
+    [thread.start() for thread in threads]
+    [thread.join() for thread in threads]
 
-    t_1.join()
-    t_2.join()
     print('Success')
 
 

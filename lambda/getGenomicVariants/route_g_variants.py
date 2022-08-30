@@ -107,7 +107,7 @@ def route(event):
         aminoacidChange = requestParameters.get("aminoacidChange", None)
         filters = requestParameters.get("filters", [])
         variantType = requestParameters.get("variantType", None)
-        includeResultsetResponses = requestParameters.get("includeResultsetResponses", 'NONE')
+        includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
     if len(filters) > 0:
         # supporting ontology terms
