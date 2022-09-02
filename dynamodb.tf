@@ -73,10 +73,10 @@ resource aws_dynamodb_table variant_queries {
   }
 
   # enable this later to save cost
-  # ttl {
-  #   attribute_name = "TimeToExist"
-  #   enabled        = false
-  # }
+  ttl {
+    attribute_name = "timeToExist"
+    enabled        = true
+  }
 }
 
 # this table holds responses by perform query operation
@@ -106,10 +106,10 @@ resource aws_dynamodb_table variant_query_responses {
   }
 
   # enable this later to save cost
-  # ttl {
-  #   attribute_name = "TimeToExist"
-  #   enabled        = false
-  # }
+  ttl {
+    attribute_name = "timeToExist"
+    enabled        = true
+  }
 }
 
 # ontology term index

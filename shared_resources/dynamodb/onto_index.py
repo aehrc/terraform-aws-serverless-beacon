@@ -1,11 +1,14 @@
 import os
 
+import boto3
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from pynamodb.attributes import UnicodeAttribute
 
 
 ONTO_INDEX_TABLE = os.environ['ONTO_INDEX_TABLE']
+SESSION = boto3.session.Session()
+REGION = SESSION.region_name
 
 
 # Terms index
@@ -14,6 +17,7 @@ class TermIndex(GlobalSecondaryIndex):
         index_name = 'term_index'
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
+        region = REGION
 
     term = UnicodeAttribute(hash_key=True)
 
@@ -24,6 +28,7 @@ class TableIndex(GlobalSecondaryIndex):
         index_name = 'table_index'
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
+        region = REGION
 
     tableName = UnicodeAttribute(hash_key=True)
 
@@ -34,6 +39,7 @@ class TableTermsIndex(GlobalSecondaryIndex):
         index_name = 'tableterms_index'
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
+        region = REGION
 
     tableTerms = UnicodeAttribute(hash_key=True)
 
@@ -42,6 +48,7 @@ class TableTermsIndex(GlobalSecondaryIndex):
 class OntoData(Model):
     class Meta:
         table_name = ONTO_INDEX_TABLE
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True)
     tableTerms = UnicodeAttribute()

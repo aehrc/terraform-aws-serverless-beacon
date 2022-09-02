@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone
 
+import boto3
 from pynamodb.models import Model
 from pynamodb.settings import OperationSettings
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
@@ -10,6 +11,8 @@ from pynamodb.attributes import (
 
 
 DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+SESSION = boto3.session.Session()
+REGION = SESSION.region_name
 
 
 def get_current_time_utc():
@@ -22,6 +25,7 @@ class DatasetIndex(GlobalSecondaryIndex):
         index_name = 'assembly_index'
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
+        region = REGION
 
     assemblyId = UnicodeAttribute(hash_key=True)
 
@@ -35,6 +39,7 @@ class VcfChromosomeMap(MapAttribute):
 class Dataset(Model):
     class Meta:
         table_name = DATASETS_TABLE_NAME
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True)
     assemblyId = UnicodeAttribute()

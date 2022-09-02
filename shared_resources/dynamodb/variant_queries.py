@@ -1,16 +1,18 @@
-from email.policy import default
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
+import boto3
 from pynamodb.models import Model
 from pynamodb.indexes import LocalSecondaryIndex, AllProjection
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, MapAttribute
+    UnicodeAttribute, NumberAttribute, MapAttribute, TTLAttribute, BooleanAttribute
 )
 
 
 QUERIES_TABLE_NAME = os.environ['QUERIES_TABLE']
 VARIANT_QUERY_RESPONSES_TABLE_NAME = os.environ['VARIANT_QUERY_RESPONSES_TABLE']
+SESSION = boto3.session.Session()
+REGION = SESSION.region_name
 
 
 def get_current_time_utc():
@@ -26,11 +28,13 @@ class S3Location(MapAttribute):
 class VariantQuery(Model):
     class Meta:
         table_name = QUERIES_TABLE_NAME
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True, default='test')
     responsesCounter = NumberAttribute(default=0)
     responses = NumberAttribute(default=0)
     fanOut = NumberAttribute(default=0)
+    timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
 
 
     # atomically increment
@@ -54,6 +58,7 @@ class VariantResponseIndex(LocalSecondaryIndex):
         index_name = 'responseNumber_index'
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True)
     responseNumber = NumberAttribute(range_key=True)
@@ -63,11 +68,15 @@ class VariantResponseIndex(LocalSecondaryIndex):
 class VariantResponse(Model):
     class Meta:
         table_name = VARIANT_QUERY_RESPONSES_TABLE_NAME
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True, default='test')
     responseNumber = NumberAttribute(default=0)
-    responseLocation = S3Location()
+    responseLocation = S3Location(null=True)
     variantResponseIndex = VariantResponseIndex()
+    checkS3 = BooleanAttribute()
+    result = UnicodeAttribute(null=True)
+    timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
 
 
 if __name__ == '__main__':

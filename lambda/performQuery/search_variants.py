@@ -257,21 +257,32 @@ def perform_query(payload: PerformQueryPayload):
 
     try:
         uuid = uuid4().hex
-        key = f'variant-queries/{uuid}.json'
-        s3.put_object(
-            Body = response.dumps().encode(),
-            Bucket = VARIANTS_BUCKET,
-            Key = key
-        )
+        body = response.dumps()
 
-        print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
         query = db.VariantQuery(payload.query_id)
         result = db.VariantResponse(payload.query_id)
         result.responseNumber = query.getResponseNumber()
-        s3loc = db.S3Location()
-        s3loc.bucket = VARIANTS_BUCKET
-        s3loc.key = key
-        result.responseLocation = s3loc
+
+        if len(body) < 1024 * 300:
+            # response
+            result.checkS3 = False
+            result.result = body
+        else:
+            key = f'variant-queries/{uuid}.json'
+            s3.put_object(
+                Body = body.encode(),
+                Bucket = VARIANTS_BUCKET,
+                Key = key
+            )
+            print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
+            # s3 details
+            s3loc = db.S3Location()
+            s3loc.bucket = VARIANTS_BUCKET
+            s3loc.key = key
+            # response
+            result.responseLocation = s3loc
+            result.checkS3 = True
+
         result.save()
         query.markFinished()
     except ClientError as e:

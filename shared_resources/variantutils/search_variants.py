@@ -143,7 +143,7 @@ def perform_variant_search(*,
     while time.time() - start_time < REQUEST_TIMEOUT:
         try:
             for item in VariantResponse.variantResponseIndex.query(query_id, VariantResponse.responseNumber > last_read_position):
-                query_results[item.responseNumber] = item.responseLocation
+                query_results[item.responseNumber] = item
                 last_read_position = item.responseNumber
             query_record.refresh()
             if query_record.fanOut == 0:
@@ -156,13 +156,16 @@ def perform_variant_search(*,
 
     query_responses = []
 
-    for _, loc in query_results.items():
-        print(loc.bucket, loc.key)
-        obj = s3.get_object(
-            Bucket=loc.bucket,
-            Key=loc.key,
-        )
-        query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
+    for _, var_response in query_results.items():
+        if var_response.checkS3:
+            loc = var_response.responseLocation
+            obj = s3.get_object(
+                Bucket=loc.bucket,
+                Key=loc.key,
+            )
+            query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
+        else:
+            query_response = jsons.loads(var_response.result, PerformQueryResponse)
         exists = exists or query_response.exists
 
         if requestedGranularity == 'boolean' and exists:
