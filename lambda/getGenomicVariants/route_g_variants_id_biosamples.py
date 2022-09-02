@@ -33,7 +33,7 @@ requestSchemaJSON = json.load(open("requestParameters.json"))
 
 # TODO break into many queries (ATHENA SQL LIMIT)
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
-def get_queries(datasetId, sampleNames):
+def get_queries(datasetId, sampleNames, skip, limit):
     query = f'''
     SELECT "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".* 
     FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" JOIN "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}" 
@@ -47,7 +47,10 @@ def get_queries(datasetId, sampleNames):
         "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".datasetid='{datasetId}'
         AND
             "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"."samplename" 
-        IN ({','.join([f"'{sn}'" for sn in sampleNames])});
+        IN ({','.join([f"'{sn}'" for sn in sampleNames])})
+    ORDER BY "id", "individualid"
+    OFFSET {skip}
+    LIMIT {limit};
     '''
     return query
 
@@ -69,6 +72,8 @@ def route(event):
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
+        skip = params.get("skip", 0)
+        limit = params.get("limit", 100)
 
     if (event['httpMethod'] == 'POST'):
         params = json.loads(event.get('body', "{}")) or dict()
@@ -80,6 +85,14 @@ def route(event):
         requestedSchemas = meta.get("requestedSchemas", [])
         # query data
         requestedGranularity = query.get("requestedGranularity", "boolean")
+        # pagination
+        pagination = query.get("pagination", dict())
+        skip = pagination.get("skip", 0)
+        limit = pagination.get("limit", 100)
+        currentPage = pagination.get("currentPage", None)
+        previousPage = pagination.get("previousPage", None)
+        nextPage = pagination.get("nextPage", None)
+        filters = query.get("filters", [])
         requestParameters = query.get("requestParameters", dict())
         # validate query request
         validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
@@ -132,8 +145,7 @@ def route(event):
             if exists:
                 exists = True
                 dataset_samples[query_response.dataset_id].update(query_response.sample_names)
-                count += query_response.call_count
-
+        
     if requestedGranularity == 'boolean':
         # TODO biosamples table access
         response = responses.get_boolean_response(exists=exists)
@@ -154,7 +166,7 @@ def route(event):
                 thread = threading.Thread(
                     target=Biosample.get_by_query,
                     kwargs={ 
-                        'query': get_queries(dataset_id, sample_names),
+                        'query': get_queries(dataset_id, sample_names, skip, limit),
                         'queue': biosamples
                     }
                 )
@@ -166,6 +178,7 @@ def route(event):
 
         response = responses.get_result_sets_response(
             setType='biosample', 
+            reqPagination=responses.get_pagination_object(skip, limit),
             exists=exists,
             total=count,
             results=jsons.dump(biosamples, strip_privates=True)
