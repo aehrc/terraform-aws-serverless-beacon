@@ -3,8 +3,6 @@ import jsonschema
 import os
 import jsons
 
-import boto3
-
 from apiutils.api_response import bundle_response, bad_request
 import apiutils.responses as responses
 from athena.biosample import Biosample

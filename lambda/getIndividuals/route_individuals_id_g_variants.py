@@ -1,10 +1,8 @@
 from collections import defaultdict
 import json
 import jsonschema
-import boto3
 import os
 import base64
-import time
 
 from apiutils.api_response import bundle_response, bad_request
 from variantutils.search_variants import perform_variant_search

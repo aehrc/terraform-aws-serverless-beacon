@@ -3,8 +3,6 @@ import jsonschema
 import os
 import jsons
 
-import boto3
-
 from apiutils.api_response import bundle_response, bad_request
 import apiutils.responses as responses
 from athena.individual import Individual
@@ -15,7 +13,6 @@ BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 
-s3 = boto3.client('s3')
 # requestSchemaJSON = json.load(open("requestParameters.json"))
 
 

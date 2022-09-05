@@ -1,7 +1,6 @@
 from collections import defaultdict
 import json
 import jsonschema
-import boto3
 import os
 import base64
 
