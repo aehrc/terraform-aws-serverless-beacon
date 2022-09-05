@@ -470,6 +470,43 @@ module "lambda-getIndividuals" {
 }
 
 #
+# getBiosamples Lambda Function
+#
+module "lambda-getBiosamples" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getBiosamples"
+  description = "Get the individuals."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getBiosamples.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
+  source_path = "${path.module}/lambda/getBiosamples"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    {
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
+}
+
+#
 # splitQuery Lambda Function
 #
 module "lambda-splitQuery" {
