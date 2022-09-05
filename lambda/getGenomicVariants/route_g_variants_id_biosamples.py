@@ -158,47 +158,25 @@ def route(event):
     datasets = get_datasets(assemblyId)
     includeResultsetResponses = 'ALL'
 
-    samples_found, query_responses = perform_variant_search(
-        passthrough={
-            'samplesOnly': True
-        },
-        datasets=datasets,
-        referenceName=referenceName,
-        referenceBases=referenceBases,
-        alternateBases=alternateBases,
-        start=start,
-        end=end,
-        variantType=None,
-        variantMinLength=0,
-        variantMaxLength=-1,
-        requestedGranularity=requestedGranularity,
-        includeResultsetResponses=includeResultsetResponses
-    )
-
-    # immediately return
-    if not samples_found and requestedGranularity == 'boolean':
-        response = responses.get_boolean_response(exists=False)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
 
     # by default the scope of terms is assumed to be biosamples
+    terms_found = True
     biosamples_term_columns = []
-    if len(filters) > 0:
-        # supporting ontology terms
-        for fil in filters:
-            if not fil.get('scope', 'biosamples') == 'biosamples':
-                continue
-            for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
-                biosamples_term_columns.append((item.term, item.columnName))
-    
     individuals_term_columns = []
+
     if len(filters) > 0:
-        # supporting ontology terms
         for fil in filters:
-            if not fil.get('scope') == 'individuals':
-                continue
-            for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-                individuals_term_columns.append((item.term, item.columnName))
+            if fil.get('scope', 'biosamples') == 'biosamples':
+                terms_found = False
+                for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
+                    biosamples_term_columns.append((item.term, item.columnName))
+                    terms_found = True
+    
+            if fil.get('scope') == 'individuals':
+                terms_found = False
+                for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
+                    individuals_term_columns.append((item.term, item.columnName))
+                    terms_found = True
    
     sql_conditions = []
 
@@ -216,15 +194,39 @@ def route(event):
     
     dataset_samples = defaultdict(set)
 
-    for query_response in query_responses:
-        if query_response.exists:
-            dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+    if terms_found:
+        samples_found, query_responses = perform_variant_search(
+            passthrough={
+                'samplesOnly': True
+            },
+            datasets=datasets,
+            referenceName=referenceName,
+            referenceBases=referenceBases,
+            alternateBases=alternateBases,
+            start=start,
+            end=end,
+            variantType=None,
+            variantMinLength=0,
+            variantMaxLength=-1,
+            requestedGranularity=requestedGranularity,
+            includeResultsetResponses=includeResultsetResponses
+        )
     
+        # immediately return
+        if not samples_found and requestedGranularity == 'boolean':
+            response = responses.get_boolean_response(exists=False)
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
+
+        for query_response in query_responses:
+            if query_response.exists:
+                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+
     query_results = queue.Queue()
     threads = []
 
     for dataset_id, sample_names in dataset_samples.items():
-        if (len(sample_names)) > 0:
+        if (len(sample_names)) > 0 and terms_found:
             if requestedGranularity == 'boolean':
                 query = get_bool_query(dataset_id, sample_names, sql_conditions)
                 thread = threading.Thread(
@@ -283,7 +285,7 @@ def route(event):
             total=len(biosamples),
             results=jsons.dump(biosamples, strip_privates=True)
         )
-        # print('Returning Response: {}'.format(json.dumps(response)))
+        print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
 

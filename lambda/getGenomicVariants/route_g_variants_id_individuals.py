@@ -142,53 +142,58 @@ def route(event):
     datasets = get_datasets(assemblyId)
     includeResultsetResponses = 'ALL'
 
-    samples_found, query_responses = perform_variant_search(
-        passthrough={
-            'samplesOnly': True
-        },
-        datasets=datasets,
-        referenceName=referenceName,
-        referenceBases=referenceBases,
-        alternateBases=alternateBases,
-        start=start,
-        end=end,
-        variantType=None,
-        variantMinLength=0,
-        variantMaxLength=-1,
-        requestedGranularity='record', # we need the records for this task
-        includeResultsetResponses=includeResultsetResponses
-    )
-
-    # immediately return
-    if not samples_found and requestedGranularity == 'boolean':
-        response = responses.get_boolean_response(exists=False)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-
+    # scope = individuals
+    terms_found = True
     term_columns = []
+    sql_conditions = []
+    dataset_samples = defaultdict(set)
+
     if len(filters) > 0:
-        # supporting ontology terms
         for fil in filters:
+            terms_found = False
             for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
                 term_columns.append((item.term, item.columnName))
+                terms_found = True
    
-    sql_conditions = []
     for term, col in term_columns:
         cond = f'''
             JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
 
-    dataset_samples = defaultdict(set)
-    
-    for query_response in query_responses:
-        if query_response.exists:
-            dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+    if terms_found:
+        samples_found, query_responses = perform_variant_search(
+            passthrough={
+                'samplesOnly': True
+            },
+            datasets=datasets,
+            referenceName=referenceName,
+            referenceBases=referenceBases,
+            alternateBases=alternateBases,
+            start=start,
+            end=end,
+            variantType=None,
+            variantMinLength=0,
+            variantMaxLength=-1,
+            requestedGranularity='record', # we need the records for this task
+            includeResultsetResponses=includeResultsetResponses
+        )
+
+        # immediately return
+        if not samples_found and requestedGranularity == 'boolean':
+            response = responses.get_boolean_response(exists=False)
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
+
+        for query_response in query_responses:
+            if query_response.exists:
+                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
 
     query_results = queue.Queue()
     threads = []
+    
     for dataset_id, sample_names in dataset_samples.items():
-        if (len(sample_names)) > 0:
+        if (len(sample_names)) > 0 and terms_found:
             if requestedGranularity == 'boolean':
                 query = get_bool_query(dataset_id, sample_names, sql_conditions)
                 thread = threading.Thread(

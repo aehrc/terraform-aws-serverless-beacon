@@ -13,6 +13,7 @@ from dynamodb.onto_index import OntoData
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
 s3 = boto3.client('s3')
@@ -95,37 +96,65 @@ def route(event):
     
     individual_id = event["pathParameters"].get("id", None)
     
-    term_columns = []
-    if len(filters) > 0:
-        # supporting ontology terms
-        for fil in filters:
-            for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
-                term_columns.append((item.term, item.columnName))
-   
+    # by default the scope of terms is assumed to be biosamples
+    terms_found = True
+    biosamples_term_columns = []
+    individuals_term_columns = []
     sql_conditions = []
-    for term, col in term_columns:
+    
+    if len(filters) > 0:
+        for fil in filters:
+            if fil.get('scope', 'biosamples') == 'biosamples':
+                terms_found = False
+                for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
+                    biosamples_term_columns.append((item.term, item.columnName))
+                    terms_found = True
+    
+        for fil in filters:
+            if fil.get('scope') == 'individuals':
+                terms_found = False
+                for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
+                    individuals_term_columns.append((item.term, item.columnName))
+                    terms_found = True
+   
+    for term, col in biosamples_term_columns:
         cond = f'''
-            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
+            JSON_EXTRACT_SCALAR("{BIOSAMPLES_TABLE}"."{col}", '$.id')='{term}' 
+        '''
+        sql_conditions.append(cond)
+
+    for term, col in individuals_term_columns:
+        cond = f'''
+            JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
     
     if requestedGranularity == 'boolean':
-        query = get_bool_query(individual_id)
-        exists = Biosample.get_existence_by_query(query)
+        if not terms_found:
+            exists = False
+        else:
+            query = get_bool_query(individual_id)
+            exists = Biosample.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        query = get_count_query(individual_id)
-        count = Biosample.get_count_by_query(query)
+        if not terms_found:
+            count = 0
+        else:
+            query = get_count_query(individual_id)
+            count = Biosample.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(individual_id, skip, limit)
-        biosamples = Biosample.get_by_query(query)
+        if not terms_found:
+            biosamples = []
+        else:
+            query = get_record_query(individual_id, skip, limit)
+            biosamples = Biosample.get_by_query(query)
         response = responses.get_result_sets_response(
             setType='individuals', 
             exists=len(biosamples)>0,
