@@ -85,20 +85,29 @@ def route(event):
             # raise error
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
+    # scope = individuals
+    terms_found = True
     term_columns = []
+    sql_conditions = []
+
     if len(filters) > 0:
         # supporting ontology terms
         for fil in filters:
+            terms_found = False
             for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
                 term_columns.append((item.term, item.columnName))
+                terms_found = True
    
-    sql_conditions = []
     for term, col in term_columns:
         cond = f'''
             JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
 
+    if not terms_found:
+        response = responses.get_boolean_response(exists=False)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(sql_conditions)

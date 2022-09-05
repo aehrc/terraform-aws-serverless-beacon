@@ -166,9 +166,10 @@ def perform_variant_search(*,
             query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
         else:
             query_response = jsons.loads(var_response.result, PerformQueryResponse)
+
         exists = exists or query_response.exists
 
-        if requestedGranularity == 'boolean' and exists:
+        if requestedGranularity == 'boolean' and not exists:
             return True, []
         
         query_responses.append(query_response)

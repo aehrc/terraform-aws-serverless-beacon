@@ -4,6 +4,7 @@ import re
 
 import search_variants
 import search_variant_samples
+import search_variants_in_samples
 from payloads.lambda_payloads import PerformQueryPayload
 
 BASES = [
@@ -24,6 +25,8 @@ def lambda_handler(event, context):
     # switch operations
     if performQueryPayload.passthrough.get('samplesOnly', False):
         response = search_variant_samples.perform_query(performQueryPayload)
+    elif performQueryPayload.passthrough.get('selectedSamplesOnly', False):
+        response = search_variants_in_samples.perform_query(performQueryPayload)
     else:
         response = search_variants.perform_query(performQueryPayload)
 

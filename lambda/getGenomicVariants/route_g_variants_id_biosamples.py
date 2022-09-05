@@ -194,39 +194,43 @@ def route(event):
     
     dataset_samples = defaultdict(set)
 
-    if terms_found:
-        samples_found, query_responses = perform_variant_search(
-            passthrough={
-                'samplesOnly': True
-            },
-            datasets=datasets,
-            referenceName=referenceName,
-            referenceBases=referenceBases,
-            alternateBases=alternateBases,
-            start=start,
-            end=end,
-            variantType=None,
-            variantMinLength=0,
-            variantMaxLength=-1,
-            requestedGranularity=requestedGranularity,
-            includeResultsetResponses=includeResultsetResponses
-        )
-    
-        # immediately return
-        if not samples_found and requestedGranularity == 'boolean':
-            response = responses.get_boolean_response(exists=False)
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response)
+    if not terms_found:
+        response = responses.get_boolean_response(exists=False)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
 
-        for query_response in query_responses:
-            if query_response.exists:
-                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+    samples_found, query_responses = perform_variant_search(
+        passthrough={
+            'samplesOnly': True
+        },
+        datasets=datasets,
+        referenceName=referenceName,
+        referenceBases=referenceBases,
+        alternateBases=alternateBases,
+        start=start,
+        end=end,
+        variantType=None,
+        variantMinLength=0,
+        variantMaxLength=-1,
+        requestedGranularity=requestedGranularity,
+        includeResultsetResponses=includeResultsetResponses
+    )
+
+    # immediately return
+    if not samples_found and requestedGranularity == 'boolean':
+        response = responses.get_boolean_response(exists=False)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
+
+    for query_response in query_responses:
+        if query_response.exists:
+            dataset_samples[query_response.dataset_id].update(query_response.sample_names)
 
     query_results = queue.Queue()
     threads = []
 
     for dataset_id, sample_names in dataset_samples.items():
-        if (len(sample_names)) > 0 and terms_found:
+        if (len(sample_names)) > 0:
             if requestedGranularity == 'boolean':
                 query = get_bool_query(dataset_id, sample_names, sql_conditions)
                 thread = threading.Thread(

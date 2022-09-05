@@ -80,7 +80,6 @@ def route(event):
         # print(validator.schema)
         if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
             return bad_request(errorMessage= "\n".join([error.message for error in errors]))
-            # raise error
         start = requestParameters.get("start", None)
         end = requestParameters.get("end", None)
         assemblyId = requestParameters.get("assemblyId", None)

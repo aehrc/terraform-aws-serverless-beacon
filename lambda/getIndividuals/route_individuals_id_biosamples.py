@@ -116,7 +116,12 @@ def route(event):
                 for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
                     individuals_term_columns.append((item.term, item.columnName))
                     terms_found = True
-   
+
+    if not terms_found:
+        response = responses.get_boolean_response(exists=False)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
+
     for term, col in biosamples_term_columns:
         cond = f'''
             JSON_EXTRACT_SCALAR("{BIOSAMPLES_TABLE}"."{col}", '$.id')='{term}' 
@@ -130,31 +135,22 @@ def route(event):
         sql_conditions.append(cond)
     
     if requestedGranularity == 'boolean':
-        if not terms_found:
-            exists = False
-        else:
-            query = get_bool_query(individual_id)
-            exists = Biosample.get_existence_by_query(query)
+        query = get_bool_query(individual_id)
+        exists = Biosample.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        if not terms_found:
-            count = 0
-        else:
-            query = get_count_query(individual_id)
-            count = Biosample.get_count_by_query(query)
+        query = get_count_query(individual_id)
+        count = Biosample.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        if not terms_found:
-            biosamples = []
-        else:
-            query = get_record_query(individual_id, skip, limit)
-            biosamples = Biosample.get_by_query(query)
+        query = get_record_query(individual_id, skip, limit)
+        biosamples = Biosample.get_by_query(query)
         response = responses.get_result_sets_response(
             setType='individuals', 
             exists=len(biosamples)>0,

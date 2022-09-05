@@ -37,8 +37,10 @@ def perform_query(payload: PerformQueryPayload):
         'bcftools', 'query',
         '--regions', payload.region,
         '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
+        '--samples', ','.join(payload.passthrough.get('sampleNames', ['_'])),
         payload.vcf_location
     ]
+
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
     v_prefix = '<{}'.format(payload.variant_type)
     # region is of form: "chrom:start-end"
@@ -51,8 +53,8 @@ def perform_query(payload: PerformQueryPayload):
     call_count = 0
     all_alleles_count = 0
     sample_indices = set()
-    all_sample_names = []
     sample_names = []
+    all_sample_names = []
     variant_max_length = float('inf') if payload.variant_max_length < 0 else payload.variant_max_length
 
     # iterate through bcftools output
@@ -285,3 +287,7 @@ def perform_query(payload: PerformQueryPayload):
         print(f"Error: {e}")
 
     return response
+
+
+if __name__ == '__main__':
+    pass
