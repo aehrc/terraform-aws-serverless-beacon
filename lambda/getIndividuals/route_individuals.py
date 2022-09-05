@@ -21,7 +21,7 @@ s3 = boto3.client('s3')
 
 def get_count_query(conditions=[]):
     query = f'''
-    SELECT COUNT(*) FROM "{{database}}"."{{table}}"
+    SELECT COUNT(id) FROM "{{database}}"."{{table}}"
     {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
     '''
     return query
@@ -95,7 +95,7 @@ def route(event):
     sql_conditions = []
     for term, col in term_columns:
         cond = f'''
-            CAST(JSON_EXTRACT("{col}", '$.id') as varchar)='{term}' 
+            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
 
@@ -129,29 +129,4 @@ def route(event):
 
 
 if __name__ == '__main__':
-    event = {
-      "resource": "/",
-      "path": "/",
-      "httpMethod": "POST",
-      "body": json.dumps({
-          "query": {
-              "requestParameters": {
-              },
-              "requestedGranularity": "record",
-              "pagination": {
-                "skip": 0,
-                "limit": 5
-              },
-              "filters": [
-                {
-                    "id": "NCIT:C104495"
-                },
-                {
-                    "id": "GAZ:00000460"
-                }
-              ]
-          }
-      })
-    }
-
-    route(event)
+    pass

@@ -325,6 +325,17 @@ data aws_iam_policy_document lambda-getGenomicVariants {
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
       "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      aws_dynamodb_table.variant_queries.arn,
     ]
   }
 
@@ -339,6 +350,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
       aws_dynamodb_table.variant_query_responses.arn,
+      aws_dynamodb_table.ontology_terms.arn,
     ]
   }
 
@@ -382,10 +394,18 @@ data aws_iam_policy_document lambda-getIndividuals {
 
   statement {
     actions = [
-      "dynamodb:DescribeTable",
-      "dynamodb:GetItem",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
+    ]
+    resources = [
+      aws_dynamodb_table.variant_queries.arn,
+    ]
+  }
+  
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,

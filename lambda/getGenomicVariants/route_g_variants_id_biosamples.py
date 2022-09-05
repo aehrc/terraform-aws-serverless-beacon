@@ -14,6 +14,8 @@ from variantutils.search_variants import perform_variant_search
 from dynamodb.datasets import Dataset
 import apiutils.responses as responses
 from athena.biosample import Biosample
+from dynamodb.onto_index import OntoData
+
 
 SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -31,23 +33,65 @@ s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
+def get_count_query(dataset_id, sample_names, conditions=[]):
+    query = f'''
+    SELECT COUNT(*)
+    FROM "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
+    ON 
+        "{{database}}"."{INDIVIDUALS_TABLE}".id
+        =
+        "{{database}}"."{BIOSAMPLES_TABLE}".individualid
+    WHERE 
+        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}'
+        AND 
+        "{{database}}"."{BIOSAMPLES_TABLE}".datasetid='{dataset_id}'
+        AND
+            "{{database}}"."{INDIVIDUALS_TABLE}"."samplename" 
+        IN ({','.join([f"'{sn}'" for sn in sample_names])})
+        {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    '''
+    return query
+
+
+def get_bool_query(dataset_id, sample_names, conditions=[]):
+    query = f'''
+    SELECT 1
+    FROM "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
+    ON 
+        "{{database}}"."{INDIVIDUALS_TABLE}".id
+        =
+        "{{database}}"."{BIOSAMPLES_TABLE}".individualid
+    WHERE 
+        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}'
+        AND 
+        "{{database}}"."{BIOSAMPLES_TABLE}".datasetid='{dataset_id}'
+        AND
+            "{{database}}"."{INDIVIDUALS_TABLE}"."samplename" 
+        IN ({','.join([f"'{sn}'" for sn in sample_names])})
+        {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    LIMIT 1
+    '''
+    return query
+
+
 # TODO break into many queries (ATHENA SQL LIMIT)
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
-def get_queries(datasetId, sampleNames, skip, limit):
+def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
     query = f'''
-    SELECT "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".* 
-    FROM "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}" JOIN "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}" 
+    SELECT "{{database}}"."{BIOSAMPLES_TABLE}".* 
+    FROM "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
     ON 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".id
+        "{{database}}"."{INDIVIDUALS_TABLE}".id
         =
-        "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".individualid
+        "{{database}}"."{BIOSAMPLES_TABLE}".individualid
     WHERE 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{datasetId}'
+        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}'
         AND 
-        "{METADATA_DATABASE}"."{BIOSAMPLES_TABLE}".datasetid='{datasetId}'
+        "{{database}}"."{BIOSAMPLES_TABLE}".datasetid='{dataset_id}'
         AND
-            "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"."samplename" 
-        IN ({','.join([f"'{sn}'" for sn in sampleNames])})
+            "{{database}}"."{INDIVIDUALS_TABLE}"."samplename" 
+        IN ({','.join([f"'{sn}'" for sn in sample_names])})
+        {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     ORDER BY "id", "individualid"
     OFFSET {skip}
     LIMIT {limit};
@@ -74,6 +118,7 @@ def route(event):
         requestedGranularity = params.get("requestedGranularity", "boolean")
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
+        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
 
     if (event['httpMethod'] == 'POST'):
         params = json.loads(event.get('body', "{}")) or dict()
@@ -113,7 +158,7 @@ def route(event):
     datasets = get_datasets(assemblyId)
     includeResultsetResponses = 'ALL'
 
-    exists, query_responses = perform_variant_search(
+    samples_found, query_responses = perform_variant_search(
         passthrough={
             'samplesOnly': True
         },
@@ -129,61 +174,116 @@ def route(event):
         requestedGranularity=requestedGranularity,
         includeResultsetResponses=includeResultsetResponses
     )
+
+    # immediately return
+    if not samples_found and requestedGranularity == 'boolean':
+        response = responses.get_boolean_response(exists=False)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
+
+    # by default the scope of terms is assumed to be biosamples
+    biosamples_term_columns = []
+    if len(filters) > 0:
+        # supporting ontology terms
+        for fil in filters:
+            if not fil.get('scope', 'biosamples') == 'biosamples':
+                continue
+            for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
+                biosamples_term_columns.append((item.term, item.columnName))
+    
+    individuals_term_columns = []
+    if len(filters) > 0:
+        # supporting ontology terms
+        for fil in filters:
+            if not fil.get('scope') == 'individuals':
+                continue
+            for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
+                individuals_term_columns.append((item.term, item.columnName))
+   
+    sql_conditions = []
+
+    for term, col in biosamples_term_columns:
+        cond = f'''
+            JSON_EXTRACT_SCALAR("{BIOSAMPLES_TABLE}"."{col}", '$.id')='{term}' 
+        '''
+        sql_conditions.append(cond)
+
+    for term, col in individuals_term_columns:
+        cond = f'''
+            JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
+        '''
+        sql_conditions.append(cond)
     
     dataset_samples = defaultdict(set)
-    count = 0
 
     for query_response in query_responses:
-        # immediately return the boolean response if exists
-        if requestedGranularity == 'boolean' and exists:
-            response = responses.get_boolean_response(exists=exists)
-            response['responseSummary']['exists'] = exists
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response)
-        else:
-            exists = exists or query_response.exists
-            if exists:
-                exists = True
-                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
-        
+        if query_response.exists:
+            dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+    
+    query_results = queue.Queue()
+    threads = []
+
+    for dataset_id, sample_names in dataset_samples.items():
+        if (len(sample_names)) > 0:
+            if requestedGranularity == 'boolean':
+                query = get_bool_query(dataset_id, sample_names, sql_conditions)
+                thread = threading.Thread(
+                    target=Biosample.get_existence_by_query,
+                    kwargs={ 
+                        'query': query,
+                        'queue': query_results
+                    }
+                )
+            elif requestedGranularity == 'count':
+                query = get_count_query(dataset_id, sample_names, sql_conditions)
+                thread = threading.Thread(
+                    target=Biosample.get_count_by_query,
+                    kwargs={ 
+                        'query': query,
+                        'queue': query_results
+                    }
+                )
+            elif requestedGranularity in ('record', 'aggregated'):
+                query = get_record_query(dataset_id, sample_names, skip, limit, sql_conditions)
+                print(query)
+                thread = threading.Thread(
+                    target=Biosample.get_by_query,
+                    kwargs={ 
+                        'query': query,
+                        'queue': query_results
+                    }
+                )
+            else:
+                return bad_request(errorMessage='Invalid granularity')
+            thread.start()
+            threads.append(thread)
+
+    [thread.join() for thread in threads]
+    query_results = list(query_results.queue)
+
     if requestedGranularity == 'boolean':
-        # TODO biosamples table access
+        exists = any(query_results)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        # TODO biosamples table access
-        response = responses.get_counts_response(exists=exists, count=count)
+        count = sum(query_results)
+        response = responses.get_counts_response(exists=count > 0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        biosamples = queue.Queue()
-        threads = []
-        for dataset_id, sample_names in dataset_samples.items():
-            if (len(sample_names)) > 0:
-                thread = threading.Thread(
-                    target=Biosample.get_by_query,
-                    kwargs={ 
-                        'query': get_queries(dataset_id, sample_names, skip, limit),
-                        'queue': biosamples
-                    }
-                )
-                thread.start()
-                threads.append(thread)
-        
-        [thread.join() for thread in threads]
-        biosamples = list(biosamples.queue)
+        biosamples = [biosample for biosamples in query_results for biosample in biosamples]
 
         response = responses.get_result_sets_response(
             setType='biosample', 
             reqPagination=responses.get_pagination_object(skip, limit),
-            exists=exists,
-            total=count,
+            exists=len(biosamples) > 0,
+            total=len(biosamples),
             results=jsons.dump(biosamples, strip_privates=True)
         )
-        print('Returning Response: {}'.format(json.dumps(response)))
+        # print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
 

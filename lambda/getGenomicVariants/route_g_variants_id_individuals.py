@@ -34,7 +34,7 @@ requestSchemaJSON = json.load(open("requestParameters.json"))
 
 def get_count_query(dataset_id, sample_names, conditions=[]):
     query = f'''
-    SELECT count(*)
+    SELECT COUNT(id)
     FROM 
         "{{database}}"."{INDIVIDUALS_TABLE}" 
     WHERE 
@@ -175,7 +175,7 @@ def route(event):
     sql_conditions = []
     for term, col in term_columns:
         cond = f'''
-            CAST(JSON_EXTRACT("{col}", '$.id') as varchar)='{term}' 
+            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
 

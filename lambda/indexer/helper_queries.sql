@@ -1,136 +1,135 @@
 SELECT DISTINCT term, label, type, tablename, colname
 FROM (
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(ethnicity, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(ethnicity, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(ethnicity, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(ethnicity, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(ethnicity, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(ethnicity, '$.type'), ''), 'string') AS type,
         'sbeacon_individuals' as tablename,
         'ethnicity' as colname
     FROM "sbeacon_individuals"
-    WHERE JSON_EXTRACT(ethnicity, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(ethnicity, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(geographicorigin, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(geographicorigin, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(geographicorigin, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(geographicorigin, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(geographicorigin, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(geographicorigin, '$.type'), ''), 'string') AS type,
         'sbeacon_individuals' as tablename,
         'geographicorigin' as colname
     FROM "sbeacon_individuals"
-    WHERE JSON_EXTRACT(geographicorigin, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(geographicorigin, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(sex, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(sex, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(sex, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(sex, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(sex, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(sex, '$.type'), ''), 'string') AS type,
         'sbeacon_individuals' as tablename,
         'sex' as colname
     FROM "sbeacon_individuals"
-    WHERE JSON_EXTRACT(sex, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(sex, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(biosamplestatus, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(biosamplestatus, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(biosamplestatus, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(biosamplestatus, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(biosamplestatus, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(biosamplestatus, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'biosamplestatus' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(biosamplestatus, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(biosamplestatus, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(histologicaldiagnosis, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(histologicaldiagnosis, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(histologicaldiagnosis, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(histologicaldiagnosis, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(histologicaldiagnosis, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(histologicaldiagnosis, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'histologicaldiagnosis' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(histologicaldiagnosis, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(histologicaldiagnosis, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(obtentionprocedure, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(obtentionprocedure, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(obtentionprocedure, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(obtentionprocedure, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(obtentionprocedure, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(obtentionprocedure, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'obtentionprocedure' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(obtentionprocedure, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(obtentionprocedure, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(pathologicalstage, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(pathologicalstage, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(pathologicalstage, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(pathologicalstage, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(pathologicalstage, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(pathologicalstage, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'pathologicalstage' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(pathologicalstage, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(pathologicalstage, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(pathologicaltnmfinding, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(pathologicaltnmfinding, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(pathologicaltnmfinding, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(pathologicaltnmfinding, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(pathologicaltnmfinding, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(pathologicaltnmfinding, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'pathologicaltnmfinding' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(pathologicaltnmfinding, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(pathologicaltnmfinding, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(sampleorigindetail, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(sampleorigindetail, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(sampleorigindetail, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(sampleorigindetail, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(sampleorigindetail, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(sampleorigindetail, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'sampleorigindetail' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(sampleorigindetail, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(sampleorigindetail, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(sampleorigintype, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(sampleorigintype, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(sampleorigintype, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(sampleorigintype, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(sampleorigintype, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(sampleorigintype, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'sampleorigintype' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(sampleorigintype, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(sampleorigintype, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(sampleprocessing, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(sampleprocessing, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(sampleprocessing, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(sampleprocessing, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(sampleprocessing, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(sampleprocessing, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'sampleprocessing' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(sampleprocessing, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(sampleprocessing, '$.id') 
     IS NOT NULL
     UNION
 
     SELECT DISTINCT
-        CAST(JSON_EXTRACT(tumorprogression, '$.id') AS varchar) AS term, 
-        CAST(JSON_EXTRACT(tumorprogression, '$.label') AS varchar) AS label,
-        COALESCE(NULLIF(CAST(JSON_EXTRACT(tumorprogression, '$.type') as varchar), ''), 'string') AS type,
+        JSON_EXTRACT_SCALAR(tumorprogression, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(tumorprogression, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(tumorprogression, '$.type'), ''), 'string') AS type,
         'sbeacon_biosamples' as tablename,
         'tumorprogression' as colname
     FROM "sbeacon_biosamples"
-    WHERE JSON_EXTRACT(tumorprogression, '$.id') 
+    WHERE JSON_EXTRACT_SCALAR(tumorprogression, '$.id') 
     IS NOT NULL
 ) 
 ORDER BY term 
 ASC;
-

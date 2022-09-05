@@ -90,7 +90,11 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         self.info = info
         self.notes = notes
 
-    
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+
     @classmethod
     def parse_array(cls, array):
         biosamples = []

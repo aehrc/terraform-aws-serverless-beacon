@@ -105,7 +105,7 @@ def route(event):
     sql_conditions = []
     for term, col in term_columns:
         cond = f'''
-            CAST(JSON_EXTRACT("{col}", '$.id') as varchar)='{term}' 
+            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
     
