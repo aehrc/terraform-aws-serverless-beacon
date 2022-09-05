@@ -4,8 +4,6 @@ import jsonschema
 import os
 import base64
 
-import boto3
-
 from dynamodb.datasets import Dataset
 from variantutils.search_variants import perform_variant_search
 from apiutils.api_response import bundle_response, bad_request
@@ -16,9 +14,6 @@ import apiutils.entries as entries
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 
-dynamodb = boto3.client('dynamodb')
-aws_lambda = boto3.client('lambda')
-s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 

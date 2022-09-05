@@ -23,9 +23,6 @@ METADATA_DATABASE = os.environ['METADATA_DATABASE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 
-dynamodb = boto3.client('dynamodb')
-aws_lambda = boto3.client('lambda')
-athena = boto3.client('athena')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 

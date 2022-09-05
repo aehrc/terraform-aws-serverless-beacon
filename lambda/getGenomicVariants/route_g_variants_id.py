@@ -15,9 +15,6 @@ import apiutils.entries as entries
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 
-dynamodb = boto3.client('dynamodb')
-aws_lambda = boto3.client('lambda')
-s3 = boto3.client('s3')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 

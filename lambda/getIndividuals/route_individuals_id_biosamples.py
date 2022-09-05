@@ -16,7 +16,6 @@ BEACON_ID = os.environ['BEACON_ID']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
-s3 = boto3.client('s3')
 # requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
