@@ -4,6 +4,7 @@ from route_biosamples import route as route_biosamples
 from route_biosamples_id import route as route_biosamples_id
 from route_biosamples_id_g_variants import route as route_biosamples_id_g_variants
 from route_biosamples_id_analyses import route as route_biosamples_id_analyses
+from route_biosamples_id_runs import route as route_biosamples_id_runs
 
 
 def lambda_handler(event, context):
@@ -22,7 +23,7 @@ def lambda_handler(event, context):
         return route_biosamples_id_analyses(event)
 
     elif event['resource'] == '/biosamples/{id}/runs':
-        return route_biosamples_id_analyses(event)
+        return route_biosamples_id_runs(event)
 
 
 if __name__ == '__main__':

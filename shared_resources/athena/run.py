@@ -10,7 +10,7 @@ from .common import AthenaModel
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
-RUNS_TABLE = os.environ['INDIVIDUALS_TABLE']
+RUNS_TABLE = os.environ['RUNS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')

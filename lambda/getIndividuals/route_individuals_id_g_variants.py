@@ -18,7 +18,6 @@ BEACON_ID = os.environ['BEACON_ID']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 REQUEST_TIMEOUT = 10 # seconds 
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
-ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 
 requestSchemaJSON = json.load(open("requestParameters.json"))
