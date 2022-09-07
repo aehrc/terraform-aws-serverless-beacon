@@ -99,13 +99,13 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
     def parse_array(cls, array):
         biosamples = []
         var_list = list()
-        case_map = { k.lower(): k for k in Biosample(id='', individualId='').__dict__.keys() }
+        case_map = { k.lower(): k for k in Biosample().__dict__.keys() }
 
         for attribute in array[0]['Data']:
             var_list.append(attribute['VarCharValue'])
 
         for item in array[1:]:
-            biosample = Biosample(id='', individualId='')
+            biosample = Biosample()
 
             for attr, val in zip(var_list, item['Data']):
                 try:
@@ -123,6 +123,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         if len(array) == 0:
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
+        bloom_filter_columns=list(map(lambda x: x.lower(), cls._table_columns))
         partition = f'datasetid={array[0].datasetId}'
         key = f'{array[0].datasetId}-biosamples'
         
@@ -132,7 +133,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[c.lower() for c in cls._table_columns[2:]]) as writer:
+                bloom_filter_columns=bloom_filter_columns) as writer:
                 for biosample in array:
                     row = tuple(
                         biosample.__dict__[k] 

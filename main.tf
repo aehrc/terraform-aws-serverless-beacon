@@ -28,6 +28,8 @@ locals {
     METADATA_BUCKET = aws_s3_bucket.metadata-bucket.bucket
     INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
     BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
+    RUNS_TABLE = aws_glue_catalog_table.sbeacon-runs.name
+    ANALYSES_TABLE = aws_glue_catalog_table.sbeacon-analyses.name
     TERMS_TABLE = aws_glue_catalog_table.sbeacon-terms.name
   }
   # dynamodb variables
@@ -574,8 +576,12 @@ module "lambda-indexer" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.athena-full-access.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.lambda-indexer.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/indexer"
 
   tags = var.common-tags

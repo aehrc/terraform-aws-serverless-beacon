@@ -3,6 +3,8 @@ import jsonschema
 import os
 import jsons
 
+import boto3
+
 from apiutils.api_response import bundle_response, bad_request
 import apiutils.responses as responses
 from athena.biosample import Biosample
@@ -14,6 +16,7 @@ BEACON_ID = os.environ['BEACON_ID']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 
+s3 = boto3.client('s3')
 # requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
@@ -107,13 +110,12 @@ def route(event):
                     biosamples_term_columns.append((item.term, item.columnName))
                     terms_found = True
     
-        # TODO
-        # for fil in filters:
-        #     if fil.get('scope') == 'individuals':
-        #         terms_found = False
-        #         for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-        #             individuals_term_columns.append((item.term, item.columnName))
-        #             terms_found = True
+        for fil in filters:
+            if fil.get('scope') == 'individuals':
+                terms_found = False
+                for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
+                    individuals_term_columns.append((item.term, item.columnName))
+                    terms_found = True
 
     if not terms_found:
         response = responses.get_boolean_response(exists=False)

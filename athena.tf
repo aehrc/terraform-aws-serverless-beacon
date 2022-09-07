@@ -3,13 +3,14 @@
 # AWS docs to refer;
 # SerDe types from https://docs.aws.amazon.com/athena/latest/ug/athena-ug.pdf
 # Glue docs; https://docs.aws.amazon.com/glue/latest/dg/glue-dg.pdf
-# 
+# Athena does not support - in database names, use _ instead
+#
 resource "aws_glue_catalog_database" "metadata-database" {
   name = "sbeacon_metadata"
 }
 
 # 
-# Athena does not support - in database names, use _ instead
+# Individuals metadata
 # 
 resource "aws_glue_catalog_table" "sbeacon-individuals" {
   name          = "sbeacon_individuals"
@@ -41,11 +42,6 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
 
     columns {
       name = "id"
-      type = "string"
-    }
-
-    columns {
-      name = "samplename"
       type = "string"
     }
 
@@ -123,6 +119,9 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
   }
 }
 
+# 
+# Biosamples metadata
+# 
 resource "aws_glue_catalog_table" "sbeacon-biosamples" {
   name          = "sbeacon_biosamples"
   database_name = aws_glue_catalog_database.metadata-database.name
@@ -257,6 +256,195 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
   }
 }
 
+# 
+# Runs metadata
+# 
+resource "aws_glue_catalog_table" "sbeacon-runs" {
+  name          = "sbeacon_runs"
+  database_name = aws_glue_catalog_database.metadata-database.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    "orc.compress" = "SNAPPY"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/runs"
+    input_format = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+
+
+    ser_de_info {
+      name                  = "ORC"
+      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+
+      parameters = {
+        "serialization.format" = 1,
+        "orc.column.index.access" = "FALSE"
+        "hive.orc.use-column-names" = "TRUE"
+      }
+    }
+
+    columns {
+      name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "biosampleid"
+      type = "string"
+    }
+
+    columns {
+      name = "individualid"
+      type = "string"
+    }
+
+    columns {
+      name = "info"
+      type = "string"
+    }
+
+    columns {
+      name = "librarylayout"
+      type = "string"
+    }
+
+    columns {
+      name = "libraryselection"
+      type = "string"
+    }
+
+    columns {
+      name = "librarysource"
+      type = "string"
+    }
+
+    columns {
+      name = "librarystrategy"
+      type = "string"
+    }
+
+    columns {
+      name = "platform"
+      type = "string"
+    }
+
+    columns {
+      name = "platformmodel"
+      type = "string"
+    }
+
+    columns {
+      name = "rundate"
+      type = "string"
+    }
+  }
+  
+  partition_keys {
+    name = "datasetid"
+    type = "string"
+  }
+}
+
+# 
+# Analyses metadata
+# 
+resource "aws_glue_catalog_table" "sbeacon-analyses" {
+  name          = "sbeacon_analyses"
+  database_name = aws_glue_catalog_database.metadata-database.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    "orc.compress" = "SNAPPY"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/analyses"
+    input_format = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+
+
+    ser_de_info {
+      name                  = "ORC"
+      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+
+      parameters = {
+        "serialization.format" = 1,
+        "orc.column.index.access" = "FALSE"
+        "hive.orc.use-column-names" = "TRUE"
+      }
+    }
+    
+    columns {
+      name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "individualid"
+      type = "string"
+    }
+
+    columns {
+      name = "biosampleid"
+      type = "string"
+    }
+
+    columns {
+      name = "runid"
+      type = "string"
+    }
+
+    columns {
+      name = "aligner"
+      type = "string"
+    }
+
+    columns {
+      name = "analysisdate"
+      type = "string"
+    }
+
+    columns {
+      name = "info"
+      type = "string"
+    }
+
+    columns {
+      name = "pipelinename"
+      type = "string"
+    }
+
+    columns {
+      name = "pipelineref"
+      type = "string"
+    }
+
+    columns {
+      name = "variantcaller"
+      type = "string"
+    }
+
+    columns {
+      name = "vcfsampleid"
+      type = "string"
+    }
+  }
+  
+  partition_keys {
+    name = "datasetid"
+    type = "string"
+  }
+}
+
+# 
+# Ontology terms (for pagination and filtering)
+# 
 resource "aws_glue_catalog_table" "sbeacon-terms" {
   name          = "sbeacon_terms"
   database_name = aws_glue_catalog_database.metadata-database.name
@@ -284,6 +472,7 @@ resource "aws_glue_catalog_table" "sbeacon-terms" {
         "hive.orc.use-column-names" = "TRUE"
       }
     }
+    
     columns {
       name = "term"
       type = "string"

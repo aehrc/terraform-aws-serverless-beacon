@@ -479,6 +479,19 @@ data aws_iam_policy_document lambda-getBiosamples {
 }
 
 #
+# indexer Lambda Function
+#
+data aws_iam_policy_document lambda-indexer {
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:PutItem"
+    ]
+    resources = [aws_dynamodb_table.ontology_terms.arn]
+  }
+}
+
+#
 # splitQuery Lambda Function
 #
 data aws_iam_policy_document lambda-splitQuery {

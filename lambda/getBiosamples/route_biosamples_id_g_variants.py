@@ -1,15 +1,17 @@
 from collections import defaultdict
 import json
 import jsonschema
+import boto3
 import os
 import base64
+import time
 
 from apiutils.api_response import bundle_response, bad_request
 from variantutils.search_variants import perform_variant_search
 from dynamodb.datasets import Dataset
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.analysis import Analysis
+from athena.individual import Individual
 
 
 SPLIT_SIZE = 1000000
@@ -18,16 +20,19 @@ BEACON_ID = os.environ['BEACON_ID']
 SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 REQUEST_TIMEOUT = 10 # seconds 
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
-ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 
+dynamodb = boto3.client('dynamodb')
+aws_lambda = boto3.client('lambda')
+athena = boto3.client('athena')
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
 def get_record_query(id, conditions=[]):
     query = f'''
-    SELECT datasetid, vcfsampleid FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}'
+    SELECT id, datasetid, samplename FROM "{{database}}"."{{table}}"
+    WHERE "id"='{id}'
     {' AND '.join(conditions)}
     '''
     return query
@@ -102,17 +107,17 @@ def route(event):
         return bad_request(errorMessage="Request missing variant ID")
     
     individual_id = event["pathParameters"].get("id", None)
-    db_results = Analysis.get_by_query(get_record_query(individual_id))
+    db_results = Individual.get_by_query(get_record_query(individual_id))
 
-    # TODO there could be many analyses for an individual
-    # decide the required fan out based on that, currently just picking the first
+    # TODO refactor after confirming individual-vcf file relationship
+    # there is a chance that one individual may have many varian files from analyses (vcf callings)
     if not len(db_results) > 0:
         response = responses.get_boolean_response(exists=False)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    analysis = db_results[0]
-    datasets = get_datasets(assemblyId, analysis.datasetId)
+    individual = db_results[0]
+    datasets = get_datasets(assemblyId, individual.datasetId)
     check_all = includeResultsetResponses in ('HIT', 'ALL')
 
     variants = set()
@@ -124,7 +129,7 @@ def route(event):
     exists, query_responses = perform_variant_search(
         passthrough={
             'selectedSamplesOnly': True,
-            'sampleNames': [analysis.vcfSampleId]
+            'sampleNames': [individual.sampleName]
         },
         datasets=datasets,
         referenceName=referenceName,

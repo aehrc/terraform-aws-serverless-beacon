@@ -3,7 +3,6 @@ import json
 import jsonschema
 import queue
 import threading
-import boto3
 import os
 import base64
 import jsons
@@ -24,6 +23,7 @@ REQUEST_TIMEOUT = 10 # seconds
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
+ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
@@ -32,11 +32,15 @@ def get_count_query(dataset_id, sample_names, conditions=[]):
     query = f'''
     SELECT COUNT(id)
     FROM 
-        "{{database}}"."{INDIVIDUALS_TABLE}" 
+        "{{database}}"."{ANALYSES_TABLE}" JOIN "{{database}}"."{INDIVIDUALS_TABLE}" 
+    ON 
+        "{{database}}"."{ANALYSES_TABLE}".individualid
+        =
+        "{{database}}"."{INDIVIDUALS_TABLE}".id
     WHERE 
         "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
         AND 
-            samplename 
+            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid 
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
@@ -48,11 +52,15 @@ def get_bool_query(dataset_id, sample_names, conditions=[]):
     query = f'''
     SELECT 1
     FROM 
-        "{{database}}"."{INDIVIDUALS_TABLE}" 
+        "{{database}}"."{ANALYSES_TABLE}" JOIN "{{database}}"."{INDIVIDUALS_TABLE}" 
+    ON 
+        "{{database}}"."{ANALYSES_TABLE}".individualid
+        =
+        "{{database}}"."{INDIVIDUALS_TABLE}".id
     WHERE 
-        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
         AND 
-            samplename 
+            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
@@ -63,13 +71,17 @@ def get_bool_query(dataset_id, sample_names, conditions=[]):
 
 def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
     query = f'''
-    SELECT * 
+    SELECT "{{database}}"."{INDIVIDUALS_TABLE}".* 
     FROM 
-        "{{database}}"."{INDIVIDUALS_TABLE}" 
+        "{{database}}"."{ANALYSES_TABLE}" JOIN "{{database}}"."{INDIVIDUALS_TABLE}" 
+    ON 
+        "{{database}}"."{ANALYSES_TABLE}".individualid
+        =
+        "{{database}}"."{INDIVIDUALS_TABLE}".id
     WHERE 
-        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
         AND 
-            samplename 
+            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}

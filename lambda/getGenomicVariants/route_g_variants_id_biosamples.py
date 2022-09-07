@@ -3,7 +3,6 @@ import json
 import jsonschema
 import queue
 import threading
-import boto3
 import os
 import base64
 import jsons
@@ -25,6 +24,7 @@ ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
+ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
@@ -32,17 +32,17 @@ requestSchemaJSON = json.load(open("requestParameters.json"))
 def get_count_query(dataset_id, sample_names, conditions=[]):
     query = f'''
     SELECT COUNT(*)
-    FROM "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
+    FROM "{{database}}"."{ANALYSES_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
     ON 
-        "{{database}}"."{INDIVIDUALS_TABLE}".id
+        "{{database}}"."{ANALYSES_TABLE}".biosampleid
         =
-        "{{database}}"."{BIOSAMPLES_TABLE}".individualid
+        "{{database}}"."{BIOSAMPLES_TABLE}".id
     WHERE 
-        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}'
+        "{{database}}"."{ANALYSES_TABLE}".datasetid='{dataset_id}'
         AND 
         "{{database}}"."{BIOSAMPLES_TABLE}".datasetid='{dataset_id}'
         AND
-            "{{database}}"."{INDIVIDUALS_TABLE}"."samplename" 
+            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid"
         IN ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     '''
@@ -52,17 +52,17 @@ def get_count_query(dataset_id, sample_names, conditions=[]):
 def get_bool_query(dataset_id, sample_names, conditions=[]):
     query = f'''
     SELECT 1
-    FROM "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
+    FROM "{{database}}"."{ANALYSES_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
     ON 
-        "{{database}}"."{INDIVIDUALS_TABLE}".id
+        "{{database}}"."{ANALYSES_TABLE}".id
         =
         "{{database}}"."{BIOSAMPLES_TABLE}".individualid
     WHERE 
-        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}'
+        "{{database}}"."{ANALYSES_TABLE}".datasetid='{dataset_id}'
         AND 
         "{{database}}"."{BIOSAMPLES_TABLE}".datasetid='{dataset_id}'
         AND
-            "{{database}}"."{INDIVIDUALS_TABLE}"."samplename" 
+            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid
         IN ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     LIMIT 1
@@ -75,17 +75,17 @@ def get_bool_query(dataset_id, sample_names, conditions=[]):
 def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
     query = f'''
     SELECT "{{database}}"."{BIOSAMPLES_TABLE}".* 
-    FROM "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
+    FROM "{{database}}"."{ANALYSES_TABLE}" JOIN "{{database}}"."{BIOSAMPLES_TABLE}" 
     ON 
-        "{{database}}"."{INDIVIDUALS_TABLE}".id
+        "{{database}}"."{ANALYSES_TABLE}".id
         =
         "{{database}}"."{BIOSAMPLES_TABLE}".individualid
     WHERE 
-        "{{database}}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}'
+        "{{database}}"."{ANALYSES_TABLE}".datasetid='{dataset_id}'
         AND 
         "{{database}}"."{BIOSAMPLES_TABLE}".datasetid='{dataset_id}'
         AND
-            "{{database}}"."{INDIVIDUALS_TABLE}"."samplename" 
+            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid 
         IN ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     ORDER BY "id", "individualid"
@@ -168,11 +168,12 @@ def route(event):
                     biosamples_term_columns.append((item.term, item.columnName))
                     terms_found = True
     
-            if fil.get('scope') == 'individuals':
-                terms_found = False
-                for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-                    individuals_term_columns.append((item.term, item.columnName))
-                    terms_found = True
+            # TODO
+            # if fil.get('scope') == 'individuals':
+            #     terms_found = False
+            #     for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
+            #         individuals_term_columns.append((item.term, item.columnName))
+            #         terms_found = True
    
     sql_conditions = []
 
@@ -182,11 +183,12 @@ def route(event):
         '''
         sql_conditions.append(cond)
 
-    for term, col in individuals_term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
+    # TODO
+    # for term, col in individuals_term_columns:
+    #     cond = f'''
+    #         JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
+    #     '''
+    #     sql_conditions.append(cond)
     
     dataset_samples = defaultdict(set)
 
