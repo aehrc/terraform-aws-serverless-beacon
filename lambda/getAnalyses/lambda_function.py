@@ -1,46 +1,26 @@
 import json
-import os
 
-from apiutils.api_response import bundle_response
-import apiutils.responses as  responses
-import apiutils.entries as entries
-
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-
-
-def get_analyses(event):
-    print(event)
-    response = responses.result_sets_response
-    # response = responses.counts_response
-    # response = responses.boolean_response
-
-    return bundle_response(200, response)
+from route_analyses import route as route_analyses
+from route_analyses_filtering_terms import route as route_analyses_filtering_terms
+from route_analyses_id import route as route_analyses_id
+from route_analyses_id_g_variants import route as route_analyses_id_g_variants
 
 
 def lambda_handler(event, context):
-    if (event['requestContext'] == 'GET'):
-        apiVersion = event['queryStringParameters'].get("apiVersion", None)
-        requestedSchemas = event['queryStringParameters'].get("requestedSchemas", None)
-        pagination = event['queryStringParameters'].get("pagination", None)
-        requestedGranularity = event['queryStringParameters'].get("requestedGranularity", None)
-    if (event['requestContext'] == 'POST'):
-        apiVersion = event['body'].get("apiVersion", None)
-        requestedSchemas = event['body'].get("requestedSchemas", None)
-        pagination = event['body'].get("pagination", None)
-        requestedGranularity = event['body'].get("requestedGranularity", None)
-
     print('Event Received: {}'.format(json.dumps(event)))
 
-    if event['resource'] == '/analyses/{id}/g_variants':
-        entry = responses.result_sets_response
-        entry['response']['resultSets'][0]['results'] = [entries.variant_entry]
-        response = bundle_response(200, entry)
-    else:
-        entry = responses.result_sets_response
-        entry['response']['resultSets'][0]['results'] = [entries.analysis_entry]
-        response = bundle_response(200, entry)
+    if event["resource"] == "/analyses":
+        return route_analyses(event)
 
-    print('Returning Response: {}'.format(json.dumps(response)))
-    return response
+    elif event['resource'] == '/analyses/filtering_terms':
+        return route_analyses_filtering_terms(event)
+
+    elif event['resource'] == '/analyses/{id}':
+        return route_analyses_id(event)
+
+    elif event['resource'] == '/analyses/{id}/g_variants':
+        return route_analyses_id_g_variants(event)
+
+
+if __name__ == '__main__':
+    pass

@@ -385,16 +385,28 @@ module "lambda-getAnalyses" {
   handler = "lambda_function.lambda_handler"
   memory_size = 128
   timeout = 900
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getAnalyses.json
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getAnalyses.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/getAnalyses"
 
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-  }
+  environment_variables = merge(
+    {
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -422,7 +434,6 @@ module "lambda-getGenomicVariants" {
   environment_variables = merge(
     {
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
-      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -459,7 +470,6 @@ module "lambda-getIndividuals" {
   environment_variables = merge(
     {
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
-      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -496,7 +506,6 @@ module "lambda-getBiosamples" {
   environment_variables = merge(
     {
       SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
-      PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name
     },
     local.athena_variables,
     local.sbeacon_variables,

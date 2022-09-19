@@ -68,10 +68,10 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
         status = exec['QueryExecution']['Status']['State']
         
         if status in ('QUEUED', 'RUNNING'):
-            time.sleep(2)
+            time.sleep(0.5)
             retries += 1
 
-            if retries == 4:
+            if retries == 20:
                 print('Timed out')
                 return []
             continue

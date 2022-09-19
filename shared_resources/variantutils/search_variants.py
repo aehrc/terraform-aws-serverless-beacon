@@ -152,7 +152,7 @@ def perform_variant_search(*,
         except:
             print("Errored")
             break
-        time.sleep(1)
+        time.sleep(0.01)
 
     query_responses = []
 

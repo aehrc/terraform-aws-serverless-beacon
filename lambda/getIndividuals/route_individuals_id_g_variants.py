@@ -12,13 +12,9 @@ import apiutils.entries as entries
 from athena.analysis import Analysis
 
 
-SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
-SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
-REQUEST_TIMEOUT = 10 # seconds 
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 
 requestSchemaJSON = json.load(open("requestParameters.json"))
 

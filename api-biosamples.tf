@@ -51,6 +51,59 @@ resource aws_api_gateway_method_response biosamples_post {
   }
 }
 
+#
+# biosamples API Function /biosamples/filtering_terms
+#
+resource aws_api_gateway_resource biosamples-filtering_terms {
+  path_part   = "filtering_terms"
+  parent_id   = aws_api_gateway_resource.biosamples.id
+  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
+}
+
+resource aws_api_gateway_method biosamples-filtering_terms {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_resource.biosamples-filtering_terms.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource aws_api_gateway_method_response biosamples-filtering_terms {
+  rest_api_id = aws_api_gateway_method.biosamples-filtering_terms.rest_api_id
+  resource_id = aws_api_gateway_method.biosamples-filtering_terms.resource_id
+  http_method = aws_api_gateway_method.biosamples-filtering_terms.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = true
+  }
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource aws_api_gateway_method biosamples-filtering_terms_post {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_resource.biosamples-filtering_terms.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource aws_api_gateway_method_response biosamples-filtering_terms_post {
+  rest_api_id = aws_api_gateway_method.biosamples-filtering_terms_post.rest_api_id
+  resource_id = aws_api_gateway_method.biosamples-filtering_terms_post.resource_id
+  http_method = aws_api_gateway_method.biosamples-filtering_terms_post.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = true
+  }
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
 # 
 # /biosamples/{id}
 # 
@@ -304,6 +357,14 @@ module cors-biosamples {
   api_resource_id = aws_api_gateway_resource.biosamples.id
 }
 
+module cors-biosamples-filtering_terms {
+  source = "squidfunk/api-gateway-enable-cors/aws"
+  version = "0.3.3"
+
+  api_id          = aws_api_gateway_rest_api.BeaconApi.id
+  api_resource_id = aws_api_gateway_resource.biosamples-filtering_terms.id
+}
+
 module cors-biosamples-id {
   source = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
@@ -379,6 +440,51 @@ resource aws_api_gateway_integration_response biosamples_post {
   }
 
   depends_on = [aws_api_gateway_integration.biosamples_post]
+}
+
+# wire up lambda biosamples/filtering_terms
+resource aws_api_gateway_integration biosamples-filtering_terms {
+  rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id             = aws_api_gateway_resource.biosamples-filtering_terms.id
+  http_method             = aws_api_gateway_method.biosamples-filtering_terms.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = module.lambda-getBiosamples.lambda_function_invoke_arn
+}
+
+resource aws_api_gateway_integration_response biosamples-filtering_terms {
+  rest_api_id = aws_api_gateway_method.biosamples-filtering_terms.rest_api_id
+  resource_id = aws_api_gateway_method.biosamples-filtering_terms.resource_id
+  http_method = aws_api_gateway_method.biosamples-filtering_terms.http_method
+  status_code = aws_api_gateway_method_response.biosamples-filtering_terms.status_code
+
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [aws_api_gateway_integration.biosamples-filtering_terms]
+}
+
+resource aws_api_gateway_integration biosamples-filtering_terms_post {
+  rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id             = aws_api_gateway_resource.biosamples-filtering_terms.id
+  http_method             = aws_api_gateway_method.biosamples-filtering_terms_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = module.lambda-getBiosamples.lambda_function_invoke_arn
+}
+
+resource aws_api_gateway_integration_response biosamples-filtering_terms_post {
+  rest_api_id = aws_api_gateway_method.biosamples-filtering_terms_post.rest_api_id
+  resource_id = aws_api_gateway_method.biosamples-filtering_terms_post.resource_id
+  http_method = aws_api_gateway_method.biosamples-filtering_terms_post.http_method
+  status_code = aws_api_gateway_method_response.biosamples-filtering_terms_post.status_code
+
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [aws_api_gateway_integration.biosamples-filtering_terms_post]
 }
 
 # wire up lambda biosamples/{id}
@@ -568,6 +674,14 @@ resource aws_lambda_permission APIbiosamples {
   function_name = module.lambda-getBiosamples.lambda_function_name
   principal = "apigateway.amazonaws.com"
   source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.biosamples.path_part}"
+}
+
+resource aws_lambda_permission APIbiosamplesFilteringTerms {
+  statement_id = "AllowAPIbiosamplesFilteringTermsInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = module.lambda-getBiosamples.lambda_function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.biosamples.path_part}/${aws_api_gateway_resource.biosamples-filtering_terms.path_part}"
 }
 
 resource aws_lambda_permission APIbiosamplesId {

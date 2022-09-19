@@ -12,20 +12,15 @@ import apiutils.entries as entries
 from athena.analysis import Analysis
 
 
-SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-REQUEST_TIMEOUT = 10 # seconds 
-METADATA_DATABASE = os.environ['METADATA_DATABASE']
-ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
 def get_record_query(id, conditions=[]):
     query = f'''
-    SELECT id, datasetid, vcfsampleid FROM "{{database}}"."{{table}}"
-    WHERE "biosampleid"='{id}'
+    SELECT datasetid, vcfsampleid FROM "{{database}}"."{{table}}"
+    WHERE "individualid"='{id}'
     {' AND '.join(conditions)}
     '''
     return query
@@ -99,10 +94,11 @@ def route(event):
     if variant_id is None:
         return bad_request(errorMessage="Request missing variant ID")
     
-    biosample_id = event["pathParameters"].get("id", None)
-    db_results = Analysis.get_by_query(get_record_query(biosample_id))
+    individual_id = event["pathParameters"].get("id", None)
+    db_results = Analysis.get_by_query(get_record_query(individual_id))
 
-    # TODO biosample may have multiple run - analyses implement that
+    # TODO there could be many analyses for an individual
+    # decide the required fan out based on that, currently just picking the first
     if not len(db_results) > 0:
         response = responses.get_boolean_response(exists=False)
         print('Returning Response: {}'.format(json.dumps(response)))
