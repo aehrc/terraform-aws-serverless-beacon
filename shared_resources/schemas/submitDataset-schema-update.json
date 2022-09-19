@@ -81,6 +81,18 @@
                 "$ref": "./biosample-schema.json"
             },
             "type": "array"
+        },
+        "runs": {
+            "items": {
+                "$ref": "run-schema.json"
+            },
+            "type": "array"
+        },
+        "analyses": {
+            "items": {
+                "$ref": "analysis-schema.json"
+            },
+            "type": "array"
         }
     },
     "required": [

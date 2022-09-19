@@ -1,6 +1,8 @@
 #
 # API Gateway
 #
+
+# TODO update submission pipeline
 resource aws_api_gateway_rest_api BeaconApi {
   name = "BeaconApi"
   description = "API That implements the Beacon specification"
