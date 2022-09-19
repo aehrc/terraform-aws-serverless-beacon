@@ -130,6 +130,28 @@ FROM (
     FROM "sbeacon_biosamples"
     WHERE JSON_EXTRACT_SCALAR(tumorprogression, '$.id') 
     IS NOT NULL
+    UNION
+
+    SELECT DISTINCT
+        JSON_EXTRACT_SCALAR(librarysource, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(librarysource, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(librarysource, '$.type'), ''), 'string') AS type,
+        'sbeacon_runs' as tablename,
+        'librarysource' as colname
+    FROM "sbeacon_runs"
+    WHERE JSON_EXTRACT_SCALAR(librarysource, '$.id') 
+    IS NOT NULL
+    UNION
+
+    SELECT DISTINCT
+        JSON_EXTRACT_SCALAR(platformmodel, '$.id') AS term, 
+        JSON_EXTRACT_SCALAR(platformmodel, '$.label') AS label,
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR(platformmodel, '$.type'), ''), 'string') AS type,
+        'sbeacon_runs' as tablename,
+        'platformmodel' as colname
+    FROM "sbeacon_runs"
+    WHERE JSON_EXTRACT_SCALAR(platformmodel, '$.id') 
+    IS NOT NULL
 ) 
 ORDER BY term 
 ASC;

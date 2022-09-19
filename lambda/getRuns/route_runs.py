@@ -5,47 +5,40 @@ import jsons
 
 from apiutils.api_response import bundle_response, bad_request
 import apiutils.responses as responses
-from athena.biosample import Biosample
+from athena.run import Run
 from dynamodb.onto_index import OntoData
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
+BEACON_ID = os.environ['BEACON_ID']
+RUNS_TABLE = os.environ['RUNS_TABLE']
 
 # requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def get_bool_query(id, conditions=[]):
+def get_count_query(conditions=[]):
     query = f'''
-    SELECT 1 FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}'
-    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
-    LIMIT 1;
+    SELECT COUNT(id) FROM "{{database}}"."{{table}}"
+    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
     '''
-
     return query
 
 
-def get_count_query(id, conditions=[]):
+def get_bool_query(conditions=[]):
     query = f'''
-    SELECT COUNT(*) FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}'
-    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
+    SELECT 1 FROM "{{database}}"."{{table}}" LIMIT 1
+    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
     '''
-
     return query
 
 
-def get_record_query(id, skip, limit, conditions=[]):
+def get_record_query(skip, limit, conditions=[]):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}'
-    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     OFFSET {skip}
     LIMIT {limit};
     '''
-
     return query
 
 
@@ -78,6 +71,7 @@ def route(event):
         currentPage = pagination.get("currentPage", None)
         previousPage = pagination.get("previousPage", None)
         nextPage = pagination.get("nextPage", None)
+        filters = query.get("filters", [])
         # query request params
         requestParameters = query.get("requestParameters", dict())
         # validate query request
@@ -86,74 +80,59 @@ def route(event):
         # if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
         #     return bad_request(errorMessage= "\n".join([error.message for error in errors]))
             # raise error
-        filters = requestParameters.get("filters", [])
-        variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
-    
-    individual_id = event["pathParameters"].get("id", None)
-    
-    # by default the scope of terms is assumed to be biosamples
+
+    # scope = runs
     terms_found = True
-    biosamples_term_columns = []
-    individuals_term_columns = []
+    term_columns = []
     sql_conditions = []
-    
+
     if len(filters) > 0:
+        # supporting ontology terms
         for fil in filters:
-            if fil.get('scope', 'biosamples') == 'biosamples':
-                terms_found = False
-                for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
-                    biosamples_term_columns.append((item.term, item.columnName))
-                    terms_found = True
-    
-        # TODO
-        # for fil in filters:
-        #     if fil.get('scope') == 'individuals':
-        #         terms_found = False
-        #         for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-        #             individuals_term_columns.append((item.term, item.columnName))
-        #             terms_found = True
+            terms_found = False
+            for item in OntoData.tableTermsIndex.query(hash_key=f'{RUNS_TABLE}\t{fil["id"]}'):
+                term_columns.append((item.term, item.columnName))
+                terms_found = True
+   
+    for term, col in term_columns:
+        cond = f'''
+            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
+        '''
+        sql_conditions.append(cond)
 
     if not terms_found:
         response = responses.get_boolean_response(exists=False)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    for term, col in biosamples_term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{BIOSAMPLES_TABLE}"."{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
-
-    for term, col in individuals_term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
-    
     if requestedGranularity == 'boolean':
-        query = get_bool_query(individual_id)
-        exists = Biosample.get_existence_by_query(query)
+        query = get_bool_query(sql_conditions)
+        exists = Run.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        query = get_count_query(individual_id)
-        count = Biosample.get_count_by_query(query)
+        query = get_count_query(sql_conditions)
+        count = Run.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(individual_id, skip, limit)
-        biosamples = Biosample.get_by_query(query)
+        query = get_record_query(skip, limit, sql_conditions)
+        runs = Run.get_by_query(query)
         response = responses.get_result_sets_response(
-            setType='individuals', 
-            exists=len(biosamples)>0,
-            total=len(biosamples),
+            setType='runs', 
+            exists=len(runs)>0,
+            total=len(runs),
             reqPagination=responses.get_pagination_object(skip, limit),
-            results=jsons.dump(biosamples, strip_privates=True)
+            results=jsons.dump(runs, strip_privates=True)
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
+
+
+if __name__ == '__main__':
+    pass

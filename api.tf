@@ -14,12 +14,6 @@ resource aws_api_gateway_resource submit {
   path_part = "submit"
 }
 
-resource aws_api_gateway_resource query {
-  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  parent_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
-  path_part = "query"
-}
-
 resource aws_api_gateway_method submit-options {
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
   resource_id = aws_api_gateway_resource.submit.id
@@ -369,6 +363,51 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration_response.biosamples-id-runs_post.id,
     aws_api_gateway_method_response.biosamples-id-runs.id,
     aws_api_gateway_method_response.biosamples-id-runs_post.id,
+    # /runs
+    aws_api_gateway_method.runs.id,
+    aws_api_gateway_method.runs_post.id,
+    aws_api_gateway_integration.runs.id,
+    aws_api_gateway_integration.runs_post.id,
+    aws_api_gateway_integration_response.runs.id,
+    aws_api_gateway_integration_response.runs_post.id,
+    aws_api_gateway_method_response.runs.id,
+    aws_api_gateway_method_response.runs_post.id,
+    # /runs/filtering_terms
+    aws_api_gateway_method.runs-filtering_terms.id,
+    aws_api_gateway_method.runs-filtering_terms_post.id,
+    aws_api_gateway_integration.runs-filtering_terms.id,
+    aws_api_gateway_integration.runs-filtering_terms_post.id,
+    aws_api_gateway_integration_response.runs-filtering_terms.id,
+    aws_api_gateway_integration_response.runs-filtering_terms_post.id,
+    aws_api_gateway_method_response.runs-filtering_terms.id,
+    aws_api_gateway_method_response.runs-filtering_terms_post.id,
+    # /runs/{id}
+    aws_api_gateway_method.runs-id.id,
+    aws_api_gateway_method.runs-id_post.id,
+    aws_api_gateway_integration.runs-id.id,
+    aws_api_gateway_integration.runs-id_post.id,
+    aws_api_gateway_integration_response.runs-id.id,
+    aws_api_gateway_integration_response.runs-id_post.id,
+    aws_api_gateway_method_response.runs-id.id,
+    aws_api_gateway_method_response.runs-id_post.id,
+    # /runs/{id}/analyses
+    aws_api_gateway_method.runs-id-analyses.id,
+    aws_api_gateway_method.runs-id-analyses_post.id,
+    aws_api_gateway_integration.runs-id-analyses.id,
+    aws_api_gateway_integration.runs-id-analyses_post.id,
+    aws_api_gateway_integration_response.runs-id-analyses.id,
+    aws_api_gateway_integration_response.runs-id-analyses_post.id,
+    aws_api_gateway_method_response.runs-id-analyses.id,
+    aws_api_gateway_method_response.runs-id-analyses_post.id,
+    # /runs/{id}/g_variants
+    aws_api_gateway_method.runs-id-g_variants.id,
+    aws_api_gateway_method.runs-id-g_variants_post.id,
+    aws_api_gateway_integration.runs-id-g_variants.id,
+    aws_api_gateway_integration.runs-id-g_variants_post.id,
+    aws_api_gateway_integration_response.runs-id-g_variants.id,
+    aws_api_gateway_integration_response.runs-id-g_variants_post.id,
+    aws_api_gateway_method_response.runs-id-g_variants.id,
+    aws_api_gateway_method_response.runs-id-g_variants_post.id,
     # /analyses
     aws_api_gateway_method.analyses.id,
     aws_api_gateway_method.analyses_post.id,

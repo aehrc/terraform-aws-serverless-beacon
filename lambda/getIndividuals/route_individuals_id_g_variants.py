@@ -13,8 +13,6 @@ from athena.analysis import Analysis
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-METADATA_DATABASE = os.environ['METADATA_DATABASE']
 
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
@@ -91,10 +89,6 @@ def route(event):
         filters = requestParameters.get("filters", [])
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
-
-    variant_id = event["pathParameters"].get("id", None)
-    if variant_id is None:
-        return bad_request(errorMessage="Request missing variant ID")
     
     individual_id = event["pathParameters"].get("id", None)
     db_results = Analysis.get_by_query(get_record_query(individual_id))
