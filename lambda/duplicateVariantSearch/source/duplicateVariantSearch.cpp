@@ -6,8 +6,8 @@
 #include "stopwatch.h"
 // #define INCLUDE_STOP_WATCH
 
-const char *VARIANT_DUPLICATES_TABLE = getenv("VARIANT_DUPLICATES_TABLE");
-const char *DATASETS_TABLE = getenv("DATASETS_TABLE");
+const char *VARIANT_DUPLICATES_TABLE = getenv("DYNAMO_VARIANT_DUPLICATES_TABLE");
+const char *DYNAMO_DATASETS_TABLE = getenv("DYNAMO_DATASETS_TABLE");
 
 DuplicateVariantSearch::DuplicateVariantSearch(
     Aws::S3::S3Client &client,
@@ -85,7 +85,7 @@ void DuplicateVariantSearch::searchForDuplicates() {
 
 void DuplicateVariantSearch::updateVariantCounts(int64_t finalTally) {
     Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(DATASETS_TABLE);
+    request.SetTableName(DYNAMO_DATASETS_TABLE);
     Aws::DynamoDB::Model::AttributeValue keyValue;
     keyValue.SetS(_dataset);
     request.AddKey("id", keyValue);

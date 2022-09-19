@@ -16,7 +16,7 @@ from athena.individual import Individual
 from athena.biosample import Biosample
 
 
-DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+DATASETS_TABLE_NAME = os.environ['DYNAMO_DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
 INDEXER_LAMBDA = os.environ['INDEXER_LAMBDA']
 

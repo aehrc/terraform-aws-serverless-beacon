@@ -6,7 +6,7 @@ from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from pynamodb.attributes import UnicodeAttribute
 
 
-ONTO_INDEX_TABLE = os.environ['ONTO_INDEX_TABLE']
+ONTO_INDEX_TABLE = os.environ['DYNAMO_ONTO_INDEX_TABLE']
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 

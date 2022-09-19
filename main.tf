@@ -34,12 +34,12 @@ locals {
   }
   # dynamodb variables
   dynamodb_variables = {
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-    VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
-    QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
-    VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
-    ONTO_INDEX_TABLE = aws_dynamodb_table.ontology_terms.name
+    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+    DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+    DYNAMO_VARIANT_QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+    DYNAMO_VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
+    DYNAMO_ONTO_INDEX_TABLE = aws_dynamodb_table.ontology_terms.name
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
@@ -71,7 +71,7 @@ module "lambda-submitDataset" {
 
   environment_variables = merge(
     {
-      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       INDEXER_LAMBDA = local.INDEXER_LAMBDA
     }, 
@@ -104,10 +104,10 @@ module "lambda-summariseDataset" {
   tags = var.common-tags
 
   environment_variables = {
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
     SUMMARISE_VCF_SNS_TOPIC_ARN = aws_sns_topic.summariseVcf.arn
-    VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-    VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+    DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+    DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
     DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
     VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     ABS_MAX_DATA_SPLIT = local.maximum_load_file_size
@@ -134,7 +134,7 @@ module "lambda-summariseVcf" {
   environment_variables = {
     SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
     VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
-    VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+    DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
   }
 }
 
@@ -184,10 +184,10 @@ module "lambda-summariseSlice" {
 
   environment_variables = {
       ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-      DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
-      VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+      DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
       VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
       MAX_SLICE_GAP = 100000
       VCF_S3_OUTPUT_SIZE_LIMIT = local.vcf_processed_file_size
@@ -240,8 +240,8 @@ module "lambda-duplicateVariantSearch" {
 
   environment_variables = {
     ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-    VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
   }
 }
 
@@ -267,7 +267,7 @@ module "lambda-getInfo" {
     VERSION = local.version
     BEACON_ID = var.beacon-id
     BEACON_NAME = var.beacon-name
-    DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
     ORGANISATION_ID = var.organisation-id
     ORGANISATION_NAME = var.organisation-name
   }

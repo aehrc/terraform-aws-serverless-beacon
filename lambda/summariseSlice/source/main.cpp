@@ -33,10 +33,10 @@
 // #define INCLUDE_STOP_WATCH
 // #define DEBUG_ON
 
-const char *DATASETS_TABLE = getenv("DATASETS_TABLE");
+const char *DATASETS_TABLE = getenv("DYNAMO_DATASETS_TABLE");
 const char *ASSEMBLY_GSI = getenv("ASSEMBLY_GSI");
 const char *SUMMARISE_DATASET_SNS_TOPIC_ARN = getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN");
-const char *VCF_SUMMARIES_TABLE = getenv("VCF_SUMMARIES_TABLE");
+const char *VCF_SUMMARIES_TABLE = getenv("DYNAMO_VCF_SUMMARIES_TABLE");
 
 using namespace std;
 

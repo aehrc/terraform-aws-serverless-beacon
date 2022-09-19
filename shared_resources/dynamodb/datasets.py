@@ -10,7 +10,7 @@ from pynamodb.attributes import (
 )
 
 
-DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+DATASETS_TABLE_NAME = os.environ['DYNAMO_DATASETS_TABLE']
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
