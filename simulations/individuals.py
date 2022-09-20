@@ -17,7 +17,7 @@ METADATA_BUCKET = os.environ['METADATA_BUCKET']
 def get_radnom_individual(id, datasetId, seed=0):
     random.seed(seed)
 
-    item= Individual(id=id, datasetId=datasetId)
+    item= Individual(id=id, datasetId=datasetId, cohortId=datasetId)
     item.diseases = []
     item.ethnicity = random.choice([
         {
@@ -125,12 +125,13 @@ if __name__ == "__main__":
         for itr in tqdm(zip(nosamples), total=nosamples):
             individual = get_radnom_individual(
                 id=f'{id}-{itr}', datasetId=id, seed=f'{id}-{itr}')
-            partition = f'datasetid={individual.datasetId}'
+            d_partition = f'datasetid={individual.datasetId}'
+            c_partition = f'cohortid={individual.cohortId}'
             key = f'{individual.datasetId}-individuals'
 
             if writer is None:
                 s3file = sopen(
-                    f's3://{METADATA_BUCKET}/individuals/{partition}/{key}', 'wb')
+                    f's3://{METADATA_BUCKET}/individuals/{d_partition}/{c_partition}/{key}', 'wb')
 
                 writer = pyorc.Writer(
                     s3file,
@@ -159,12 +160,13 @@ if __name__ == "__main__":
         sample = 'NA'
         individual = get_radnom_individual(
             id=f'{id}-{itr}', datasetId=id, seed=f'{id}-{itr}')
-        partition = f'datasetid={individual.datasetId}'
+        d_partition = f'datasetid={individual.datasetId}'
+        c_partition = f'cohortid={individual.cohortId}'
         key = f'{individual.datasetId}-individuals'
 
         if writer is None:
             s3file = sopen(
-                f's3://{METADATA_BUCKET}/individuals/{partition}/{key}', 'wb')
+                f's3://{METADATA_BUCKET}/individuals/{d_partition}/{c_partition}/{key}', 'wb')
             writer = pyorc.Writer(
                 s3file,
                 header,

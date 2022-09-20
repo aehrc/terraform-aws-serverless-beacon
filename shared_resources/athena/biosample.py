@@ -48,6 +48,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 *,
                 id='',
                 datasetId='',
+                cohortId='',
                 individualId='',
                 biosampleStatus={},
                 collectionDate=[],
@@ -70,6 +71,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
             ):
         self.id = id
         self.datasetId = datasetId
+        self.cohortId = cohortId
         self.individualId = individualId
         self.biosampleStatus = biosampleStatus
         self.collectionDate = collectionDate
@@ -123,11 +125,12 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         if len(array) == 0:
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        bloom_filter_columns=list(map(lambda x: x.lower(), cls._table_columns))
-        partition = f'datasetid={array[0].datasetId}'
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+        d_partition = f'datasetid={array[0].datasetId}'
+        c_partition = f'cohortid={array[0].cohortId}'
         key = f'{array[0].datasetId}-biosamples'
         
-        with sopen(f's3://{METADATA_BUCKET}/biosamples/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/biosamples/{d_partition}/{c_partition}/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 

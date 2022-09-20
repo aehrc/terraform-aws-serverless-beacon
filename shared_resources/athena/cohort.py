@@ -10,24 +10,24 @@ from .common import AthenaModel
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
-DATASETS_TABLE = os.environ['DATASETS_TABLE']
+COHORTS_TABLE = os.environ['COHORTS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
-class Dataset(jsons.JsonSerializable, AthenaModel):
-    _table_name = DATASETS_TABLE
+class Cohort(jsons.JsonSerializable, AthenaModel):
+    _table_name = COHORTS_TABLE
     # for saving to database order matter
     _table_columns = [
-        'createDateTime',
-        'dataUseConditions',
-        'description',
-        'externalUrl',
-        'info',
-        'name',
-        'updateDateTime',
-        'version'
+        'cohortDataTypes',
+        'cohortDesign',
+        'cohortSize',
+        'cohortType',
+        'collectionEvents',
+        'exclusionCriteria',
+        'inclusionCriteria',
+        'name'
     ]
 
 
@@ -35,25 +35,26 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
                 self,
                 *,
                 id='',
-                createDateTime='',
-                dataUseConditions={},
-                description='',
-                externalUrl='',
-                info={},
-                name='',
-                updateDateTime='',
-                version=''
+                cohortDataTypes='',
+                cohortDesign='',
+                cohortSize='',
+                cohortType='',
+                collectionEvents='',
+                exclusionCriteria='',
+                inclusionCriteria='',
+                name=''
             ):
         self.id = id
-        self.createDateTime = createDateTime
-        self.dataUseConditions = dataUseConditions
-        self.description = description
-        self.externalUrl = externalUrl
-        self.info = info
+        self.cohortDataTypes = cohortDataTypes
+        self.cohortDesign = cohortDesign
+        self.cohortSize = cohortSize
+        self.cohortType = cohortType
+        self.collectionEvents = collectionEvents
+        self.exclusionCriteria = exclusionCriteria
+        self.inclusionCriteria = inclusionCriteria
         self.name = name
-        self.updateDateTime = updateDateTime
-        self.version = version
         
+
 
     def __eq__(self, other):
         return self.id == other.id
@@ -61,25 +62,25 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
 
     @classmethod
     def parse_array(cls, array):
-        datasets = []
+        cohorts = []
         var_list = list()
-        case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
+        case_map = { k.lower(): k for k in Cohort().__dict__.keys() }
 
         for attribute in array[0]['Data']:
             var_list.append(attribute['VarCharValue'])
 
         for item in array[1:]:
-            dataset = Dataset()
+            cohort = Cohort()
 
             for attr, val in zip(var_list, item['Data']):
                 try:
                     val = json.loads(val['VarCharValue'])
                 except:
                     val = val.get('VarCharValue', '')
-                dataset.__dict__[case_map[attr]] = val
-            datasets.append(dataset)
+                cohort.__dict__[case_map[attr]] = val
+            cohorts.append(cohort)
 
-        return datasets
+        return cohorts
 
 
     @classmethod
@@ -89,20 +90,20 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         partition = f'id={array[0].id}'
-        key = f'{array[0].id}-datasets'
+        key = f'{array[0].id}-cohorts'
         
-        with sopen(f's3://{METADATA_BUCKET}/datasets/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/cohorts/{partition}/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
                 bloom_filter_columns=bloom_filter_columns) as writer:
-                for dataset in array:
+                for cohort in array:
                     row = tuple(
-                        dataset.__dict__[k] 
-                        if type(dataset.__dict__[k]) == str
-                        else json.dumps(dataset.__dict__[k])
+                        cohort.__dict__[k] 
+                        if type(cohort.__dict__[k]) == str
+                        else json.dumps(cohort.__dict__[k])
                         for k in cls._table_columns
                     )
                     writer.write(row)

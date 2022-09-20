@@ -4,6 +4,10 @@
     "additionalProperties": true,
     "description": "Schema for a sequencing bioinformatics analysis.",
     "properties": {
+        "id": {
+            "description": "Analysis reference ID (external accession or internal ID)",
+            "type": "string"
+        },
         "aligner": {
             "description": "Reference to mapping/alignment software",
             "examples": [
@@ -26,14 +30,17 @@
             ],
             "type": "string"
         },
-        "id": {
-            "description": "Analysis reference ID (external accession or internal ID)",
-            "type": "string"
-        },
         "individualId": {
             "description": "Reference to the `id` of the individual this analysis is reporting on.",
             "examples": [
                 "P0001"
+            ],
+            "type": "string"
+        },
+        "vcfSampleId": {
+            "description": "Reference to the `id` in the actual vcf file.",
+            "examples": [
+                "01"
             ],
             "type": "string"
         },
@@ -73,7 +80,8 @@
     "required": [
         "id",
         "analysisDate",
-        "pipelineName"
+        "pipelineName",
+        "vcfSampleId"
     ],
     "title": "Sequencing bioinformatics analysis",
     "type": "object"

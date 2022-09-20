@@ -26,6 +26,8 @@ locals {
     ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
     METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
     METADATA_BUCKET = aws_s3_bucket.metadata-bucket.bucket
+    DATASETS_TABLE = aws_glue_catalog_table.sbeacon-datasets.name
+    COHORTS_TABLE = aws_glue_catalog_table.sbeacon-cohorts.name
     INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
     BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
     RUNS_TABLE = aws_glue_catalog_table.sbeacon-runs.name
@@ -57,7 +59,7 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   architectures = ["x86_64"]
-  memory_size = 128
+  memory_size = 256
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [

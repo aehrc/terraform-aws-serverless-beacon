@@ -16,8 +16,12 @@ BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
+DATASETS_TABLE = os.environ['DATASETS_TABLE']
+COHORTS_TABLE = os.environ['COHORTS_TABLE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
+RUNS_TABLE = os.environ['RUNS_TABLE']
+ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 ONTO_INDEX_QUERY = open('helper_queries.sql').read().strip()
 
@@ -106,7 +110,7 @@ def onto_index():
 
 def lambda_handler(event, context):
     threads = []
-    for table in (INDIVIDUALS_TABLE, BIOSAMPLES_TABLE):
+    for table in (DATASETS_TABLE, COHORTS_TABLE, INDIVIDUALS_TABLE, BIOSAMPLES_TABLE, RUNS_TABLE, ANALYSES_TABLE):
         threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
     threads.append(threading.Thread(target=onto_index))
     [thread.start() for thread in threads]

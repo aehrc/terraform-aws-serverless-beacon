@@ -43,12 +43,6 @@ class Dataset(Model):
 
     id = UnicodeAttribute(hash_key=True)
     assemblyId = UnicodeAttribute()
-    name = UnicodeAttribute()
-    description = UnicodeAttribute(default='')
-    version = UnicodeAttribute(default='')
-    externalUrl = UnicodeAttribute(default='')
-    info = ListAttribute(of=UnicodeAttribute, default=list)
-    dataUseConditions = MapAttribute(default={})
     sampleCount = NumberAttribute(default=0)
     callCount = NumberAttribute(default=0)
     createDateTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc)

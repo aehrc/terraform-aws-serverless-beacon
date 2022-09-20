@@ -10,6 +10,84 @@ resource "aws_glue_catalog_database" "metadata-database" {
 }
 
 # 
+# Cohorts metadata
+# 
+resource "aws_glue_catalog_table" "sbeacon-cohorts" {
+  name          = "sbeacon_cohorts"
+  database_name = aws_glue_catalog_database.metadata-database.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    "orc.compress" = "SNAPPY"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/cohorts"
+    input_format = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+
+
+    ser_de_info {
+      name                  = "ORC"
+      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+
+      parameters = {
+        "serialization.format" = 1,
+        "orc.column.index.access" = "FALSE"
+        "hive.orc.use-column-names" = "TRUE"
+      }
+    }
+
+    columns {
+      name = "cohortdatatypes"
+      type = "string"
+    }
+
+    columns {
+      name = "cohortdesign"
+      type = "string"
+    }
+
+    columns {
+      name = "cohortsize"
+      type = "string"
+    }
+
+    columns {
+      name = "cohorttype"
+      type = "string"
+    }
+
+    columns {
+      name = "collectionevents"
+      type = "string"
+    }
+
+    columns {
+      name = "exclusioncriteria"
+      type = "string"
+    }
+
+    columns {
+      name = "inclusioncriteria"
+      type = "string"
+    }
+
+    columns {
+      name = "name"
+      type = "string"
+    }
+  }
+
+  partition_keys {
+    name = "id"
+    type = "string"
+  }
+}
+
+# 
 # Datasets metadata
 # 
 resource "aws_glue_catalog_table" "sbeacon-datasets" {
@@ -195,6 +273,11 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     name = "datasetid"
     type = "string"
   }
+
+  partition_keys {
+    name = "cohortid"
+    type = "string"
+  }
 }
 
 # 
@@ -332,6 +415,11 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
     name = "datasetid"
     type = "string"
   }
+
+  partition_keys {
+    name = "cohortid"
+    type = "string"
+  }
 }
 
 # 
@@ -425,6 +513,11 @@ resource "aws_glue_catalog_table" "sbeacon-runs" {
     name = "datasetid"
     type = "string"
   }
+
+  partition_keys {
+    name = "cohortid"
+    type = "string"
+  }
 }
 
 # 
@@ -516,6 +609,11 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
   
   partition_keys {
     name = "datasetid"
+    type = "string"
+  }
+
+  partition_keys {
+    name = "cohortid"
     type = "string"
   }
 }

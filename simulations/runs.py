@@ -17,7 +17,7 @@ METADATA_BUCKET = os.environ['METADATA_BUCKET']
 def get_radnom_run(id, datasetId, individualId, biosampleId, seed=0):
     random.seed(seed)
 
-    item = Run(id=id, datasetId=datasetId, individualId=individualId, biosampleId=biosampleId)
+    item = Run(id=id, datasetId=datasetId, cohortId=datasetId, individualId=individualId, biosampleId=biosampleId)
     item.libraryLayout = "PAIRED"
     item.librarySelection = "RANDOM"
     item.librarySource = random.choice(
@@ -71,12 +71,13 @@ if __name__ == "__main__":
         for itr in tqdm(range(nosamples), total=nosamples):
             run = get_radnom_run(
                 id=f'{id}-{itr}', datasetId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
-            partition = f'datasetid={run.datasetId}'
+            d_partition = f'datasetid={run.datasetId}'
+            c_partition = f'cohortid={run.cohortId}'
             key = f'{run.datasetId}-runs'
 
             if writer is None:
                 s3file = sopen(
-                    f's3://{METADATA_BUCKET}/runs/{partition}/{key}', 'wb')
+                    f's3://{METADATA_BUCKET}/runs/{d_partition}/{c_partition}/{key}', 'wb')
                 writer = pyorc.Writer(
                     s3file,
                     header,
@@ -103,12 +104,13 @@ if __name__ == "__main__":
     for itr in tqdm(range(nosamples)):
         run = get_radnom_run(
             id=f'{id}-{itr}', datasetId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
-        partition = f'datasetid={run.datasetId}'
+        d_partition = f'datasetid={run.datasetId}'
+        c_partition = f'cohortid={run.cohortId}'
         key = f'{run.datasetId}-runs'
 
         if writer is None:
             s3file = sopen(
-                f's3://{METADATA_BUCKET}/runs/{partition}/{key}', 'wb')
+                f's3://{METADATA_BUCKET}/runs/{d_partition}/{c_partition}/{key}', 'wb')
             writer = pyorc.Writer(
                 s3file,
                 header,

@@ -11,9 +11,13 @@ import boto3
 
 from apiutils.api_response import bad_request, bundle_response
 from utils.chrom_matching import get_vcf_chromosomes
-from dynamodb.datasets import Dataset, VcfChromosomeMap
+from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
+from athena.dataset import Dataset
+from athena.cohort import Cohort
 from athena.individual import Individual
 from athena.biosample import Biosample
+from athena.run import Run
+from athena.analysis import Analysis
 
 
 DATASETS_TABLE_NAME = os.environ['DYNAMO_DATASETS_TABLE']
@@ -70,39 +74,52 @@ def check_vcf_locations(locations):
 
 
 def create_dataset(attributes):
-    item = Dataset(attributes['id'])
-    item.name = attributes['name']
+    item = DynamoDataset(attributes['dataset']['id'])
     item.assemblyId = attributes['assemblyId']
     item.vcfLocations = attributes.get('vcfLocations', [])
     item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
-    item.description = attributes.get('description', '')
-    item.version = attributes.get('version', '')
-    item.externalUrl = attributes.get('externalUrl', '')
-    item.info = attributes.get('info', [])
-    item.dataUseConditions = attributes.get('dataUseConditions', {})
 
-
+    # must have dataset and cohort information
+    dataset = jsons.load(attributes.get('dataset'), Dataset)
+    cohort = jsons.load(attributes.get('cohort'), Cohort)
     individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
     biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
+    runs = jsons.default_list_deserializer(attributes.get('runs', []), List[Run])
+    analyses = jsons.default_list_deserializer(attributes.get('analyses', []), List[Analysis])
     
     # setting dataset id
     for individual in individuals:
-        individual.datasetId = item.id
+        individual.datasetId = dataset.id
+        individual.cohortId = cohort.id
     for biosample in biosamples:
-        biosample.datasetId = item.id
+        biosample.datasetId = dataset.id
+        biosample.cohortId = cohort.id
+    for run in runs:
+        run.datasetId = dataset.id
+        run.cohortId = cohort.id
+    for analysis in analyses:
+        analysis.datasetId = dataset.id
+        analysis.cohortId = cohort.id
+
+    # upload the dataset and cohort info
+    Dataset.upload_array([dataset])
+    Cohort.upload_array([cohort])
 
     # upload to s3
     if len(individuals) > 0:
         Individual.upload_array(individuals)
     if len(biosamples) > 0: 
         Biosample.upload_array(biosamples)
+    if len(runs) > 0:
+        Run.upload_array(runs)
+    if len(analyses) > 0: 
+        Analysis.upload_array(analyses)
 
-    if any([len(individuals) > 0, len(biosamples) > 0]):
-        aws_lambda.invoke(
-            FunctionName=INDEXER_LAMBDA,
-            InvocationType='Event',
-            Payload=jsons.dumps(dict()),
-        )
+    aws_lambda.invoke(
+        FunctionName=INDEXER_LAMBDA,
+        InvocationType='Event',
+        Payload=jsons.dumps(dict()),
+    )
 
     for vcf in set(item.vcfLocations):
         chroms = get_vcf_chromosomes(vcf)
@@ -142,7 +159,7 @@ def submit_dataset(body_dict, method):
         update_dataset(body_dict)
     
     if summarise:
-        summarise_dataset(body_dict['id'])
+        summarise_dataset(body_dict['dataset']['id'])
 
     return bundle_response(200, {})
 
@@ -158,23 +175,16 @@ def summarise_dataset(dataset):
 
 
 def update_dataset(attributes):
-    item = Dataset.get(attributes['id'])
+    # TODO see how other entities can be updated or overwritten
+    item = DynamoDataset.get(attributes['dataset']['id'])
     actions = []
-    actions += [Dataset.name.set(attributes['name'])] if attributes.get('name', False) else []
-    actions += [Dataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
-    actions += [Dataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
-    actions += [Dataset.description.set(attributes['description'])] if attributes.get('description', False) else []
-    actions += [Dataset.version.set(attributes['version'])] if attributes.get('version', False) else []
-    actions += [Dataset.externalUrl.set(attributes['externalUrl'])] if attributes.get('externalUrl', False) else []
-    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
-    actions += [Dataset.dataUseConditions.set(attributes['dataUseConditions'])] if attributes.get('dataUseConditions', False) else []
-    actions += [Dataset.vcfGroups.set(attributes['vcfGroups'])] if attributes.get('vcfGroups', False) else []
-    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
-    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
-    actions += [Dataset.info.set(attributes['info'])] if attributes.get('info', False) else []
+    actions += [DynamoDataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
+    actions += [DynamoDataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
+    actions += [DynamoDataset.vcfGroups.set(attributes['vcfGroups'])] if attributes.get('vcfGroups', False) else []
 
     print(f"Updating table: {item.to_json()}")
     item.update(actions=actions)
+
 
 def validate_request(parameters, new):
     validator = None
@@ -201,3 +211,66 @@ def lambda_handler(event, context):
 
     method = event['httpMethod']
     return submit_dataset(body_dict, method)
+
+
+if __name__ == '__main__':
+    event = {
+        "httpMethod": "POST",
+        "body": json.dumps({
+            "dataset": {
+                "id": "test-wic",
+                "name": "my test dataset"
+            },
+            "cohort": {
+                "id": "test-wic",
+                "name": "GCAT Genomes for Life",
+                "cohortType": "study-defined"
+            },
+            "individuals": [
+                {
+                    "id": "some id",
+                    "sex": {
+                        "id": "ga4gh:GA.01234abcde"
+                    },
+                    "sampleName": "some sampleName"
+                }
+            ],
+            "biosamples": [
+                {
+                    "id": "biosample kind of a id",
+                    "biosampleStatus": {
+                        "id": "ga4gh:GA.01234abcde"
+                    },
+                    "sampleOriginType": {
+                        "id": "DUO:0000004"
+                    },
+                    "sampleName": "biosample kind of a sampleName"
+                }
+            ],
+            "runs": [
+                {
+                    "id": "runs kind of a id",
+                    "biosampleId": "biosample kind of a id",
+                    "runDate": "2021-10-18"
+                }
+            ],
+            "analyses": [
+                {
+                    "id": "analyses kind of a id",
+                    "analysisDate": "2021-10-17",
+                    "pipelineName": "Pipeline-panel-0001-v1"
+                }
+            ],
+            "assemblyId": "GRCH38",
+            "vcfLocations": [
+                "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
+            ],
+            "vcfGroups": [
+                [
+                    "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
+                ]
+            ]
+        })
+    }
+
+    lambda_handler(event, {})

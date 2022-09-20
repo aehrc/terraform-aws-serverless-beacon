@@ -39,6 +39,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
                 *,
                 id='',
                 datasetId='',
+                cohortId='',
                 individualId='',
                 biosampleId='',
                 runId='',
@@ -52,6 +53,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
             ):
         self.id = id
         self.datasetId = datasetId
+        self.cohortId = cohortId
         self.individualId = individualId
         self.biosampleId = biosampleId
         self.runId = runId
@@ -97,16 +99,18 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
         if len(array) == 0:
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        partition = f'datasetid={array[0].datasetId}'
+        bloom_filter_columns = [c.lower() for c in cls._table_columns]
+        d_partition = f'datasetid={array[0].datasetId}'
+        c_partition = f'cohortid={array[0].cohortId}'
         key = f'{array[0].datasetId}-analyses'
         
-        with sopen(f's3://{METADATA_BUCKET}/analyses/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/analyses/{d_partition}/{c_partition}/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[c.lower() for c in cls._table_columns[2:]]) as writer:
+                bloom_filter_columns=bloom_filter_columns) as writer:
                 for analysis in array:
                     row = tuple(
                         analysis.__dict__[k] 

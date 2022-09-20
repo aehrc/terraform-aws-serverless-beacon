@@ -17,7 +17,7 @@ METADATA_BUCKET = os.environ['METADATA_BUCKET']
 def get_radnom_biosample(id, datasetId, individualId, seed=0):
     random.seed(seed)
 
-    item = Biosample(id=id, datasetId=datasetId, individualId=individualId)
+    item = Biosample(id=id, datasetId=datasetId, cohortId=datasetId, individualId=individualId)
     item.biosampleStatus = random.choice([
         {
             "id": "EFO:0009654",
@@ -178,11 +178,12 @@ if __name__ == "__main__":
 
         for itr in tqdm(range(nosamples), total=nosamples):
             biosample = get_radnom_biosample(id=f'{id}-{itr}', datasetId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
-            partition = f'datasetid={biosample.datasetId}'
+            d_partition = f'datasetid={biosample.datasetId}'
+            c_partition = f'cohortid={biosample.cohortId}'
             key = f'{biosample.datasetId}-biosamples'
 
             if writer is None:
-                s3file = sopen(f's3://{METADATA_BUCKET}/biosamples/{partition}/{key}', 'wb')
+                s3file = sopen(f's3://{METADATA_BUCKET}/biosamples/{d_partition}/{c_partition}/{key}', 'wb')
                 writer = pyorc.Writer(
                     s3file, 
                     header, 
@@ -208,11 +209,12 @@ if __name__ == "__main__":
 
     for itr in tqdm(range(nosamples)):
         biosample = get_radnom_biosample(id=f'{id}-{itr}', datasetId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
-        partition = f'datasetid={biosample.datasetId}'
+        d_partition = f'datasetid={biosample.datasetId}'
+        c_partition = f'cohortid={biosample.cohortId}'
         key = f'{biosample.datasetId}-biosamples'
 
         if writer is None:
-            s3file = sopen(f's3://{METADATA_BUCKET}/biosamples/{partition}/{key}', 'wb')
+            s3file = sopen(f's3://{METADATA_BUCKET}/biosamples/{d_partition}/{c_partition}/{key}', 'wb')
             writer = pyorc.Writer(
                 s3file, 
                 header, 

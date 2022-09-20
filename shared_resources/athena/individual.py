@@ -41,6 +41,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
                 *,
                 id='',
                 datasetId='',
+                cohortId='',
                 diseases=[],
                 ethnicity={},
                 exposures=[],
@@ -56,6 +57,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
             ):
         self.id = id
         self.datasetId = datasetId
+        self.cohortId = cohortId
         self.diseases = diseases
         self.ethnicity = ethnicity
         self.exposures = exposures
@@ -102,11 +104,12 @@ class Individual(jsons.JsonSerializable, AthenaModel):
         if len(array) == 0:
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        bloom_filter_columns=list(map(lambda x: x.lower(), cls._table_columns))
-        partition = f'datasetid={array[0].datasetId}'
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+        d_partition = f'datasetid={array[0].datasetId}'
+        c_partition = f'cohortid={array[0].cohortId}'
         key = f'{array[0].datasetId}-individuals'
         
-        with sopen(f's3://{METADATA_BUCKET}/individuals/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/individuals/{d_partition}/{c_partition}/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
@@ -114,6 +117,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
                 bloom_filter_columns=bloom_filter_columns) as writer:
                 for individual in array:
+                    print(individual.__dict__)
                     row = tuple(
                         individual.__dict__[k] 
                         if type(individual.__dict__[k]) == str
