@@ -14,15 +14,77 @@ from utils import get_samples
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
-def get_radnom_dataset(id, datasetId, individualId, biosampleId, runId, seed=0):
+def get_radnom_dataset(id, seed=0):
     random.seed(seed)
 
-    item = Dataset(id=id, datasetId=datasetId, individualId=individualId, biosampleId=biosampleId, runId=runId)
-    item.aligner = random.choice(["bwa-0.7.8", "minimap2", "bowtie"])
-    item.datasetDate = f"{random.randint(2018, 2022)}-{random.randint(1, 12)}-{random.randint(1, 28)}"
-    item.pipelineName = f"pipeline {random.randint(1, 5)}"
-    item.pipelineRef = "Example"
-    item.variantCaller = random.choice(["GATK4.0", "SoapSNP", "kmer2snp"])
+    item = Dataset(id=id)
+    item.createDateTime = random.choice([
+        "1999-08-05T17:21:00+01:00",
+        "2002-05-21T02:37:00-08:00",
+        "2019-11-21T02:37:00-08:00",
+        "2020-02-21T02:37:00-08:00",
+        "2021-03-21T02:37:00-08:00",
+        "2022-10-21T02:37:00-08:00"
+    ])
+    item.dataUseConditions = random.choice([
+        {
+            "duoDataUse": [
+                {
+                    "id": "DUO:0000007",
+                    "label": "disease specific research",
+                    "modifiers": [
+                        {
+                            "id": "EFO:0001645",
+                            "label": "coronary artery disease"
+                        }
+                    ],
+                    "version": "17-07-2016"
+                }
+            ]
+        },
+        {
+            "duoDataUse": [
+                {
+                    "id": "DUO:0000004",
+                    "label": "no restriction",
+                    "version": "2022-03-23"
+                }
+            ]
+        }
+    ])
+    item.description = random.choice([
+        "Simulation set 0.",
+        "Simulation set 1.",
+        "Simulation set 2.",
+        "Simulation set 3."
+    ])
+    item.externalUrl = random.choice([
+        "http://example.org/wiki/Main_Page",
+        "http://example.com/vcf/vcfs",
+        "http://example.net/var/variants",
+        "http://example.io/data/data"
+    ])
+    item.info = {}
+    item.name = random.choice([
+        "Dataset with synthetic data",
+        "Dataset with simulated data",
+        "Dataset with fake data",
+    ])
+    item.updateDateTime = random.choice([
+        "2022-08-05T17:21:00+01:00",
+        "2021-09-21T02:37:00-08:00"
+    ])
+    item.version = random.choice([
+         "v1.1",
+         "v2.1",
+         "v3.1",
+    ])
+
+    dynamo_item = DynamoDataset(id)
+    dynamo_item.assemblyId = random.choice(["GRCH38", "GRCH37", "HG16"])
+    dynamo_item.vcfGroups = []
+    dynamo_item.vcfLocations = []
+    dynamo_item.vcfChromosomeMap = [] 
 
     return item
 

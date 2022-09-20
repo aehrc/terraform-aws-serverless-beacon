@@ -16,3 +16,6 @@ To avoid this you can run `MSCK REPAIR TABLE <table_name>;` from console. This w
 
 Read more hacks: https://stackoverflow.com/a/58052145/4080504
 
+## VCF files
+
+Create a file named `vcf.txt` and put VCF files in each line for the simulation of datasets. These must be VCF files in gzipped format with an index file (tbi or csi).
