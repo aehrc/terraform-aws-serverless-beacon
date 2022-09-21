@@ -41,6 +41,11 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts" {
     }
 
     columns {
+      name = "id"
+      type = "string"
+    }
+
+    columns {
       name = "cohortdatatypes"
       type = "string"
     }
@@ -80,11 +85,6 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts" {
       type = "string"
     }
   }
-
-  partition_keys {
-    name = "id"
-    type = "string"
-  }
 }
 
 # 
@@ -116,6 +116,11 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
         "orc.column.index.access" = "FALSE"
         "hive.orc.use-column-names" = "TRUE"
       }
+    }
+
+    columns {
+      name = "id"
+      type = "string"
     }
 
     columns {
@@ -158,11 +163,6 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
       type = "string"
     }
   }
-
-  partition_keys {
-    name = "id"
-    type = "string"
-  }
 }
 
 # 
@@ -198,6 +198,16 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
 
     columns {
       name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "datasetid"
+      type = "string"
+    }
+
+    columns {
+      name = "cohortid"
       type = "string"
     }
 
@@ -261,23 +271,6 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
       type = "string"
     }
   }
-
-  # to optimise performance
-  # (mostly to reduce cost)
-  # individual records are per dataset
-  # because different datasets may associate 
-  # with different ontology terms
-  # such associations will be lost if we kept one individual
-  # record for all datasets that they appear 
-  partition_keys {
-    name = "datasetid"
-    type = "string"
-  }
-
-  partition_keys {
-    name = "cohortid"
-    type = "string"
-  }
 }
 
 # 
@@ -312,6 +305,16 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
     }
     columns {
       name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "datasetid"
+      type = "string"
+    }
+
+    columns {
+      name = "cohortid"
       type = "string"
     }
 
@@ -410,16 +413,6 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
       type = "string"
     }
   }
-  
-  partition_keys {
-    name = "datasetid"
-    type = "string"
-  }
-
-  partition_keys {
-    name = "cohortid"
-    type = "string"
-  }
 }
 
 # 
@@ -455,6 +448,16 @@ resource "aws_glue_catalog_table" "sbeacon-runs" {
 
     columns {
       name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "datasetid"
+      type = "string"
+    }
+
+    columns {
+      name = "cohortid"
       type = "string"
     }
 
@@ -508,16 +511,6 @@ resource "aws_glue_catalog_table" "sbeacon-runs" {
       type = "string"
     }
   }
-  
-  partition_keys {
-    name = "datasetid"
-    type = "string"
-  }
-
-  partition_keys {
-    name = "cohortid"
-    type = "string"
-  }
 }
 
 # 
@@ -553,6 +546,16 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
     
     columns {
       name = "id"
+      type = "string"
+    }
+
+    columns {
+      name = "datasetid"
+      type = "string"
+    }
+
+    columns {
+      name = "cohortid"
       type = "string"
     }
 
@@ -605,16 +608,6 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
       name = "vcfsampleid"
       type = "string"
     }
-  }
-  
-  partition_keys {
-    name = "datasetid"
-    type = "string"
-  }
-
-  partition_keys {
-    name = "cohortid"
-    type = "string"
   }
 }
 

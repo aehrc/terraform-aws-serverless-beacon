@@ -44,6 +44,7 @@ class Dataset(Model):
     id = UnicodeAttribute(hash_key=True)
     assemblyId = UnicodeAttribute()
     sampleCount = NumberAttribute(default=0)
+    sampleNames = UnicodeSetAttribute(default=set)
     callCount = NumberAttribute(default=0)
     createDateTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc)
     updateDateTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc)

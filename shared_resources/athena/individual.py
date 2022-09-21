@@ -21,6 +21,8 @@ class Individual(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
+        'datasetId',
+        'cohortId',
         'diseases',
         'ethnicity',
         'exposures',
@@ -105,11 +107,9 @@ class Individual(jsons.JsonSerializable, AthenaModel):
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
-        d_partition = f'datasetid={array[0].datasetId}'
-        c_partition = f'cohortid={array[0].cohortId}'
         key = f'{array[0].datasetId}-individuals'
         
-        with sopen(f's3://{METADATA_BUCKET}/individuals/{d_partition}/{c_partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/individuals/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 

@@ -20,6 +20,7 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
     _table_name = DATASETS_TABLE
     # for saving to database order matter
     _table_columns = [
+        'id',
         'createDateTime',
         'dataUseConditions',
         'description',
@@ -88,10 +89,9 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
-        partition = f'id={array[0].id}'
         key = f'{array[0].id}-datasets'
         
-        with sopen(f's3://{METADATA_BUCKET}/datasets/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/datasets/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 

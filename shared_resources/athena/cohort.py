@@ -20,6 +20,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
     _table_name = COHORTS_TABLE
     # for saving to database order matter
     _table_columns = [
+        'id',
         'cohortDataTypes',
         'cohortDesign',
         'cohortSize',
@@ -89,10 +90,9 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
-        partition = f'id={array[0].id}'
         key = f'{array[0].id}-cohorts'
         
-        with sopen(f's3://{METADATA_BUCKET}/cohorts/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/cohorts/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
