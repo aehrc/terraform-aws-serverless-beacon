@@ -110,8 +110,9 @@ def onto_index():
 
 def lambda_handler(event, context):
     threads = []
-    for table in (DATASETS_TABLE, COHORTS_TABLE, INDIVIDUALS_TABLE, BIOSAMPLES_TABLE, RUNS_TABLE, ANALYSES_TABLE):
-        threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
+    # TODO decide a better of partitioning or not partitioning
+    # for table in (DATASETS_TABLE, COHORTS_TABLE, INDIVIDUALS_TABLE, BIOSAMPLES_TABLE, RUNS_TABLE, ANALYSES_TABLE):
+    #     threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
     threads.append(threading.Thread(target=onto_index))
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]

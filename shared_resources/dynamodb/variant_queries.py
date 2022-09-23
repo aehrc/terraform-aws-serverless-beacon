@@ -1,11 +1,12 @@
 import os
 from datetime import datetime, timezone, timedelta
+from dateutil import parser
 
 import boto3
 from pynamodb.models import Model
 from pynamodb.indexes import LocalSecondaryIndex, AllProjection
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, MapAttribute, TTLAttribute, BooleanAttribute
+    UnicodeAttribute, NumberAttribute, MapAttribute, TTLAttribute, BooleanAttribute, UTCDateTimeAttribute
 )
 
 
@@ -34,6 +35,9 @@ class VariantQuery(Model):
     responsesCounter = NumberAttribute(default=0)
     responses = NumberAttribute(default=0)
     fanOut = NumberAttribute(default=0)
+    startTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc())
+    endTime = UTCDateTimeAttribute(null=True)
+    elapsedTime = NumberAttribute(default_for_new=-1)
     timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
 
 
@@ -50,6 +54,8 @@ class VariantQuery(Model):
         self.update(actions=[
             VariantQuery.responses.set(VariantQuery.responses + 1),
             VariantQuery.fanOut.set(VariantQuery.fanOut - 1),
+            VariantQuery.endTime.set(get_current_time_utc()),
+            VariantQuery.elapsedTime.set((get_current_time_utc() - self.startTime).total_seconds()),
         ])
 
 

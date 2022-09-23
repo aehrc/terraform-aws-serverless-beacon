@@ -10,15 +10,13 @@ import jsons
 
 from apiutils.api_response import bundle_response, bad_request
 from variantutils.search_variants import perform_variant_search
-from dynamodb.datasets import Dataset
 import apiutils.responses as responses
 from athena.biosample import Biosample
 from dynamodb.onto_index import OntoData
+from athena.dataset import get_datasets
 
 
-SPLIT_SIZE = 1000000
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
@@ -92,16 +90,6 @@ def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
     return query
 
 
-def get_datasets(assembly_id, dataset_ids=None):
-    items = []
-    for item in Dataset.datasetIndex.query(assembly_id):
-        items.append(item)
-    # TODO support more advanced querying
-    if dataset_ids:
-        items = [i for i in items if i.id in dataset_ids]
-    return items
-
-
 def route(event):
     if (event['httpMethod'] == 'GET'):
         params = event.get('queryStringParameters', dict()) or dict()
@@ -109,8 +97,9 @@ def route(event):
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
-        skip = params.get("skip", 0)
-        limit = params.get("limit", 100)
+        # skip = params.get("skip", 0)
+        # limit = params.get("limit", 100)
+        currentPage = params.get("currentPage", None)
         filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
 
     if (event['httpMethod'] == 'POST'):
@@ -125,8 +114,8 @@ def route(event):
         requestedGranularity = query.get("requestedGranularity", "boolean")
         # pagination
         pagination = query.get("pagination", dict())
-        skip = pagination.get("skip", 0)
-        limit = pagination.get("limit", 100)
+        # skip = pagination.get("skip", 0)
+        # limit = pagination.get("limit", 100)
         currentPage = pagination.get("currentPage", None)
         previousPage = pagination.get("previousPage", None)
         nextPage = pagination.get("nextPage", None)
@@ -138,6 +127,15 @@ def route(event):
         if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
             return bad_request(errorMessage= "\n".join([error.message for error in errors]))
             # raise error
+    # pagination format = variant skip, limit, individuals skip, limit
+    if currentPage is None:
+        currentPage = f'0:10,0:10'
+        skip1, limit1 = 0, 10
+        skip2, limit2 = 0, 10
+    else:
+        pag1, pag2 = currentPage.split(',')
+        skip1, limit1 = list(map(int, pag1.split(':')))
+        skip2, limit2 = list(map(int, pag2.split(':')))
 
     variant_id = event["pathParameters"].get("id", None)
     if variant_id is None:
@@ -148,7 +146,7 @@ def route(event):
     pos = int(pos) - 1
     start = [pos, pos + len(alternateBases)]
     end = [pos, pos + len(alternateBases)]
-    datasets = get_datasets(assemblyId)
+    datasets = get_datasets(assemblyId, skip=skip1, limit=limit1)
     includeResultsetResponses = 'ALL'
 
 
@@ -245,8 +243,7 @@ def route(event):
                     }
                 )
             elif requestedGranularity in ('record', 'aggregated'):
-                query = get_record_query(dataset_id, sample_names, skip, limit, sql_conditions)
-                print(query)
+                query = get_record_query(dataset_id, sample_names, skip2, limit2, sql_conditions)
                 thread = threading.Thread(
                     target=Biosample.get_by_query,
                     kwargs={ 
@@ -279,7 +276,10 @@ def route(event):
 
         response = responses.get_result_sets_response(
             setType='biosample', 
-            reqPagination=responses.get_pagination_object(skip, limit),
+            info={
+                'paginationNote': 'Paginate using skip1:limit2,skip2:limit2 paging convetion, skip1 and skip2 are applied on datasets while skip2 and limit2 are applied on individuals represented by each dataset'
+            },
+            reqPagination=responses.get_cursor_object(currentPage=currentPage, nextPage='', previousPage=''),
             exists=len(biosamples) > 0,
             total=len(biosamples),
             results=jsons.dump(biosamples, strip_privates=True)

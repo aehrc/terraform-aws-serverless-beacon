@@ -124,6 +124,21 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
     }
 
     columns {
+      name = "assemblyid"
+      type = "string"
+    }
+    
+    columns {
+      name = "vcflocations"
+      type = "string"
+    }
+
+    columns {
+      name = "vcfchromosomemap"
+      type = "string"
+    }
+
+    columns {
       name = "createdatetime"
       type = "string"
     }

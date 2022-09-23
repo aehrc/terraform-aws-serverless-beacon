@@ -16,7 +16,7 @@ from utils import get_vcf_chromosomes, upload_batch_s3, get_samples
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
-def get_radnom_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
+def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     random.seed(seed)
 
     item = Dataset(id=id)
@@ -87,11 +87,15 @@ def get_radnom_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     dynamo_item.vcfGroups = [vcfLocations]
     dynamo_item.vcfLocations = vcfLocations
     dynamo_item.vcfChromosomeMap = vcfChromosomeMap
+    
+    item.assemblyId = dynamo_item.assemblyId
+    item.vcfLocations = dynamo_item.vcfLocations
+    item.vcfChromosomeMap = [item.attribute_values for item in dynamo_item.vcfChromosomeMap]
 
     return item, dynamo_item
 
 
-def get_radnom_cohort(id, seed=0):
+def get_random_cohort(id, seed=0):
     random.seed(seed)
 
     item = Cohort(id=id)
@@ -139,7 +143,7 @@ def get_radnom_cohort(id, seed=0):
     return item
 
 
-def get_radnom_individual(id, datasetId, cohortId, seed=0):
+def get_random_individual(id, datasetId, cohortId, seed=0):
     random.seed(seed)
 
     item= Individual(id=id, datasetId=datasetId, cohortId=cohortId)
@@ -230,7 +234,7 @@ def get_radnom_individual(id, datasetId, cohortId, seed=0):
     return item
 
 
-def get_radnom_biosample(id, datasetId, cohortId, individualId, seed=0):
+def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
     random.seed(seed)
 
     item = Biosample(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId)
@@ -379,7 +383,7 @@ def get_radnom_biosample(id, datasetId, cohortId, individualId, seed=0):
     return item
 
 
-def get_radnom_run(id, datasetId, cohortId, individualId, biosampleId, seed=0):
+def get_random_run(id, datasetId, cohortId, individualId, biosampleId, seed=0):
     random.seed(seed)
 
     item = Run(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId, biosampleId=biosampleId)
@@ -419,10 +423,10 @@ def get_radnom_run(id, datasetId, cohortId, individualId, biosampleId, seed=0):
     return item
 
 
-def get_radnom_analysis(id, datasetId, cohortId, individualId, biosampleId, runId, seed=0):
+def get_random_analysis(id, datasetId, cohortId, individualId, biosampleId, runId, vcfSampleId, seed=0):
     random.seed(seed)
 
-    item = Analysis(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId, biosampleId=biosampleId, runId=runId)
+    item = Analysis(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId, biosampleId=biosampleId, vcfSampleId=vcfSampleId, runId=runId)
     item.aligner = random.choice(["bwa-0.7.8", "minimap2", "bowtie"])
     item.analysisDate = f"{random.randint(2018, 2022)}-{random.randint(1, 12)}-{random.randint(1, 28)}"
     item.pipelineName = f"pipeline {random.randint(1, 5)}"
@@ -455,7 +459,7 @@ if __name__ == "__main__":
 
         for m in tqdm(range(multiplier), desc="Simulating datasets"):
             id = f'{n}-{m}'
-            dataset, dynamo_item = get_radnom_dataset(id, vcfs, vcfChromosomeMap, seed=id)
+            dataset, dynamo_item = get_random_dataset(id, vcfs, vcfChromosomeMap, seed=id)
             dynamo_item.sampleCount = len(samples)
             dynamo_item.sampleNames = samples
             dynamo_items.append(dynamo_item)
@@ -475,7 +479,7 @@ if __name__ == "__main__":
     cohorts = []
     for dataset in tqdm(dynamo_items, desc="Simulating cohorts"):
         id = dataset.id
-        cohort = get_radnom_cohort(id=id, seed=id)
+        cohort = get_random_cohort(id=id, seed=id)
         cohorts.append(cohort)
     key = f'combined-cohort'
     path = f's3://{METADATA_BUCKET}/cohorts/{key}'
@@ -487,7 +491,7 @@ if __name__ == "__main__":
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            individual = get_radnom_individual(id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
+            individual = get_random_individual(id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
             individuals.append(individual)
     key = f'combined-individuals'
     path = f's3://{METADATA_BUCKET}/individuals/{key}'
@@ -500,7 +504,7 @@ if __name__ == "__main__":
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            biosample = get_radnom_biosample(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            biosample = get_random_biosample(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
             biosamples.append(biosample)
     key = f'combined-biosamples'
     path = f's3://{METADATA_BUCKET}/biosamples/{key}'
@@ -513,7 +517,7 @@ if __name__ == "__main__":
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            run = get_radnom_run(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
             runs.append(run)
     key = f'combined-runs'
     path = f's3://{METADATA_BUCKET}/runs/{key}'
@@ -526,7 +530,7 @@ if __name__ == "__main__":
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            analysis = get_radnom_analysis(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            analysis = get_random_analysis(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', vcfSampleId=dataset.sampleNames[itr], seed=f'{id}-{itr}')
             analyses.append(analysis)
 
     key = f'combined-analyses'

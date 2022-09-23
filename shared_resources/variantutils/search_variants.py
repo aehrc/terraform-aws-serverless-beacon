@@ -34,8 +34,8 @@ def perform_variant_search(*,
         passthrough=dict()
 ):
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
-    vcf_chromosomes = {vcfm.vcf: get_matching_chromosome(
-        vcfm.chromosomes, referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap}
+    vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
+        vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap}
 
     if len(start) == 2:
         start_min, start_max = start
@@ -68,13 +68,13 @@ def perform_variant_search(*,
     # TODO define variant id and fix; currently consider variant id to be from a unique vcf, chrom, pos, typ
     # TODO optimise this further dataset_id -> vcfs -> vcf_id (do not use vcf index as additions and removals with
     # make the indices inconsistent between requests)
-    vcf_dataset_uuid = dict()
     dataset_variant_groups = dict()
 
     # record the query event on DB
     query_record = VariantQuery(query_id)
     query_record.save()
     split_query_fan_out = get_split_query_fan_out(start_min, start_max)
+    perform_query_fan_out = 0
 
     # parallelism across datasets
     for dataset in datasets:
@@ -84,25 +84,19 @@ def perform_variant_search(*,
             if vcf_chromosomes[vcf]
         }
 
-        vcf_dataset_uuid.update(
-            {vcf: f"{dataset.id}\t{hashlib.md5(vcf.encode()).hexdigest()}" for vcf in dataset.vcfLocations})
-        # record vcf grouping information using the relevant vcf files
-        vcf_groups = [
-            grp for grp in [
-                [loc for loc in vcfg if loc in vcf_locations]
-                for vcfg in dataset.vcfGroups
-            ]
-            if len(grp) > 0
-        ]
-        # vcf groups being searched for
-        dataset_variant_groups[dataset.id] = vcf_groups
+        # # record vcf grouping information using the relevant vcf files
+        # vcf_groups = [
+        #     grp for grp in [
+        #         [loc for loc in vcfg if loc in vcf_locations]
+        #         for vcfg in dataset.vcfGroups
+        #     ]
+        #     if len(grp) > 0
+        # ]
+        # # vcf groups being searched for
+        # dataset_variant_groups[dataset.id] = vcf_groups
 
         # record perform query fan out size
-        perform_query_fan_out = split_query_fan_out * len(vcf_locations)
-        query_record.update(actions=[
-            VariantQuery.fanOut.set(
-                query_record.fanOut + perform_query_fan_out)
-        ])
+        perform_query_fan_out += split_query_fan_out * len(vcf_locations)
 
         # call split query for each dataset found
         payload = SplitQueryPayload(
@@ -110,7 +104,7 @@ def perform_variant_search(*,
             dataset_id=dataset.id,
             query_id=query_id,
             vcf_locations=vcf_locations,
-            vcf_groups=vcf_groups,
+            vcf_groups=[],
             reference_bases=referenceBases,
             region_start=start_min,
             region_end=start_max,
@@ -129,6 +123,11 @@ def perform_variant_search(*,
         )
         thread.start()
         threads.append(thread)
+
+    query_record.update(actions=[
+        VariantQuery.fanOut.set(
+            VariantQuery.fanOut + perform_query_fan_out)
+    ])
 
     exists = False
 

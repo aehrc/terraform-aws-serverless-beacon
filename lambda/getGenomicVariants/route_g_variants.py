@@ -4,11 +4,11 @@ import jsonschema
 import os
 import base64
 
-from dynamodb.datasets import Dataset
 from variantutils.search_variants import perform_variant_search
 from apiutils.api_response import bundle_response, bad_request
 import apiutils.responses as responses
 import apiutils.entries as entries
+from athena.dataset import get_datasets
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -17,24 +17,14 @@ BEACON_ID = os.environ['BEACON_ID']
 requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
-def get_datasets(assembly_id, dataset_ids=None):
-    items = []
-    for item in Dataset.datasetIndex.query(assembly_id):
-        items.append(item)
-    # TODO support more advanced querying
-    if dataset_ids:
-        items = [i for i in items if i.id in dataset_ids]
-    return items
-
-
 def route(event):
     if (event['httpMethod'] == 'GET'):
         params = event['queryStringParameters']
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
-        skip = params.get("skip", None)
-        limit = params.get("limit", None)
+        skip = params.get("skip", 0)
+        limit = params.get("limit", 100)
         includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
         start = params.get("start", None)
         end = params.get("end", None)
@@ -94,7 +84,7 @@ def route(event):
         # supporting ontology terms
         pass
         
-    datasets = get_datasets(assemblyId)
+    datasets = get_datasets(assemblyId, skip=skip, limit=limit)
     check_all = includeResultsetResponses in ('HIT', 'ALL')
 
     variants = set()
@@ -145,6 +135,7 @@ def route(event):
     if requestedGranularity in ('record', 'aggregated'):
         response = responses.get_result_sets_response(
             setType='genomicVariant', 
+            reqPagination=responses.get_pagination_object(skip, limit),
             exists=exists,
             total=len(variants),
             results=results

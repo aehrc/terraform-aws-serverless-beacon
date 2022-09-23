@@ -21,6 +21,9 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
+        'assemblyId',
+        'vcfLocations',
+        'vcfChromosomeMap',
         'createDateTime',
         'dataUseConditions',
         'description',
@@ -36,6 +39,9 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
                 self,
                 *,
                 id='',
+                assemblyId='',
+                vcfLocations='',
+                vcfChromosomeMap='',
                 createDateTime='',
                 dataUseConditions={},
                 description='',
@@ -46,6 +52,9 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
                 version=''
             ):
         self.id = id
+        self.assemblyId = assemblyId
+        self.vcfLocations = vcfLocations
+        self.vcfChromosomeMap = vcfChromosomeMap
         self.createDateTime = createDateTime
         self.dataUseConditions = dataUseConditions
         self.description = description
@@ -106,6 +115,19 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
                         for k in cls._table_columns
                     )
                     writer.write(row)
+
+
+def get_datasets(assembly_id, dataset_id=None, skip=0, limit=100):
+    query = f"""
+        SELECT id, vcflocations, vcfchromosomemap 
+        FROM "{{database}}"."{{table}}" 
+        WHERE assemblyid='{assembly_id}' 
+        {f"AND id='{dataset_id}'" if dataset_id is not None else ''}
+        ORDER BY id 
+        OFFSET {skip} 
+        LIMIT {limit};
+    """
+    return Dataset.get_by_query(query)
 
 
 if __name__ == '__main__':

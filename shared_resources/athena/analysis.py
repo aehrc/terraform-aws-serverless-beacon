@@ -21,6 +21,8 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
+        'datasetId',
+        'cohortId',
         'individualId',
         'biosampleId',
         'runId',

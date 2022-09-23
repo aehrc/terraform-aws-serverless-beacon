@@ -1,8 +1,6 @@
 import os
 import jsons
-import pickle
 
-from smart_open import open as sopen
 import boto3
 
 from payloads.lambda_payloads import SplitQueryPayload

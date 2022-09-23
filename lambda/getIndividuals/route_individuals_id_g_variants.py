@@ -10,6 +10,7 @@ from dynamodb.datasets import Dataset
 import apiutils.responses as responses
 import apiutils.entries as entries
 from athena.analysis import Analysis
+from athena.dataset import get_datasets
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -24,16 +25,6 @@ def get_record_query(id, conditions=[]):
     {' AND '.join(conditions)}
     '''
     return query
-
-
-def get_datasets(assembly_id, dataset_ids=None):
-    items = []
-    for item in Dataset.datasetIndex.query(assembly_id):
-        items.append(item)
-    # TODO support more advanced querying
-    if dataset_ids:
-        items = [i for i in items if i.id in dataset_ids]
-    return items
 
 
 def route(event):
@@ -101,7 +92,7 @@ def route(event):
         return bundle_response(200, response)
 
     analysis = db_results[0]
-    datasets = get_datasets(assemblyId, analysis.datasetId)
+    datasets = get_datasets(assemblyId, dataset_id=analysis.datasetId)
     check_all = includeResultsetResponses in ('HIT', 'ALL')
 
     variants = set()

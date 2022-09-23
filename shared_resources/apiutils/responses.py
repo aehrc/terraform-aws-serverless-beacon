@@ -134,6 +134,14 @@ def get_pagination_object(skip, limit):
     }
 
 
+def get_cursor_object(currentPage, nextPage, previousPage):
+    return {
+        "currentPage": currentPage,
+        "nextPage": nextPage,
+        "previousPage": previousPage,
+    }
+
+
 def get_result_sets_response(*, 
         reqAPI=BEACON_API_VERSION, 
         reqPagination={}, 
