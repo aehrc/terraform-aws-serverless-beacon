@@ -20,7 +20,7 @@ requestSchemaJSON = json.load(open("requestParameters.json"))
 def get_record_query(id, conditions=[]):
     query = f'''
     SELECT id, datasetid, vcfsampleid FROM "{{database}}"."{{table}}"
-    WHERE "biosampleid"='{id}'
+    WHERE "datasetid"='{id}'
     {' AND '.join(conditions)}
     '''
     return query
@@ -80,10 +80,10 @@ def route(event):
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
-    biosample_id = event["pathParameters"].get("id", None)
-    db_results = Analysis.get_by_query(get_record_query(biosample_id))
+    dataset_id = event["pathParameters"].get("id", None)
+    db_results = Analysis.get_by_query(get_record_query(dataset_id))
 
-    # TODO biosample may have multiple run - analyses implement that
+    # TODO dataset may have multiple run - analyses implement that
     if not len(db_results) > 0:
         response = responses.get_boolean_response(exists=False)
         print('Returning Response: {}'.format(json.dumps(response)))

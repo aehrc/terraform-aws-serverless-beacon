@@ -519,6 +519,107 @@ data aws_iam_policy_document lambda-getBiosamples {
 }
 
 #
+# getDatasets Lambda Function
+#
+data aws_iam_policy_document lambda-getDatasets {
+  statement {
+    actions = [
+      "dynamodb:Query",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      aws_dynamodb_table.variant_queries.arn,
+    ]
+  }
+  
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem"
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+      aws_dynamodb_table.variant_queries.arn,
+      aws_dynamodb_table.variant_query_responses.arn,
+      aws_dynamodb_table.ontology_terms.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+}
+
+#
+# getCohorts Lambda Function
+#
+data aws_iam_policy_document lambda-getCohorts {
+  statement {
+    actions = [
+      "dynamodb:Query",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [
+      aws_dynamodb_table.variant_queries.arn,
+    ]
+  }
+  
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem"
+    ]
+    resources = [
+      aws_dynamodb_table.datasets.arn,
+      aws_dynamodb_table.variant_queries.arn,
+      aws_dynamodb_table.variant_query_responses.arn,
+      aws_dynamodb_table.ontology_terms.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
+}
+
+#
 # getRuns Lambda Function
 #
 data aws_iam_policy_document lambda-getRuns {

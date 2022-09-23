@@ -6,7 +6,6 @@ import base64
 
 from apiutils.api_response import bundle_response, bad_request
 from variantutils.search_variants import perform_variant_search
-from dynamodb.datasets import Dataset
 import apiutils.responses as responses
 import apiutils.entries as entries
 from athena.analysis import Analysis

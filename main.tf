@@ -520,6 +520,78 @@ module "lambda-getBiosamples" {
 }
 
 #
+# getDatasets Lambda Function
+#
+module "lambda-getDatasets" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getDatasets"
+  description = "Get the datasets."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getDatasets.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
+  source_path = "${path.module}/lambda/getDatasets"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    {
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
+}
+
+#
+# getCohorts Lambda Function
+#
+module "lambda-getCohorts" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "getCohorts"
+  description = "Get the cohorts."
+  runtime = "python3.9"
+  handler = "lambda_function.lambda_handler"
+  memory_size = 128
+  timeout = 900
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.lambda-getCohorts.json,
+    data.aws_iam_policy_document.athena-full-access.json
+  ]
+  number_of_policy_jsons = 2
+  source_path = "${path.module}/lambda/getCohorts"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    {
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+    },
+    local.athena_variables,
+    local.sbeacon_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
+}
+
+#
 # getRuns Lambda Function
 #
 module "lambda-getRuns" {
