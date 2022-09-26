@@ -12,6 +12,7 @@ from dynamodb.onto_index import OntoData
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 COHORTS_TABLE = os.environ['COHORTS_TABLE']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 
 # requestSchemaJSON = json.load(open("requestParameters.json"))
 
@@ -34,7 +35,16 @@ def get_bool_query(conditions=[]):
 
 def get_record_query(skip, limit, conditions=[]):
     query = f'''
-    SELECT * FROM "{{database}}"."{{table}}"
+    SELECT id, cohortdatatypes, cohortdesign, B.csize as cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
+    FROM 
+        "{{database}}"."{{table}}" as A 
+    JOIN 
+        (
+            SELECT cohortid, count(*) as csize 
+            FROM "{{database}}"."{INDIVIDUALS_TABLE}"
+            GROUP BY cohortid
+        ) as B
+    ON A.id = B.cohortid
     {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     OFFSET {skip}
     LIMIT {limit};

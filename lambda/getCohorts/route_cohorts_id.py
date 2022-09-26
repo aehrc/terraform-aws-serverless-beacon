@@ -12,6 +12,7 @@ from athena.cohort import Cohort
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
+INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 
 s3 = boto3.client('s3')
 # requestSchemaJSON = json.load(open("requestParameters.json"))
@@ -19,8 +20,20 @@ s3 = boto3.client('s3')
 
 def get_record_query(id):
     query = f'''
-    SELECT * FROM "{{database}}"."{{table}}"
-    WHERE "id"='{id}';
+    SELECT id, cohortdatatypes, cohortdesign, B.csize as cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
+    FROM 
+        (
+            SELECT * FROM "{{database}}"."{{table}}"
+            WHERE id='{id}'
+        ) as A 
+    JOIN 
+        (
+            SELECT cohortid, count(*) as csize 
+            FROM "{{database}}"."{INDIVIDUALS_TABLE}"
+            WHERE cohortid='{id}'
+            GROUP BY cohortid
+        ) as B
+    ON A.id = B.cohortid;
     '''
 
     return query
