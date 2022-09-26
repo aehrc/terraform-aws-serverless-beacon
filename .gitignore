@@ -22,3 +22,4 @@ layers/binaries/lib/*
 
 # simulation files
 vcf.txt
+tmp

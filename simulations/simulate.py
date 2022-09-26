@@ -10,7 +10,7 @@ from athena.biosample import Biosample
 from athena.run import Run
 from athena.analysis import Analysis
 from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
-from utils import get_vcf_chromosomes, upload_batch_s3, get_samples
+from utils import get_vcf_chromosomes, get_samples, get_writer, write_local, upload_local
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
@@ -77,9 +77,9 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
         "2021-09-21T02:37:00-08:00"
     ])
     item.version = random.choice([
-         "v1.1",
-         "v2.1",
-         "v3.1",
+        "v1.1",
+        "v2.1",
+        "v3.1",
     ])
 
     dynamo_item = DynamoDataset(id)
@@ -87,10 +87,11 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     dynamo_item.vcfGroups = [vcfLocations]
     dynamo_item.vcfLocations = vcfLocations
     dynamo_item.vcfChromosomeMap = vcfChromosomeMap
-    
+
     item.assemblyId = dynamo_item.assemblyId
     item.vcfLocations = dynamo_item.vcfLocations
-    item.vcfChromosomeMap = [item.attribute_values for item in dynamo_item.vcfChromosomeMap]
+    item.vcfChromosomeMap = [
+        item.attribute_values for item in dynamo_item.vcfChromosomeMap]
 
     return item, dynamo_item
 
@@ -146,7 +147,7 @@ def get_random_cohort(id, seed=0):
 def get_random_individual(id, datasetId, cohortId, seed=0):
     random.seed(seed)
 
-    item= Individual(id=id, datasetId=datasetId, cohortId=cohortId)
+    item = Individual(id=id, datasetId=datasetId, cohortId=cohortId)
     item.diseases = []
     item.ethnicity = random.choice([
         {
@@ -237,7 +238,8 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
 def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
     random.seed(seed)
 
-    item = Biosample(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId)
+    item = Biosample(id=id, datasetId=datasetId,
+                     cohortId=cohortId, individualId=individualId)
     item.biosampleStatus = random.choice([
         {
             "id": "EFO:0009654",
@@ -386,7 +388,8 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
 def get_random_run(id, datasetId, cohortId, individualId, biosampleId, seed=0):
     random.seed(seed)
 
-    item = Run(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId, biosampleId=biosampleId)
+    item = Run(id=id, datasetId=datasetId, cohortId=cohortId,
+               individualId=individualId, biosampleId=biosampleId)
     item.libraryLayout = "PAIRED"
     item.librarySelection = "RANDOM"
     item.librarySource = random.choice(
@@ -426,7 +429,8 @@ def get_random_run(id, datasetId, cohortId, individualId, biosampleId, seed=0):
 def get_random_analysis(id, datasetId, cohortId, individualId, biosampleId, runId, vcfSampleId, seed=0):
     random.seed(seed)
 
-    item = Analysis(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId, biosampleId=biosampleId, vcfSampleId=vcfSampleId, runId=runId)
+    item = Analysis(id=id, datasetId=datasetId, cohortId=cohortId, individualId=individualId,
+                    biosampleId=biosampleId, vcfSampleId=vcfSampleId, runId=runId)
     item.aligner = random.choice(["bwa-0.7.8", "minimap2", "bowtie"])
     item.analysisDate = f"{random.randint(2018, 2022)}-{random.randint(1, 12)}-{random.randint(1, 28)}"
     item.pipelineName = f"pipeline {random.randint(1, 5)}"
@@ -437,10 +441,13 @@ def get_random_analysis(id, datasetId, cohortId, individualId, biosampleId, runI
 
 
 if __name__ == "__main__":
+    # for dynamo_item in tqdm(DynamoDataset.scan(), desc='Cleaning'):
+    #     dynamo_item.delete()
+
     dynamo_items = []
-    datasets = []
 
     # datasets
+    file, writer = get_writer(Dataset, './tmp')
     for n, line in enumerate(open('vcf.txt')):
         data = line.strip().split(' ')
         multiplier = int(data[0])
@@ -459,16 +466,19 @@ if __name__ == "__main__":
 
         for m in tqdm(range(multiplier), desc="Simulating datasets"):
             id = f'{n}-{m}'
-            dataset, dynamo_item = get_random_dataset(id, vcfs, vcfChromosomeMap, seed=id)
+            dataset, dynamo_item = get_random_dataset(
+                id, vcfs, vcfChromosomeMap, seed=id)
             dynamo_item.sampleCount = len(samples)
             dynamo_item.sampleNames = samples
             dynamo_items.append(dynamo_item)
-            datasets.append(dataset)
+            write_local(Dataset, dataset, writer)
+    writer.close()
+    file.close()
 
     # upload datasets
     key = f'combined-datasets'
     path = f's3://{METADATA_BUCKET}/datasets/{key}'
-    upload_batch_s3((Dataset, datasets, path))
+    upload_local('./tmp', path)
 
     with DynamoDataset.batch_write() as batch:
         for item in tqdm(dynamo_items, desc="Writing datasets to DynamoDB"):
@@ -476,64 +486,73 @@ if __name__ == "__main__":
     datasets = []
 
     # cohorts
-    cohorts = []
+    file, writer = get_writer(Cohort, './tmp')
     for dataset in tqdm(dynamo_items, desc="Simulating cohorts"):
         id = dataset.id
         cohort = get_random_cohort(id=id, seed=id)
-        cohorts.append(cohort)
+        write_local(Cohort, cohort, writer)
+    writer.close()
+    file.close()
     key = f'combined-cohort'
     path = f's3://{METADATA_BUCKET}/cohorts/{key}'
-    upload_batch_s3((Cohort, cohorts, path))
-    cohorts = []
+    upload_local('./tmp', path)
 
-    individuals = []
+    # individuals
+    file, writer = get_writer(Individual, './tmp')
     for dataset in tqdm(dynamo_items, desc="Simulating individuals"):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            individual = get_random_individual(id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
-            individuals.append(individual)
+            individual = get_random_individual(
+                id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
+            write_local(Individual, individual, writer)
+    writer.close()
+    file.close()
     key = f'combined-individuals'
     path = f's3://{METADATA_BUCKET}/individuals/{key}'
-    upload_batch_s3(((Individual, individuals, path)))
-    individuals = []
+    upload_local('./tmp', path)
 
     # biosamples
-    biosamples = []
+    file, writer = get_writer(Biosample, './tmp')
     for dataset in tqdm(dynamo_items, desc="Simulating biosamples"):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            biosample = get_random_biosample(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
-            biosamples.append(biosample)
+            biosample = get_random_biosample(
+                id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            write_local(Biosample, biosample, writer)
+    writer.close()
+    file.close()
     key = f'combined-biosamples'
     path = f's3://{METADATA_BUCKET}/biosamples/{key}'
-    upload_batch_s3((Biosample, biosamples, path))
-    biosamples = []
+    upload_local('./tmp', path)
 
     # runs
-    runs = []
+    file, writer = get_writer(Run, './tmp')
     for dataset in tqdm(dynamo_items, desc="Simulating runs"):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
-            runs.append(run)
+            run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id,
+                                 individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            write_local(Run, run, writer)
+    writer.close()
+    file.close()
     key = f'combined-runs'
     path = f's3://{METADATA_BUCKET}/runs/{key}'
-    upload_batch_s3((Run, runs, path))
-    runs = []
+    upload_local('./tmp', path)
 
     # analyses
-    analyses = []
+    file, writer = get_writer(Analysis, './tmp')
     for dataset in tqdm(dynamo_items, desc="Simulating analyses"):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            analysis = get_random_analysis(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', vcfSampleId=dataset.sampleNames[itr], seed=f'{id}-{itr}')
-            analyses.append(analysis)
-
+            analysis = get_random_analysis(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}',
+                                           biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', vcfSampleId=dataset.sampleNames[itr], seed=f'{id}-{itr}')
+            write_local(Analysis, analysis, writer)
+    writer.close()
+    file.close()
     key = f'combined-analyses'
     path = f's3://{METADATA_BUCKET}/analyses/{key}'
-    upload_batch_s3((Analysis, analyses, path))
-    analyses = []            
+    upload_local('./tmp', path)

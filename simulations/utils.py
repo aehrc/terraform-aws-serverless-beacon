@@ -101,3 +101,36 @@ def upload_batch_s3(args):
 
     writer.close()
     s3file.close()
+
+
+def get_writer(cls, path):
+    header = 'struct<' + \
+        ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
+    bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+    file = open(path, 'wb+')
+    writer = pyorc.Writer(
+        file,
+        header,
+        compression=pyorc.CompressionKind.SNAPPY,
+        compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+        bloom_filter_columns=bloom_filter_columns
+    )
+
+    return file, writer
+
+
+def write_local(cls, item, writer):
+    row = tuple(
+        item.__dict__[k]
+        if type(item.__dict__[k]) == str
+        else json.dumps(item.__dict__[k])
+        for k in cls._table_columns
+    )
+    writer.write(row)
+
+
+def upload_local(local, s3):
+    s3file = sopen(s3, 'wb')
+
+    with open(local, 'rb') as fi:
+        s3file.write(fi.read())
