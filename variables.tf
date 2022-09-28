@@ -1,8 +1,15 @@
+variable "region" {
+  type         = string
+  description  = "Deployment region."
+  default      = "us-east-1"
+}
+
 variable "beacon-id" {
   type         = string
   description  = "Unique identifier of the beacon. Use reverse domain name notation."
   default      = "sbeacon.csiro.au"
 }
+
 
 variable "beacon-name" {
   type         = string

@@ -2560,13 +2560,6 @@
             },
             "type": "object"
         },
-        "id": {
-            "description": "Cohort identifier. For \u00b4study-defined\u00b4 or \u00b4beacon-defined\u00b4cohorts this field is set by the implementer. For \u00b4user-defined\u00b4 this unique identifier could be generated upon the query that defined the cohort, but could be later edited by the user.",
-            "examples": [
-                "cohort-T2D-2010"
-            ],
-            "type": "string"
-        },
         "inclusionCriteria": {
             "description": "Criteria used for defining the cohort. It is assumed that all cohort participants will match or NOT match such criteria.",
             "properties": {
@@ -3461,7 +3454,6 @@
         }
     },
     "required": [
-        "id",
         "name",
         "cohortType"
     ],

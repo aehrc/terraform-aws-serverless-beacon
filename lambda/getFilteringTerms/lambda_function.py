@@ -48,7 +48,7 @@ def get_terms(terms, skip, limit):
 
 def lambda_handler(event, context):
     print('event received', event)
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event['queryStringParameters'] or dict()
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)

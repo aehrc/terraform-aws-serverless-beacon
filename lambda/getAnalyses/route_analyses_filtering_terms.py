@@ -1,7 +1,7 @@
 import json
 import os
 
-from apiutils.api_response import bundle_response, bad_request
+from apiutils.api_response import bundle_response
 from athena.common import run_custom_query
 
 
@@ -49,14 +49,14 @@ def get_terms(terms, skip, limit):
 
 def route(event):
     print('Event received', event)
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event.get('queryStringParameters', None) or dict()
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
-    if (event['httpMethod'] == 'POST'):
+    if event['httpMethod'] == 'POST':
         params = json.loads(event.get('body') or "{}")
         print(f"POST params {params}")
         meta = params.get("meta", dict())

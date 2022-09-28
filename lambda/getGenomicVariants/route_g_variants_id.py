@@ -1,6 +1,5 @@
 from collections import defaultdict
 import json
-import jsonschema
 import os
 import base64
 
@@ -14,8 +13,6 @@ import apiutils.entries as entries
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 
-requestSchemaJSON = json.load(open("requestParameters.json"))
-
 
 def get_datasets(assembly_id, dataset_ids=None):
     items = []
@@ -28,14 +25,14 @@ def get_datasets(assembly_id, dataset_ids=None):
 
 
 def route(event):
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event.get('queryStringParameters', dict()) or dict()
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
-    if (event['httpMethod'] == 'POST'):
+    if event['httpMethod'] == 'POST':
         params = json.loads(event.get('body', "{}")) or dict()
         print(f"POST params {params}")
         meta = params.get("meta", dict())
@@ -46,12 +43,6 @@ def route(event):
         # query data
         requestedGranularity = query.get("requestedGranularity", "boolean")
         requestParameters = query.get("requestParameters", dict())
-        # validate query request
-        validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
-        # print(validator.schema)
-        if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
-            return bad_request(errorMessage= "\n".join([error.message for error in errors]))
-            # raise error
 
     variant_id = event["pathParameters"].get("id", None)
     if variant_id is None:

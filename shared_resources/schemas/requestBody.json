@@ -1,0 +1,347 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Schema for the Beacon request. It is named `RequestBody` to keep the same nomenclature used by OpenAPI v3, but it actually contains the definition of the whole HTTP POST request payload.",
+    "properties": {
+        "$schema": {
+            "$comment": "TO REVIEW: adding a `format` or `regex` attribute that validates correctly against a file path (relative).",
+            "description": "Refers to the JSON Schema which describes the set of valid attributes for this particular document type. This attribute is mostly used in schemas that should be tested in Beacon implementations.",
+            "type": "string"
+        },
+        "meta": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "description": "Meta section of the Beacon request. It includes request context details relevant for the Beacon server when processing the request.",
+            "properties": {
+                "$schema": {
+                    "$comment": "TO REVIEW: adding a `format` or `regex` attribute that validates correctly against a file path (relative).",
+                    "description": "Refers to the JSON Schema which describes the set of valid attributes for this particular document type. This attribute is mostly used in schemas that should be tested in Beacon implementations.",
+                    "type": "string"
+                },
+                "apiVersion": {
+                    "description": "an API version.",
+                    "example": "v2.0",
+                    "type": "string"
+                },
+                "requestedSchemas": {
+                    "description": "Set of schemas to be used in the response to a request.",
+                    "items": {
+                        "description": "Schema to be used for the requested entry type in the response.",
+                        "properties": {
+                            "entityType": {
+                                "$comment": "TO REVIEW: Should that refer to a concept d? or would that include an undesired dependency to the configuration?",
+                                "example": "Individual",
+                                "type": "string"
+                            },
+                            "schema": {
+                                "$comment": "TO DO: Add the correct format as 'uri' or 'regex'",
+                                "examples": [
+                                    "./ga4gh-beacon-dataset-v2.0.0",
+                                    "https://www.example.org/schemas/ga4gh-beacon-dataset-v2.0.0.json"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "required": [
+                "apiVersion"
+            ],
+            "type": "object"
+        },
+        "query": {
+            "description": "Parameters to limit the list of returned results.",
+            "properties": {
+                "filters": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "additionalProperties": true,
+                    "definitions": {
+                        "AlphanumericFilter": {
+                            "description": "Filter results based on operators and values applied to alphanumeric fields.",
+                            "properties": {
+                                "id": {
+                                    "description": "Field identfier to be queried.",
+                                    "example": "age",
+                                    "type": "string"
+                                },
+                                "operator": {
+                                    "default": "=",
+                                    "description": "Defines how the value relates to the field `id`.",
+                                    "enum": [
+                                        "=",
+                                        "<",
+                                        ">",
+                                        "!",
+                                        ">=",
+                                        "<="
+                                    ],
+                                    "example": ">",
+                                    "type": "string"
+                                },
+                                "scope": {
+                                    "description": "The entry type to which the filter applies",
+                                    "example": "biosamples",
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "description": "Alphanumeric search term to be used within the query which can contain wildcard characters (%) to denote any number of unknown characters.  Values can be assocatied with units if applicable.",
+                                    "example": "P70Y",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "operator",
+                                "value"
+                            ],
+                            "type": "object"
+                        },
+                        "CustomFilter": {
+                            "description": "Filter results to include records that contain a custom term defined by this Beacon.",
+                            "properties": {
+                                "id": {
+                                    "description": "Custom filter terms should contain a unique identifier.",
+                                    "example": "demographic.ethnicity:asian",
+                                    "type": "string"
+                                },
+                                "scope": {
+                                    "description": "The entry type to which the filter applies",
+                                    "example": "biosamples",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id"
+                            ],
+                            "type": "object"
+                        },
+                        "OntologyFilter": {
+                            "description": "Filter results to include records that contain a specific ontology term.",
+                            "properties": {
+                                "id": {
+                                    "description": "Term ID to be queried, using CURIE syntax where possible.",
+                                    "example": "HP:0002664",
+                                    "type": "string"
+                                },
+                                "includeDescendantTerms": {
+                                    "default": true,
+                                    "description": "Define if the Beacon should implement the ontology hierarchy, thus query the descendant terms of `id`.",
+                                    "type": "boolean"
+                                },
+                                "scope": {
+                                    "description": "The entry type to which the filter applies",
+                                    "example": "biosamples",
+                                    "type": "string"
+                                },
+                                "similarity": {
+                                    "default": "exact",
+                                    "description": "Allow the Beacon to return results which do not match the filter exactly, but do match to a certain degree of similarity. The Beacon defines the semantic similarity model implemented and how to apply the thresholds of 'high', 'medium' and 'low' similarity.",
+                                    "enum": [
+                                        "exact",
+                                        "high",
+                                        "medium",
+                                        "low"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "description": "Rules for selecting records based upon the field values those records contain. Filters are separated by the logical AND operator.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "description": "Filter results to include records that contain a specific ontology term.",
+                                "properties": {
+                                    "id": {
+                                        "description": "Term ID to be queried, using CURIE syntax where possible.",
+                                        "example": "HP:0002664",
+                                        "type": "string"
+                                    },
+                                    "includeDescendantTerms": {
+                                        "default": true,
+                                        "description": "Define if the Beacon should implement the ontology hierarchy, thus query the descendant terms of `id`.",
+                                        "type": "boolean"
+                                    },
+                                    "scope": {
+                                        "description": "The entry type to which the filter applies",
+                                        "example": "biosamples",
+                                        "type": "string"
+                                    },
+                                    "similarity": {
+                                        "default": "exact",
+                                        "description": "Allow the Beacon to return results which do not match the filter exactly, but do match to a certain degree of similarity. The Beacon defines the semantic similarity model implemented and how to apply the thresholds of 'high', 'medium' and 'low' similarity.",
+                                        "enum": [
+                                            "exact",
+                                            "high",
+                                            "medium",
+                                            "low"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ],
+                                "type": "object"
+                            },
+                            {
+                                "description": "Filter results based on operators and values applied to alphanumeric fields.",
+                                "properties": {
+                                    "id": {
+                                        "description": "Field identfier to be queried.",
+                                        "example": "age",
+                                        "type": "string"
+                                    },
+                                    "operator": {
+                                        "default": "=",
+                                        "description": "Defines how the value relates to the field `id`.",
+                                        "enum": [
+                                            "=",
+                                            "<",
+                                            ">",
+                                            "!",
+                                            ">=",
+                                            "<="
+                                        ],
+                                        "example": ">",
+                                        "type": "string"
+                                    },
+                                    "scope": {
+                                        "description": "The entry type to which the filter applies",
+                                        "example": "biosamples",
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "description": "Alphanumeric search term to be used within the query which can contain wildcard characters (%) to denote any number of unknown characters.  Values can be assocatied with units if applicable.",
+                                        "example": "P70Y",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "operator",
+                                    "value"
+                                ],
+                                "type": "object"
+                            },
+                            {
+                                "description": "Filter results to include records that contain a custom term defined by this Beacon.",
+                                "properties": {
+                                    "id": {
+                                        "description": "Custom filter terms should contain a unique identifier.",
+                                        "example": "demographic.ethnicity:asian",
+                                        "type": "string"
+                                    },
+                                    "scope": {
+                                        "description": "The entry type to which the filter applies",
+                                        "example": "biosamples",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ],
+                                "type": "object"
+                            }
+                        ]
+                    },
+                    "title": "Filtering Term Element",
+                    "type": "array"
+                },
+                "includeResultsetResponses": {
+                    "default": "HIT",
+                    "description": "Indicator of whether responses from every Resultset should be included in the response to this request or just the ones with positive, negative results or no details at all. If null (not specified), the default value of 'HIT' is assumed. This parameter allows for returning boolean/counting results although the Beacon instance is capable to return record level details.",
+                    "enum": [
+                        "ALL",
+                        "HIT",
+                        "MISS",
+                        "NONE"
+                    ],
+                    "examples": [
+                        "ALL",
+                        "HIT",
+                        "MISS",
+                        "NONE"
+                    ],
+                    "type": "string"
+                },
+                "pagination": {
+                    "description": "Pagination to apply or that has been applied on the results.",
+                    "properties": {
+                        "currentPage": {
+                            "description": "A hash or similar that allows the server to use it as a cursor over a query. It could be or not a readable value, like a word or a key. E.g. it could be an encrypted value of primary keys to navigate next and previous page.",
+                            "example": "ab0sc&fe1dd",
+                            "type": "string"
+                        },
+                        "limit": {
+                            "default": 10,
+                            "description": "Size of the page. Use `0` to return all the results or the maximum allowed by the Beacon, if there is any.",
+                            "example": 10,
+                            "minimum": 0,
+                            "type": "integer"
+                        },
+                        "nextPage": {
+                            "description": "A hash or similar that allows the server to use it as a cursor over a query. It could be or not a readable value, like a word or a key. E.g. it could be an encrypted value of primary keys to navigate next and previous page.",
+                            "example": "ab0sc&fe1dd",
+                            "type": "string"
+                        },
+                        "previousPage": {
+                            "description": "A hash or similar that allows the server to use it as a cursor over a query. It could be or not a readable value, like a word or a key. E.g. it could be an encrypted value of primary keys to navigate next and previous page.",
+                            "example": "ab0sc&fe1dd",
+                            "type": "string"
+                        },
+                        "skip": {
+                            "default": 0,
+                            "description": "* In the request: number of pages to skip * In the response: number of pages that has been skipped",
+                            "example": 0,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    "type": "object"
+                },
+                "requestParameters": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "additionalProperties": {
+                        "type": "object"
+                    },
+                    "description": "The schema below is suited for a dictionary 'key':'object', which is the case of the parameter definitions.",
+                    "properties": {
+                        "$schema": {
+                            "description": "Added here to allow proper validation of the documents.",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "requestedGranularity": {
+                    "default": "boolean",
+                    "description": "Granularity or level of detail of the response:\n* `boolean`: returns true/false' responses * `count`: adds the total number of positive results found * `aggregated`: returns summary, aggregated or distribution like responses * `record`: returns details for every row. In cases where a Beacon prefers\n  to return records with fewer than allattributes, different strategies have\n  to be considered w/o adding them to the current design, e.g.:\n    - keeping non-mandatory attributes empty\n    - Beacon to provide a minimal record definition",
+                    "enum": [
+                        "boolean",
+                        "count",
+                        "aggregated",
+                        "record"
+                    ],
+                    "type": "string"
+                },
+                "testMode": {
+                    "default": false,
+                    "description": "Used for indicating that a request or response is done in a test context e.g. for compliance testing i.e. to evaluate the acceptance/understanding of a request and the structure of the returned response by the Beacon instance. A TRUE `testMode` parameter DOES NOT require that the Beacon instance is a test instance, but that this specific request-response cycle is a testing one. When `true` the Beacon instance MUST respond the request but it SHOULD use virtual or non-sensitive data. Here, what is being evaluated is the acceptance/understanding of a request and the structure of the returned response by the Beacon instance.",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "required": [
+        "meta"
+    ],
+    "type": "object"
+}

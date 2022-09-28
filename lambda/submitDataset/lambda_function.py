@@ -1,12 +1,10 @@
-import datetime
 import json
 import os
 import subprocess
 from typing import List
-from jsonschema import Draft7Validator, RefResolver
-import jsons
-import tempfile
 
+from jsonschema import Draft202012Validator, RefResolver
+import jsons
 import boto3
 
 from apiutils.api_response import bad_request, bundle_response
@@ -74,46 +72,77 @@ def check_vcf_locations(locations):
 
 
 def create_dataset(attributes):
-    item = DynamoDataset(attributes['dataset']['id'])
-    item.assemblyId = attributes['assemblyId']
-    item.vcfLocations = attributes.get('vcfLocations', [])
-    item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
+    datasetId = attributes.get('datasetId', None)
+    cohortId = attributes.get('cohortId', None)
+    messages = []
 
-    # must have dataset and cohort information
-    dataset = jsons.load(attributes.get('dataset'), Dataset)
-    cohort = jsons.load(attributes.get('cohort'), Cohort)
-    individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
-    biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
-    runs = jsons.default_list_deserializer(attributes.get('runs', []), List[Run])
-    analyses = jsons.default_list_deserializer(attributes.get('analyses', []), List[Analysis])
+    if datasetId:
+        item = DynamoDataset(datasetId)
+        item.assemblyId = attributes.get('assemblyId', '')
+        item.vcfLocations = attributes.get('vcfLocations', [])
+        item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
+        for vcf in set(item.vcfLocations):
+            chroms = get_vcf_chromosomes(vcf)
+            vcfm = VcfChromosomeMap()
+            vcfm.vcf = vcf
+            vcfm.chromosomes = chroms
+            item.vcfChromosomeMap.append(vcfm)
+
+        print(f"Putting item in table: {item.to_json()}")
+        item.save()
+        messages.append("Added dataset info")
+        # dataset information
+        json_dataset = attributes.get('dataset', None)
+        if json_dataset:
+            dataset = jsons.load(json_dataset, Dataset)
+            dataset.id = datasetId
+            Dataset.upload_array([dataset])
+            messages.append("Added dataset metadata")
+
+    if datasetId and cohortId:
+
+
+        individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
+        biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
+        runs = jsons.default_list_deserializer(attributes.get('runs', []), List[Run])
+        analyses = jsons.default_list_deserializer(attributes.get('analyses', []), List[Analysis])
+        
+        # setting dataset id
+        for individual in individuals:
+            individual.datasetId = datasetId
+            individual.cohortId = cohortId
+        for biosample in biosamples:
+            biosample.datasetId = datasetId
+            biosample.cohortId = cohortId
+        for run in runs:
+            run.datasetId = datasetId
+            run.cohortId = cohortId
+        for analysis in analyses:
+            analysis.datasetId = datasetId
+            analysis.cohortId = cohortId
+
+        # upload to s3
+        if len(individuals) > 0:
+            Individual.upload_array(individuals)
+            messages.append("Added individuals")
+        if len(biosamples) > 0: 
+            Biosample.upload_array(biosamples)
+            messages.append("Added biosamples")
+        if len(runs) > 0:
+            Run.upload_array(runs)
+            messages.append("Added runs")
+        if len(analyses) > 0: 
+            Analysis.upload_array(analyses)
+            messages.append("Added analyses")
     
-    # setting dataset id
-    for individual in individuals:
-        individual.datasetId = dataset.id
-        individual.cohortId = cohort.id
-    for biosample in biosamples:
-        biosample.datasetId = dataset.id
-        biosample.cohortId = cohort.id
-    for run in runs:
-        run.datasetId = dataset.id
-        run.cohortId = cohort.id
-    for analysis in analyses:
-        analysis.datasetId = dataset.id
-        analysis.cohortId = cohort.id
-
-    # upload the dataset and cohort info
-    Dataset.upload_array([dataset])
-    Cohort.upload_array([cohort])
-
-    # upload to s3
-    if len(individuals) > 0:
-        Individual.upload_array(individuals)
-    if len(biosamples) > 0: 
-        Biosample.upload_array(biosamples)
-    if len(runs) > 0:
-        Run.upload_array(runs)
-    if len(analyses) > 0: 
-        Analysis.upload_array(analyses)
+    if cohortId:
+        # cohort information
+        json_cohort = attributes.get('cohort', None)
+        if json_cohort:
+            cohort = jsons.load(json_cohort, Cohort)
+            cohort.id = cohortId
+            Cohort.upload_array([cohort])
+            messages.append("Added cohorts")
 
     aws_lambda.invoke(
         FunctionName=INDEXER_LAMBDA,
@@ -121,27 +150,19 @@ def create_dataset(attributes):
         Payload=jsons.dumps(dict()),
     )
 
-    for vcf in set(item.vcfLocations):
-        chroms = get_vcf_chromosomes(vcf)
-        vcfm = VcfChromosomeMap()
-        vcfm.vcf = vcf
-        vcfm.chromosomes = chroms
-        item.vcfChromosomeMap.append(vcfm)
-
-    print(f"Putting item in table: {item.to_json()}")
-    item.save()
-
-
-def get_current_time():
-    d = datetime.datetime.now(datetime.timezone.utc)
-    return d.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+    return messages
 
 
 def submit_dataset(body_dict, method):
     new = method == 'POST'
-    validation_error = validate_request(body_dict, new)
-    if validation_error:
-        return bad_request(errorMessage=validation_error)
+    validation_errors = validate_request(body_dict, new)
+    completed = []
+    pending = []
+
+    if validation_errors:
+        print()
+        print(', '.join(validation_errors))
+        return bad_request(errorMessage=', '.join(validation_errors))
 
     if 'vcfLocations' in body_dict:
         # validate vcf files if skipCheck is not specified 
@@ -154,14 +175,15 @@ def submit_dataset(body_dict, method):
         summarise = False
     # handle data set submission or update
     if new:
-        create_dataset(body_dict)
+        completed += create_dataset(body_dict)
     else:
         update_dataset(body_dict)
     
     if summarise:
-        summarise_dataset(body_dict['dataset']['id'])
+        summarise_dataset(body_dict['datasetId'])
+        pending.append('Summarising')
 
-    return bundle_response(200, {})
+    return bundle_response(200, { 'Completed': completed, 'Running': pending })
 
 
 def summarise_dataset(dataset):
@@ -176,7 +198,8 @@ def summarise_dataset(dataset):
 
 def update_dataset(attributes):
     # TODO see how other entities can be updated or overwritten
-    item = DynamoDataset.get(attributes['dataset']['id'])
+    datasetId = attributes['datasetId']
+    item = DynamoDataset.get(datasetId)
     actions = []
     actions += [DynamoDataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
     actions += [DynamoDataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
@@ -190,12 +213,18 @@ def validate_request(parameters, new):
     validator = None
     # validate request body with schema for a new submission or update
     if new:
-        validator = Draft7Validator(newSchema, resolver=resolveNew)
+        validator = Draft202012Validator(newSchema, resolver=resolveNew)
     else:
-        validator = Draft7Validator(updateSchema, resolver=resolveUpdate)
+        validator = Draft202012Validator(updateSchema, resolver=resolveUpdate)
 
-    errors = sorted(validator.iter_errors(parameters), key=lambda e: e.path)
-    return [error.message for error in errors]
+    errors = []
+    
+    for error in sorted(validator.iter_errors(parameters), key=lambda e: e.path):
+        error_message = f'{error.message}'
+        for part in list(error.path):
+            error_message += f'/{part}'
+        errors.append(error_message)
+    return errors
 
 
 def lambda_handler(event, context):
@@ -214,63 +243,4 @@ def lambda_handler(event, context):
 
 
 if __name__ == '__main__':
-    event = {
-        "httpMethod": "POST",
-        "body": json.dumps({
-            "dataset": {
-                "id": "test-wic",
-                "name": "my test dataset"
-            },
-            "cohort": {
-                "id": "test-wic",
-                "name": "GCAT Genomes for Life",
-                "cohortType": "study-defined"
-            },
-            "individuals": [
-                {
-                    "id": "some id",
-                    "sex": {
-                        "id": "ga4gh:GA.01234abcde"
-                    },
-                    "sampleName": "some sampleName"
-                }
-            ],
-            "biosamples": [
-                {
-                    "id": "biosample kind of a id",
-                    "biosampleStatus": {
-                        "id": "ga4gh:GA.01234abcde"
-                    },
-                    "sampleOriginType": {
-                        "id": "DUO:0000004"
-                    },
-                    "sampleName": "biosample kind of a sampleName"
-                }
-            ],
-            "runs": [
-                {
-                    "id": "runs kind of a id",
-                    "biosampleId": "biosample kind of a id",
-                    "runDate": "2021-10-18"
-                }
-            ],
-            "analyses": [
-                {
-                    "id": "analyses kind of a id",
-                    "analysisDate": "2021-10-17",
-                    "pipelineName": "Pipeline-panel-0001-v1"
-                }
-            ],
-            "assemblyId": "GRCH38",
-            "vcfLocations": [
-                "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
-            ],
-            "vcfGroups": [
-                [
-                    "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
-                ]
-            ]
-        })
-    }
-
-    lambda_handler(event, {})
+    pass

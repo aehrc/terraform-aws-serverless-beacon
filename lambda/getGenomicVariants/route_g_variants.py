@@ -1,11 +1,10 @@
 from collections import defaultdict
 import json
-import jsonschema
 import os
 import base64
 
 from variantutils.search_variants import perform_variant_search
-from apiutils.api_response import bundle_response, bad_request
+from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 import apiutils.entries as entries
 from athena.dataset import get_datasets
@@ -14,11 +13,8 @@ from athena.dataset import get_datasets
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 
-requestSchemaJSON = json.load(open("requestParameters.json"))
-
-
 def route(event):
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event['queryStringParameters']
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
@@ -40,7 +36,7 @@ def route(event):
         filters = params.get("filters", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
-    if (event['httpMethod'] == 'POST'):
+    if event['httpMethod'] == 'POST':
         params = json.loads(event['body'])
         print(f"POST params {params}")
         meta = params.get("meta", dict())
@@ -60,11 +56,6 @@ def route(event):
         nextPage = pagination.get("nextPage", None)
         # query request params
         requestParameters = query.get("requestParameters", dict())
-        # validate query request
-        validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
-        # print(validator.schema)
-        if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
-            return bad_request(errorMessage= "\n".join([error.message for error in errors]))
         start = requestParameters.get("start", None)
         end = requestParameters.get("end", None)
         assemblyId = requestParameters.get("assemblyId", None)

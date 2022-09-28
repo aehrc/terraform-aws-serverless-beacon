@@ -1,17 +1,14 @@
 import json
-import jsonschema
 import os
 import jsons
 
-from apiutils.api_response import bundle_response, bad_request
+from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.analysis import Analysis
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
-
-# requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
 def get_record_query(id):
@@ -24,14 +21,14 @@ def get_record_query(id):
 
 
 def route(event):
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event.get('queryStringParameters', None) or dict()
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
-    if (event['httpMethod'] == 'POST'):
+    if event['httpMethod'] == 'POST':
         params = json.loads(event.get('body') or "{}")
         print(f"POST params {params}")
         meta = params.get("meta", dict())
@@ -43,12 +40,6 @@ def route(event):
         requestedGranularity = query.get("requestedGranularity", "boolean")
         # query request params
         requestParameters = query.get("requestParameters", dict())
-        # validate query request
-        # validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
-        # print(validator.schema)
-        # if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
-        #     return bad_request(errorMessage= "\n".join([error.message for error in errors]))
-            # raise error
     
     analysis_id = event["pathParameters"].get("id", None)
     

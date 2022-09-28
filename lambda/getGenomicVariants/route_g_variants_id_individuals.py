@@ -1,6 +1,5 @@
 from collections import defaultdict
 import json
-import jsonschema
 import queue
 import threading
 import os
@@ -20,8 +19,6 @@ METADATA_DATABASE = os.environ['METADATA_DATABASE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
-
-requestSchemaJSON = json.load(open("requestParameters.json"))
 
 
 def get_count_query(dataset_id, sample_names, conditions=[]):
@@ -88,7 +85,7 @@ def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
 
 
 def route(event):
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event.get('queryStringParameters', dict()) or dict()
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
@@ -99,7 +96,7 @@ def route(event):
         filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
-    if (event['httpMethod'] == 'POST'):
+    if event['httpMethod'] == 'POST':
         params = json.loads(event.get('body', "{}")) or dict()
         print(f"POST params {params}")
         meta = params.get("meta", dict())
@@ -118,12 +115,6 @@ def route(event):
         previousPage = pagination.get("previousPage", None)
         nextPage = pagination.get("nextPage", None)
         filters = query.get("filters", [])
-        # validate query request
-        validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
-        # print(validator.schema)
-        if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
-            return bad_request(errorMessage= "\n".join([error.message for error in errors]))
-            # raise error
 
     # pagination format = variant skip, limit, individuals skip, limit
     if currentPage is None:

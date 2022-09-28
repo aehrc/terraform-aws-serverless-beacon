@@ -1,7 +1,7 @@
 import json
 import os
 
-from apiutils.api_response import bundle_response, bad_request
+from apiutils.api_response import bundle_response
 from athena.common import run_custom_query
 
 
@@ -49,14 +49,14 @@ def get_terms(terms, skip, limit):
 
 def route(event):
     print('Event received', event)
-    if (event['httpMethod'] == 'GET'):
+    if event['httpMethod'] == 'GET':
         params = event.get('queryStringParameters', None) or dict()
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
-    if (event['httpMethod'] == 'POST'):
+    if event['httpMethod'] == 'POST':
         params = json.loads(event.get('body') or "{}")
         print(f"POST params {params}")
         meta = params.get("meta", dict())
@@ -68,12 +68,6 @@ def route(event):
         pagination = query.get("pagination", dict())
         skip = pagination.get("skip", 0)
         limit = pagination.get("limit", 100)
-        # validate query request
-        # validator = jsonschema.Draft202012Validator(requestSchemaJSON['g_variant'])
-        # print(validator.schema)
-        # if errors := sorted(validator.iter_errors(requestParameters), key=lambda e: e.path):
-        #     return bad_request(errorMessage= "\n".join([error.message for error in errors]))
-            # raise error
 
     query = f'''
     SELECT DISTINCT term, label, type 

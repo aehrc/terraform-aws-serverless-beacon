@@ -1,12 +1,9 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
-        "dataset": {
-            "$ref": "dataset-schema.json"
-        },
-        "cohort": {
-            "$ref": "cohort-schema.json"
+        "datasetId": {
+            "type": "string"
         },
         "assemblyId": {
             "type": "string"
@@ -19,18 +16,14 @@
             "uniqueItems": true,
             "minItems": 1
         },
-        "vcfGroups": {
-            "type": "array",
-            "items": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                },
-                "uniqueItems": true,
-                "minItems": 1
-            },
-            "uniqueItems": true,
-            "minItems": 1
+        "dataset": {
+            "$ref": "dataset-schema.json"
+        },
+        "cohortId": {
+            "type": "string"
+        },
+        "cohort": {
+            "$ref": "cohort-schema.json"
         },
         "individuals": {
             "items": {
@@ -57,9 +50,41 @@
             "type": "array"
         }
     },
-    "required": [
-        "dataset",
-        "cohort",
-        "assemblyId"
-    ]
+    "dependentSchemas": {
+        "dataset": {
+            "required": [
+                "assemblyId",
+                "datasetId"
+            ]
+        },
+        "cohort": {
+            "required": [
+                "cohortId"
+            ]
+        },
+        "individuals": {
+            "required": [
+                "datasetId",
+                "cohortId"
+            ]
+        },
+        "biosamples": {
+            "required": [
+                "datasetId",
+                "cohortId"
+            ]
+        },
+        "runs": {
+            "required": [
+                "datasetId",
+                "cohortId"
+            ]
+        },
+        "analyses": {
+            "required": [
+                "datasetId",
+                "cohortId"
+            ]
+        }
+    }
 }
