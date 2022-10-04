@@ -20,9 +20,9 @@ Aws::String awsutils::getMessageString(string const &req)
 
 // Start S3 utils
 
-Aws::S3::S3Client awsutils::getNewClient() {
+Aws::S3::S3Client awsutils::getNewClient(Aws::String region) {
     Aws::Client::ClientConfiguration config;
-    config.region = Aws::Environment::GetEnv("AWS_REGION");
+    config.region = region;
     config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
     config.connectTimeoutMs = 3000; // Default is 1000ms
 

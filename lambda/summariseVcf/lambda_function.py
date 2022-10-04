@@ -302,3 +302,7 @@ def lambda_handler(event, context):
     # recevies the path of the vcf file
     location = event['Records'][0]['Sns']['Message']
     summarise_vcf(location)
+
+
+if __name__ == '__main__':
+    pass

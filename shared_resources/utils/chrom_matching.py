@@ -55,6 +55,9 @@ def get_vcf_chromosomes(vcf):
         clear_tmp()
     except:
         pass
+    chromosomes = tabix_output.split('\n')[:-1]
+    print(f'vcf - {vcf} has chromosomes - {chromosomes}')
+
     return tabix_output.split('\n')[:-1]
 
 

@@ -388,6 +388,8 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::
 
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
+
+    cout << request.GetUpdateExpression() << endl;
     do
     {
         std::cout << "Calling dynamodb::UpdateItem with key=\"" << location << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
@@ -484,8 +486,25 @@ int main()
         };
         aws::lambda_runtime::run_handler(handlerFunction);
     }
-    // string req = "{\n    \"Records\": [\n        {\n            \"EventSource\": \"aws:sns\",\n            \"EventVersion\": \"1.0\",\n            \"EventSubscriptionArn\": \"arn:aws:sns:us-east-1:361439923243:summariseSlice:b9e01117-8264-4cd8-bfb3-631839f91403\",\n            \"Sns\": {\n                \"Type\": \"Notification\",\n                \"MessageId\": \"5fef7144-84a4-5213-a35a-2ac2a0ae0bd2\",\n                \"TopicArn\": \"arn:aws:sns:us-east-1:361439923243:summariseSlice\",\n                \"Subject\": null,\n                \"Message\": \"{\\\"location\\\": \\\"s3://vcf-simulations/population-1-chr21-100-samples-seed-0-21-full.vcf.gz\\\", \\\"virtual_start\\\": 3546251591680, \\\"virtual_end\\\": 5323904656990}\",\n                \"Timestamp\": \"2022-08-29T02:17:46.764Z\",\n                \"SignatureVersion\": \"1\",\n                \"Signature\": \"5C//p2CQG0peyIYWxHNN/HsYnmmTMw3XqV8tN5QhdQ+6mhcdIxpSlbOo7g5xWGmd+a4xb/HMDAG+og5iukio+7phPuLjfnYGhnAENBSTdgD/66GSSiBfgbV2I8cVyCsRh9SWAhE+/vIgmJnynp8gqE/LeVLfg+M+J1T5Pavv1jm4feHCUwaxd7RtynYvf8Nl6kXGfupRqxSJhDODaf59IL0M6Iyq+FvAkYIR9MMNypNGJ4UMDUcOlX+nbJDIzevehdBYnW8ryhCrPII+3tjVvRSe83gYc5yP/SCQkQZxQZlieH4ypEBXwMyyiqKd36AGAv20WEiDZss4yS19ckzihw==\",\n                \"SigningCertUrl\": \"https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem\",\n                \"UnsubscribeUrl\": \"https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:361439923243:summariseSlice:b9e01117-8264-4cd8-bfb3-631839f91403\",\n                \"MessageAttributes\": {}\n            }\n        }\n    ]\n}";
+
+    // Aws::Client::ClientConfiguration config;
+    // config.region = Aws::Environment::GetEnv("AWS_REGION");
+    // config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
+    // auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
+    // Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
+    // Aws::SNS::SNSClient snsClient(credentialsProvider, config);
+
+    // string req = "{ \
+    //     \"Records\": [{ \
+    //         \"Sns\": {  \
+    //             \"Message\": \
+    //             \"{\
+    //                 \\\"location\\\": \\\"s3://simulationexperiments/test-vcfs/100.chr5.80k-other.vcf.gz\\\", \
+    //                 \\\"virtual_start\\\": 16924, \
+    //                 \\\"virtual_end\\\": 173484736512}\" \
+    //     }}]}";
     // lambdaHandler(req, dynamodbClient, snsClient);
+
     Aws::ShutdownAPI(options);
     return 0;
 }

@@ -133,6 +133,7 @@ def summarise_dataset(dataset):
         datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
         # start duplicate variant search, once after all updates are done
         # this is only to count the unique variants
+        print('Start duplicate variant seach')
         initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
         # this will be {':callCount': {'NULL': True}, ':sampleCount': {'NULL': True}}
@@ -164,8 +165,7 @@ def update_dataset(dataset_id, values, new_locations):
                 'S': dataset_id,
             },
         },
-        'UpdateExpression': 'SET ' + ', '.join('{c}=:{c}'.format(c=count)
-                                               for count in COUNTS),
+        'UpdateExpression': 'SET ' + ', '.join(f'{count}=:{count}' for count in COUNTS),
         'ExpressionAttributeValues': values,
     }
     # if new locations are there, put them in the DATASETS_TABLE_NAME
