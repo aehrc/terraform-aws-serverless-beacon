@@ -15,21 +15,22 @@ BEACON_ID = os.environ['BEACON_ID']
 
 def route(event):
     if event['httpMethod'] == 'GET':
-        params = event['queryStringParameters']
+        params = event['queryStringParameters'] or dict()
         print(f"Query params {params}")
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
         includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        start = params.get("start", None)
-        end = params.get("end", None)
+        start = params.get("start", [])
+        end = params.get("end", [])
         assemblyId = params.get("assemblyId", None)
         referenceName = params.get("referenceName", None)
         referenceBases = params.get("referenceBases", None)
         alternateBases = params.get("alternateBases", None)
         variantMinLength = params.get("variantMinLength", 0)
         variantMaxLength = params.get("variantMaxLength", -1)
+        variantType = params.get("variantType", None)
         allele = params.get("allele", None)
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
@@ -37,10 +38,10 @@ def route(event):
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
-        params = json.loads(event['body'])
+        params = json.loads(event['body']) or dict()
         print(f"POST params {params}")
         meta = params.get("meta", dict())
-        query = params.get("query", dict())
+        query = params.get("query", dict()) or dict()
         # meta data
         apiVersion = meta.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = meta.get("requestedSchemas", [])

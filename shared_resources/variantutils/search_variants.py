@@ -33,18 +33,23 @@ def perform_variant_search(*,
         includeResultsetResponses,
         passthrough=dict()
 ):
-    # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
-    vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
-        vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
+    try:
+        # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
+        vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
+            vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
 
-    if len(start) == 2:
-        start_min, start_max = start
-    else:
-        start_min = start_max = start[0]
-    if len(end) == 2:
-        end_min, end_max = start
-    else:
-        end_min = end_max = end[0]
+        if len(start) == 2:
+            start_min, start_max = start
+        else:
+            start_min = start_max = start[0]
+        if len(end) == 2:
+            end_min, end_max = start
+        else:
+            end_min = end_max = end[0]
+    except Exception as e:
+        print('Error occured ', e)
+        return False, []
+
     start_min += 1
     start_max += 1
     end_min += 1

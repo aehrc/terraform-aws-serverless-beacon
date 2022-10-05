@@ -36,11 +36,6 @@ def get_info():
             "environment": "dev",
             "id": BEACON_ID,
             "info": {
-                "additionalInfoKey1": "additionalInfoValue1",
-                "additionalInfoKey2": [
-                    "additionalInfoValue2",
-                    "additionalInfoValue3"
-                ]
             },
             "name":BEACON_NAME,
             "organization": {

@@ -8,7 +8,7 @@ from route_datasets_id import route as route_datasets_id
 from route_datasets_id_g_variants import route as route_datasets_id_g_variants
 from route_datasets_id_biosamples import route as route_datasets_id_biosamples
 from route_datasets_id_individuals import route as route_datasets_id_individuals
-from route_datasets_filtering_terms import route as route_datasets_filtering_terms
+from route_datasets_id_filtering_terms import route as route_datasets_id_filtering_terms
 
 
 schemaRequestBody = json.load(open('./schemas/requestBody.json'))
@@ -54,8 +54,8 @@ def lambda_handler(event, context):
     elif event['resource'] == '/datasets/{id}/individuals':
         return route_datasets_id_individuals(event)
 
-    elif event['resource'] == '/datasets/filtering_terms':
-        return route_datasets_filtering_terms(event)
+    elif event['resource'] == '/datasets/{id}/filtering_terms':
+        return route_datasets_id_filtering_terms(event)
 
 if __name__ == '__main__':
     pass

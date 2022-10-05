@@ -462,6 +462,15 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration_response.datasets-id_post.id,
     aws_api_gateway_method_response.datasets-id.id,
     aws_api_gateway_method_response.datasets-id_post.id,
+    # /datasets/{id}/filtering_terms
+    aws_api_gateway_method.datasets-id-filtering_terms.id,
+    aws_api_gateway_method.datasets-id-filtering_terms_post.id,
+    aws_api_gateway_integration.datasets-id-filtering_terms.id,
+    aws_api_gateway_integration.datasets-id-filtering_terms_post.id,
+    aws_api_gateway_integration_response.datasets-id-filtering_terms.id,
+    aws_api_gateway_integration_response.datasets-id-filtering_terms_post.id,
+    aws_api_gateway_method_response.datasets-id-filtering_terms.id,
+    aws_api_gateway_method_response.datasets-id-filtering_terms_post.id,
     # /datasets/{id}/individuals
     aws_api_gateway_method.datasets-id-individuals.id,
     aws_api_gateway_method.datasets-id-individuals_post.id,
@@ -516,15 +525,15 @@ resource aws_api_gateway_deployment BeaconApi {
     aws_api_gateway_integration_response.cohorts-id-individuals_post.id,
     aws_api_gateway_method_response.cohorts-id-individuals.id,
     aws_api_gateway_method_response.cohorts-id-individuals_post.id,
-    # /datasets/{id}/filtering_terms
-    aws_api_gateway_method.datasets-id-g_variants.id,
-    aws_api_gateway_method.datasets-id-g_variants_post.id,
-    aws_api_gateway_integration.datasets-id-g_variants.id,
-    aws_api_gateway_integration.datasets-id-g_variants_post.id,
-    aws_api_gateway_integration_response.datasets-id-g_variants.id,
-    aws_api_gateway_integration_response.datasets-id-g_variants_post.id,
-    aws_api_gateway_method_response.datasets-id-g_variants.id,
-    aws_api_gateway_method_response.datasets-id-g_variants_post.id,
+    # /cohorts/{id}/filtering_terms
+    aws_api_gateway_method.cohorts-id-filtering_terms.id,
+    aws_api_gateway_method.cohorts-id-filtering_terms_post.id,
+    aws_api_gateway_integration.cohorts-id-filtering_terms.id,
+    aws_api_gateway_integration.cohorts-id-filtering_terms_post.id,
+    aws_api_gateway_integration_response.cohorts-id-filtering_terms.id,
+    aws_api_gateway_integration_response.cohorts-id-filtering_terms_post.id,
+    aws_api_gateway_method_response.cohorts-id-filtering_terms.id,
+    aws_api_gateway_method_response.cohorts-id-filtering_terms_post.id,
   ]))
 }
 
