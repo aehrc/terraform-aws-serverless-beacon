@@ -16,6 +16,13 @@ The above will simulate 1000 datasets from the vcf collection. This yields a syn
 
 ## Simulation
 
+Prepare the environment as follows.
+
+```bash
+$ export AWS_REGION=<REGION>
+$ export AWS_DEFAULT_REGION=<REGION>
+```
+
 Now run `python simulate.py`.
 
 ## Indexing
