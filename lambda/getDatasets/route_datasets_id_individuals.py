@@ -21,7 +21,7 @@ s3 = boto3.client('s3')
 def get_bool_query(id, conditions=[]):
     query = f'''
     SELECT 1 FROM "{{database}}"."{{table}}"
-    WHERE "datasetid"='{id}'
+    WHERE "_datasetid"='{id}'
     {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     LIMIT 1;
     '''
@@ -32,7 +32,7 @@ def get_bool_query(id, conditions=[]):
 def get_count_query(id, conditions=[]):
     query = f'''
     SELECT COUNT(*) FROM "{{database}}"."{{table}}"
-    WHERE "datasetid"='{id}'
+    WHERE "_datasetid"='{id}'
     {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
     '''
 
@@ -42,7 +42,7 @@ def get_count_query(id, conditions=[]):
 def get_record_query(id, skip, limit, conditions=[]):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
-    WHERE "datasetid"='{id}'
+    WHERE "_datasetid"='{id}'
     {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     OFFSET {skip}
     LIMIT {limit};

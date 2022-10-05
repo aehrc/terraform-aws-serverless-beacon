@@ -124,17 +124,17 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
     }
 
     columns {
-      name = "assemblyid"
+      name = "_assemblyid"
       type = "string"
     }
     
     columns {
-      name = "vcflocations"
+      name = "_vcflocations"
       type = "string"
     }
 
     columns {
-      name = "vcfchromosomemap"
+      name = "_vcfchromosomemap"
       type = "string"
     }
 
@@ -217,12 +217,12 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "datasetid"
+      name = "_datasetid"
       type = "string"
     }
 
     columns {
-      name = "cohortid"
+      name = "_cohortid"
       type = "string"
     }
 
@@ -324,12 +324,12 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
     }
 
     columns {
-      name = "datasetid"
+      name = "_datasetid"
       type = "string"
     }
 
     columns {
-      name = "cohortid"
+      name = "_cohortid"
       type = "string"
     }
 
@@ -467,12 +467,12 @@ resource "aws_glue_catalog_table" "sbeacon-runs" {
     }
 
     columns {
-      name = "datasetid"
+      name = "_datasetid"
       type = "string"
     }
 
     columns {
-      name = "cohortid"
+      name = "_cohortid"
       type = "string"
     }
 
@@ -565,12 +565,17 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
     }
 
     columns {
-      name = "datasetid"
+      name = "_datasetid"
       type = "string"
     }
 
     columns {
-      name = "cohortid"
+      name = "_cohortid"
+      type = "string"
+    }
+
+    columns {
+      name = "_vcfsampleid"
       type = "string"
     }
 
@@ -616,11 +621,6 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
 
     columns {
       name = "variantcaller"
-      type = "string"
-    }
-
-    columns {
-      name = "vcfsampleid"
       type = "string"
     }
   }

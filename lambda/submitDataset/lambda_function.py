@@ -118,7 +118,7 @@ def create_dataset(attributes):
             run.datasetId = datasetId
             run.cohortId = cohortId
         for analysis in analyses:
-            analysis.datasetId = datasetId
+            analysis._datasetId = datasetId
             analysis.cohortId = cohortId
 
         # upload to s3
@@ -220,7 +220,7 @@ def validate_request(parameters, new):
     errors = []
     
     for error in sorted(validator.iter_errors(parameters), key=lambda e: e.path):
-        error_message = f'{error.message}'
+        error_message = f'{error.message} '
         for part in list(error.path):
             error_message += f'/{part}'
         errors.append(error_message)

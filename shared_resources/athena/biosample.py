@@ -21,8 +21,8 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
-        'datasetId',
-        'cohortId',
+        '_datasetId',
+        '_cohortId',
         'individualId',
         'biosampleStatus',
         'collectionDate',
@@ -72,8 +72,8 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 notes=[]
             ):
         self.id = id
-        self.datasetId = datasetId
-        self.cohortId = cohortId
+        self._datasetId = datasetId
+        self._cohortId = cohortId
         self.individualId = individualId
         self.biosampleStatus = biosampleStatus
         self.collectionDate = collectionDate

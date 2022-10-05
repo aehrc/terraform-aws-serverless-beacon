@@ -88,9 +88,9 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     dynamo_item.vcfLocations = vcfLocations
     dynamo_item.vcfChromosomeMap = vcfChromosomeMap
 
-    item.assemblyId = dynamo_item.assemblyId
-    item.vcfLocations = dynamo_item.vcfLocations
-    item.vcfChromosomeMap = [
+    item._assemblyId = dynamo_item.assemblyId
+    item._vcfLocations = dynamo_item.vcfLocations
+    item._vcfChromosomeMap = [
         item.attribute_values for item in dynamo_item.vcfChromosomeMap]
 
     return item, dynamo_item

@@ -31,9 +31,9 @@ def get_count_query(dataset_id, sample_names, conditions=[]):
         =
         "{{database}}"."{INDIVIDUALS_TABLE}".id
     WHERE 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
         AND 
-            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid 
+            "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid 
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
@@ -51,9 +51,9 @@ def get_bool_query(dataset_id, sample_names, conditions=[]):
         =
         "{{database}}"."{INDIVIDUALS_TABLE}".id
     WHERE 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
         AND 
-            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid
+            "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
@@ -72,9 +72,9 @@ def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
         =
         "{{database}}"."{INDIVIDUALS_TABLE}".id
     WHERE 
-        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}".datasetid='{dataset_id}' 
+        "{METADATA_DATABASE}"."{INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
         AND 
-            "{{database}}"."{ANALYSES_TABLE}".vcfsampleid
+            "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
         {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
@@ -246,7 +246,7 @@ def route(event):
         response = responses.get_result_sets_response(
             setType='individual', 
             info={
-                'paginationNote': 'Paginate using skip1:limit2,skip2:limit2 paging convetion, skip1 and skip2 are applied on datasets while skip2 and limit2 are applied on individuals represented by each dataset'
+                'paginationNote': 'Paginate using skip1:limit1,skip2:limit2 paging convetion, skip1 and limit1 are applied on datasets while skip2 and limit2 are applied on individuals represented by each dataset'
             },
             reqPagination=responses.get_cursor_object(currentPage=currentPage, nextPage='', previousPage=''),
             exists=len(individuals) > 0,

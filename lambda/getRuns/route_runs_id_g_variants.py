@@ -17,7 +17,7 @@ BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 
 def get_record_query(id, conditions=[]):
     query = f'''
-    SELECT id, datasetid, vcfsampleid FROM "{{database}}"."{{table}}"
+    SELECT id, _datasetid, _vcfsampleid FROM "{{database}}"."{{table}}"
     WHERE "runid"='{id}'
     {' AND '.join(conditions)}
     '''
@@ -83,7 +83,7 @@ def route(event):
         return bundle_response(200, response)
 
     analysis = db_results[0]
-    datasets = get_datasets(assemblyId, dataset_id=analysis.datasetId)
+    datasets = get_datasets(assemblyId, dataset_id=analysis._datasetId)
     check_all = includeResultsetResponses in ('HIT', 'ALL')
 
     variants = set()
@@ -95,7 +95,7 @@ def route(event):
     exists, query_responses = perform_variant_search(
         passthrough={
             'selectedSamplesOnly': True,
-            'sampleNames': [analysis.vcfSampleId]
+            'sampleNames': [analysis._vcfSampleId]
         },
         datasets=datasets,
         referenceName=referenceName,

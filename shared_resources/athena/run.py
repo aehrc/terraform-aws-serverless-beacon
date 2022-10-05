@@ -21,8 +21,8 @@ class Run(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
-        'datasetId',
-        'cohortId',
+        '_datasetId',
+        '_cohortId',
         'biosampleId',
         'individualId',
         'info',
@@ -54,8 +54,8 @@ class Run(jsons.JsonSerializable, AthenaModel):
                 runDate=''
             ):
         self.id = id
-        self.datasetId = datasetId
-        self.cohortId = cohortId
+        self._datasetId = datasetId
+        self._cohortId = cohortId
         self.biosampleId = biosampleId
         self.individualId = individualId
         self.info = info

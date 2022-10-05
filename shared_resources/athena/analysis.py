@@ -21,8 +21,9 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
-        'datasetId',
-        'cohortId',
+        '_datasetId',
+        '_cohortId',
+        '_vcfSampleId',
         'individualId',
         'biosampleId',
         'runId',
@@ -31,8 +32,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
         'info',
         'pipelineName',
         'pipelineRef',
-        'variantCaller',
-        'vcfSampleId'
+        'variantCaller'
     ]
 
 
@@ -54,8 +54,9 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
                 vcfSampleId=''
             ):
         self.id = id
-        self.datasetId = datasetId
-        self.cohortId = cohortId
+        self._datasetId = datasetId
+        self._cohortId = cohortId
+        self._vcfSampleId = vcfSampleId
         self.individualId = individualId
         self.biosampleId = biosampleId
         self.runId = runId
@@ -65,7 +66,6 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
         self.pipelineName = pipelineName
         self.pipelineRef = pipelineRef
         self.variantCaller = variantCaller
-        self.vcfSampleId = vcfSampleId
 
 
     def __eq__(self, other):

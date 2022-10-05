@@ -26,12 +26,12 @@ def get_record_query(id):
         ) as A 
     JOIN 
         (
-            SELECT cohortid, count(*) as csize 
+            SELECT _cohortid, count(*) as csize 
             FROM "{{database}}"."{INDIVIDUALS_TABLE}"
-            WHERE cohortid='{id}'
-            GROUP BY cohortid
+            WHERE _cohortid='{id}'
+            GROUP BY _cohortid
         ) as B
-    ON A.id = B.cohortid;
+    ON A.id = B._cohortid;
     '''
 
     return query

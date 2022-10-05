@@ -37,11 +37,11 @@ def get_record_query(skip, limit, conditions=[]):
         "{{database}}"."{{table}}" as A 
     JOIN 
         (
-            SELECT cohortid, count(*) as csize 
+            SELECT _cohortid, count(*) as csize 
             FROM "{{database}}"."{INDIVIDUALS_TABLE}"
-            GROUP BY cohortid
+            GROUP BY _cohortid
         ) as B
-    ON A.id = B.cohortid
+    ON A.id = B._cohortid
     {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
     OFFSET {skip}
     LIMIT {limit};

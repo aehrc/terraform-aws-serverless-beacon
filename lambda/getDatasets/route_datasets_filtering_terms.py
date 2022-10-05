@@ -20,7 +20,7 @@ def get_terms(terms, skip, limit):
             "beaconId": BEACON_ID,
             "returnedSchemas": [],
             "receivedRequestSummary": {
-                "apiVersion": "get from request",  # TODO
+                "apiVersion": "",  # TODO
                 "requestedSchemas": [],  # TODO
                 "pagination": {
                     "skip": skip,

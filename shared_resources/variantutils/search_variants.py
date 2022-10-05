@@ -35,7 +35,7 @@ def perform_variant_search(*,
 ):
     # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
     vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
-        vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset.vcfChromosomeMap}
+        vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
 
     if len(start) == 2:
         start_min, start_max = start
@@ -80,7 +80,7 @@ def perform_variant_search(*,
     for dataset in datasets:
         vcf_locations = {
             vcf: vcf_chromosomes[vcf]
-            for vcf in dataset.vcfLocations
+            for vcf in dataset._vcfLocations
             if vcf_chromosomes[vcf]
         }
 

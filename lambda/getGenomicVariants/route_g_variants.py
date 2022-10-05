@@ -80,6 +80,7 @@ def route(event):
 
     variants = set()
     results = list()
+    found = set()
     # key=pos-ref-alt
     # val=counts
     variant_call_counts = defaultdict(int)
@@ -111,7 +112,10 @@ def route(event):
                     variant_call_counts[idx] += query_response.call_count
                     variant_allele_counts[idx] += query_response.all_alleles_count
                     internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
-                    results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
+
+                    if internal_id not in found:
+                        results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
+                        found.add(internal_id)
 
     if requestedGranularity == 'boolean':
         response = responses.get_boolean_response(exists=exists)

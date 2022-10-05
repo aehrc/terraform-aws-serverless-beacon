@@ -27,7 +27,7 @@ def lambda_handler(event, context):
         errors = []
         
         for error in sorted(validator.iter_errors(body_dict), key=lambda e: e.path):
-            error_message = f'{error.message}'
+            error_message = f'{error.message} '
             for part in list(error.path):
                 error_message += f'/{part}'
             errors.append(error_message)
