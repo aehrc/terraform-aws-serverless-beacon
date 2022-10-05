@@ -92,6 +92,34 @@ terraform plan # should finish without errors
 terraform apply
 ```
 
+## Use as a module
+
+Your beacon deployment could be a part of a larger program with a front-end and other services. In that case, on the parent folder that the repo folder resides, create a `main.tf` file.
+```bash
+# main.tf
+
+provider "aws" {
+    # aws region
+    region = "REGION"
+}
+
+module "serverless-beacon" {
+    # repo folder
+    source = "./terraform-aws-serverless-beacon"
+    beacon-id = "au.csiro-serverless.beacon"
+    # bucket prefixes
+    variants-bucket-prefix = "sbeacon-"
+    metadata-bucket-prefix = "sbeacon-metadata-"
+    lambda-layers-bucket-prefix = "sbeacon-lambda-layers-"
+    # beacon variables
+    beacon-name = ""
+    organisation-id = ""
+    organisation-name = ""
+    # aws region
+    region = "REGION"
+}
+
+``` 
 ## Development
 
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands. Once the decision to use the library is finalised update the `init.sh` script to automate the process.
@@ -136,41 +164,3 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
 
-## Implemented Endpoints
-
-### Variant searching
-
-* GET/POST `/g_variants` - variant querying
-* GET/POST `/g_variants/{id}` - Search for unique variants 
-* GET/POST `/g_variants/{id}/biosamples` - Biosamples having the unique variant
-* GET/POST `/g_variants/{id}/individuals` - Individuals having the unique variant
-
-### Generic Endpoints
-* GET/POST `/` or `/info` - get beacon information
-* GET/POST `/map` - get beacon map
-* GET/POST `/filtering_terms` - get ontology terms
-* GET/POST `/entry_types` - get types returned by the beacon
-
-### In-progress
-
-* Individuals
-* Biosamples
-
-<!-- under development -->
-
-<!-- ## Known Issues
-##### Variants may not be found if the reference sequence contains a padding base
-For example if a deletion A > . in position 5 (1 based), is searched for, it is
-represented in a vcf as eg 4 GA G and will not be discovered. It will be
-discovered if it is queried as GA > G in position 4.
-
-## To do
-##### Implement general security for registered and controlled datasets
-* Allow the security level to be set on a dataset
-* Implement OAuth2 for dataset access
-##### Implement better frequency calculations for distributed datasets
-If a vcf does not represent a variant, no calls are added for the purposes of
-calculating allele frequency. This means that if there are multiple
-single-sample vcfs, each hit allele will ignore any samples that don't show the
-variant, resulting in frequencies calculated using only heterozygotes and
-homozygotes for the alternate allele. -->
