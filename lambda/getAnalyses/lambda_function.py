@@ -1,46 +1,54 @@
 import json
-import os
 
-from apiutils.api_response import bundle_response
-import apiutils.responses as  responses
-import apiutils.entries as entries
+from jsonschema import Draft202012Validator
+
+from apiutils.api_response import bad_request
+from route_analyses import route as route_analyses
+from route_analyses_filtering_terms import route as route_analyses_filtering_terms
+from route_analyses_id import route as route_analyses_id
+from route_analyses_id_g_variants import route as route_analyses_id_g_variants
 
 
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-
-
-def get_analyses(event):
-    print(event)
-    response = responses.result_sets_response
-    # response = responses.counts_response
-    # response = responses.boolean_response
-
-    return bundle_response(200, response)
+schemaRequestBody = json.load(open('./schemas/requestBody.json'))
+schemaVariants = json.load(open('./schemas/gVariantsRequestParameters.json'))
 
 
 def lambda_handler(event, context):
-    if (event['requestContext'] == 'GET'):
-        apiVersion = event['queryStringParameters'].get("apiVersion", None)
-        requestedSchemas = event['queryStringParameters'].get("requestedSchemas", None)
-        pagination = event['queryStringParameters'].get("pagination", None)
-        requestedGranularity = event['queryStringParameters'].get("requestedGranularity", None)
-    if (event['requestContext'] == 'POST'):
-        apiVersion = event['body'].get("apiVersion", None)
-        requestedSchemas = event['body'].get("requestedSchemas", None)
-        pagination = event['body'].get("pagination", None)
-        requestedGranularity = event['body'].get("requestedGranularity", None)
-
     print('Event Received: {}'.format(json.dumps(event)))
 
-    if event['resource'] == '/analyses/{id}/g_variants':
-        entry = responses.result_sets_response
-        entry['response']['resultSets'][0]['results'] = [entries.variant_entry]
-        response = bundle_response(200, entry)
-    else:
-        entry = responses.result_sets_response
-        entry['response']['resultSets'][0]['results'] = [entries.analysis_entry]
-        response = bundle_response(200, entry)
+    if event['httpMethod'] == 'POST':
+        try:
+            body_dict = json.loads(event.get('body') or '{}')
+        except ValueError:
+            return bad_request(errorMessage='Error parsing request body, Expected JSON.')
+        
+        if event['resource'] == '/analyses/{id}/g_variants':
+            schemaRequestBody['properties']['query']['properties']['requestParameters'] = schemaVariants
+        
+        validator = Draft202012Validator(schemaRequestBody)
+        errors = []
+        
+        for error in sorted(validator.iter_errors(body_dict), key=lambda e: e.path):
+            error_message = f'{error.message} '
+            for part in list(error.path):
+                error_message += f'/{part}'
+            errors.append(error_message)
 
-    print('Returning Response: {}'.format(json.dumps(response)))
-    return response
+        if errors:
+            return bad_request(errorMessage=', '.join(errors))
+
+    if event["resource"] == "/analyses":
+        return route_analyses(event)
+
+    elif event['resource'] == '/analyses/filtering_terms':
+        return route_analyses_filtering_terms(event)
+
+    elif event['resource'] == '/analyses/{id}':
+        return route_analyses_id(event)
+
+    elif event['resource'] == '/analyses/{id}/g_variants':
+        return route_analyses_id_g_variants(event)
+
+
+if __name__ == '__main__':
+    pass

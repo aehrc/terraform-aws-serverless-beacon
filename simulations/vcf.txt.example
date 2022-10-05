@@ -1,0 +1,4 @@
+s3://mybucket/myvariants1.vcf.gz
+s3://mybucket/myvariants2.vcf.gz
+s3://mybucket/myvariants3.vcf.gz
+s3://mybucket/myvariants4.1.vcf.gz s3://mybucket/myvariants4.2.vcf.gz

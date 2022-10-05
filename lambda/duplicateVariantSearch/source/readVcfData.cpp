@@ -1,6 +1,6 @@
 #include "readVcfData.hpp"
 
-Aws::Vector<Aws::String> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, Aws::S3::S3Client &client, uint64_t rangeStart, uint64_t rangeEnd) {
+Aws::Vector<Aws::String> ReadVcfData::getVcfData(Aws::String bucket, Aws::String targetFilepath, uint64_t rangeStart, uint64_t rangeEnd) {
     size_t bufferPos = 0;
     size_t dataLength = 0;
     char streamBuffer[BUFFER_SIZE];
@@ -60,7 +60,7 @@ bool ReadVcfData::checkForAvailableData(size_t bytesNeeded, size_t &bufferPos, g
     if (!inputGzip.hasMoreData()) {
         return false;
     }
-    dataLength = inputGzip.proccesData(bufferPos, dataLength);
+    dataLength = inputGzip.proccesData(static_cast<unsigned int>(bufferPos), static_cast<unsigned int>(dataLength));
 
     if (dataLength > 0) {
         bufferPos = 0;

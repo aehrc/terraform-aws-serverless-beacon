@@ -19,3 +19,7 @@ libraries
 layers/python_libraries/python
 layers/binaries/bin/*
 layers/binaries/lib/*
+
+# simulation files
+vcf.txt
+tmp

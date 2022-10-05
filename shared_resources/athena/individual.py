@@ -21,7 +21,8 @@ class Individual(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
-        'sampleName',
+        '_datasetId',
+        '_cohortId',
         'diseases',
         'ethnicity',
         'exposures',
@@ -40,9 +41,9 @@ class Individual(jsons.JsonSerializable, AthenaModel):
     def __init__(
                 self,
                 *,
-                id,
-                datasetId,
-                sampleName,
+                id='',
+                datasetId='',
+                cohortId='',
                 diseases=[],
                 ethnicity={},
                 exposures=[],
@@ -57,8 +58,8 @@ class Individual(jsons.JsonSerializable, AthenaModel):
                 treatments=[]
             ):
         self.id = id
-        self.datasetId = datasetId
-        self.sampleName = sampleName
+        self._datasetId = datasetId
+        self._cohortId = cohortId
         self.diseases = diseases
         self.ethnicity = ethnicity
         self.exposures = exposures
@@ -72,18 +73,22 @@ class Individual(jsons.JsonSerializable, AthenaModel):
         self.sex = sex
         self.treatments = treatments
 
+
+    def __eq__(self, other):
+        return self.id == other.id
     
+
     @classmethod
     def parse_array(cls, array):
         individuals = []
         var_list = list()
-        case_map = { k.lower(): k for k in Individual(id='', datasetId='', sampleName='').__dict__.keys() }
+        case_map = { k.lower(): k for k in Individual().__dict__.keys() }
 
         for attribute in array[0]['Data']:
             var_list.append(attribute['VarCharValue'])
 
         for item in array[1:]:
-            individual = Individual(id='', datasetId='', sampleName='')
+            individual = Individual()
 
             for attr, val in zip(var_list, item['Data']):
                 try:
@@ -98,18 +103,21 @@ class Individual(jsons.JsonSerializable, AthenaModel):
 
     @classmethod
     def upload_array(cls, array):
+        if len(array) == 0:
+            return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        partition = f'datasetid={array[0].datasetId}'
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f'{array[0].datasetId}-individuals'
         
-        with sopen(f's3://{METADATA_BUCKET}/individuals/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/individuals/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[c.lower() for c in cls._table_columns[2:]]) as writer:
+                bloom_filter_columns=bloom_filter_columns) as writer:
                 for individual in array:
+                    print(individual.__dict__)
                     row = tuple(
                         individual.__dict__[k] 
                         if type(individual.__dict__[k]) == str

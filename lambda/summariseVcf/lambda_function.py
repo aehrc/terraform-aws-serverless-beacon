@@ -15,7 +15,7 @@ COUNTS = [
 
 SUMMARISE_SLICE_SNS_TOPIC_ARN = os.environ['SUMMARISE_SLICE_SNS_TOPIC_ARN']
 VARIANTS_BUCKET = os.environ['VARIANTS_BUCKET']
-VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
+VCF_SUMMARIES_TABLE_NAME = os.environ['DYNAMO_VCF_SUMMARIES_TABLE']
 
 # Time/Cost estimation variables
 MIN_SS_TIME = 0.1  # minimum time summariseSlice will run (s)
@@ -302,3 +302,7 @@ def lambda_handler(event, context):
     # recevies the path of the vcf file
     location = event['Records'][0]['Sns']['Message']
     summarise_vcf(location)
+
+
+if __name__ == '__main__':
+    pass

@@ -1,38 +1,45 @@
 import json
 import os
-import pickle
 
-from smart_open import open as sopen 
-
-from apiutils.api_response import bundle_response
+from athena.common import run_custom_query
+from apiutils.api_response import bad_request, bundle_response
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
+TERMS_TABLE = os.environ['TERMS_TABLE']
 
 
-def get_entry_types(terms):
+def get_terms(terms, skip, limit):
     response =     {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {},
         "meta": {
             "apiVersion": BEACON_API_VERSION,
             "beaconId": BEACON_ID,
-            "returnedSchemas": []
+            "returnedSchemas": [],
+            "receivedRequestSummary": {
+                "apiVersion": "",  # TODO
+                "requestedSchemas": [],  # TODO
+                "pagination": {
+                    "skip": skip,
+                    "limit": limit,
+                },
+                "requestedGranularity": "record"  # TODO
+            }
         },
         "response": {
             "filteringTerms": terms,
-            "resources": [
-                {
-                    "id": "NA",
-                    "iriPrefix": "NA",
-                    "name": "NA",
-                    "namespacePrefix": "NA",
-                    "url": "NA",
-                    "version": "TBD"
-                }
-            ]
+            # "resources": [
+            #     {
+            #         "id": "NA",
+            #         "iriPrefix": "NA",
+            #         "name": "NA",
+            #         "namespacePrefix": "NA",
+            #         "url": "NA",
+            #         "version": "TBD"
+            #     }
+            # ]
         }
     }
 
@@ -40,18 +47,42 @@ def get_entry_types(terms):
 
 
 def lambda_handler(event, context):
-    with sopen(f's3://{METADATA_BUCKET}/indexes/filtering_terms.pkl', 'rb') as fi:
-        data = pickle.load(fi)
+    print('event received', event)
+    if event['httpMethod'] == 'GET':
+        params = event['queryStringParameters'] or dict()
+        skip = params.get("skip", 0)
+        limit = params.get("limit", 100)
+    else:
+        return bad_request(apiVersion=BEACON_API_VERSION, errorMessage='Only GET requests are serverd')
     
-        response = get_entry_types(
-            sorted(
-                [term for term in data],
-                key=lambda term: term['id']
-            )
-        )
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return response
+    query = f'''
+    SELECT DISTINCT term, label, type 
+    FROM "{TERMS_TABLE}"
+    OFFSET {skip}
+    LIMIT {limit};
+    '''
+
+    print('Performing query \n', query)
+        
+    rows = run_custom_query(query)
+    filteringTerms = []
+    for row in rows:
+        term, label, typ = row['Data']
+        term, label, typ = term['VarCharValue'], label.get('VarCharValue'), typ.get('VarCharValue')
+        filteringTerms.append({
+            "id": term,
+            "label": label,
+            "type": typ
+        })
+
+    response = get_terms(
+        sorted(filteringTerms, key=lambda x: x['id']),
+        skip=skip,
+        limit=limit
+    )
+    print('Returning Response: {}'.format(json.dumps(response)))
+    return response
 
 
 if __name__ == '__main__':
-    lambda_handler({}, {})
+    pass

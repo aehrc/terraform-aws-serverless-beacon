@@ -1,13 +1,39 @@
 import json
 
+from jsonschema import Draft202012Validator
+
+from apiutils.api_response import bad_request
 from route_g_variants import route as route_g_variants
 from route_g_variants_id import route as route_g_variants_id
 from route_g_variants_id_individuals import route as route_g_variants_id_individuals
 from route_g_variants_id_biosamples import route as route_g_variants_id_biosamples
 
 
+schemaRequestBody = json.load(open('./schemas/requestBody.json'))
+schemaVariants = json.load(open('./schemas/gVariantsRequestParameters.json'))
+schemaRequestBody['properties']['query']['properties']['requestParameters'] = schemaVariants
+
+
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+
+    if event['httpMethod'] == 'POST':
+        try:
+            body_dict = json.loads(event.get('body') or '{}')
+        except ValueError:
+            return bad_request(errorMessage='Error parsing request body, Expected JSON.')
+
+        validator = Draft202012Validator(schemaRequestBody)
+        errors = []
+        
+        for error in sorted(validator.iter_errors(body_dict), key=lambda e: e.path):
+            error_message = f'{error.message} '
+            for part in list(error.path):
+                error_message += f'/{part}'
+            errors.append(error_message)
+
+        if errors:
+            return bad_request(errorMessage=', '.join(errors))
 
     if event["resource"] == "/g_variants":
         return route_g_variants(event)
@@ -23,72 +49,4 @@ def lambda_handler(event, context):
 
 
 if __name__ == '__main__':
-    # event = {
-    #     "resource": "/g_variants",
-    #     "path": "/g_variants",
-    #     "httpMethod": "POST",
-    #     "body": json.dumps({
-    #         "query": {
-    #             "requestParameters": {
-    #             "assemblyId": "GRCH38",
-    #             "includeResultsetResponses": "HIT",
-    #             "start": [
-    #                 10000000,
-    #                 10001000
-    #             ],
-    #             "end": [
-    #                 10000000,
-    #                 10001000
-    #             ],
-    #             "referenceBases": "A",
-    #             "referenceName": "5",
-    #             "alternateBases": "G"
-    #             },
-    #             "requestedGranularity": "record"
-    #         }
-    #     })
-    # }
-
-    # event = {
-    #     "resource": "/g_variants/{id}",
-    #     "path": "/g_variants/{id}",
-    #     "httpMethod": "GET",
-    #     "pathParameters": {
-    #         "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
-    #     },
-    #     "queryStringParameters": {
-    #         "requestedGranularity": "record"
-    #     },
-    #     "body": json.dumps({
-    #     })
-    # }
-
-    event = {
-        "resource": "/g_variants/{id}/individuals",
-        "path": "/g_variants/{id}/individuals",
-        "httpMethod": "GET",
-        "pathParameters": {
-            "id": "R1JDSDM4CTUJMTAwMDA2NTgJQQlH"
-        },
-        "queryStringParameters": {
-            "requestedGranularity": "record"
-        },
-        "body": json.dumps({
-        })
-    }
-
-    # event = {
-    #     "resource": "/g_variants/{id}/biosamples",
-    #     "path": "/g_variants/{id}/biosamples",
-    #     "httpMethod": "GET",
-    #     "pathParameters": {
-    #         "id": "R1JDSDM4CTUJMTAwMDAzMTkJQQlU"
-    #     },
-    #     "queryStringParameters": {
-    #         "requestedGranularity": "record"
-    #     },
-    #     "body": json.dumps({
-    #     })
-    # }
-
-    print(lambda_handler(event, dict()))
+    pass

@@ -15,7 +15,7 @@ resource aws_lambda_permission APISubmitDataset {
 resource aws_lambda_permission SNSSummariseDataset {
   statement_id = "AllowSNSSummariseDatasetInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-summariseDataset.function_name
+  function_name = module.lambda-summariseDataset.lambda_function_arn
   principal = "sns.amazonaws.com"
   source_arn = aws_sns_topic.summariseDataset.arn
 }
@@ -26,7 +26,7 @@ resource aws_lambda_permission SNSSummariseDataset {
 resource aws_lambda_permission SNSSummariseVcf {
   statement_id = "AllowSNSSummariseVcfInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-summariseVcf.function_name
+  function_name = module.lambda-summariseVcf.lambda_function_arn
   principal = "sns.amazonaws.com"
   source_arn = aws_sns_topic.summariseVcf.arn
 }
@@ -37,7 +37,7 @@ resource aws_lambda_permission SNSSummariseVcf {
 resource aws_lambda_permission SNSSummariseSlice {
   statement_id = "AllowSNSSummariseSliceInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-summariseSlice.function_name
+  function_name = module.lambda-summariseSlice.lambda_function_arn
   principal = "sns.amazonaws.com"
   source_arn = aws_sns_topic.summariseSlice.arn
 }
@@ -48,18 +48,8 @@ resource aws_lambda_permission SNSSummariseSlice {
 resource aws_lambda_permission SNSduplicateVariantSearch {
   statement_id = "AllowSNSduplicateVariantSearchInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-duplicateVariantSearch.function_name
+  function_name = module.lambda-duplicateVariantSearch.lambda_function_arn
   principal = "sns.amazonaws.com"
   source_arn = aws_sns_topic.duplicateVariantSearch.arn
 }
 
-#
-# performQuery Lambda Function
-#
-resource aws_lambda_permission SplitQueryLambdaPerformQuery {
-  statement_id = "AllowSplitQueryLambdaPerformQueryInvoke"
-  action = "lambda:InvokeFunction"
-  function_name = module.lambda-performQuery.function_name
-  principal = "lambda.amazonaws.com"
-  source_arn = module.lambda-splitQuery.function_arn
-}

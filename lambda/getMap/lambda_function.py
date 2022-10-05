@@ -1,7 +1,10 @@
 import json
-import os
 
 from apiutils.api_response import bundle_response
+
+
+BEACON_URL = 'https://api.beacon.csiro.au'
+MODEL_URL = 'https://github.com/ga4gh-beacon/beacon-v2/tree/main/models/json/beacon-v2-default-model'
 
 
 def get_config():
@@ -19,162 +22,166 @@ def get_config():
             ]
         },
         "response": {
-            "$schema": "../../configuration/beaconMapSchema.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
             "endpointSets": {
                 "analysis": {
                     "endpoints": {
                         "genomicVariant": {
                             "returnedEntryType": "genomicVariant",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/analyses/{id}/g_variants"
+                            "url": f"{BEACON_URL}/analyses/{{id}}/g_variants"
                         }
                     },
                     "entryType": "analysis",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/analyses/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/analyses",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/analyses/{id}"
+                    "filteringTermsUrl": f"{BEACON_URL}/analyses/filtering_terms",
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/analyses/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/analyses",
+                    "singleEntryUrl": f"{BEACON_URL}/analyses/{{id}}"
                 },
                 "biosample": {
                     "endpoints": {
                         "analysis": {
                             "returnedEntryType": "analysis",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/biosamples/{id}/analyses"
+                            "url": f"{BEACON_URL}/biosamples/{{id}}/analyses"
                         },
                         "genomicVariant": {
                             "returnedEntryType": "genomicVariant",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/biosamples/{id}/g_variants"
+                            "url": f"{BEACON_URL}/biosamples/{{id}}/g_variants"
                         },
                         "run": {
                             "returnedEntryType": "run",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/biosamples/{id}/runs"
+                            "url": f"{BEACON_URL}/biosamples/{{id}}/runs"
                         }
                     },
                     "entryType": "biosample",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/biosamples/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/biosamples",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/biosamples/{id}"
+                    "filteringTermsUrl": f"{BEACON_URL}/biosamples/filtering_terms",
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/biosamples/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/biosamples",
+                    "singleEntryUrl": f"{BEACON_URL}/biosamples/{{id}}"
                 },
                 "cohort": {
                     "endpoints": {
                         "analyses": {
                             "returnedEntryType": "analysis",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}/analyses"
+                            "url": f"{BEACON_URL}/cohorts/{{id}}/analyses"
                         },
                         "biosample": {
                             "returnedEntryType": "biosample",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}/biosamples"
+                            "url": f"{BEACON_URL}/cohorts/{{id}}/biosamples"
                         },
                         "genomicVariant": {
                             "returnedEntryType": "genomicVariant",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}/g_variants"
+                            "url": f"{BEACON_URL}/cohorts/{{id}}/g_variants"
                         },
                         "individual": {
                             "returnedEntryType": "individual",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}/individuals"
+                            "url": f"{BEACON_URL}/cohorts/{{id}}/individuals"
                         },
                         "runs": {
                             "returnedEntryType": "run",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}/runs"
+                            "url": f"{BEACON_URL}/cohorts/{{id}}/runs"
                         }
                     },
                     "entryType": "cohort",
-                    "filteringTermsUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}/filtering_terms",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/cohorts/{id}"
+                    "filteringTermsUrl": f"{BEACON_URL}/cohorts/{{id}}/filtering_terms",
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/cohorts/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/cohorts",
+                    "singleEntryUrl": f"{BEACON_URL}/cohorts/{{id}}"
                 },
                 "dataset": {
                     "endpoints": {
                         "analyses": {
                             "returnedEntryType": "analysis",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}/analyses"
+                            "url": f"{BEACON_URL}/datasets/{{id}}/analyses"
                         },
                         "biosample": {
                             "returnedEntryType": "biosample",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}/biosamples"
+                            "url": f"{BEACON_URL}/datasets/{{id}}/biosamples"
                         },
                         "genomicVariant": {
                             "returnedEntryType": "genomicVariant",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}/g_variants"
+                            "url": f"{BEACON_URL}/datasets/{{id}}/g_variants"
                         },
                         "individual": {
                             "returnedEntryType": "individual",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}/individuals"
+                            "url": f"{BEACON_URL}/datasets/{{id}}/individuals"
                         },
                         "runs": {
                             "returnedEntryType": "run",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}/runs"
+                            "url": f"{BEACON_URL}/datasets/{{id}}/runs"
                         }
                     },
                     "entryType": "dataset",
-                    "filteringTermsUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}/filtering_terms",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/datasets/{id}"
+                    "filteringTermsUrl": f"{BEACON_URL}/datasets/{{id}}/filtering_terms",
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/datasets/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/datasets",
+                    "singleEntryUrl": f"{BEACON_URL}/datasets/{{id}}"
                 },
                 "genomicVariant": {
                     "endpoints": {
                         "analyses": {
                             "returnedEntryType": "analysis",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/g_variants/{id}/analyses"
+                            "url": f"{BEACON_URL}/g_variants/{{id}}/analyses"
                         },
                         "biosample": {
                             "returnedEntryType": "biosample",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/g_variants/{id}/biosamples"
+                            "url": f"{BEACON_URL}/g_variants/{{id}}/biosamples"
                         },
                         "individual": {
                             "returnedEntryType": "individual",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/g_variants/{id}/individuals"
+                            "url": f"{BEACON_URL}/g_variants/{{id}}/individuals"
                         },
                         "runs": {
                             "returnedEntryType": "run",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/g_variants/{id}/runs"
+                            "url": f"{BEACON_URL}/g_variants/{{id}}/runs"
                         }
                     },
                     "entryType": "genomicVariant",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/genomicVariations/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/g_variants",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/g_variants/{id}"
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/genomicVariations/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/g_variants",
+                    "singleEntryUrl": f"{BEACON_URL}/g_variants/{{id}}"
                 },
                 "individual": {
                     "endpoints": {
                         "analyses": {
                             "returnedEntryType": "analysis",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/{id}/analyses"
+                            "url": f"{BEACON_URL}/individuals/{{id}}/analyses"
                         },
                         "biosample": {
                             "returnedEntryType": "biosample",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/{id}/biosamples"
+                            "url": f"{BEACON_URL}/individuals/{{id}}/biosamples"
                         },
                         "genomicVariant": {
                             "returnedEntryType": "genomicVariant",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/{id}/g_variants"
+                            "url": f"{BEACON_URL}/individuals/{{id}}/g_variants"
                         },
                         "runs": {
                             "returnedEntryType": "run",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/{id}/runs"
+                            "url": f"{BEACON_URL}/individuals/{{id}}/runs"
                         }
                     },
                     "entryType": "individual",
-                    "filteringTermsUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/{id}/filtering_terms",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/individuals/{id}"
+                    "filteringTermsUrl": f"{BEACON_URL}/individuals/filtering_terms",
+                    # "filteringTermsUrl": f"{BEACON_URL}/individuals/{{id}}/filtering_terms",
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/individuals/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/individuals",
+                    "singleEntryUrl": f"{BEACON_URL}/individuals/{{id}}"
                 },
                 "run": {
                     "endpoints": {
                         "analysis": {
                             "returnedEntryType": "analysis",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/runs/{id}/analyses"
+                            "url": f"{BEACON_URL}/runs/{{id}}/analyses"
                         },
                         "genomicVariant": {
                             "returnedEntryType": "genomicVariant",
-                            "url": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/runs/{id}/g_variants"
+                            "url": f"{BEACON_URL}/runs/{{id}}/g_variants"
                         }
                     },
                     "entryType": "run",
-                    "openAPIEndpointsDefinition": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/runs/endpoints.json",
-                    "rootUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/runs",
-                    "singleEntryUrl": "https://ip35zfam3d.execute-api.us-east-1.amazonaws.com/prod/runs/{id}"
+                    "filteringTermsUrl": f"{BEACON_URL}/runs/filtering_terms",
+                    "openAPIEndpointsDefinition": f"{MODEL_URL}/runs/endpoints.json",
+                    "rootUrl": f"{BEACON_URL}/runs",
+                    "singleEntryUrl": f"{BEACON_URL}/runs/{{id}}"
                 }
             }
         }

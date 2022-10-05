@@ -25,9 +25,15 @@ result_sets_response = {
         ],
         "returnedGranularity": "record",
         "receivedRequestSummary": {
-            "apiVersion": "get from request",  # TODO
+            "apiVersion": "",  # TODO
             "requestedSchemas": [],  # TODO
-            "pagination": {},  # TODO
+            "pagination": {
+                "currentPage": "",
+                "limit": "",
+                "nextPage": "",
+                "previousPage": "",
+                "skip": ""
+            },
             "requestedGranularity": "record"  # TODO
         }
     },
@@ -77,7 +83,7 @@ counts_response = {
         ],
         "returnedGranularity": "count",
         "receivedRequestSummary": {
-            "apiVersion": "get from request",  # TODO
+            "apiVersion": "",  # TODO
             "requestedSchemas": [],  # TODO
             "pagination": {},  # TODO
             "requestedGranularity": "record"  # TODO
@@ -106,7 +112,7 @@ boolean_response = {
         ],
         "returnedGranularity": "boolean",
         "receivedRequestSummary": {
-            "apiVersion": "get from request",  # TODO
+            "apiVersion": "",  # TODO
             "requestedSchemas": [],  # TODO
             "pagination": {},  # TODO
             "requestedGranularity": "boolean"  # TODO
@@ -119,6 +125,21 @@ boolean_response = {
 
 
 # Helpers start
+
+
+def get_pagination_object(skip, limit):
+    return {
+        "limit": limit,
+        "skip": skip
+    }
+
+
+def get_cursor_object(currentPage, nextPage, previousPage):
+    return {
+        "currentPage": currentPage,
+        "nextPage": nextPage,
+        "previousPage": previousPage,
+    }
 
 
 def get_result_sets_response(*, 
@@ -173,12 +194,11 @@ def get_counts_response(*,
         reqAPI=BEACON_API_VERSION, 
         reqGranularity='count',
         exists=False,
-        count=0):
+        count=0,
+        info={}):
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": {
-
-        },
+        "info": info,
         "meta": {
             "beaconId": BEACON_ID,
             "apiVersion": BEACON_API_VERSION,
@@ -206,12 +226,11 @@ def get_counts_response(*,
 def get_boolean_response(*, 
         reqAPI=BEACON_API_VERSION, 
         reqGranularity='boolean',
-        exists=False):
+        exists=False,
+        info={}):
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": {
-
-        },
+        "info": info,
         "meta": {
             "beaconId": BEACON_ID,
             "apiVersion": BEACON_API_VERSION,

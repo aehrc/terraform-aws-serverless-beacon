@@ -1,16 +1,19 @@
-from email.policy import default
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from dateutil import parser
 
+import boto3
 from pynamodb.models import Model
 from pynamodb.indexes import LocalSecondaryIndex, AllProjection
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, MapAttribute
+    UnicodeAttribute, NumberAttribute, MapAttribute, TTLAttribute, BooleanAttribute, UTCDateTimeAttribute
 )
 
 
-QUERIES_TABLE_NAME = os.environ['QUERIES_TABLE']
-VARIANT_QUERY_RESPONSES_TABLE_NAME = os.environ['VARIANT_QUERY_RESPONSES_TABLE']
+QUERIES_TABLE_NAME = os.environ['DYNAMO_VARIANT_QUERIES_TABLE']
+VARIANT_QUERY_RESPONSES_TABLE_NAME = os.environ['DYNAMO_VARIANT_QUERY_RESPONSES_TABLE']
+SESSION = boto3.session.Session()
+REGION = SESSION.region_name
 
 
 def get_current_time_utc():
@@ -26,11 +29,16 @@ class S3Location(MapAttribute):
 class VariantQuery(Model):
     class Meta:
         table_name = QUERIES_TABLE_NAME
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True, default='test')
     responsesCounter = NumberAttribute(default=0)
     responses = NumberAttribute(default=0)
     fanOut = NumberAttribute(default=0)
+    startTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc())
+    endTime = UTCDateTimeAttribute(null=True)
+    elapsedTime = NumberAttribute(default_for_new=-1)
+    timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
 
 
     # atomically increment
@@ -46,6 +54,8 @@ class VariantQuery(Model):
         self.update(actions=[
             VariantQuery.responses.set(VariantQuery.responses + 1),
             VariantQuery.fanOut.set(VariantQuery.fanOut - 1),
+            VariantQuery.endTime.set(get_current_time_utc()),
+            VariantQuery.elapsedTime.set((get_current_time_utc() - self.startTime).total_seconds()),
         ])
 
 
@@ -54,6 +64,7 @@ class VariantResponseIndex(LocalSecondaryIndex):
         index_name = 'responseNumber_index'
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True)
     responseNumber = NumberAttribute(range_key=True)
@@ -63,24 +74,16 @@ class VariantResponseIndex(LocalSecondaryIndex):
 class VariantResponse(Model):
     class Meta:
         table_name = VARIANT_QUERY_RESPONSES_TABLE_NAME
+        region = REGION
 
     id = UnicodeAttribute(hash_key=True, default='test')
     responseNumber = NumberAttribute(default=0)
-    responseLocation = S3Location()
+    responseLocation = S3Location(null=True)
     variantResponseIndex = VariantResponseIndex()
+    checkS3 = BooleanAttribute()
+    result = UnicodeAttribute(null=True)
+    timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
 
 
 if __name__ == '__main__':
-    q = VariantQuery()
-    q.save()
-
-    print(q.id, q.responses)
-    q.markFinished()
-    print(q.id, q.responses)
-
-    vr = VariantResponse()
-    rl = S3Location()
-    rl.bucket = 'mybucket'
-    rl.key = 'mykey'
-    vr.responseLocation = rl
-    vr.save()
+    pass

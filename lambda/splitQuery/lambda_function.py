@@ -38,8 +38,8 @@ def split_query(split_payload: SplitQueryPayload):
     # to find HITs or ALL we must analyse all vcfs
     check_all = split_payload.include_datasets in ('HIT', 'ALL')
     # create an id for each vcf group for identification
-    vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(split_payload.vcf_groups) for loc in grp}
-    vcf_group_to_file_map = {idx: loc for idx, grp in enumerate(split_payload.vcf_groups) for loc in grp}
+    # vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(split_payload.vcf_groups) for loc in grp}
+    # vcf_group_to_file_map = {idx: loc for idx, grp in enumerate(split_payload.vcf_groups) for loc in grp}
 
     threads = []
     split_start = split_payload.region_start

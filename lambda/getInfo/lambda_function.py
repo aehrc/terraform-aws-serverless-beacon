@@ -10,7 +10,6 @@ BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 VERSION = os.environ['VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 BEACON_NAME = os.environ['BEACON_NAME']
-DATASETS_TABLE = os.environ['DATASETS_TABLE']
 ORGANISATION_ID = os.environ['ORGANISATION_ID']
 ORGANISATION_NAME = os.environ['ORGANISATION_NAME']
 
@@ -37,11 +36,6 @@ def get_info():
             "environment": "dev",
             "id": BEACON_ID,
             "info": {
-                "additionalInfoKey1": "additionalInfoValue1",
-                "additionalInfoKey2": [
-                    "additionalInfoValue2",
-                    "additionalInfoValue3"
-                ]
             },
             "name":BEACON_NAME,
             "organization": {
@@ -61,35 +55,6 @@ def get_info():
     }
 
     return bundle_response(200, response)
-
-# keeping for other API updates
-# return {
-#     "id": BEACON_ID,
-#     "name": BEACON_NAME,
-#     "apiVersion": BEACON_API_VERSION,
-#     "organization": {
-#         "id": ORGANISATION_ID,
-#         "name": ORGANISATION_NAME
-#     },
-#     "datasets": [
-#         {
-#             "id": item['id']['S'],
-#             "name": item['name']['S'],
-#             "assemblyId": item['assemblyId']['S'],
-#             "createDateTime": item['createDateTime']['S'],
-#             "updateDateTime": item['updateDateTime']['S'],
-#             "description": item.get('description', {}).get('S') or None,
-#             "version": item.get('version', {}).get('S') or None,
-#             "variantCount": item.get('variantCount', {}).get('N') or None,
-#             "callCount": item.get('callCount', {}).get('N') or None,
-#             "sampleCount": item.get('sampleCount', {}).get('N') or None,
-#             "info": item.get('info', {}).get('L') or None,
-#             "dataUseConditions": item.get('dataUseConditions', {}
-#                                           ).get('M') or None,
-#             "externalUrl": item.get('externalUrl', {}).get('S') or None,
-#         } for item in items
-#     ]
-# }
 
 
 def lambda_handler(event, context):

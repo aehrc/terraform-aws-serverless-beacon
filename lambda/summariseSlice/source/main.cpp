@@ -6,6 +6,7 @@
 #include <regex>
 #include <generalutils.hpp>
 #include <gzip.hpp>
+#include <awsutils.hpp>
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -22,7 +23,6 @@
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/sns/SNSClient.h>
 #include <aws/sns/model/PublishRequest.h>
-#include <aws/s3/model/PutObjectRequest.h>
 
 #include "fast_atoi.h"
 #include "stopwatch.h"
@@ -33,9 +33,10 @@
 // #define INCLUDE_STOP_WATCH
 // #define DEBUG_ON
 
-const char *DATASETS_TABLE = getenv("DATASETS_TABLE");
+const char *DATASETS_TABLE = getenv("DYNAMO_DATASETS_TABLE");
 const char *ASSEMBLY_GSI = getenv("ASSEMBLY_GSI");
 const char *SUMMARISE_DATASET_SNS_TOPIC_ARN = getenv("SUMMARISE_DATASET_SNS_TOPIC_ARN");
+const char *VCF_SUMMARIES_TABLE = getenv("DYNAMO_VCF_SUMMARIES_TABLE");
 
 using namespace std;
 
@@ -191,12 +192,6 @@ Aws::Vector<Aws::String> getAffectedDatasets(Aws::DynamoDB::DynamoDBClient const
     } while (true);
 }
 
-Aws::String getMessageString(aws::lambda_runtime::invocation_request const &req)
-{
-    Aws::Utils::Json::JsonValue json(req.payload);
-    return json.View().GetArray("Records").GetItem(0).GetObject("Sns").GetString("Message");
-}
-
 const RegionStats getRegionStats(Aws::String location, int64_t virtualStart, int64_t virtualEnd)
 {
     VcfChunk chunk(virtualStart, virtualEnd);
@@ -218,7 +213,7 @@ const RegionStats getRegionStats(Aws::String location, int64_t virtualStart, int
     s.start();
 #endif
     VcfChunkReader vcfChunkReader(bucket, key, chunk);
-    std::cout << "Loaded Reader" << std::endl;
+    std::cout << "Loaded Reader" << std::endl << std::flush;
     writeDataToS3 s3Data = writeDataToS3(location);
     vcfChunkReader.readBlock<true>();
     std::cout << "Read block with " << vcfChunkReader.zStream.total_out << " bytes output." << std::endl;
@@ -365,7 +360,7 @@ Aws::Vector<Aws::String> getDatasetsToUpdate(Aws::DynamoDB::DynamoDBClient const
 bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::String location, int64_t virtualStart, int64_t virtualEnd, RegionStats regionStats)
 {
     Aws::DynamoDB::Model::UpdateItemRequest request;
-    request.SetTableName(getenv("VCF_SUMMARIES_TABLE"));
+    request.SetTableName(VCF_SUMMARIES_TABLE);
     Aws::DynamoDB::Model::AttributeValue keyValue;
     keyValue.SetS(location);
     request.AddKey("vcfLocation", keyValue);
@@ -393,6 +388,8 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::
 
     request.SetExpressionAttributeValues(expressionAttributeValues);
     request.SetReturnValues(Aws::DynamoDB::Model::ReturnValue::UPDATED_NEW);
+
+    cout << request.GetUpdateExpression() << endl;
     do
     {
         std::cout << "Calling dynamodb::UpdateItem with key=\"" << location << "\" and sliceString=\"" << sliceString << "\"" << std::endl;
@@ -442,10 +439,11 @@ bool updateVcfSummary(Aws::DynamoDB::DynamoDBClient const &dynamodbClient, Aws::
 
 static aws::lambda_runtime::invocation_response lambdaHandler(
     aws::lambda_runtime::invocation_request const &req,
+    // string const &req,
     Aws::DynamoDB::DynamoDBClient const &dynamodbClient,
     Aws::SNS::SNSClient const &snsClient)
 {
-    Aws::String messageString = getMessageString(req);
+    Aws::String messageString = awsutils::getMessageString(req);
     std::cout << "Message is: " << messageString << std::endl;
     Aws::Utils::Json::JsonValue message(messageString);
     Aws::Utils::Json::JsonView messageView = message.View();
@@ -488,6 +486,25 @@ int main()
         };
         aws::lambda_runtime::run_handler(handlerFunction);
     }
+
+    // Aws::Client::ClientConfiguration config;
+    // config.region = Aws::Environment::GetEnv("AWS_REGION");
+    // config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
+    // auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
+    // Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
+    // Aws::SNS::SNSClient snsClient(credentialsProvider, config);
+
+    // string req = "{ \
+    //     \"Records\": [{ \
+    //         \"Sns\": {  \
+    //             \"Message\": \
+    //             \"{\
+    //                 \\\"location\\\": \\\"s3://simulationexperiments/test-vcfs/100.chr5.80k-other.vcf.gz\\\", \
+    //                 \\\"virtual_start\\\": 16924, \
+    //                 \\\"virtual_end\\\": 173484736512}\" \
+    //     }}]}";
+    // lambdaHandler(req, dynamodbClient, snsClient);
+
     Aws::ShutdownAPI(options);
     return 0;
 }

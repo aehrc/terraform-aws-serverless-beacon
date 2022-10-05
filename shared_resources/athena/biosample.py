@@ -21,6 +21,8 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
     # for saving to database order matter
     _table_columns = [
         'id',
+        '_datasetId',
+        '_cohortId',
         'individualId',
         'biosampleStatus',
         'collectionDate',
@@ -47,7 +49,8 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 self,
                 *,
                 id='',
-                datasetid='',
+                datasetId='',
+                cohortId='',
                 individualId='',
                 biosampleStatus={},
                 collectionDate=[],
@@ -69,7 +72,8 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                 notes=[]
             ):
         self.id = id
-        self.datasetid = datasetid
+        self._datasetId = datasetId
+        self._cohortId = cohortId
         self.individualId = individualId
         self.biosampleStatus = biosampleStatus
         self.collectionDate = collectionDate
@@ -90,18 +94,22 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         self.info = info
         self.notes = notes
 
-    
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+
     @classmethod
     def parse_array(cls, array):
         biosamples = []
         var_list = list()
-        case_map = { k.lower(): k for k in Biosample(id='', individualId='').__dict__.keys() }
+        case_map = { k.lower(): k for k in Biosample().__dict__.keys() }
 
         for attribute in array[0]['Data']:
             var_list.append(attribute['VarCharValue'])
 
         for item in array[1:]:
-            biosample = Biosample(id='', individualId='')
+            biosample = Biosample()
 
             for attr, val in zip(var_list, item['Data']):
                 try:
@@ -116,17 +124,19 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
 
     @classmethod
     def upload_array(cls, array):
+        if len(array) == 0:
+            return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        partition = f'datasetid={array[0].datasetId}'
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f'{array[0].datasetId}-biosamples'
         
-        with sopen(f's3://{METADATA_BUCKET}/biosamples/{partition}/{key}', 'wb') as s3file:
+        with sopen(f's3://{METADATA_BUCKET}/biosamples/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
                 compression=pyorc.CompressionKind.SNAPPY, 
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=[c.lower() for c in cls._table_columns[2:]]) as writer:
+                bloom_filter_columns=bloom_filter_columns) as writer:
                 for biosample in array:
                     row = tuple(
                         biosample.__dict__[k] 

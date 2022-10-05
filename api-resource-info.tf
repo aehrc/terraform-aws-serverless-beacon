@@ -78,7 +78,7 @@ resource aws_api_gateway_integration info {
   http_method             = aws_api_gateway_method.info.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = module.lambda-getInfo.function_invoke_arn
+  uri                     = module.lambda-getInfo.lambda_function_invoke_arn
 }
 
 resource aws_api_gateway_integration_response info {
@@ -99,7 +99,7 @@ resource aws_api_gateway_integration root-get {
   resource_id = aws_api_gateway_method.root-get.resource_id
   http_method = aws_api_gateway_method.root-get.http_method
   type = "AWS_PROXY"
-  uri = module.lambda-getInfo.function_invoke_arn
+  uri = module.lambda-getInfo.lambda_function_invoke_arn
   integration_http_method = "POST"
 }
 
@@ -120,7 +120,7 @@ resource aws_api_gateway_integration_response root-get {
 resource aws_lambda_permission APIGetInfo {
   statement_id = "AllowAPIGetInfoInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-getInfo.function_name
+  function_name = module.lambda-getInfo.lambda_function_name
   principal = "apigateway.amazonaws.com"
   source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.info.path_part}"
 }
@@ -128,7 +128,7 @@ resource aws_lambda_permission APIGetInfo {
 resource aws_lambda_permission APIGetinfo-root {
   statement_id = "AllowAPIGetinfoRootInvoke"
   action = "lambda:InvokeFunction"
-  function_name = module.lambda-getInfo.function_name
+  function_name = module.lambda-getInfo.lambda_function_name
   principal = "apigateway.amazonaws.com"
   source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/"
 }

@@ -15,4 +15,3 @@ To avoid this you can run `MSCK REPAIR TABLE <table_name>;` from console. This w
 > No caution needed when added data via SQL!
 
 Read more hacks: https://stackoverflow.com/a/58052145/4080504
-

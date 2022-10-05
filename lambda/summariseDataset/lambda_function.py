@@ -6,9 +6,9 @@ import os
 import boto3
 
 
-DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+DATASETS_TABLE_NAME = os.environ['DYNAMO_DATASETS_TABLE']
 SUMMARISE_VCF_SNS_TOPIC_ARN = os.environ['SUMMARISE_VCF_SNS_TOPIC_ARN']
-VCF_SUMMARIES_TABLE_NAME = os.environ['VCF_SUMMARIES_TABLE']
+VCF_SUMMARIES_TABLE_NAME = os.environ['DYNAMO_VCF_SUMMARIES_TABLE']
 
 BATCH_GET_MAX_ITEMS = 100
 
@@ -133,6 +133,7 @@ def summarise_dataset(dataset):
         datasetFilePaths = [out['vcfLocation']['S'] for out in locations_info]
         # start duplicate variant search, once after all updates are done
         # this is only to count the unique variants
+        print('Start duplicate variant seach')
         initDuplicateVariantSearch(dataset, datasetFilePaths)
     else:
         # this will be {':callCount': {'NULL': True}, ':sampleCount': {'NULL': True}}
@@ -164,8 +165,7 @@ def update_dataset(dataset_id, values, new_locations):
                 'S': dataset_id,
             },
         },
-        'UpdateExpression': 'SET ' + ', '.join('{c}=:{c}'.format(c=count)
-                                               for count in COUNTS),
+        'UpdateExpression': 'SET ' + ', '.join(f'{count}=:{count}' for count in COUNTS),
         'ExpressionAttributeValues': values,
     }
     # if new locations are there, put them in the DATASETS_TABLE_NAME
@@ -183,3 +183,7 @@ def lambda_handler(event, context):
     # only dataset id is received
     dataset = event['Records'][0]['Sns']['Message']
     summarise_dataset(dataset)
+
+
+if __name__ == '__main__':
+    pass
