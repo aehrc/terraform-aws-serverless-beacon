@@ -68,10 +68,10 @@ def route(event):
         currentPage = pagination.get("currentPage", None)
         previousPage = pagination.get("previousPage", None)
         nextPage = pagination.get("nextPage", None)
-        filters = query.get("filters", [])
         # query request params
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
+        filters = query.get("filters", [])
 
     # scope = individuals
     terms_found = True

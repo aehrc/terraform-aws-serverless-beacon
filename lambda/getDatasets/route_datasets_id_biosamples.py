@@ -77,7 +77,7 @@ def route(event):
         nextPage = pagination.get("nextPage", None)
         # query request params
         requestParameters = query.get("requestParameters", dict())
-        filters = requestParameters.get("filters", [])
+        filters = query.get("filters", [])
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     

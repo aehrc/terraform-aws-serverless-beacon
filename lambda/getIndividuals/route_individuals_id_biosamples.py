@@ -68,6 +68,7 @@ def route(event):
         requestedSchemas = meta.get("requestedSchemas", [])
         # query data
         requestedGranularity = query.get("requestedGranularity", "boolean")
+        filters = query.get("filters", [])
         # pagination
         pagination = query.get("pagination", dict())
         skip = pagination.get("skip", 0)
@@ -77,7 +78,6 @@ def route(event):
         nextPage = pagination.get("nextPage", None)
         # query request params
         requestParameters = query.get("requestParameters", dict())
-        filters = requestParameters.get("filters", [])
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
@@ -86,7 +86,6 @@ def route(event):
     # by default the scope of terms is assumed to be biosamples
     terms_found = True
     biosamples_term_columns = []
-    individuals_term_columns = []
     sql_conditions = []
     
     if len(filters) > 0:
@@ -96,14 +95,6 @@ def route(event):
                 for item in OntoData.tableTermsIndex.query(hash_key=f'{BIOSAMPLES_TABLE}\t{fil["id"]}'):
                     biosamples_term_columns.append((item.term, item.columnName))
                     terms_found = True
-    
-        # TODO
-        # for fil in filters:
-        #     if fil.get('scope') == 'individuals':
-        #         terms_found = False
-        #         for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-        #             individuals_term_columns.append((item.term, item.columnName))
-        #             terms_found = True
 
     if not terms_found:
         response = responses.get_boolean_response(exists=False)
@@ -115,29 +106,23 @@ def route(event):
             JSON_EXTRACT_SCALAR("{BIOSAMPLES_TABLE}"."{col}", '$.id')='{term}' 
         '''
         sql_conditions.append(cond)
-
-    for term, col in individuals_term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
     
     if requestedGranularity == 'boolean':
-        query = get_bool_query(individual_id)
+        query = get_bool_query(individual_id, conditions=sql_conditions)
         exists = Biosample.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        query = get_count_query(individual_id)
+        query = get_count_query(individual_id, conditions=sql_conditions)
         count = Biosample.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(individual_id, skip, limit)
+        query = get_record_query(individual_id, skip, limit, conditions=sql_conditions)
         biosamples = Biosample.get_by_query(query)
         response = responses.get_result_sets_response(
             setType='individuals', 
