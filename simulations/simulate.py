@@ -1,3 +1,4 @@
+from collections import defaultdict
 import random
 import os
 
@@ -445,10 +446,13 @@ if __name__ == "__main__":
     #     dynamo_item.delete()
 
     dynamo_items = []
+    dataset_samples = dict()
 
     # datasets
     file, writer = get_writer(Dataset, './tmp')
     for n, line in enumerate(open('vcf.txt')):
+        if line[0] == '#':
+            continue
         data = line.strip().split(' ')
         multiplier = int(data[0])
         vcfs = data[1:]
@@ -469,7 +473,9 @@ if __name__ == "__main__":
             dataset, dynamo_item = get_random_dataset(
                 id, vcfs, vcfChromosomeMap, seed=id)
             dynamo_item.sampleCount = len(samples)
-            dynamo_item.sampleNames = samples
+            # dynamo_item.sampleNames = samples
+            dynamo_item.sampleNames = ['None']
+            dataset_samples[id] = samples
             dynamo_items.append(dynamo_item)
             write_local(Dataset, dataset, writer)
     writer.close()
@@ -483,7 +489,6 @@ if __name__ == "__main__":
     with DynamoDataset.batch_write() as batch:
         for item in tqdm(dynamo_items, desc="Writing datasets to DynamoDB"):
             batch.save(item)
-    datasets = []
 
     # cohorts
     file, writer = get_writer(Cohort, './tmp')
@@ -549,7 +554,7 @@ if __name__ == "__main__":
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
             analysis = get_random_analysis(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}',
-                                           biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', vcfSampleId=dataset.sampleNames[itr], seed=f'{id}-{itr}')
+                                           biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', vcfSampleId=dataset_samples[id][itr], seed=f'{id}-{itr}')
             write_local(Analysis, analysis, writer)
     writer.close()
     file.close()

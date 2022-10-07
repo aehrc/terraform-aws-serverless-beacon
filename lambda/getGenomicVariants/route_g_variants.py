@@ -68,7 +68,7 @@ def route(event):
         allele = requestParameters.get("allele", None)
         geneId = requestParameters.get("geneId", None)
         aminoacidChange = requestParameters.get("aminoacidChange", None)
-        filters = requestParameters.get("filters", [])
+        filters = query.get("filters", [])
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
