@@ -128,7 +128,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
-        key = f'{array[0].datasetId}-biosamples'
+        key = f'{array[0]._datasetId}-biosamples'
         
         with sopen(f's3://{METADATA_BUCKET}/biosamples/{key}', 'wb') as s3file:
             with pyorc.Writer(

@@ -446,7 +446,7 @@ if __name__ == "__main__":
     #     dynamo_item.delete()
 
     dynamo_items = []
-    dataset_samples = dict()
+    # dataset_samples = dict()
 
     # datasets
     file, writer = get_writer(Dataset, './tmp')
@@ -473,11 +473,11 @@ if __name__ == "__main__":
             dataset, dynamo_item = get_random_dataset(
                 id, vcfs, vcfChromosomeMap, seed=id)
             dynamo_item.sampleCount = len(samples)
-            # dynamo_item.sampleNames = samples
-            dynamo_item.sampleNames = ['None']
-            dataset_samples[id] = samples
+            dynamo_item.sampleNames = samples
+            # dynamo_item.sampleNames = ['None']
+            # dataset_samples[id] = samples
             dynamo_items.append(dynamo_item)
-            write_local(Dataset, dataset, writer)
+            # write_local(Dataset, dataset, writer)
     writer.close()
     file.close()
 
@@ -553,8 +553,16 @@ if __name__ == "__main__":
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
-            analysis = get_random_analysis(id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}',
-                                           biosampleId=f'{id}-{itr}', runId=f'{id}-{itr}', vcfSampleId=dataset_samples[id][itr], seed=f'{id}-{itr}')
+            analysis = get_random_analysis(
+                id=f'{id}-{itr}', 
+                datasetId=id, 
+                cohortId=id, 
+                individualId=f'{id}-{itr}',
+                biosampleId=f'{id}-{itr}', 
+                runId=f'{id}-{itr}', 
+                vcfSampleId=dataset.sampleNames[itr], 
+                # vcfSampleId=dataset_samples[id][itr], 
+                seed=f'{id}-{itr}')
             write_local(Analysis, analysis, writer)
     writer.close()
     file.close()

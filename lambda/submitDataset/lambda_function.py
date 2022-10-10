@@ -109,17 +109,17 @@ def create_dataset(attributes):
         
         # setting dataset id
         for individual in individuals:
-            individual.datasetId = datasetId
-            individual.cohortId = cohortId
+            individual._datasetId = datasetId
+            individual._cohortId = cohortId
         for biosample in biosamples:
-            biosample.datasetId = datasetId
-            biosample.cohortId = cohortId
+            biosample._datasetId = datasetId
+            biosample._cohortId = cohortId
         for run in runs:
-            run.datasetId = datasetId
-            run.cohortId = cohortId
+            run._datasetId = datasetId
+            run._cohortId = cohortId
         for analysis in analyses:
             analysis._datasetId = datasetId
-            analysis.cohortId = cohortId
+            analysis._cohortId = cohortId
 
         # upload to s3
         if len(individuals) > 0:
