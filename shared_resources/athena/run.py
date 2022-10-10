@@ -102,7 +102,7 @@ class Run(jsons.JsonSerializable, AthenaModel):
             return
         header = 'struct<' + ','.join([f'{col.lower()}:string' for col in cls._table_columns]) + '>'
         bloom_filter_columns = [c.lower() for c in cls._table_columns]
-        key = f'{array[0].datasetId}-runs'
+        key = f'{array[0]._datasetId}-runs'
         
         with sopen(f's3://{METADATA_BUCKET}/runs/{key}', 'wb') as s3file:
             with pyorc.Writer(

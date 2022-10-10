@@ -54,12 +54,12 @@ def onto_index():
         status = exec['QueryExecution']['Status']['State']
         
         if status in ('QUEUED', 'RUNNING'):
-            sleep = 10 * (2**retries)
+            sleep = min(300, 10 * (2**retries))
             print(f'Sleeping {sleep} seconds')
             time.sleep(sleep)
             retries += 1
 
-            if retries == 4:
+            if retries == 6:
                 print('Timed out')
                 return []
             continue
