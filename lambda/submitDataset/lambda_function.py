@@ -96,6 +96,11 @@ def create_dataset(attributes):
         if json_dataset:
             dataset = jsons.load(json_dataset, Dataset)
             dataset.id = datasetId
+            dataset._assemblyId = item.assemblyId 
+            dataset._vcfLocations = item.vcfLocations 
+            dataset._vcfChromosomeMap = [vcfm.attribute_values for vcfm in item.vcfChromosomeMap]
+            dataset.createDateTime = str(item.createDateTime)
+            dataset.updateDateTime = str(item.updateDateTime)
             Dataset.upload_array([dataset])
             messages.append("Added dataset metadata")
 
