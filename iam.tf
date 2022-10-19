@@ -291,12 +291,8 @@ data aws_iam_policy_document lambda-getEntryTypes {
 #
 data aws_iam_policy_document lambda-getFilteringTerms {
   statement {
-    actions = [
-      "dynamodb:Scan",
-    ]
-    resources = [
-      aws_dynamodb_table.ontology_terms.arn,
-    ]
+    actions = []
+    resources = []
   }
 }
 
@@ -310,8 +306,7 @@ data aws_iam_policy_document lambda-getAnalyses {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -333,8 +328,7 @@ data aws_iam_policy_document lambda-getAnalyses {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -364,8 +358,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -389,8 +382,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -420,8 +412,7 @@ data aws_iam_policy_document lambda-getIndividuals {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -443,8 +434,7 @@ data aws_iam_policy_document lambda-getIndividuals {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -474,8 +464,7 @@ data aws_iam_policy_document lambda-getBiosamples {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -497,8 +486,7 @@ data aws_iam_policy_document lambda-getBiosamples {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -528,8 +516,7 @@ data aws_iam_policy_document lambda-getDatasets {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -551,8 +538,7 @@ data aws_iam_policy_document lambda-getDatasets {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -582,8 +568,7 @@ data aws_iam_policy_document lambda-getCohorts {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -605,8 +590,7 @@ data aws_iam_policy_document lambda-getCohorts {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -629,8 +613,7 @@ data aws_iam_policy_document lambda-getRuns {
     ]
     resources = [
       "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*"
     ]
   }
 
@@ -652,8 +635,7 @@ data aws_iam_policy_document lambda-getRuns {
     resources = [
       aws_dynamodb_table.datasets.arn,
       aws_dynamodb_table.variant_queries.arn,
-      aws_dynamodb_table.variant_query_responses.arn,
-      aws_dynamodb_table.ontology_terms.arn,
+      aws_dynamodb_table.variant_query_responses.arn
     ]
   }
 
@@ -678,11 +660,8 @@ data aws_iam_policy_document lambda-getRuns {
 #
 data aws_iam_policy_document lambda-indexer {
   statement {
-    actions = [
-      "dynamodb:DescribeTable",
-      "dynamodb:PutItem"
-    ]
-    resources = [aws_dynamodb_table.ontology_terms.arn]
+    actions = []
+    resources = []
   }
 }
 

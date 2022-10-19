@@ -5,34 +5,35 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.individual import Individual
-from dynamodb.onto_index import OntoData
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
+TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
 
 
-def get_count_query(conditions=[]):
+def get_count_query(conditions=''):
     query = f'''
     SELECT COUNT(id) FROM "{{database}}"."{{table}}"
-    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
+    {conditions};
     '''
     return query
 
 
-def get_bool_query(conditions=[]):
+def get_bool_query(conditions=''):
     query = f'''
-    SELECT 1 FROM "{{database}}"."{{table}}" LIMIT 1
-    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
+    SELECT 1 FROM "{{database}}"."{{table}}"
+    {conditions};
+    LIMIT 1
     '''
     return query
 
 
-def get_record_query(skip, limit, conditions=[]):
+def get_record_query(skip, limit, conditions=''):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
-    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    {conditions}
     OFFSET {skip}
     LIMIT {limit};
     '''
@@ -73,46 +74,28 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
         filters = query.get("filters", [])
 
-    # scope = individuals
-    terms_found = True
-    term_columns = []
-    sql_conditions = []
-
+    conditions = ''
     if len(filters) > 0:
         # supporting ontology terms
-        for fil in filters:
-            terms_found = False
-            for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-                term_columns.append((item.term, item.columnName))
-                terms_found = True
-   
-    for term, col in term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
-
-    if not terms_found:
-        response = responses.get_boolean_response(exists=False)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        individual_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'individuals') == 'individuals', filters)))
+        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='individuals' AND term IN ({individual_filters})) '''
 
     if requestedGranularity == 'boolean':
-        query = get_bool_query(sql_conditions)
+        query = get_bool_query(conditions)
         exists = Individual.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        query = get_count_query(sql_conditions)
+        query = get_count_query(conditions)
         count = Individual.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(skip, limit, sql_conditions)
+        query = get_record_query(skip, limit, conditions)
         individuals = Individual.get_by_query(query)
         response = responses.get_result_sets_response(
             setType='individuals', 

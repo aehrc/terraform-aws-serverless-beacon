@@ -33,6 +33,7 @@ locals {
     RUNS_TABLE = aws_glue_catalog_table.sbeacon-runs.name
     ANALYSES_TABLE = aws_glue_catalog_table.sbeacon-analyses.name
     TERMS_TABLE = aws_glue_catalog_table.sbeacon-terms.name
+    TERMS_INDEX_TABLE = aws_glue_catalog_table.sbeacon-terms-index.name
   }
   # dynamodb variables
   dynamodb_variables = {
@@ -41,7 +42,6 @@ locals {
     DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
     DYNAMO_VARIANT_QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
     DYNAMO_VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
-    DYNAMO_ONTO_INDEX_TABLE = aws_dynamodb_table.ontology_terms.name
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
@@ -352,7 +352,6 @@ module "lambda-getFilteringTerms" {
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
-    data.aws_iam_policy_document.lambda-getFilteringTerms.json,
     data.aws_iam_policy_document.athena-full-access.json
   ]
   number_of_policy_jsons = 2

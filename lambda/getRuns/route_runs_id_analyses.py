@@ -7,13 +7,13 @@ import boto3
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.analysis import Analysis
-from dynamodb.onto_index import OntoData
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
+TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
 
 s3 = boto3.client('s3')
 
@@ -22,7 +22,7 @@ def get_bool_query(id, conditions=[]):
     query = f'''
     SELECT 1 FROM "{{database}}"."{{table}}"
     WHERE "runid"='{id}'
-    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    {'AND ' + conditions if conditions != '' else ''}
     LIMIT 1;
     '''
 
@@ -33,7 +33,7 @@ def get_count_query(id, conditions=[]):
     query = f'''
     SELECT COUNT(*) FROM "{{database}}"."{{table}}"
     WHERE "runid"='{id}'
-    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
+    {'AND ' + conditions if conditions != '' else ''};
     '''
 
     return query
@@ -43,7 +43,7 @@ def get_record_query(id, skip, limit, conditions=[]):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
     WHERE "runid"='{id}'
-    {('AND ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    {'AND ' + conditions if conditions != '' else ''}
     OFFSET {skip}
     LIMIT {limit};
     '''
@@ -88,61 +88,28 @@ def route(event):
     
     run_id = event["pathParameters"].get("id", None)
     
-    # by default the scope of terms is assumed to be analyses
-    terms_found = True
-    analyses_term_columns = []
-    # TODO
-    # analyses_term_columns = []
-    sql_conditions = []
-    
+    conditions = ''
     if len(filters) > 0:
-        for fil in filters:
-            if fil.get('scope', 'analyses') == 'analyses':
-                terms_found = False
-                for item in OntoData.tableTermsIndex.query(hash_key=f'{ANALYSES_TABLE}\t{fil["id"]}'):
-                    analyses_term_columns.append((item.term, item.columnName))
-                    terms_found = True
-    
-        # for fil in filters:
-        #     if fil.get('scope') == 'analyses':
-        #         terms_found = False
-        #         for item in OntoData.tableTermsIndex.query(hash_key=f'{INDIVIDUALS_TABLE}\t{fil["id"]}'):
-        #             analyses_term_columns.append((item.term, item.columnName))
-        #             terms_found = True
+        # supporting ontology terms
+        analyses_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'analyses') == 'analyses', filters)))
+        conditions = f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='analyses' AND term IN ({analyses_filters})) '''
 
-    if not terms_found:
-        response = responses.get_boolean_response(exists=False)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-
-    for term, col in analyses_term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{ANALYSES_TABLE}"."{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
-
-    # for term, col in analyses_term_columns:
-    #     cond = f'''
-    #         JSON_EXTRACT_SCALAR("{INDIVIDUALS_TABLE}"."{col}", '$.id')='{term}' 
-    #     '''
-    #     sql_conditions.append(cond)
-    
     if requestedGranularity == 'boolean':
-        query = get_bool_query(run_id)
+        query = get_bool_query(run_id,conditions)
         exists = Analysis.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        query = get_count_query(run_id)
+        query = get_count_query(run_id, conditions)
         count = Analysis.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(run_id, skip, limit)
+        query = get_record_query(run_id, skip, limit, conditions)
         analyses = Analysis.get_by_query(query)
         response = responses.get_result_sets_response(
             setType='analyses', 

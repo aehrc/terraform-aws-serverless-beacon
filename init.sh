@@ -97,3 +97,4 @@ pip install jsons --target layers/python_libraries/python --upgrade
 pip install jsonschema --target layers/python_libraries/python --upgrade
 pip install pynamodb --target layers/python_libraries/python --upgrade
 pip install pyorc --target layers/python_libraries/python --upgrade
+pip install requests --target layers/python_libraries/python --upgrade
