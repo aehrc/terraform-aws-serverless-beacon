@@ -354,7 +354,7 @@ module "lambda-getFilteringTerms" {
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 1
   source_path = "${path.module}/lambda/getFilteringTerms"
 
   tags = var.common-tags
@@ -692,10 +692,9 @@ module "lambda-indexer" {
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
-    data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.lambda-indexer.json
+    data.aws_iam_policy_document.athena-full-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 1
   source_path = "${path.module}/lambda/indexer"
 
   tags = var.common-tags

@@ -34,6 +34,7 @@ def get_record_query(skip, limit, conditions=''):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
     {conditions}
+    ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
     '''

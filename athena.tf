@@ -721,6 +721,12 @@ resource "aws_glue_catalog_table" "sbeacon-terms" {
       type = "string"
     }
   }
+
+  partition_keys {
+    comment = "partition by kind"
+    name = "kind"
+    type = "string"
+  }
 }
 
 resource "aws_glue_crawler" "sbeacon-crawler" {

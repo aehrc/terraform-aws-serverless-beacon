@@ -3,10 +3,13 @@ CREATE TABLE sbeacon_terms
 WITH (
     format = 'ORC',
     write_compression = 'SNAPPY',
-    external_location = '{uri}'
+    external_location = '{uri}',
+    partitioned_by = ARRAY['kind'], 
+    bucketed_by = ARRAY['term'],
+    bucket_count = 15
 )
 AS
-SELECT DISTINCT term, label, type
+SELECT DISTINCT term, label, type, kind
 FROM (
 {subquery}
 ) 
@@ -18,7 +21,8 @@ SUBQUERY = '''
     SELECT DISTINCT
         JSON_EXTRACT_SCALAR({column}, '{id_path}') AS term, 
         JSON_EXTRACT_SCALAR({column}, '{label_path}') AS label,
-        COALESCE(NULLIF(JSON_EXTRACT_SCALAR({column}, '{type_path}'), ''), 'string') AS type
+        COALESCE(NULLIF(JSON_EXTRACT_SCALAR({column}, '{type_path}'), ''), 'string') AS type,
+        '{kind}' AS kind
     FROM "{table}"
     WHERE JSON_EXTRACT_SCALAR({column}, '{id_path}') 
     IS NOT NULL
@@ -59,6 +63,7 @@ def get_ctas_terms_query(uri):
             subquery += SUBQUERY.format(
                 column=column, 
                 table=table,
+                kind=table.replace('sbeacon_', ''),
                 id_path=id_path,
                 label_path=label_path,
                 type_path=type_path
