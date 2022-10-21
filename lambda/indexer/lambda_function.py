@@ -1,11 +1,20 @@
 from collections import defaultdict
 import os
+from queue import Queue
 import boto3
 import time
 import threading
+import re
+import requests
+import json
+import urllib
+import threading
+
+from smart_open import open as sopen
 
 from generate_query_index import get_ctas_terms_index_query
 from generate_query_terms import get_ctas_terms_query
+from dynamodb.ontologies import Ontology, Descendants, Anscestors
 
 
 athena = boto3.client('athena')
@@ -25,32 +34,124 @@ ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
 TERMS_TABLE = os.environ['TERMS_TABLE']
 
+ENSEMBL_OLS = 'https://www.ebi.ac.uk/ols/api/ontologies'
 
-# def get_ontology_resources(ontologies_in_beacon=set()):
-#     ontologies_url = 'http://www.ebi.ac.uk/ols/api/ontologies?page=0&size=1000'
-#     response = requests.get(ontologies_url)
 
-#     if response:
-#         response_json = response.json()
-#         chosen_resources = []
-#         for ontology in response_json["_embedded"]["ontologies"]:
-#             res_id = ontology['ontologyId']
+# in future, there could be an issue when descendants entries exceed 400KB
+# which means we would have roughtly 20480, 20 byte entries (unlikely?)
+# this would also mean, our SQL queries would reach the 256KB limit
+# we should be able to easily spread terms across multiple dynamodb 
+# entries and have multiple queries (as recommended by AWS)
+def index_terms_tree():
+    def threaded_request(term, url, queue):
+        response = requests.get(url)
+        queue.put((term, response))
+    # query = f'SELECT DISTINCT term FROM "{TERMS_TABLE}"'
+    # response = athena.start_query_execution(
+    #     QueryString=query,
+    #     QueryExecutionContext={
+    #         'Database': METADATA_DATABASE
+    #     },
+    #     WorkGroup=ATHENA_WORKGROUP
+    # )
+    # execution_id = response['QueryExecutionId']
+    # get_result(execution_id)
 
-#             if res_id.upper() not in ontologies_in_beacon:
-#                 continue
+    # print(execution_id)
 
-#             resource = {
-#                 "id": res_id,
-#                 "name": ontology['config']['title'],
-#                 "url": ontology['config']['fileLocation'],
-#                 "version": ontology['config']['version'],
-#                 "namespacePrefix": ontology['config']['preferredPrefix'],
-#                 "iriPrefix": ontology['config']['baseUris'][0]
-#             }
+    # term_clusters = defaultdict(set)
 
-#             chosen_resources.append()
-#     else:
-#         raise Exception('API Error')
+    execution_id = 'd5aaeb90-1b6c-44c5-a731-26b8de8962cf'
+    ontologies = set()
+    ontology_clusters = defaultdict(set)
+    term_anscestors = defaultdict(set)
+    threads = []
+    response_queue = Queue()
+
+    with sopen(f's3://{METADATA_BUCKET}/query-results/{execution_id}.csv') as s3f:
+        for n, line in enumerate(s3f):
+            if n == 0: continue
+            term = line.strip().strip('"')
+
+            if re.match(r'(?i)(^SNOMED)|([0-9]+)', term):
+                ontology = 'SNOMED'
+                ontologies.add(ontology)
+                ontology_clusters[ontology].add(term)
+            else:
+                ontology = term.split(':')[0]
+                ontologies.add(ontology)
+                ontology_clusters[ontology].add(term)
+    
+    for ontology in ontologies:
+        try:
+            details = Ontology.get(ontology)
+        except Ontology.DoesNotExist:
+            response = requests.get(f'{ENSEMBL_OLS}/{ontology}')
+            if response:
+                response_json = response.json()
+                entry = Ontology(ontology.upper())
+                entry.data = json.dumps({
+                    "id": response_json["ontologyId"].upper(),
+                    "baseUri": response_json["config"]["baseUris"][0]
+                })
+                entry.save()
+                details = entry
+            else:
+                details = None
+        
+        if details:
+            if ontology == 'SNOMED':
+                pass
+            else:
+                terms = ontology_clusters[ontology]
+                
+                for term in terms:
+                    # fetch only anscestors that aren't fetched yet
+                    try:
+                        data = Anscestors.get(term)
+                    except Anscestors.DoesNotExist:
+                        data = json.loads(details.data)
+                        iri = data['baseUri'] + term.split(':')[1]
+                        iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(iri))
+                        url = f'{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/hierarchicalAncestors'
+
+                        thread = threading.Thread(target=threaded_request, args=(term, url, response_queue))
+                        thread.start()
+                        threads.append(thread)
+
+    [thread.join() for thread in threads]
+
+    for term, response in list(response_queue.queue):
+        if response:
+            response_json = response.json()
+            for response_term in response_json['_embedded']['terms']:
+                obo_id = response_term['obo_id']
+                if obo_id:
+                    term_anscestors[term].add(obo_id)
+
+    term_descendants = defaultdict(set)
+
+    with Anscestors.batch_write() as batch:
+        for term, anscestors in term_anscestors.items():
+            item = Anscestors(term)
+            item.anscestors = anscestors
+            batch.save(item)
+
+            for anscestor in anscestors:
+                term_descendants[anscestor].add(term)
+
+    with Descendants.batch_write() as batch:
+        for term, descendants in term_descendants.items():
+            # if descendants are recorded, just update, else make record
+            try:
+                item = Descendants.get(term)
+                item.update(actions=[
+                    Descendants.descendants.add(descendants)
+                ])
+            except Descendants.DoesNotExist:
+                item = Descendants(term)
+                item.descendants = descendants
+                batch.save(item)
 
 
 def update_athena_partitions(table):
@@ -197,4 +298,6 @@ if __name__ == '__main__':
     # else:
     #     raise Exception('API Error')
     pass
+    index_terms_tree()
+
  

@@ -27,6 +27,42 @@ resource aws_dynamodb_table datasets {
   }
 }
 
+resource aws_dynamodb_table ontologies {
+  billing_mode = "PAY_PER_REQUEST"
+  name = "Ontologies"
+  hash_key = "prefix"
+  tags = var.common-tags
+
+  attribute {
+    name = "prefix"
+    type = "S"
+  }
+}
+
+resource aws_dynamodb_table descendant_terms {
+  billing_mode = "PAY_PER_REQUEST"
+  name = "Descendants"
+  hash_key = "term"
+  tags = var.common-tags
+
+  attribute {
+    name = "term"
+    type = "S"
+  }
+}
+
+resource aws_dynamodb_table anscestor_terms {
+  billing_mode = "PAY_PER_REQUEST"
+  name = "Anscestors"
+  hash_key = "term"
+  tags = var.common-tags
+
+  attribute {
+    name = "term"
+    type = "S"
+  }
+}
+
 resource aws_dynamodb_table vcf_summaries {
   billing_mode = "PAY_PER_REQUEST"
   hash_key = "vcfLocation"

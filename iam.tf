@@ -743,3 +743,20 @@ data aws_iam_policy_document athena-full-access {
     ]
   }
 }
+
+# DynamoDB Ontology Related Access
+data aws_iam_policy_document dynamodb-onto-access {
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:GetItem",
+    ]
+    resources = [
+      aws_dynamodb_table.ontologies.arn,
+      aws_dynamodb_table.descendant_terms.arn,
+      aws_dynamodb_table.anscestor_terms.arn,
+    ]
+  }
+}
