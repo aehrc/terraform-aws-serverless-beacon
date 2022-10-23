@@ -1,19 +1,24 @@
 QUERY = '''
-SELECT DISTINCT term, label, type, tablename, colname
-FROM (
+CREATE TABLE sbeacon_terms_index
+WITH (
+    format = 'ORC',
+    write_compression = 'SNAPPY',
+    external_location = '{uri}',
+    partitioned_by = ARRAY['kind'], 
+    bucketed_by = ARRAY['term'],
+    bucket_count = 15
+)
+AS
+SELECT * FROM (
 {subquery}
-) 
-ORDER BY term 
-ASC;
+);
 '''
 
 SUBQUERY = '''
     SELECT DISTINCT
-        JSON_EXTRACT_SCALAR({column}, '{id_path}') AS term, 
-        JSON_EXTRACT_SCALAR({column}, '{label_path}') AS label,
-        COALESCE(NULLIF(JSON_EXTRACT_SCALAR({column}, '{type_path}'), ''), 'string') AS type,
-        '{table}' as tablename,
-        '{column}' as colname
+        id,
+        JSON_EXTRACT_SCALAR({column}, '{id_path}') AS term,
+        '{kind}' as kind
     FROM "{table}"
     WHERE JSON_EXTRACT_SCALAR({column}, '{id_path}') 
     IS NOT NULL
@@ -47,16 +52,22 @@ query_sets = {
 }
 
 
-if __name__ == '__main__':
+def get_ctas_terms_index_query(uri):
     subquery = ''
     for table, column_data in query_sets.items():
         for column, id_path, label_path, type_path in column_data:
             subquery += SUBQUERY.format(
+                kind=table.replace('sbeacon_', ''),
                 column=column, 
                 table=table,
                 id_path=id_path,
                 label_path=label_path,
                 type_path=type_path
             )
-    query = QUERY.format(table=table, subquery=subquery.strip('\n').strip('UNION').rstrip()).strip()
-    print(query)
+    query = QUERY.format(uri=uri, subquery=subquery.strip('\n').strip('UNION').rstrip()).strip()
+    return query
+
+
+if __name__ == '__main__':
+    import os
+    print(get_ctas_terms_index_query(f"s3://{os.environ['METADATA_BUCKET']}/terms_index/"))

@@ -66,7 +66,7 @@ def lambda_handler(event, context):
         
     rows = run_custom_query(query)
     filteringTerms = []
-    for row in rows:
+    for row in rows[1:]:
         term, label, typ = row['Data']
         term, label, typ = term['VarCharValue'], label.get('VarCharValue'), typ.get('VarCharValue')
         filteringTerms.append({

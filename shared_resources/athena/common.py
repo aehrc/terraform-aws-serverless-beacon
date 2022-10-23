@@ -26,28 +26,40 @@ class AthenaModel:
     @classmethod
     def get_by_query(cls, query, queue=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        if queue is None:
-            return cls.parse_array(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None))
+        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
+
+        if not len(result) > 0:
+            return []
+        elif queue is None:
+            return cls.parse_array(result)
         else:
-            queue.put(cls.parse_array(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)))
+            queue.put(cls.parse_array(result))
 
     
     @classmethod
     def get_existence_by_query(cls, query, queue=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        if queue is None:
-            return len(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)) > 1
+        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
+
+        if not len(result) > 0:
+            return []
+        elif queue is None:
+            return len(result) > 1
         else:
-            queue.put(len(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)) > 1)
+            queue.put(len(result) > 1)
 
 
     @classmethod
     def get_count_by_query(cls, query, queue=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        if queue is None:
-            return int(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)[1]['Data'][0]['VarCharValue'])
+        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
+
+        if not len(result) > 0:
+            return []
+        elif queue is None:
+            return int(result[1]['Data'][0]['VarCharValue'])
         else:
-            queue.put(int(run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)[1]['Data'][0]['VarCharValue']))
+            queue.put(int(result[1]['Data'][0]['VarCharValue']))
 
 
 def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None):
@@ -71,7 +83,7 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
             time.sleep(0.5)
             retries += 1
 
-            if retries == 20:
+            if retries == 60:
                 print('Timed out')
                 return []
             continue

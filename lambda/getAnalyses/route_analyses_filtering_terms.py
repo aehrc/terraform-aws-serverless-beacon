@@ -8,7 +8,6 @@ from athena.common import run_custom_query
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 TERMS_TABLE = os.environ['TERMS_TABLE']
-ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 
 
 def get_terms(terms, skip, limit):
@@ -78,7 +77,8 @@ def route(event):
     query = f'''
     SELECT DISTINCT term, label, type 
     FROM "{TERMS_TABLE}"
-    WHERE "table"='{ANALYSES_TABLE}'
+    WHERE "kind"='analyses'
+    ORDER BY term
     OFFSET {skip}
     LIMIT {limit};
     '''

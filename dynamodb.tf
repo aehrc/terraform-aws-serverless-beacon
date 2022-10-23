@@ -27,6 +27,42 @@ resource aws_dynamodb_table datasets {
   }
 }
 
+resource aws_dynamodb_table ontologies {
+  billing_mode = "PAY_PER_REQUEST"
+  name = "Ontologies"
+  hash_key = "prefix"
+  tags = var.common-tags
+
+  attribute {
+    name = "prefix"
+    type = "S"
+  }
+}
+
+resource aws_dynamodb_table descendant_terms {
+  billing_mode = "PAY_PER_REQUEST"
+  name = "Descendants"
+  hash_key = "term"
+  tags = var.common-tags
+
+  attribute {
+    name = "term"
+    type = "S"
+  }
+}
+
+resource aws_dynamodb_table anscestor_terms {
+  billing_mode = "PAY_PER_REQUEST"
+  name = "Anscestors"
+  hash_key = "term"
+  tags = var.common-tags
+
+  attribute {
+    name = "term"
+    type = "S"
+  }
+}
+
 resource aws_dynamodb_table vcf_summaries {
   billing_mode = "PAY_PER_REQUEST"
   hash_key = "vcfLocation"
@@ -109,58 +145,5 @@ resource aws_dynamodb_table variant_query_responses {
   ttl {
     attribute_name = "timeToExist"
     enabled        = true
-  }
-}
-
-# ontology term index
-resource aws_dynamodb_table ontology_terms {
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key = "id"
-  name = "ontoIndex"
-  tags = var.common-tags
-
-  # this is the tab concatenated value of
-  # tableName, columnName, term
-  # this must not be repeated
-  attribute {
-    name = "id"
-    type = "S"
-  }
-
-  attribute {
-    name = "tableName"
-    type = "S"
-  }
-
-  attribute {
-    name = "tableTerms"
-    type = "S"
-  }
-
-  attribute {
-    name = "term"
-    type = "S"
-  }
-
-  # be able to query a term
-  global_secondary_index {
-    hash_key = "term"
-    name = "term_index"
-    projection_type = "ALL"
-  }
-
-  # be able to query a tableName
-  global_secondary_index {
-    hash_key = "tableName"
-    name = "table_index"
-    projection_type = "ALL"
-  }
-
-  # be able to query a terms in a table
-  # tab concatenated value of table and term
-  global_secondary_index {
-    hash_key = "tableTerms"
-    name = "tableterms_index"
-    projection_type = "ALL"
   }
 }
