@@ -46,22 +46,20 @@ def index_terms_tree():
     def threaded_request(term, url, queue):
         response = requests.get(url)
         queue.put((term, response))
-    # query = f'SELECT DISTINCT term FROM "{TERMS_TABLE}"'
-    # response = athena.start_query_execution(
-    #     QueryString=query,
-    #     QueryExecutionContext={
-    #         'Database': METADATA_DATABASE
-    #     },
-    #     WorkGroup=ATHENA_WORKGROUP
-    # )
-    # execution_id = response['QueryExecutionId']
-    # get_result(execution_id)
 
-    # print(execution_id)
+    query = f'SELECT DISTINCT term FROM "{TERMS_TABLE}"'
+    
+    response = athena.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={
+            'Database': METADATA_DATABASE
+        },
+        WorkGroup=ATHENA_WORKGROUP
+    )
 
-    # term_clusters = defaultdict(set)
+    execution_id = response['QueryExecutionId']
+    get_result(execution_id)
 
-    execution_id = 'd5aaeb90-1b6c-44c5-a731-26b8de8962cf'
     ontologies = set()
     ontology_clusters = defaultdict(set)
     term_anscestors = defaultdict(set)
@@ -252,6 +250,7 @@ def lambda_handler(event, context):
     #     threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
     threads.append(threading.Thread(target=index_terms))
     threads.append(threading.Thread(target=record_terms))
+    threads.append(threading.Thread(target=index_terms_tree))
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
 
@@ -259,45 +258,5 @@ def lambda_handler(event, context):
 
 
 if __name__ == '__main__':
-    # lambda_handler({}, {})
-    # import requests
-    # import urllib.parse
-    # # ontology = 'doid'
-    # # iri = "http://purl.obolibrary.org/obo/DOID_0110749"
-    # # iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(iri))
-    # # url = f'https://www.ebi.ac.uk/ols/api/ontologies/{ontology}/terms/{iri_double_encoded}/hierarchicalAncestors'
-    # # response = requests.get(url)
-
-    # # if response:
-    # #     pass
-    # # else:
-    # #     raise Exception('API Error')
-
-
-    # ontologies_url = 'http://www.ebi.ac.uk/ols/api/ontologies?page=0&size=5'
-    # response = requests.get(ontologies_url)
-
-    # if response:
-    #     response_json = response.json()
-    #     for ontology in response_json["_embedded"]["ontologies"]:
-    #         resource = {
-    #             "id": ontology['ontologyId'],
-    #             "name": ontology['config']['title'],
-    #             "url": ontology['config']['fileLocation'],
-    #             "version": ontology['config']['version'],
-    #             "namespacePrefix": ontology['config']['preferredPrefix'],
-    #             "iriPrefix": ontology['config']['baseUris'][0]
-    #         }
-    #         # print(ontology['ontologyId'])
-    #         # print(ontology['config']['title'])
-    #         # print(ontology['config']['fileLocation'])
-    #         # print(ontology['config']['version'])
-    #         # print(ontology['config']['preferredPrefix'])
-    #         # print(ontology['config']['baseUris'][0])
-    #         print(resource)
-    # else:
-    #     raise Exception('API Error')
     pass
-    index_terms_tree()
-
  
