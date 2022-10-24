@@ -752,6 +752,7 @@ data aws_iam_policy_document dynamodb-onto-access {
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
       "dynamodb:GetItem",
+      "dynamodb:BatchWriteItem"
     ]
     resources = [
       aws_dynamodb_table.ontologies.arn,
