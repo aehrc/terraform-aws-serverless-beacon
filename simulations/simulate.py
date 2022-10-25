@@ -1,6 +1,7 @@
 from collections import defaultdict
 import random
 import os
+import sys
 
 from tqdm import tqdm
 
@@ -11,6 +12,7 @@ from athena.biosample import Biosample
 from athena.run import Run
 from athena.analysis import Analysis
 from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
+from dynamodb.ontologies import Ontology, Descendants, Anscestors
 from utils import get_vcf_chromosomes, get_samples, get_writer, write_local, upload_local
 
 
@@ -84,7 +86,7 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     ])
 
     dynamo_item = DynamoDataset(id)
-    dynamo_item.assemblyId = random.choice(["GRCH38", "GRCH37", "HG16"])
+    dynamo_item.assemblyId = random.choice(["GRCH38"])
     dynamo_item.vcfGroups = [vcfLocations]
     dynamo_item.vcfLocations = vcfLocations
     dynamo_item.vcfChromosomeMap = vcfChromosomeMap
@@ -441,10 +443,25 @@ def get_random_analysis(id, datasetId, cohortId, individualId, biosampleId, runI
     return item
 
 
-if __name__ == "__main__":
-    # for dynamo_item in tqdm(DynamoDataset.scan(), desc='Cleaning'):
-    #     dynamo_item.delete()
+def clean():
+    with DynamoDataset.batch_write() as batch:
+        for dynamo_item in tqdm(DynamoDataset.scan(), desc='Cleaning Dataset'):
+            batch.delete(dynamo_item)
 
+    with Ontology.batch_write() as batch:
+        for dynamo_item in tqdm(Ontology.scan(), desc='Cleaning Ontology'):
+            batch.delete(dynamo_item)
+
+    with Anscestors.batch_write() as batch:
+        for dynamo_item in tqdm(Anscestors.scan(), desc='Cleaning Anscestors'):
+            batch.delete(dynamo_item)
+
+    with Descendants.batch_write() as batch:
+        for dynamo_item in tqdm(Descendants.scan(), desc='Cleaning Descendants'):
+            batch.delete(dynamo_item)
+
+
+def simulate():
     dynamo_items = []
     # dataset_samples = dict()
 
@@ -477,7 +494,7 @@ if __name__ == "__main__":
             # dynamo_item.sampleNames = ['None']
             # dataset_samples[id] = samples
             dynamo_items.append(dynamo_item)
-            # write_local(Dataset, dataset, writer)
+            write_local(Dataset, dataset, writer)
     writer.close()
     file.close()
 
@@ -569,3 +586,14 @@ if __name__ == "__main__":
     key = f'combined-analyses'
     path = f's3://{METADATA_BUCKET}/analyses/{key}'
     upload_local('./tmp', path)
+
+
+if __name__ == "__main__":
+    if not len(sys.argv) == 2 or sys.argv[1] not in ('simulate', 'clean'):
+        print('Usage: \n\t$ python simulate.py MODE [simulate|clean]\n')
+    print('START')
+    if sys.argv[1] == 'simulate':
+        simulate()
+    else:
+        clean()
+    print('END')

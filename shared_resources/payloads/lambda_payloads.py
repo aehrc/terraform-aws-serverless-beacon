@@ -13,8 +13,8 @@ class SplitQueryPayload(jsons.JsonSerializable):
             dataset_id,
             query_id,
             reference_bases,
-            region_start,
-            region_end,
+            start_min,
+            start_max,
             end_min,
             end_max,
             alternate_bases,
@@ -30,8 +30,8 @@ class SplitQueryPayload(jsons.JsonSerializable):
         self.dataset_id = dataset_id
         self.query_id = query_id
         self.reference_bases = reference_bases
-        self.region_start = region_start
-        self.region_end = region_end
+        self.start_min = start_min
+        self.start_max = start_max
         self.end_min = end_min
         self.end_max = end_max
         self.alternate_bases = alternate_bases

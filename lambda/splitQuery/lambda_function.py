@@ -37,15 +37,12 @@ def split_query(split_payload: SplitQueryPayload):
     responses = queue.Queue()
     # to find HITs or ALL we must analyse all vcfs
     check_all = split_payload.include_datasets in ('HIT', 'ALL')
-    # create an id for each vcf group for identification
-    # vcf_file_to_group_map = {loc: idx for idx, grp in enumerate(split_payload.vcf_groups) for loc in grp}
-    # vcf_group_to_file_map = {idx: loc for idx, grp in enumerate(split_payload.vcf_groups) for loc in grp}
 
     threads = []
-    split_start = split_payload.region_start
+    split_start = split_payload.start_min
 
-    while split_start <= split_payload.region_end:
-        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.region_end)
+    while split_start <= split_payload.start_max:
+        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.start_max)
         # perform query on this split of the vcf
         for vcf_location, chrom in split_payload.vcf_locations.items():
             payload = PerformQueryPayload(
@@ -74,10 +71,7 @@ def split_query(split_payload: SplitQueryPayload):
         # next split
         split_start += SPLIT_SIZE
 
-    for thread in threads:
-        thread.join()
-
-    return
+    [thread.join() for thread in threads]
 
 
 def lambda_handler(event, context):

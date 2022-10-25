@@ -41,11 +41,16 @@ def perform_variant_search(*,
         if len(start) == 2:
             start_min, start_max = start
         else:
-            start_min = start_max = start[0]
+            start_min = start[0]
+        
         if len(end) == 2:
-            end_min, end_max = start
+            end_min, end_max = end
         else:
-            end_min = end_max = end[0]
+            end_min = start_min
+            end_max = end[0]
+
+        if len(start) != 2:
+            start_max = end_max
     except Exception as e:
         print('Error occured ', e)
         return False, []
@@ -55,25 +60,20 @@ def perform_variant_search(*,
     end_min += 1
     end_max += 1
 
-    if referenceBases != 'N':
-        # For specific reference bases region may be smaller
-        max_offset = len(referenceBases) - 1
-        end_max = min(start_max + max_offset, end_max)
-        start_min = max(end_min - max_offset, start_min)
-        if end_min > end_max or start_min > start_max:
-            # Region search will find nothing, search a dummy region
-            start_min = 2000000000
-            start_max = start_min
-            end_min = start_min + max_offset
-            end_max = end_min
+    # if referenceBases != 'N':
+    #     # For specific reference bases region may be smaller
+    #     max_offset = len(referenceBases) - 1
+    #     end_max = min(start_max + max_offset, end_max)
+    #     start_min = max(end_min - max_offset, start_min)
+    #     if end_min > end_max or start_min > start_max:
+    #         # Region search will find nothing, search a dummy region
+    #         start_min = 2000000000
+    #         start_max = start_min
+    #         end_min = start_min + max_offset
+    #         end_max = end_min
     # threading
     threads = []
     query_id = uuid4().hex
-
-    # TODO define variant id and fix; currently consider variant id to be from a unique vcf, chrom, pos, typ
-    # TODO optimise this further dataset_id -> vcfs -> vcf_id (do not use vcf index as additions and removals with
-    # make the indices inconsistent between requests)
-    dataset_variant_groups = dict()
 
     # record the query event on DB
     query_record = VariantQuery(query_id)
@@ -89,17 +89,6 @@ def perform_variant_search(*,
             if vcf_chromosomes[vcf]
         }
 
-        # # record vcf grouping information using the relevant vcf files
-        # vcf_groups = [
-        #     grp for grp in [
-        #         [loc for loc in vcfg if loc in vcf_locations]
-        #         for vcfg in dataset.vcfGroups
-        #     ]
-        #     if len(grp) > 0
-        # ]
-        # # vcf groups being searched for
-        # dataset_variant_groups[dataset.id] = vcf_groups
-
         # record perform query fan out size
         perform_query_fan_out += split_query_fan_out * len(vcf_locations)
 
@@ -111,8 +100,8 @@ def perform_variant_search(*,
             vcf_locations=vcf_locations,
             vcf_groups=[],
             reference_bases=referenceBases,
-            region_start=start_min,
-            region_end=start_max,
+            start_min=start_min,
+            start_max=start_max,
             end_min=end_min,
             end_max=end_max,
             alternate_bases=alternateBases,

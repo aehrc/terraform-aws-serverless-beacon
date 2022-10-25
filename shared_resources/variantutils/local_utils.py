@@ -12,10 +12,10 @@ SPLIT_QUERY = os.environ['SPLIT_QUERY_LAMBDA']
 aws_lambda = boto3.client('lambda')
 
 
-def get_split_query_fan_out(region_start, region_end):
+def get_split_query_fan_out(start_min, start_max):
     fan_out = 0
-    split_start = region_start
-    while split_start <= region_end:
+    split_start = start_min
+    while split_start <= start_max:
         fan_out += 1
         split_start += SPLIT_SIZE
     return fan_out
