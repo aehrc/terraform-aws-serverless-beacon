@@ -160,7 +160,7 @@ def perform_variant_search(*,
     if requestedGranularity == 'boolean':
         return running, exists, []
 
-    return exists, query_responses
+    return running, exists, query_responses
 
 
 def fetch_from_cache(query_id):
