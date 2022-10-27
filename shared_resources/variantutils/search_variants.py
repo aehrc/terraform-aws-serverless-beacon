@@ -31,6 +31,7 @@ def perform_variant_search(*,
         variantMaxLength,
         requestedGranularity,
         includeResultsetResponses,
+        query_id='TEST',
         passthrough=dict()
 ):
     try:
@@ -62,7 +63,6 @@ def perform_variant_search(*,
 
     # threading
     threads = []
-    query_id = uuid4().hex
 
     # record the query event on DB
     query_record = VariantQuery(query_id)
@@ -120,6 +120,7 @@ def perform_variant_search(*,
 
     start_time = time.time()
     query_results = dict()
+    running = True
 
     while time.time() - start_time < REQUEST_TIMEOUT:
         try:
@@ -129,6 +130,7 @@ def perform_variant_search(*,
                 for item in  VariantResponse.batch_get([(query_id, resp_no) for resp_no in range(1, query_record.responses + 1)]):
                     print('RECEIVED:', item.to_json())
                     query_results[item.responseNumber] = item
+                    running = False
                 print("Query fan in completed")
                 break
         except Exception as e:
@@ -151,11 +153,39 @@ def perform_variant_search(*,
         exists = exists or query_response.exists
 
         if requestedGranularity == 'boolean' and not exists:
-            return True, []
+            return running, True, []
         
         query_responses.append(query_response)
 
     if requestedGranularity == 'boolean':
-        return exists, []
+        return running, exists, []
+
+    return exists, query_responses
+
+
+def fetch_from_cache(query_id):
+    query_results = dict()
+    query_record = VariantQuery.get(query_id)
+
+    for item in  VariantResponse.batch_get([(query_id, resp_no) for resp_no in range(1, query_record.responses + 1)]):
+        print('RECEIVED:', item.to_json())
+        query_results[item.responseNumber] = item
+
+    query_responses = []
+    exists = False
+
+    for _, var_response in query_results.items():
+        if var_response.checkS3:
+            loc = var_response.responseLocation
+            obj = s3.get_object(
+                Bucket=loc.bucket,
+                Key=loc.key,
+            )
+            query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
+        else:
+            query_response = jsons.loads(var_response.result, PerformQueryResponse)
+
+        exists = exists or query_response.exists
+        query_responses.append(query_response)
 
     return exists, query_responses

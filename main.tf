@@ -668,7 +668,7 @@ module "lambda-performQuery" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 512
-  timeout = 24
+  timeout = 300
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-performQuery.json
   source_path = "${path.module}/lambda/performQuery"

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timezone, timedelta
-from dateutil import parser
+from enum import Enum
 
 import boto3
 from pynamodb.models import Model
@@ -83,6 +83,23 @@ class VariantResponse(Model):
     checkS3 = BooleanAttribute()
     result = UnicodeAttribute(null=True)
     timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
+
+
+class JobStatus(Enum):
+    COMPLETED = 1
+    RUNNING = 2
+    NEW = 3
+
+
+def get_job_status(query_id):
+    try:
+        item = VariantQuery.get(query_id)
+        if item.fanOut == 0:
+            return JobStatus.COMPLETED
+        else:
+            return JobStatus.RUNNING
+    except VariantQuery.DoesNotExist:
+        return JobStatus.NEW
 
 
 if __name__ == '__main__':

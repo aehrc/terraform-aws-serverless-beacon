@@ -4,11 +4,12 @@ import os
 import base64
 
 from apiutils.api_response import bundle_response
-from variantutils.search_variants import perform_variant_search
+from variantutils.search_variants import perform_variant_search, fetch_from_cache
 import apiutils.responses as responses
 import apiutils.entries as entries
 from athena.analysis import Analysis
 from athena.dataset import get_datasets
+from dynamodb.variant_queries import get_job_status, JobStatus
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -23,7 +24,7 @@ def get_record_query(id, conditions=[]):
     return query
 
 
-def route(event):
+def route(event, query_id):
     if event['httpMethod'] == 'GET':
         params = event.get('queryStringParameters', dict()) or dict()
         print(f"Query params {params}")
@@ -72,18 +73,37 @@ def route(event):
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
+    check_all = includeResultsetResponses in ('HIT', 'ALL')
     dataset_id = event["pathParameters"].get("id", None)
-    db_results = Analysis.get_by_query(get_record_query(dataset_id))
-
-    # TODO dataset may have multiple run - analyses implement that
-    if not len(db_results) > 0:
-        response = responses.get_boolean_response(exists=False)
+    status = get_job_status(query_id)
+    
+    if status == JobStatus.NEW:
+        datasets = get_datasets(assemblyId, dataset_id=dataset_id)
+        running, exists, query_responses = perform_variant_search(
+            passthrough={},
+            datasets=datasets,
+            referenceName=referenceName,
+            referenceBases=referenceBases,
+            alternateBases=alternateBases,
+            start=start,
+            end=end,
+            variantType=variantType,
+            variantMinLength=variantMinLength,
+            variantMaxLength=variantMaxLength,
+            requestedGranularity=requestedGranularity,
+            includeResultsetResponses=includeResultsetResponses,
+            query_id=query_id
+        )
+        if running:
+            response = responses.get_boolean_response(exists=False, info={'message': 'Query still running.'})
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response)
+    elif status == JobStatus.RUNNING:
+        response = responses.get_boolean_response(exists=False, info={'message': 'Query still running.'})
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
-
-    analysis = db_results[0]
-    datasets = get_datasets(assemblyId, dataset_id=analysis._datasetId)
-    check_all = includeResultsetResponses in ('HIT', 'ALL')
+    else:
+        exists, query_responses = fetch_from_cache(query_id)
 
     variants = set()
     results = list()
@@ -91,23 +111,6 @@ def route(event):
     # val=counts
     variant_call_counts = defaultdict(int)
     variant_allele_counts = defaultdict(int)
-    exists, query_responses = perform_variant_search(
-        passthrough={
-            'selectedSamplesOnly': True,
-            'sampleNames': [analysis._vcfSampleId]
-        },
-        datasets=datasets,
-        referenceName=referenceName,
-        referenceBases=referenceBases,
-        alternateBases=alternateBases,
-        start=start,
-        end=end,
-        variantType=variantType,
-        variantMinLength=variantMinLength,
-        variantMaxLength=variantMaxLength,
-        requestedGranularity=requestedGranularity,
-        includeResultsetResponses=includeResultsetResponses
-    )
 
     for query_response in query_responses:
         exists = exists or query_response.exists
