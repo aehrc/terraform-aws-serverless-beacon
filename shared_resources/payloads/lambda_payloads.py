@@ -24,7 +24,7 @@ class SplitQueryPayload(jsons.JsonSerializable):
             vcf_groups,
             requested_granularity,
             variant_min_length,
-            variant_max_length
+            variant_max_length,
         ):
         self.passthrough = passthrough
         self.dataset_id = dataset_id
@@ -43,7 +43,6 @@ class SplitQueryPayload(jsons.JsonSerializable):
         self.variant_min_length = variant_min_length
         self.variant_max_length = variant_max_length
 
-
 class PerformQueryPayload(jsons.JsonSerializable):
     def __init__(self, *,
             # passthrough variable holds arbitrary data
@@ -60,7 +59,7 @@ class PerformQueryPayload(jsons.JsonSerializable):
             requested_granularity=None,
             variant_min_length=None,
             variant_max_length=None,
-            vcf_location=None,
+            vcf_location=None
         ):
         self.passthrough = passthrough
         self.dataset_id = dataset_id
@@ -75,4 +74,4 @@ class PerformQueryPayload(jsons.JsonSerializable):
         self.requested_granularity = requested_granularity
         self.variant_min_length = variant_min_length
         self.variant_max_length = variant_max_length
-        self.vcf_location = vcf_location      
+        self.vcf_location = vcf_location    

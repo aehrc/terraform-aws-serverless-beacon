@@ -21,10 +21,19 @@ def get_split_query_fan_out(start_min, start_max):
     return fan_out
 
 
-def split_query(payload: SplitQueryPayload):
+def split_query(payload: SplitQueryPayload, queue=None):
     print(f"Invoking {SPLIT_QUERY} with payload: {jsons.dump(payload)}")
-    aws_lambda.invoke(
-        FunctionName=SPLIT_QUERY,
-        InvocationType='Event',
-        Payload=jsons.dumps(payload),
-    )
+    if not queue:
+        aws_lambda.invoke(
+            FunctionName=SPLIT_QUERY,
+            InvocationType='Event',
+            Payload=jsons.dumps(payload),
+        )
+    else:
+        response = aws_lambda.invoke(
+            FunctionName=SPLIT_QUERY,
+            InvocationType='RequestResponse',
+            Payload=jsons.dumps(payload),
+        )
+        data = response['Payload'].read()
+        queue.put(data)

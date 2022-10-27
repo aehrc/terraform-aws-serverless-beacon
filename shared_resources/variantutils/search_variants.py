@@ -60,17 +60,6 @@ def perform_variant_search(*,
     end_min += 1
     end_max += 1
 
-    # if referenceBases != 'N':
-    #     # For specific reference bases region may be smaller
-    #     max_offset = len(referenceBases) - 1
-    #     end_max = min(start_max + max_offset, end_max)
-    #     start_min = max(end_min - max_offset, start_min)
-    #     if end_min > end_max or start_min > start_max:
-    #         # Region search will find nothing, search a dummy region
-    #         start_min = 2000000000
-    #         start_max = start_min
-    #         end_min = start_min + max_offset
-    #         end_max = end_min
     # threading
     threads = []
     query_id = uuid4().hex
@@ -131,21 +120,20 @@ def perform_variant_search(*,
 
     start_time = time.time()
     query_results = dict()
-    last_read_position = 0
 
     while time.time() - start_time < REQUEST_TIMEOUT:
         try:
-            for item in VariantResponse.variantResponseIndex.query(query_id, VariantResponse.responseNumber > last_read_position):
-                query_results[item.responseNumber] = item
-                last_read_position = item.responseNumber
             query_record.refresh()
+            time.sleep(0.5)
             if query_record.fanOut == 0:
+                for item in  VariantResponse.batch_get([(query_id, resp_no) for resp_no in range(1, query_record.responses + 1)]):
+                    print('RECEIVED:', item.to_json())
+                    query_results[item.responseNumber] = item
                 print("Query fan in completed")
                 break
-        except:
-            print("Errored")
+        except Exception as e:
+            print("Errored", e)
             break
-        time.sleep(0.01)
 
     query_responses = []
 

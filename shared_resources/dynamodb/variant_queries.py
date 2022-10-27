@@ -77,7 +77,7 @@ class VariantResponse(Model):
         region = REGION
 
     id = UnicodeAttribute(hash_key=True, default='test')
-    responseNumber = NumberAttribute(default=0)
+    responseNumber = NumberAttribute(range_key=True, default=0)
     responseLocation = S3Location(null=True)
     variantResponseIndex = VariantResponseIndex()
     checkS3 = BooleanAttribute()

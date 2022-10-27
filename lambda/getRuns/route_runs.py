@@ -5,6 +5,7 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.run import Run
+from dynamodb.ontologies import expand_terms
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -77,9 +78,9 @@ def route(event):
     conditions = ''
     if len(filters) > 0:
         # supporting ontology terms
-        run_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'runs') == 'runs', filters)))
-        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='runs' AND term IN ({run_filters})) '''
-
+        run_filters = list(filter(lambda x: x.get('scope', 'runs') == 'runs', filters))
+        run_terms = expand_terms(run_filters)
+        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='runs' AND term IN ({run_terms})) '''
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

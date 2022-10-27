@@ -162,8 +162,16 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
             "label": "Asian"
         },
         {
+            "id": "SNOMED:413582008",
+            "label": "Asian race (racial group)"
+        },
+        {
             "id": "NCIT:C126535",
             "label": "Australian"
+        },
+        {
+            "id": "SNOMED:413464008",
+            "label": "African race (racial group)"
         },
         {
             "id": "NCIT:C43851",
@@ -199,6 +207,10 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
         {
             "id": "GAZ:00000460",
             "label": "Eurasia"
+        },
+        {
+            "id": "SNOMED:223506007",
+            "label":" Indian subcontinent (geographic location)"
         }
     ])
     item.info = {}
@@ -231,6 +243,10 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
         {
             "id": "NCIT:C1799",
             "label": "unknown"
+        },
+        {
+            "id": "SNOMED:223589002",
+            "label": "Indonesia (geographic location)"
         }
     ])
     item.treatments = []
@@ -463,7 +479,7 @@ def clean():
 
 def simulate():
     dynamo_items = []
-    # dataset_samples = dict()
+    dataset_samples = dict()
 
     # datasets
     file, writer = get_writer(Dataset, './tmp')
@@ -490,9 +506,9 @@ def simulate():
             dataset, dynamo_item = get_random_dataset(
                 id, vcfs, vcfChromosomeMap, seed=id)
             dynamo_item.sampleCount = len(samples)
-            dynamo_item.sampleNames = samples
-            # dynamo_item.sampleNames = ['None']
-            # dataset_samples[id] = samples
+            # dynamo_item.sampleNames = samples
+            dynamo_item.sampleNames = ['None']
+            dataset_samples[id] = samples
             dynamo_items.append(dynamo_item)
             write_local(Dataset, dataset, writer)
     writer.close()
@@ -521,52 +537,75 @@ def simulate():
 
     # individuals
     file, writer = get_writer(Individual, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating individuals"):
+    idx = 1
+    for n, dataset in enumerate(tqdm(dynamo_items, desc="Simulating individuals")):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
             individual = get_random_individual(
                 id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
             write_local(Individual, individual, writer)
+            idx += 1
+            if idx % 1000000 == 0:
+                writer.close()
+                file.close()
+                path = f's3://{METADATA_BUCKET}/individuals/combined-individuals-{idx}'
+                upload_local('./tmp', path)
+                file, writer = get_writer(Individual, './tmp')
+
     writer.close()
     file.close()
-    key = f'combined-individuals'
-    path = f's3://{METADATA_BUCKET}/individuals/{key}'
+    path = f's3://{METADATA_BUCKET}/individuals/combined-individuals-{idx}'
     upload_local('./tmp', path)
 
     # biosamples
     file, writer = get_writer(Biosample, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating biosamples"):
+    idx = 1
+    for n, dataset in enumerate(tqdm(dynamo_items, desc="Simulating biosamples")):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
             biosample = get_random_biosample(
                 id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
             write_local(Biosample, biosample, writer)
+            idx += 1
+            if idx % 1000000 == 0:
+                writer.close()
+                file.close()
+                path = f's3://{METADATA_BUCKET}/biosamples/combined-biosamples-{idx}'
+                upload_local('./tmp', path)
+                file, writer = get_writer(Biosample, './tmp')
     writer.close()
     file.close()
-    key = f'combined-biosamples'
-    path = f's3://{METADATA_BUCKET}/biosamples/{key}'
+    path = f's3://{METADATA_BUCKET}/biosamples/combined-biosamples-{idx}'
     upload_local('./tmp', path)
 
     # runs
     file, writer = get_writer(Run, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating runs"):
+    idx = 1
+    for n, dataset in enumerate(tqdm(dynamo_items, desc="Simulating runs")):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
             run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id,
                                  individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
             write_local(Run, run, writer)
+            idx += 1
+            if idx % 1000000 == 0:
+                writer.close()
+                file.close()
+                path = f's3://{METADATA_BUCKET}/runs/combined-runs-{idx}'
+                upload_local('./tmp', path)
+                file, writer = get_writer(Run, './tmp')
     writer.close()
     file.close()
-    key = f'combined-runs'
-    path = f's3://{METADATA_BUCKET}/runs/{key}'
+    path = f's3://{METADATA_BUCKET}/runs/combined-runs-{idx}'
     upload_local('./tmp', path)
 
     # analyses
+    idx = 1
     file, writer = get_writer(Analysis, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating analyses"):
+    for n, dataset in enumerate(tqdm(dynamo_items, desc="Simulating analyses")):
         id = dataset.id
         nosamples = dataset.sampleCount
         for itr in range(nosamples):
@@ -577,14 +616,20 @@ def simulate():
                 individualId=f'{id}-{itr}',
                 biosampleId=f'{id}-{itr}', 
                 runId=f'{id}-{itr}', 
-                vcfSampleId=dataset.sampleNames[itr], 
-                # vcfSampleId=dataset_samples[id][itr], 
+                # vcfSampleId=dataset.sampleNames[itr], 
+                vcfSampleId=dataset_samples[id][itr], 
                 seed=f'{id}-{itr}')
             write_local(Analysis, analysis, writer)
+            idx += 1
+            if idx % 1000000 == 0:
+                writer.close()
+                file.close()
+                path = f's3://{METADATA_BUCKET}/analyses/combined-analyses-{idx}'
+                upload_local('./tmp', path)
+                file, writer = get_writer(Analysis, './tmp')
     writer.close()
     file.close()
-    key = f'combined-analyses'
-    path = f's3://{METADATA_BUCKET}/analyses/{key}'
+    path = f's3://{METADATA_BUCKET}/analyses/combined-analyses-{idx}'
     upload_local('./tmp', path)
 
 

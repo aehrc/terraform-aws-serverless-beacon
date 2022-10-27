@@ -323,7 +323,8 @@ data aws_iam_policy_document lambda-getAnalyses {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -378,6 +379,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
       "dynamodb:GetItem",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
+      "dynamodb:BatchGetItem" 
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -429,7 +431,8 @@ data aws_iam_policy_document lambda-getIndividuals {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -481,7 +484,8 @@ data aws_iam_policy_document lambda-getBiosamples {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -533,7 +537,8 @@ data aws_iam_policy_document lambda-getDatasets {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -585,7 +590,8 @@ data aws_iam_policy_document lambda-getCohorts {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -630,7 +636,8 @@ data aws_iam_policy_document lambda-getRuns {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -746,6 +753,41 @@ data aws_iam_policy_document athena-full-access {
 
 # DynamoDB Ontology Related Access
 data aws_iam_policy_document dynamodb-onto-access {
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem"
+    ]
+    resources = [
+      aws_dynamodb_table.ontologies.arn,
+      aws_dynamodb_table.descendant_terms.arn,
+      aws_dynamodb_table.anscestor_terms.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:Query",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.ontology_terms.arn,
+    ]
+  }
+}
+
+# DynamoDB Ontology Related Write Access
+data aws_iam_policy_document dynamodb-onto-write-access {
   statement {
     actions = [
       "dynamodb:DescribeTable",

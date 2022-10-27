@@ -45,6 +45,7 @@ locals {
     DYNAMO_ONTOLOGIES_TABLE = aws_dynamodb_table.ontologies.name
     DYNAMO_ANSCESTORS_TABLE = aws_dynamodb_table.anscestor_terms.name
     DYNAMO_DESCENDANTS_TABLE = aws_dynamodb_table.descendant_terms.name
+    DYNAMO_ONTO_INDEX_TABLE = aws_dynamodb_table.ontology_terms.name
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
@@ -497,9 +498,10 @@ module "lambda-getBiosamples" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getBiosamples.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getBiosamples"
 
   tags = var.common-tags
@@ -533,9 +535,10 @@ module "lambda-getDatasets" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getDatasets.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getDatasets"
 
   tags = var.common-tags
@@ -569,9 +572,10 @@ module "lambda-getCohorts" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getCohorts.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getCohorts"
 
   tags = var.common-tags
@@ -605,9 +609,10 @@ module "lambda-getRuns" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getRuns.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getRuns"
 
   tags = var.common-tags
@@ -697,9 +702,10 @@ module "lambda-indexer" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.dynamodb-onto-access.json
+    data.aws_iam_policy_document.dynamodb-onto-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-write-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/indexer"
 
   tags = var.common-tags

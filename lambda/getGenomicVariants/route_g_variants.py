@@ -138,3 +138,37 @@ def route(event):
         )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
+
+if __name__ == '__main__':
+    event = {
+        "resource": "/g_variants",
+        "path": "/g_variants",
+        "httpMethod": "POST",
+        "body": json.dumps(
+            {
+                "meta": {
+                    "apiVersion": "v2.0"
+                },
+                "query": {
+                    "pagination": {
+                        "limit": 10,
+                        "skip": 0
+                    },
+                    "includeResultsetResponses": "HIT",
+                    "requestedGranularity": "record",
+                    "requestParameters": {
+                        "assemblyId": "GRCH38",
+                        "start": [
+                            10000000
+                        ],
+                        "end": [
+                            10000100
+                        ],
+                        "referenceBases": "A",
+                        "referenceName": "5",
+                        "alternateBases": "N"
+                    }
+                }
+            })
+        }
+    route(event)

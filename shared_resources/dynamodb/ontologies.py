@@ -42,6 +42,7 @@ class Anscestors(Model):
     anscestors = UnicodeSetAttribute()
 
 
+# TODO further partition these terms under different entity kinds
 def expand_terms(filters):
     terms = set()
     for filter in filters:

@@ -15,6 +15,7 @@ from smart_open import open as sopen
 from generate_query_index import get_ctas_terms_index_query
 from generate_query_terms import get_ctas_terms_query
 from dynamodb.ontologies import Ontology, Descendants, Anscestors
+from dynamodb.onto_index import OntoData
 
 
 athena = boto3.client('athena')
@@ -36,6 +37,7 @@ TERMS_TABLE = os.environ['TERMS_TABLE']
 
 ENSEMBL_OLS = 'https://www.ebi.ac.uk/ols/api/ontologies'
 ONTOSERVER = 'https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand'
+ONTO_TERMS_QUERY = f''' SELECT term,tablename,colname,type,label FROM "{TERMS_TABLE}" '''
 
 
 # in future, there could be an issue when descendants entries exceed 400KB
@@ -49,11 +51,11 @@ def index_terms_tree():
         response = requests.get(url)
         if response:
             response_json = response.json()
-            anscestors = []
+            anscestors = set()
             for response_term in response_json['_embedded']['terms']:
                 obo_id = response_term['obo_id']
                 if obo_id:
-                    anscestors.append(obo_id)
+                    anscestors.add(obo_id)
             if len(anscestors) > 0:
                 queue.put((term, anscestors))
 
@@ -67,9 +69,9 @@ def index_terms_tree():
         })
         if response:
             response_json = response.json()
-            anscestors = []
+            anscestors = set()
             for response_term in response_json['expansion']['contains']:
-                anscestors.append(
+                anscestors.add(
                     'SNOMED:' + response_term['code'] if snomed else response_term['code'])
             if len(anscestors) > 0:
 
@@ -173,6 +175,7 @@ def index_terms_tree():
 
     for term, ancestors in list(response_queue.queue):
         term_anscestors[term].update(ancestors)
+        term_anscestors[term].add(term)
 
     term_descendants = defaultdict(set)
 
@@ -288,6 +291,33 @@ def record_terms():
         WorkGroup=ATHENA_WORKGROUP
     )
     get_result(response['QueryExecutionId'])
+
+
+def onto_index():
+    response = athena.start_query_execution(
+        QueryString=ONTO_TERMS_QUERY,
+        QueryExecutionContext={
+            'Database': METADATA_DATABASE
+        },
+        WorkGroup=ATHENA_WORKGROUP
+    )
+    execution_id = response['QueryExecutionId']
+    get_result(execution_id)
+    
+    with sopen(f's3://{METADATA_BUCKET}/query-results/{execution_id}.csv') as s3f:
+        for n, line in enumerate(s3f):
+            if n == 0:
+                continue
+            term, tablename, colname, type, label = [item.strip('"') for item in line.strip().split(',')]
+            entry = OntoData.make_index_entry(
+                term=term,
+                tableName=tablename,
+                columnName=colname,
+                type=type,
+                label= label
+            )
+            entry.save()
+    return
 
 
 def lambda_handler(event, context):
