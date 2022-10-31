@@ -347,6 +347,15 @@ data aws_iam_policy_document lambda-getAnalyses {
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
   }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
+  }
 }
 
 #
@@ -393,6 +402,15 @@ data aws_iam_policy_document lambda-getGenomicVariants {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 
   statement {
@@ -455,6 +473,15 @@ data aws_iam_policy_document lambda-getIndividuals {
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
   }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
+  }
 }
 
 #
@@ -508,6 +535,15 @@ data aws_iam_policy_document lambda-getBiosamples {
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
   }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
+  }
 }
 
 #
@@ -560,6 +596,15 @@ data aws_iam_policy_document lambda-getDatasets {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 }
 
@@ -660,6 +705,15 @@ data aws_iam_policy_document lambda-getRuns {
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
   }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
+  }
 }
 
 #
@@ -681,6 +735,15 @@ data aws_iam_policy_document lambda-splitQuery {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-performQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.performQuery.arn,
+    ]
   }
 }
 

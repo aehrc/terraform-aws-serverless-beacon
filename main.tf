@@ -398,7 +398,8 @@ module "lambda-getAnalyses" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -420,7 +421,7 @@ module "lambda-getGenomicVariants" {
   description = "Get the variants."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 256
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -434,7 +435,8 @@ module "lambda-getGenomicVariants" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -471,7 +473,8 @@ module "lambda-getIndividuals" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -508,7 +511,8 @@ module "lambda-getBiosamples" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -530,7 +534,7 @@ module "lambda-getDatasets" {
   description = "Get the datasets."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 256
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -545,7 +549,8 @@ module "lambda-getDatasets" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -619,7 +624,8 @@ module "lambda-getRuns" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -642,14 +648,15 @@ module "lambda-splitQuery" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 128
-  timeout = 26
+  timeout = 300
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-splitQuery.json
   source_path = "${path.module}/lambda/splitQuery"
   tags = var.common-tags
 
   environment_variables = {
-    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name
+    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name,
+    PERFORM_QUERY_TOPIC_ARN = aws_sns_topic.performQuery.arn
   }
 
   layers = [

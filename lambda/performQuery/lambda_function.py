@@ -21,6 +21,13 @@ get_all_calls = all_count_pattern.findall
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    
+    try:
+        event = json.loads(event['Records'][0]['Sns']['Message'])
+        print('using sns event')
+    except:
+        print('using invoke event')
+
     performQueryPayload = jsons.load(event, PerformQueryPayload)
     # switch operations
     if performQueryPayload.passthrough.get('samplesOnly', False):
@@ -30,7 +37,7 @@ def lambda_handler(event, context):
     else:
         response = search_variants.perform_query(performQueryPayload)
 
-    print(f'Returning response: \n {response.dump()}')
+    print(f'Returning response')
     return response.dump()
 
 

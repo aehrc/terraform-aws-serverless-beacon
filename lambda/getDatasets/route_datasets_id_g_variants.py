@@ -3,13 +3,13 @@ import json
 import os
 import base64
 
-from apiutils.api_response import bundle_response
-from variantutils.search_variants import perform_variant_search, fetch_from_cache
+from apiutils.api_response import bundle_response, fetch_from_cache
+from variantutils.search_variants import perform_variant_search
 import apiutils.responses as responses
 import apiutils.entries as entries
 from athena.analysis import Analysis
 from athena.dataset import get_datasets
-from dynamodb.variant_queries import get_job_status, JobStatus
+from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -79,7 +79,7 @@ def route(event, query_id):
     
     if status == JobStatus.NEW:
         datasets = get_datasets(assemblyId, dataset_id=dataset_id)
-        running, exists, query_responses = perform_variant_search(
+        query_responses = perform_variant_search(
             passthrough={},
             datasets=datasets,
             referenceName=referenceName,
@@ -94,16 +94,14 @@ def route(event, query_id):
             includeResultsetResponses=includeResultsetResponses,
             query_id=query_id
         )
-        if running:
-            response = responses.get_boolean_response(exists=False, info={'message': 'Query still running.'})
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response)
     elif status == JobStatus.RUNNING:
         response = responses.get_boolean_response(exists=False, info={'message': 'Query still running.'})
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
     else:
-        exists, query_responses = fetch_from_cache(query_id)
+        response = fetch_from_cache(query_id)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
 
     variants = set()
     results = list()
@@ -111,6 +109,7 @@ def route(event, query_id):
     # val=counts
     variant_call_counts = defaultdict(int)
     variant_allele_counts = defaultdict(int)
+    exists = False
 
     for query_response in query_responses:
         exists = exists or query_response.exists
@@ -126,16 +125,22 @@ def route(event, query_id):
                     variant_allele_counts[idx] += query_response.all_alleles_count
                     internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
                     results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
+    
+    query = VariantQuery.get(query_id)
+    query.update(actions=[
+        VariantQuery.complete.set(True), 
+        VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
+    ])
 
     if requestedGranularity == 'boolean':
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return bundle_response(200, response, query_id)
 
     if requestedGranularity == 'count':
         response = responses.get_counts_response(exists=exists, count=len(variants))
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return bundle_response(200, response, query_id)
 
     if requestedGranularity in ('record', 'aggregated'):
         response = responses.get_result_sets_response(
@@ -145,7 +150,7 @@ def route(event, query_id):
             results=results
         )
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return bundle_response(200, response, query_id)
 
 
 if __name__ == '__main__':

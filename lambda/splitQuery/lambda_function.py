@@ -1,45 +1,40 @@
 import json
 import os
-import queue
-import threading
-from collections import defaultdict
+import concurrent.futures
+
 import boto3
 import jsons
 
 from payloads.lambda_payloads import SplitQueryPayload, PerformQueryPayload
 
 
-SPLIT_SIZE = 1000000
+SPLIT_SIZE = 10000
 PERFORM_QUERY = os.environ['PERFORM_QUERY_LAMBDA']
+PERFORM_QUERY_TOPIC_ARN = os.environ['PERFORM_QUERY_TOPIC_ARN']
 
 aws_lambda = boto3.client('lambda')
+sns = boto3.client('sns')
 
 
 def perform_query(payload):
-
-    print(f"Invoking {PERFORM_QUERY} with payload: {jsons.dump(payload)}")
-    response = aws_lambda.invoke(
-        FunctionName=PERFORM_QUERY,
-        InvocationType='Event',
-        Payload=jsons.dumps(payload),
-    )
-    # response_json = response['Payload'].read()
-    # print(f"vcf_location='{payload.vcf_location}', \
-    #         region='{payload.region}': \
-    #         received payload: {response_json}")
-    # response_dict = json.loads(response_json)
-    # # For separating samples by vcf
-    # response_dict['vcf_location'] = payload.vcf_location
-    # responses.put(response_dict)
+    # response = aws_lambda.invoke(
+    #     FunctionName=PERFORM_QUERY,
+    #     InvocationType='Event',
+    #     Payload=jsons.dumps(payload),
+    # )
+    kwargs = {
+        'TopicArn': PERFORM_QUERY_TOPIC_ARN,
+        'Message': jsons.dumps(payload)
+    }
+    sns.publish(**kwargs)
 
 
 def split_query(split_payload: SplitQueryPayload):
-    responses = queue.Queue()
     # to find HITs or ALL we must analyse all vcfs
     check_all = split_payload.include_datasets in ('HIT', 'ALL')
 
-    threads = []
     split_start = split_payload.start_min
+    pool = concurrent.futures.ThreadPoolExecutor(32)
 
     while split_start <= split_payload.start_max:
         split_end = min(split_start + SPLIT_SIZE - 1, split_payload.start_max)
@@ -62,21 +57,26 @@ def split_query(split_payload: SplitQueryPayload):
                 region=f'{chrom}:{split_start}-{split_end}',
                 vcf_location=vcf_location
             )
-            t = threading.Thread(
-                    target=perform_query, 
-                    kwargs={ 'payload': payload }
-                )
-            t.start()
-            threads.append(t)
+            pool.submit(perform_query, payload)
+
         # next split
         split_start += SPLIT_SIZE
 
-    [thread.join() for thread in threads]
+    pool.shutdown()
 
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    
+    try:
+        event = json.loads(event['Records'][0]['Sns']['Message'])
+        print('using sns event')
+    except:
+        print('using invoke event')
+
     split_payload = jsons.load(event, SplitQueryPayload)
+
+    print(split_payload)
     response = split_query(split_payload)
     print('Completed split query')
 
@@ -85,26 +85,26 @@ def lambda_handler(event, context):
 
 if __name__ == '__main__':
     event = {
-        "dataset_id": "test-wic",
-        "reference_bases": "A",
-        "region_start": 10000001,
-        "region_end": 10001001,
-        "end_min": 10000001,
-        "end_max": 10001001,
-        "alternate_bases": "N",
-        "variant_type": None,
-        "include_datasets": "HIT",
-        "vcf_locations": {
-            "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz": "5"
-        },
-        "vcf_groups": [
-            [
-                "s3://simulationexperiments/test-vcfs/100.chr5.80k.vcf.gz"
-            ]
-        ],
-        "requested_granularity": "record",
-        "variant_min_length": 0,
-        "variant_max_length": -1
+    "Records": [
+            {
+                "EventSource": "aws:sns",
+                "EventVersion": "1.0",
+                "EventSubscriptionArn": "arn:aws:sns:us-east-1:361439923243:splitQuery:abe5cdb5-03bd-4363-9bd3-b3fd9ee2c881",
+                "Sns": {
+                    "Type": "Notification",
+                    "MessageId": "46ba922a-cc5e-50a7-855f-c9f3e5d7c198",
+                    "TopicArn": "arn:aws:sns:us-east-1:361439923243:splitQuery",
+                    "Subject": None,
+                    "Message": "{\"payload\": {\"alternate_bases\": \"N\", \"dataset_id\": \"3-385\", \"end_max\": 10000011, \"end_min\": 10000001, \"include_datasets\": \"HIT\", \"passthrough\": {}, \"query_id\": \"01b802e52199e6c0143e0e93088d8578\", \"reference_bases\": \"A\", \"requested_granularity\": \"record\", \"start_max\": 10000011, \"start_min\": 10000001, \"variant_max_length\": -1, \"variant_min_length\": 0, \"variant_type\": null, \"vcf_groups\": [], \"vcf_locations\": {\"s3://sample-vcfs/100160.notY.vcf.gz\": \"5\"}}}",
+                    "Timestamp": "2022-10-31T01:39:21.419Z",
+                    "SignatureVersion": "1",
+                    "Signature": "B/KhtR5klnl3O5gMoGYQFIOcRi+RcTgzlDIB8TCA+S7hcmSwDkmUrJXdemrjQnqL7W19amTX4ISKtQ22suCNa2BZvXIyx5WiuRbE6j+/ggXZteibWmEVCIhmrtn2zguijrW/0YSQabX31Ki9FARoSxtrdxvJ3wq4alMaU0hne1uVat7FHgEyiTx98gAgCL6OOpXvSgijTNBNBSIK6iKeUPhZtvPUaOru9zwSJsY9MVBYtW0RPd6OsfkgKM79Fb0f3B7JBItqJzBtAke0KqZ5t41a4io1h61r9kbx4XxluyVjc1KQQQVWDPeKGrh/uAPk5u9e9tnWAR1Oz2ePOoZ7gw==",
+                    "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem",
+                    "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:361439923243:splitQuery:abe5cdb5-03bd-4363-9bd3-b3fd9ee2c881",
+                    "MessageAttributes": {}
+                }
+            }
+        ]
     }
 
     lambda_handler(event, dict())

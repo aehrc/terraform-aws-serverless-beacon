@@ -1,7 +1,5 @@
-import threading
-import hashlib
+import concurrent.futures
 import jsons
-from uuid import uuid4
 import time
 
 import boto3
@@ -12,7 +10,7 @@ from dynamodb.variant_queries import VariantQuery, VariantResponse
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
 
-REQUEST_TIMEOUT = 10  # seconds
+REQUEST_TIMEOUT = 600  # seconds
 
 dynamodb = boto3.client('dynamodb')
 aws_lambda = boto3.client('lambda')
@@ -61,14 +59,14 @@ def perform_variant_search(*,
     end_min += 1
     end_max += 1
 
-    # threading
-    threads = []
-
     # record the query event on DB
     query_record = VariantQuery(query_id)
     query_record.save()
     split_query_fan_out = get_split_query_fan_out(start_min, start_max)
     perform_query_fan_out = 0
+
+    print('Start event publishing')
+    pool = concurrent.futures.ThreadPoolExecutor(32)
 
     # parallelism across datasets
     for dataset in datasets:
@@ -100,27 +98,19 @@ def perform_variant_search(*,
             variant_min_length=variantMinLength,
             variant_max_length=variantMaxLength
         )
-        thread = threading.Thread(
-            target=split_query,
-            kwargs={'payload': payload}
-        )
-        thread.start()
-        threads.append(thread)
+        pool.submit(split_query, payload)
+
+    pool.shutdown()
 
     query_record.update(actions=[
         VariantQuery.fanOut.set(
             VariantQuery.fanOut + perform_query_fan_out)
     ])
 
-    exists = False
-
-    # wait while all the threads complete
-    for thread in threads:
-        thread.join()
-
+    print('End event publishing')
+    
     start_time = time.time()
     query_results = dict()
-    running = True
 
     while time.time() - start_time < REQUEST_TIMEOUT:
         try:
@@ -128,17 +118,14 @@ def perform_variant_search(*,
             time.sleep(0.5)
             if query_record.fanOut == 0:
                 for item in  VariantResponse.batch_get([(query_id, resp_no) for resp_no in range(1, query_record.responses + 1)]):
-                    print('RECEIVED:', item.to_json())
                     query_results[item.responseNumber] = item
-                    running = False
-                print("Query fan in completed")
+                print(f"Query fan in completed with {len(query_results)} items")
                 break
         except Exception as e:
             print("Errored", e)
             break
 
-    query_responses = []
-
+    print('Start results generator')
     for _, var_response in query_results.items():
         if var_response.checkS3:
             loc = var_response.responseLocation
@@ -149,43 +136,5 @@ def perform_variant_search(*,
             query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
         else:
             query_response = jsons.loads(var_response.result, PerformQueryResponse)
-
-        exists = exists or query_response.exists
-
-        if requestedGranularity == 'boolean' and not exists:
-            return running, True, []
         
-        query_responses.append(query_response)
-
-    if requestedGranularity == 'boolean':
-        return running, exists, []
-
-    return running, exists, query_responses
-
-
-def fetch_from_cache(query_id):
-    query_results = dict()
-    query_record = VariantQuery.get(query_id)
-
-    for item in  VariantResponse.batch_get([(query_id, resp_no) for resp_no in range(1, query_record.responses + 1)]):
-        print('RECEIVED:', item.to_json())
-        query_results[item.responseNumber] = item
-
-    query_responses = []
-    exists = False
-
-    for _, var_response in query_results.items():
-        if var_response.checkS3:
-            loc = var_response.responseLocation
-            obj = s3.get_object(
-                Bucket=loc.bucket,
-                Key=loc.key,
-            )
-            query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
-        else:
-            query_response = jsons.loads(var_response.result, PerformQueryResponse)
-
-        exists = exists or query_response.exists
-        query_responses.append(query_response)
-
-    return exists, query_responses
+        yield query_response

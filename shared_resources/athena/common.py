@@ -37,6 +37,19 @@ class AthenaModel:
 
     
     @classmethod
+    def get_by_query_v2(cls, query, queue=None):
+        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True)
+
+        if not len(result) > 0:
+            return []
+        elif queue is None:
+            return cls.parse_array_v2(result)
+        else:
+            queue.put(cls.parse_array_v2(result))
+
+    
+    @classmethod
     def get_existence_by_query(cls, query, queue=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
         result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
@@ -62,7 +75,7 @@ class AthenaModel:
             queue.put(int(result[1]['Data'][0]['VarCharValue']))
 
 
-def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None):
+def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False):
     response = athena.start_query_execution(
         QueryString=query,
         # ClientRequestToken='string',
@@ -91,12 +104,15 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
             print('Error: ', exec['QueryExecution']['Status'])
             return []
         else:
-            data = athena.get_query_results(
-                QueryExecutionId=response['QueryExecutionId'],
-                MaxResults=1000
-            )
-            if queue is not None:
-                return queue.put(data['ResultSet']['Rows'])
+            if return_id:
+                return response['QueryExecutionId']
             else:
-                return data['ResultSet']['Rows']
+                data = athena.get_query_results(
+                    QueryExecutionId=response['QueryExecutionId'],
+                    MaxResults=1000
+                )
+                if queue is not None:
+                    return queue.put(data['ResultSet']['Rows'])
+                else:
+                    return data['ResultSet']['Rows']
 
