@@ -22,6 +22,6 @@ layers/binaries/lib/*
 
 # simulation files
 vcf.txt
-tmp
+tmp*
 nohup.out
 tmpterms
