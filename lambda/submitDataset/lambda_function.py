@@ -38,6 +38,7 @@ updateSchema = json.load(open(updateSchema))
 resolveNew = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = newSchema)
 resolveUpdate = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = updateSchema)
 
+
 # just checking if the tabix would work as expected on a valid vcf.gz file
 # validate if the index file exists too
 def check_vcf_locations(locations):
@@ -78,7 +79,7 @@ def create_dataset(attributes):
 
     if datasetId:
         item = DynamoDataset(datasetId)
-        item.assemblyId = attributes.get('assemblyId', '')
+        item.assemblyId = attributes.get('assemblyId', 'UNKNOWN')
         item.vcfLocations = attributes.get('vcfLocations', [])
         item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
         for vcf in set(item.vcfLocations):

@@ -1,6 +1,7 @@
 import boto3
 import os
 import time
+import re
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
@@ -8,6 +9,7 @@ ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
 
 athena = boto3.client('athena')
+pattern = re.compile(f'^\\w[^:]+:.+$')
 
 # Perform database level operations based on the queries
 
@@ -73,6 +75,25 @@ class AthenaModel:
             return int(result[1]['Data'][0]['VarCharValue'])
         else:
             queue.put(int(result[1]['Data'][0]['VarCharValue']))
+
+
+def extract_terms(array):
+    for item in array:
+        if type(item) == dict:
+            label = item.get('label', '')
+            typ = item.get('type', 'string')
+            for key, value in item.items():
+                if type(value) == str:
+                    if key == "id" and pattern.match(value):
+                        yield value, label, typ
+                if type(value) == dict:
+                    yield from extract_terms([value])
+                elif type(value) == list:
+                    yield from extract_terms(value)
+        if type(item) == str:
+            continue
+        elif type(item) == list:
+            yield from extract_terms(item)
 
 
 def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False):

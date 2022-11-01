@@ -2,8 +2,14 @@ from collections import defaultdict
 import random
 import os
 import sys
+import boto3
+import pyorc
+import re
+import tempfile
 
 from tqdm import tqdm
+from smart_open import open as sopen
+import jsons
 
 from athena.dataset import Dataset
 from athena.cohort import Cohort
@@ -17,6 +23,8 @@ from utils import get_vcf_chromosomes, get_samples, get_writer, write_local, upl
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
+pattern = re.compile(f'^\\w[^:]+:.+$')
+s3 = boto3.client('s3')
 
 
 def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
@@ -151,7 +159,33 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
     random.seed(seed)
 
     item = Individual(id=id, datasetId=datasetId, cohortId=cohortId)
-    item.diseases = []
+    item.diseases = random.sample(
+        [
+            {
+                "diseaseCode": {
+                    "id": "EFO:0000400",
+                    "label": "insulin-dependent diabetes mellitus"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "MONDO:0005090",
+                    "label": "schizophrenia"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "EFO:0000249",
+                    "label": "alzheimer's disease"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "MONDO:0005812",
+                    "label": "influenza due to certain identified influenza virus"
+                }
+            }
+        ], random.randint(0, 3))
     item.ethnicity = random.choice([
         {
             "id": "NCIT:C42331",
@@ -190,7 +224,33 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
             "label": "Other race"
         }
     ])
-    item.exposures = []
+    item.exposures = random.sample([
+        {
+            "exposureCode": {
+                "id": "NCIT:C94596"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C50738"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C156623"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C94492"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C154864"
+            }
+        }
+    ], random.randint(0, 2))
     item.geographicOrigin = random.choice([
         {
             "id": "GAZ:00002955",
@@ -214,7 +274,28 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
         }
     ])
     item.info = {}
-    item.interventionsOrProcedures = []
+    item.interventionsOrProcedures = random.sample([
+        {
+            "procedureCode": {
+                "id": "NCIT:C64264"
+            }
+        },
+        {
+            "procedureCode": {
+                "id": "NCIT:C64263"
+            }
+        },
+        {
+            "procedureCode": {
+                "id": "NCIT:C93025"
+            }
+        },
+        {
+            "procedureCode": {
+                "id": "NCIT:C79426"
+            }
+        }
+    ], random.randint(0, 2))
     item.karyotypicSex = random.choice([
         "UNKNOWN_KARYOTYPE",
         "XX",
@@ -459,6 +540,21 @@ def get_random_analysis(id, datasetId, cohortId, individualId, biosampleId, runI
     return item
 
 
+def clean_files(bucket, prefix):
+    has_more = True
+    pbar = tqdm(desc='Cleaning Files')
+    while has_more:
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        files_to_delete = []
+        for object in response.get('Contents', []):
+            files_to_delete.append({"Key": object["Key"]})
+        s3.delete_objects(
+            Bucket=bucket, 
+            Delete={ "Objects": files_to_delete })
+        pbar.update(len(files_to_delete))
+        has_more = response['IsTruncated']
+
+
 def clean():
     with DynamoDataset.batch_write() as batch:
         for dynamo_item in tqdm(DynamoDataset.scan(), desc='Cleaning Dataset'):
@@ -476,10 +572,34 @@ def clean():
         for dynamo_item in tqdm(Descendants.scan(), desc='Cleaning Descendants'):
             batch.delete(dynamo_item)
 
+    clean_files(METADATA_BUCKET, '')
+
+
+def extract_terms(array):
+    for item in array:
+        if type(item) == dict:
+            label = item.get('label', '')
+            typ = item.get('type', 'string')
+            for key, value in item.items():
+                if type(value) == str:
+                    if key == "id" and pattern.match(value):
+                        yield value, label, typ
+                if type(value) == dict:
+                    yield from extract_terms([value])
+                elif type(value) == list:
+                    yield from extract_terms(value)
+        if type(item) == str:
+            continue
+        elif type(item) == list:
+            yield from extract_terms(item)
+
 
 def simulate():
     dynamo_items = []
     dataset_samples = dict()
+    terms_cache_header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
+    terms_file = open(f'./tmpterms', 'wb+')
+    terms_writer = pyorc.Writer(terms_file, terms_cache_header)
 
     # datasets
     file, writer = get_writer(Dataset, './tmp')
@@ -544,6 +664,10 @@ def simulate():
         for itr in range(nosamples):
             individual = get_random_individual(
                 id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
+            
+            for term, label, typ in extract_terms([jsons.dump(individual)]):
+                terms_writer.write(('individuals', individual.id, term, label, typ))
+            
             write_local(Individual, individual, writer)
             idx += 1
             if idx % 1000000 == 0:
@@ -567,6 +691,10 @@ def simulate():
         for itr in range(nosamples):
             biosample = get_random_biosample(
                 id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            
+            for term, label, typ in extract_terms([jsons.dump(biosample)]):
+                terms_writer.write(('biosamples', biosample.id, term, label, typ))
+
             write_local(Biosample, biosample, writer)
             idx += 1
             if idx % 1000000 == 0:
@@ -589,6 +717,10 @@ def simulate():
         for itr in range(nosamples):
             run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id,
                                  individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
+            
+            for term, label, typ in extract_terms([jsons.dump(run)]):
+                terms_writer.write(('runs', run.id, term, label, typ))
+
             write_local(Run, run, writer)
             idx += 1
             if idx % 1000000 == 0:
@@ -619,6 +751,10 @@ def simulate():
                 # vcfSampleId=dataset.sampleNames[itr], 
                 vcfSampleId=dataset_samples[id][itr], 
                 seed=f'{id}-{itr}')
+            
+            for term, label, typ in extract_terms([jsons.dump(analysis)]):
+                terms_writer.write(('analyses', analysis.id, term, label, typ))
+
             write_local(Analysis, analysis, writer)
             idx += 1
             if idx % 1000000 == 0:
@@ -631,6 +767,11 @@ def simulate():
     file.close()
     path = f's3://{METADATA_BUCKET}/analyses/combined-analyses-{idx}'
     upload_local('./tmp', path)
+
+    terms_writer.close()
+    terms_file.close()
+    with sopen(f's3://{METADATA_BUCKET}/terms-cache/simulated.orc') as s3f:
+        s3f.write(open('./tmpterms', 'rb'))
 
 
 if __name__ == "__main__":

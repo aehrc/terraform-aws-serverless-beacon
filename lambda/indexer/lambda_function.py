@@ -12,8 +12,8 @@ import threading
 
 from smart_open import open as sopen
 
-from generate_query_index import get_ctas_terms_index_query
-from generate_query_terms import get_ctas_terms_query
+from generate_query_index import QUERY as INDEX_QUERY
+from generate_query_terms import QUERY as TERMS_QUERY
 from dynamodb.ontologies import Ontology, Descendants, Anscestors
 from dynamodb.onto_index import OntoData
 
@@ -33,11 +33,14 @@ BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 RUNS_TABLE = os.environ['RUNS_TABLE']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
+TERMS_CACHE_TABLE = os.environ['TERMS_CACHE_TABLE']
 TERMS_TABLE = os.environ['TERMS_TABLE']
 
 ENSEMBL_OLS = 'https://www.ebi.ac.uk/ols/api/ontologies'
 ONTOSERVER = 'https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand'
 ONTO_TERMS_QUERY = f''' SELECT term,tablename,colname,type,label FROM "{TERMS_TABLE}" '''
+INDEX_QUERY = INDEX_QUERY.format(table=TERMS_CACHE_TABLE, uri=f's3://{METADATA_BUCKET}/terms-index/')
+TERMS_QUERY = TERMS_QUERY.format(table=TERMS_CACHE_TABLE, uri=f's3://{METADATA_BUCKET}/terms/')
 
 
 # in future, there could be an issue when descendants entries exceed 400KB
@@ -213,7 +216,7 @@ def update_athena_partitions(table):
     )
 
 
-def get_result(execution_id):
+def get_result(execution_id, sleep=10):
     retries = 0
     while True:
         exec = athena.get_query_execution(
@@ -222,7 +225,6 @@ def get_result(execution_id):
         status = exec['QueryExecution']['Status']['State']
 
         if status in ('QUEUED', 'RUNNING'):
-            sleep = 10
             print(f'Sleeping {sleep} seconds')
             time.sleep(sleep)
             retries += 1
@@ -251,7 +253,7 @@ def drop_tables(table):
         },
         WorkGroup=ATHENA_WORKGROUP
     )
-    get_result(response['QueryExecutionId'])
+    get_result(response['QueryExecutionId'], sleep=1)
 
 
 def clean_files(bucket, prefix):
@@ -265,12 +267,11 @@ def clean_files(bucket, prefix):
 
 
 def index_terms():
-    clean_files(METADATA_BUCKET, 'terms_index')
+    clean_files(METADATA_BUCKET, 'terms-index/')
     drop_tables(TERMS_INDEX_TABLE)
 
     response = athena.start_query_execution(
-        QueryString=get_ctas_terms_index_query(
-            f's3://{METADATA_BUCKET}/terms_index/'),
+        QueryString=INDEX_QUERY,
         QueryExecutionContext={
             'Database': METADATA_DATABASE
         },
@@ -280,11 +281,11 @@ def index_terms():
 
 
 def record_terms():
-    clean_files(METADATA_BUCKET, 'terms')
+    clean_files(METADATA_BUCKET, 'terms/')
     drop_tables(TERMS_TABLE)
 
     response = athena.start_query_execution(
-        QueryString=get_ctas_terms_query(f's3://{METADATA_BUCKET}/terms/'),
+        QueryString=TERMS_QUERY,
         QueryExecutionContext={
             'Database': METADATA_DATABASE
         },

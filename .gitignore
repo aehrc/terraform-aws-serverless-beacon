@@ -24,3 +24,4 @@ layers/binaries/lib/*
 vcf.txt
 tmp
 nohup.out
+tmpterms
