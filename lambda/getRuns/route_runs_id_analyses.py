@@ -7,6 +7,7 @@ import boto3
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.analysis import Analysis
+from dynamodb.ontologies import expand_terms
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -91,8 +92,9 @@ def route(event):
     conditions = ''
     if len(filters) > 0:
         # supporting ontology terms
-        analyses_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'analyses') == 'analyses', filters)))
-        conditions = f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='analyses' AND term IN ({analyses_filters})) '''
+        analysis_filters = list(filter(lambda x: x.get('scope', 'analyses') == 'analyses', filters))
+        analysis_terms = expand_terms(analysis_filters)
+        conditions = f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='analyses' AND term IN ({analysis_terms})) '''
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(run_id,conditions)

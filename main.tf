@@ -34,6 +34,7 @@ locals {
     ANALYSES_TABLE = aws_glue_catalog_table.sbeacon-analyses.name
     TERMS_TABLE = aws_glue_catalog_table.sbeacon-terms.name
     TERMS_INDEX_TABLE = aws_glue_catalog_table.sbeacon-terms-index.name
+    TERMS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-terms-cache.name
   }
   # dynamodb variables
   dynamodb_variables = {
@@ -45,6 +46,7 @@ locals {
     DYNAMO_ONTOLOGIES_TABLE = aws_dynamodb_table.ontologies.name
     DYNAMO_ANSCESTORS_TABLE = aws_dynamodb_table.anscestor_terms.name
     DYNAMO_DESCENDANTS_TABLE = aws_dynamodb_table.descendant_terms.name
+    DYNAMO_ONTO_INDEX_TABLE = aws_dynamodb_table.ontology_terms.name
   }
   # layers
   binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
@@ -397,7 +399,8 @@ module "lambda-getAnalyses" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -419,7 +422,7 @@ module "lambda-getGenomicVariants" {
   description = "Get the variants."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 256
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -433,7 +436,8 @@ module "lambda-getGenomicVariants" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -470,7 +474,8 @@ module "lambda-getIndividuals" {
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -497,16 +502,18 @@ module "lambda-getBiosamples" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getBiosamples.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getBiosamples"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -528,21 +535,23 @@ module "lambda-getDatasets" {
   description = "Get the datasets."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 256
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getDatasets.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getDatasets"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -569,9 +578,10 @@ module "lambda-getCohorts" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getCohorts.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getCohorts"
 
   tags = var.common-tags
@@ -605,16 +615,18 @@ module "lambda-getRuns" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getRuns.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getRuns"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
+      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
     local.sbeacon_variables,
@@ -637,14 +649,15 @@ module "lambda-splitQuery" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 128
-  timeout = 26
+  timeout = 300
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-splitQuery.json
   source_path = "${path.module}/lambda/splitQuery"
   tags = var.common-tags
 
   environment_variables = {
-    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name
+    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name,
+    PERFORM_QUERY_TOPIC_ARN = aws_sns_topic.performQuery.arn
   }
 
   layers = [
@@ -663,7 +676,7 @@ module "lambda-performQuery" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   memory_size = 512
-  timeout = 24
+  timeout = 300
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-performQuery.json
   source_path = "${path.module}/lambda/performQuery"
@@ -697,9 +710,10 @@ module "lambda-indexer" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.dynamodb-onto-access.json
+    data.aws_iam_policy_document.dynamodb-onto-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-write-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/indexer"
 
   tags = var.common-tags

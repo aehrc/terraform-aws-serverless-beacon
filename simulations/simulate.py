@@ -1,8 +1,18 @@
 from collections import defaultdict
 import random
 import os
+import sys
+import boto3
+import pyorc
+import re
+import threading
+import multiprocessing
+from glob import glob
+import concurrent.futures
 
 from tqdm import tqdm
+from smart_open import open as sopen
+import jsons
 
 from athena.dataset import Dataset
 from athena.cohort import Cohort
@@ -11,10 +21,21 @@ from athena.biosample import Biosample
 from athena.run import Run
 from athena.analysis import Analysis
 from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
+from dynamodb.ontologies import Ontology, Descendants, Anscestors
 from utils import get_vcf_chromosomes, get_samples, get_writer, write_local, upload_local
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
+pattern = re.compile(f'^\\w[^:]+:.+$')
+s3 = boto3.client('s3')
+threads_count = 56
+terms_cache_header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
+datasets_path = './tmp-datasets'
+cohorts_path = './tmp-cohorts'
+individuals_path = './tmp-individuals'
+biosamples_path = './tmp-biosamples'
+runs_path = './tmp-runs'
+analyses_path = './tmp-analyses'
 
 
 def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
@@ -84,7 +105,7 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     ])
 
     dynamo_item = DynamoDataset(id)
-    dynamo_item.assemblyId = random.choice(["GRCH38", "GRCH37", "HG16"])
+    dynamo_item.assemblyId = random.choice(["GRCH38"])
     dynamo_item.vcfGroups = [vcfLocations]
     dynamo_item.vcfLocations = vcfLocations
     dynamo_item.vcfChromosomeMap = vcfChromosomeMap
@@ -149,7 +170,33 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
     random.seed(seed)
 
     item = Individual(id=id, datasetId=datasetId, cohortId=cohortId)
-    item.diseases = []
+    item.diseases = random.sample(
+        [
+            {
+                "diseaseCode": {
+                    "id": "EFO:0000400",
+                    "label": "insulin-dependent diabetes mellitus"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "MONDO:0005090",
+                    "label": "schizophrenia"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "EFO:0000249",
+                    "label": "alzheimer's disease"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "MONDO:0005812",
+                    "label": "influenza due to certain identified influenza virus"
+                }
+            }
+        ], random.randint(0, 3))
     item.ethnicity = random.choice([
         {
             "id": "NCIT:C42331",
@@ -160,8 +207,16 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
             "label": "Asian"
         },
         {
+            "id": "SNOMED:413582008",
+            "label": "Asian race (racial group)"
+        },
+        {
             "id": "NCIT:C126535",
             "label": "Australian"
+        },
+        {
+            "id": "SNOMED:413464008",
+            "label": "African race (racial group)"
         },
         {
             "id": "NCIT:C43851",
@@ -180,7 +235,33 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
             "label": "Other race"
         }
     ])
-    item.exposures = []
+    item.exposures = random.sample([
+        {
+            "exposureCode": {
+                "id": "NCIT:C94596"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C50738"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C156623"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C94492"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "NCIT:C154864"
+            }
+        }
+    ], random.randint(0, 2))
     item.geographicOrigin = random.choice([
         {
             "id": "GAZ:00002955",
@@ -197,10 +278,35 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
         {
             "id": "GAZ:00000460",
             "label": "Eurasia"
+        },
+        {
+            "id": "SNOMED:223506007",
+            "label":"Indian subcontinent (geographic location)"
         }
     ])
     item.info = {}
-    item.interventionsOrProcedures = []
+    item.interventionsOrProcedures = random.sample([
+        {
+            "procedureCode": {
+                "id": "NCIT:C64264"
+            }
+        },
+        {
+            "procedureCode": {
+                "id": "NCIT:C64263"
+            }
+        },
+        {
+            "procedureCode": {
+                "id": "NCIT:C93025"
+            }
+        },
+        {
+            "procedureCode": {
+                "id": "NCIT:C79426"
+            }
+        }
+    ], random.randint(0, 2))
     item.karyotypicSex = random.choice([
         "UNKNOWN_KARYOTYPE",
         "XX",
@@ -229,6 +335,10 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
         {
             "id": "NCIT:C1799",
             "label": "unknown"
+        },
+        {
+            "id": "SNOMED:223589002",
+            "label": "Indonesia (geographic location)"
         }
     ])
     item.treatments = []
@@ -441,15 +551,73 @@ def get_random_analysis(id, datasetId, cohortId, individualId, biosampleId, runI
     return item
 
 
-if __name__ == "__main__":
-    # for dynamo_item in tqdm(DynamoDataset.scan(), desc='Cleaning'):
-    #     dynamo_item.delete()
+def clean_files(bucket, prefix):
+    has_more = True
+    pbar = tqdm(desc='Cleaning Files')
+    while has_more:
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        files_to_delete = []
+        for object in response.get('Contents', []):
+            files_to_delete.append({"Key": object["Key"]})
+        s3.delete_objects(
+            Bucket=bucket, 
+            Delete={ "Objects": files_to_delete })
+        pbar.update(len(files_to_delete))
+        has_more = response['IsTruncated']
 
+
+def clean():
+    with DynamoDataset.batch_write() as batch:
+        for dynamo_item in tqdm(DynamoDataset.scan(), desc='Cleaning Dataset'):
+            batch.delete(dynamo_item)
+
+    with Ontology.batch_write() as batch:
+        for dynamo_item in tqdm(Ontology.scan(), desc='Cleaning Ontology'):
+            batch.delete(dynamo_item)
+
+    with Anscestors.batch_write() as batch:
+        for dynamo_item in tqdm(Anscestors.scan(), desc='Cleaning Anscestors'):
+            batch.delete(dynamo_item)
+
+    with Descendants.batch_write() as batch:
+        for dynamo_item in tqdm(Descendants.scan(), desc='Cleaning Descendants'):
+            batch.delete(dynamo_item)
+
+    clean_files(METADATA_BUCKET, '')
+
+
+def extract_terms(array):
+    for item in array:
+        if type(item) == dict:
+            label = item.get('label', '')
+            typ = item.get('type', 'string')
+            for key, value in item.items():
+                if type(value) == str:
+                    if key == "id" and pattern.match(value):
+                        yield value, label, typ
+                if type(value) == dict:
+                    yield from extract_terms([value])
+                elif type(value) == list:
+                    yield from extract_terms(value)
+        if type(item) == str:
+            continue
+        elif type(item) == list:
+            yield from extract_terms(item)
+
+
+def simulate_datasets_cohorts():
     dynamo_items = []
-    # dataset_samples = dict()
+    dataset_samples = dict()
+    path_datasets = f'{datasets_path}.orc'
+    path_datasets_terms = f'{datasets_path}-terms.orc'
+    path_cohorts = f'{cohorts_path}.orc'
+    path_cohorts_terms = f'{cohorts_path}-terms.orc'
 
     # datasets
-    file, writer = get_writer(Dataset, './tmp')
+    terms_file = open(path_datasets_terms, 'wb+')
+    terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+    file, writer = get_writer(Dataset, path_datasets)
+
     for n, line in enumerate(open('vcf.txt')):
         if line[0] == '#':
             continue
@@ -472,100 +640,300 @@ if __name__ == "__main__":
             id = f'{n}-{m}'
             dataset, dynamo_item = get_random_dataset(
                 id, vcfs, vcfChromosomeMap, seed=id)
+            
+            for term, label, typ in extract_terms([jsons.dump(dataset)]):
+                terms_writer.write(('datasets', dataset.id, term, label, typ))
+            
             dynamo_item.sampleCount = len(samples)
-            dynamo_item.sampleNames = samples
-            # dynamo_item.sampleNames = ['None']
-            # dataset_samples[id] = samples
+            # dynamo_item.sampleNames = samples
+            dynamo_item.sampleNames = ['None']
+            dataset_samples[id] = samples
             dynamo_items.append(dynamo_item)
-            # write_local(Dataset, dataset, writer)
+            write_local(Dataset, dataset, writer)
     writer.close()
     file.close()
-
-    # upload datasets
-    key = f'combined-datasets'
-    path = f's3://{METADATA_BUCKET}/datasets/{key}'
-    upload_local('./tmp', path)
+    terms_writer.close()
+    terms_file.close()
 
     with DynamoDataset.batch_write() as batch:
         for item in tqdm(dynamo_items, desc="Writing datasets to DynamoDB"):
             batch.save(item)
 
     # cohorts
-    file, writer = get_writer(Cohort, './tmp')
+    terms_file = open(path_cohorts_terms, 'wb+')
+    terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+    file, writer = get_writer(Cohort, path_cohorts)
+
     for dataset in tqdm(dynamo_items, desc="Simulating cohorts"):
         id = dataset.id
         cohort = get_random_cohort(id=id, seed=id)
+
+        for term, label, typ in extract_terms([jsons.dump(cohort)]):
+                terms_writer.write(('cohorts', cohort.id, term, label, typ))
+
         write_local(Cohort, cohort, writer)
+    
     writer.close()
     file.close()
-    key = f'combined-cohort'
-    path = f's3://{METADATA_BUCKET}/cohorts/{key}'
-    upload_local('./tmp', path)
+    terms_writer.close()
+    terms_file.close()
 
-    # individuals
-    file, writer = get_writer(Individual, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating individuals"):
-        id = dataset.id
-        nosamples = dataset.sampleCount
-        for itr in range(nosamples):
-            individual = get_random_individual(
-                id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
-            write_local(Individual, individual, writer)
-    writer.close()
-    file.close()
-    key = f'combined-individuals'
-    path = f's3://{METADATA_BUCKET}/individuals/{key}'
-    upload_local('./tmp', path)
+    return dynamo_items, dataset_samples
 
-    # biosamples
-    file, writer = get_writer(Biosample, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating biosamples"):
-        id = dataset.id
-        nosamples = dataset.sampleCount
-        for itr in range(nosamples):
-            biosample = get_random_biosample(
-                id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
-            write_local(Biosample, biosample, writer)
-    writer.close()
-    file.close()
-    key = f'combined-biosamples'
-    path = f's3://{METADATA_BUCKET}/biosamples/{key}'
-    upload_local('./tmp', path)
+    
+def simulate_individuals(dynamo_items):
+    def runner(thread_id):
+        idx = 1
+        thread_path = f'./{individuals_path}-{thread_id}-{idx}.orc'
+        thread_terms_path = f'./{individuals_path}-terms-{thread_id}.orc'
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+        file, writer = get_writer(Individual, thread_path)
+        pbar = tqdm(desc=f'Individuals thread - {thread_id}', position=thread_id)
 
-    # runs
-    file, writer = get_writer(Run, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating runs"):
-        id = dataset.id
-        nosamples = dataset.sampleCount
-        for itr in range(nosamples):
-            run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id,
-                                 individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
-            write_local(Run, run, writer)
-    writer.close()
-    file.close()
-    key = f'combined-runs'
-    path = f's3://{METADATA_BUCKET}/runs/{key}'
-    upload_local('./tmp', path)
+        for n, dataset in enumerate(dynamo_items):
+            if n % threads_count != thread_id:
+                continue
+            
+            id = dataset.id
+            nosamples = dataset.sampleCount
+            
+            for itr in range(nosamples):
+                individual = get_random_individual(
+                    id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
+                
+                for term, label, typ in extract_terms([jsons.dump(individual)]):
+                    terms_writer.write(('individuals', individual.id, term, label, typ))
+                
+                write_local(Individual, individual, writer)
+                idx += 1
+                
+                if idx % 1000000 == 0:
+                    writer.close()
+                    file.close()
+                    thread_path = f'./{individuals_path}-{thread_id}-{idx}.orc'
+                    file, writer = get_writer(Individual, thread_path)
+                pbar.update()
 
-    # analyses
-    file, writer = get_writer(Analysis, './tmp')
-    for dataset in tqdm(dynamo_items, desc="Simulating analyses"):
-        id = dataset.id
-        nosamples = dataset.sampleCount
-        for itr in range(nosamples):
-            analysis = get_random_analysis(
-                id=f'{id}-{itr}', 
-                datasetId=id, 
-                cohortId=id, 
-                individualId=f'{id}-{itr}',
-                biosampleId=f'{id}-{itr}', 
-                runId=f'{id}-{itr}', 
-                vcfSampleId=dataset.sampleNames[itr], 
-                # vcfSampleId=dataset_samples[id][itr], 
-                seed=f'{id}-{itr}')
-            write_local(Analysis, analysis, writer)
-    writer.close()
-    file.close()
-    key = f'combined-analyses'
-    path = f's3://{METADATA_BUCKET}/analyses/{key}'
-    upload_local('./tmp', path)
+        writer.close()
+        file.close()
+        terms_writer.close()
+        terms_file.close()
+        pbar.close()
+        
+
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    [thread.start() for thread in threads]
+    [thread.join() for thread in threads]
+    print()
+
+
+def simulate_biosamples(dynamo_items):
+    def runner(thread_id):
+        idx = 1
+        thread_path = f'./{biosamples_path}-{thread_id}-{idx}.orc'
+        thread_terms_path =f'./{biosamples_path}-terms-{thread_id}.orc'
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+        file, writer = get_writer(Biosample, thread_path)
+        pbar = tqdm(desc=f'Biosamples thread - {thread_id}', position=thread_id)
+
+        for n, dataset in enumerate(dynamo_items):
+            if n % threads_count != thread_id:
+                continue
+            
+            id = dataset.id
+            nosamples = dataset.sampleCount
+            
+            for itr in range(nosamples):
+                biosample = get_random_biosample(
+                    id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
+                
+                for term, label, typ in extract_terms([jsons.dump(biosample)]):
+                    terms_writer.write(('biosamples', biosample.id, term, label, typ))
+
+                write_local(Biosample, biosample, writer)
+                idx += 1
+                
+                if idx % 1000000 == 0:
+                    writer.close()
+                    file.close()
+                    thread_path = f'./{biosamples_path}-{thread_id}-{idx}.orc'
+                    file, writer = get_writer(Biosample, thread_path)
+                
+                pbar.update()
+
+        writer.close()
+        file.close()
+        terms_writer.close()
+        terms_file.close()
+        pbar.close()
+
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    [thread.start() for thread in threads]
+    [thread.join() for thread in threads]
+    print()
+
+
+def simulate_runs(dynamo_items):
+    def runner(thread_id):
+        idx = 1
+        thread_path = f'./{runs_path}-{thread_id}-{idx}.orc'
+        thread_terms_path =f'./{runs_path}-terms-{thread_id}.orc'
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+        file, writer = get_writer(Run, thread_path)
+        pbar = tqdm(desc=f'Runs thread - {thread_id}', position=thread_id)
+
+        for n, dataset in enumerate(dynamo_items):
+            if n % threads_count != thread_id:
+                continue
+
+            id = dataset.id
+            nosamples = dataset.sampleCount
+            
+            for itr in range(nosamples):
+                run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id,
+                                    individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
+                
+                for term, label, typ in extract_terms([jsons.dump(run)]):
+                    terms_writer.write(('runs', run.id, term, label, typ))
+
+                write_local(Run, run, writer)
+                idx += 1
+                
+                if idx % 1000000 == 0:
+                    writer.close()
+                    file.close()
+                    thread_path = f'./{runs_path}-{thread_id}-{idx}.orc'
+                    file, writer = get_writer(Run, thread_path)
+
+                pbar.update()
+
+        writer.close()
+        file.close()
+        terms_writer.close()
+        terms_file.close()
+        pbar.close()
+
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    [thread.start() for thread in threads]
+    [thread.join() for thread in threads]
+    print()
+
+
+def simulate_analyses(dynamo_items, dataset_samples):
+    def runner(thread_id):
+        idx = 1
+        thread_path = f'./{analyses_path}-{thread_id}-{idx}.orc'
+        thread_terms_path =f'./{analyses_path}-terms-{thread_id}.orc'
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+        file, writer = get_writer(Analysis, thread_path)
+        pbar = tqdm(desc=f'Analyses thread - {thread_id}', position=thread_id)
+
+        for n, dataset in enumerate(dynamo_items):
+            if n % threads_count != thread_id:
+                continue
+
+            id = dataset.id
+            nosamples = dataset.sampleCount
+
+            for itr in range(nosamples):
+                analysis = get_random_analysis(
+                    id=f'{id}-{itr}', 
+                    datasetId=id, 
+                    cohortId=id, 
+                    individualId=f'{id}-{itr}',
+                    biosampleId=f'{id}-{itr}', 
+                    runId=f'{id}-{itr}', 
+                    # vcfSampleId=dataset.sampleNames[itr], 
+                    vcfSampleId=dataset_samples[id][itr], 
+                    seed=f'{id}-{itr}')
+                
+                for term, label, typ in extract_terms([jsons.dump(analysis)]):
+                    terms_writer.write(('analyses', analysis.id, term, label, typ))
+
+                write_local(Analysis, analysis, writer)
+                idx += 1
+                if idx % 1000000 == 0:
+                    writer.close()
+                    file.close()
+                    thread_path = f'./{analyses_path}-{thread_id}-{idx}.orc'
+                    file, writer = get_writer(Analysis, thread_path)
+
+                pbar.update()
+
+        writer.close()
+        file.close()
+        terms_writer.close()
+        terms_file.close()
+        pbar.close()
+
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    [thread.start() for thread in threads]
+    [thread.join() for thread in threads]
+    print()
+
+
+def simulate():
+    dynamo_items, dataset_samples = simulate_datasets_cohorts()
+    print('Simulating individuals', flush=True)
+    simulate_individuals(dynamo_items)
+    print('Simulating biosamples', flush=True)
+    simulate_biosamples(dynamo_items)
+    print('Simulating runs', flush=True)
+    simulate_runs(dynamo_items)
+    print('Simulating analyses', flush=True)
+    simulate_analyses(dynamo_items, dataset_samples)
+    print(flush=True, end='')
+
+
+def upload():
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=threads_count)
+
+    # upload datasets
+    pool.submit(upload_local, f'{datasets_path}.orc', f's3://{METADATA_BUCKET}/datasets/combined-datasets.orc')
+    pool.submit(upload_local, f'{datasets_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/datasets.orc')
+
+    # upload cohorts
+    pool.submit(upload_local, f'{cohorts_path}.orc', f's3://{METADATA_BUCKET}/cohorts/combined-cohorts.orc')
+    pool.submit(upload_local, f'{cohorts_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/cohorts.orc')
+    
+    # upload individuals
+    for thread in range(threads_count):
+        pool.submit(upload_local, f'./{individuals_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/individuals-{thread}.orc')
+        pool.submit(upload_local, f'./{biosamples_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc')
+        pool.submit(upload_local, f'./{runs_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/runs-{thread}.orc')
+        pool.submit(upload_local, f'./{analyses_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/analyses-{thread}.orc')
+        
+        for file in glob(f'{individuals_path}-{thread}-*'):
+            idx = file.split('/')[-1].replace('.orc', '')
+            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/individuals/individuals-{thread}-{idx}.orc')
+
+        for file in glob(f'{biosamples_path}-{thread}-*'):
+            idx = file.split('/')[-1].replace('.orc', '')
+            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/biosamples/biosamples-{thread}-{idx}')
+        
+        for file in glob(f'{runs_path}-{thread}-*'):
+            idx = file.split('/')[-1].replace('.orc', '')
+            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/runs/runs-{thread}-{idx}')
+        
+        for file in glob(f'{analyses_path}-{thread}-*'):
+            idx = file.split('/')[-1].replace('.orc', '')
+            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/analyses/analyses-{thread}-{idx}')
+    pool.shutdown()
+
+
+if __name__ == "__main__":
+    if not len(sys.argv) == 2 or sys.argv[1] not in ('simulate', 'upload', 'clean'):
+        print('Usage: \n\t$ python simulate.py MODE [simulate|upload|clean]\n')
+        sys.exit(1)
+    print('START')
+    if sys.argv[1] == 'simulate':
+        simulate()
+    elif sys.argv[1] == 'upload':
+        upload()
+    else:
+        clean()
+    print('END')

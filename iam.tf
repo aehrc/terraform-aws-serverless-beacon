@@ -323,7 +323,8 @@ data aws_iam_policy_document lambda-getAnalyses {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -345,6 +346,15 @@ data aws_iam_policy_document lambda-getAnalyses {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 }
 
@@ -378,6 +388,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
       "dynamodb:GetItem",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
+      "dynamodb:BatchGetItem" 
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -391,6 +402,15 @@ data aws_iam_policy_document lambda-getGenomicVariants {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 
   statement {
@@ -429,7 +449,8 @@ data aws_iam_policy_document lambda-getIndividuals {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -451,6 +472,15 @@ data aws_iam_policy_document lambda-getIndividuals {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 }
 
@@ -481,7 +511,8 @@ data aws_iam_policy_document lambda-getBiosamples {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -503,6 +534,15 @@ data aws_iam_policy_document lambda-getBiosamples {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 }
 
@@ -533,7 +573,8 @@ data aws_iam_policy_document lambda-getDatasets {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -555,6 +596,15 @@ data aws_iam_policy_document lambda-getDatasets {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
   }
 }
 
@@ -585,7 +635,8 @@ data aws_iam_policy_document lambda-getCohorts {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -630,7 +681,8 @@ data aws_iam_policy_document lambda-getRuns {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -653,6 +705,15 @@ data aws_iam_policy_document lambda-getRuns {
     ]
     resources = [module.lambda-splitQuery.lambda_function_arn]
   }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
+  }
 }
 
 #
@@ -674,6 +735,15 @@ data aws_iam_policy_document lambda-splitQuery {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-performQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.performQuery.arn,
+    ]
   }
 }
 
@@ -749,9 +819,45 @@ data aws_iam_policy_document dynamodb-onto-access {
   statement {
     actions = [
       "dynamodb:DescribeTable",
+      "dynamodb:GetItem"
+    ]
+    resources = [
+      aws_dynamodb_table.ontologies.arn,
+      aws_dynamodb_table.descendant_terms.arn,
+      aws_dynamodb_table.anscestor_terms.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:Query",
+    ]
+    resources = [
+      "${aws_dynamodb_table.datasets.arn}/index/*",
+      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
+      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.ontology_terms.arn,
+    ]
+  }
+}
+
+# DynamoDB Ontology Related Write Access
+data aws_iam_policy_document dynamodb-onto-write-access {
+  statement {
+    actions = [
+      "dynamodb:DescribeTable",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
       "dynamodb:GetItem",
+      "dynamodb:BatchWriteItem"
     ]
     resources = [
       aws_dynamodb_table.ontologies.arn,

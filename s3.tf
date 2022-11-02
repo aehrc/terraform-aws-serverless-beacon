@@ -43,6 +43,36 @@ resource "aws_s3_bucket_acl" "metadata" {
   acl    = "private"
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "metadata_bucket_lifecycle" {
+  bucket = aws_s3_bucket.metadata-bucket.id
+
+  rule {
+    id = "clean-old-query-results"
+    status = "Enabled"
+    
+    filter {
+      prefix = "query-results/"
+    }
+
+    expiration {
+      days = 2
+    }
+  }
+
+  rule {
+    id = "clean-old-cached-results"
+    status = "Enabled"
+    
+    filter {
+      prefix = "query-responses/"
+    }
+
+    expiration {
+      days = 2
+    }
+  }
+}
+
 # 
 # S3 bucket for lambda layers
 # 

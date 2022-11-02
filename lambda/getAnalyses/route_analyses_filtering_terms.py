@@ -13,7 +13,9 @@ TERMS_TABLE = os.environ['TERMS_TABLE']
 def get_terms(terms, skip, limit):
     response =     {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": {},
+        "info": {
+            "message": "Endpoint is not defined in schema!"
+        },
         "meta": {
             "apiVersion": BEACON_API_VERSION,
             "beaconId": BEACON_ID,

@@ -78,7 +78,8 @@ def route(event):
     query = f'''
     SELECT DISTINCT term, label, type 
     FROM "{TERMS_TABLE}"
-    WHERE "table"='{RUNS_TABLE}'
+    WHERE "kind"='runs'
+    ORDER BY term
     OFFSET {skip}
     LIMIT {limit};
     '''

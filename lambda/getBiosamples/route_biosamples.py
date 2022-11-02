@@ -5,7 +5,7 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.biosample import Biosample
-from dynamodb.onto_index import OntoData
+from dynamodb.ontologies import expand_terms
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -78,8 +78,9 @@ def route(event):
     conditions = ''
     if len(filters) > 0:
         # supporting ontology terms
-        biosamples_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'biosamples') == 'biosamples', filters)))
-        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='biosamples' AND term IN ({biosamples_filters})) '''
+        biosample_filters = list(filter(lambda x: x.get('scope', 'biosamples') == 'biosamples', filters))
+        biosample_terms = expand_terms(biosample_filters)
+        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='biosamples' AND term IN ({biosample_terms})) '''
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

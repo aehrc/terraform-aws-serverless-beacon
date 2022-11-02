@@ -38,6 +38,7 @@ updateSchema = json.load(open(updateSchema))
 resolveNew = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = newSchema)
 resolveUpdate = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = updateSchema)
 
+
 # just checking if the tabix would work as expected on a valid vcf.gz file
 # validate if the index file exists too
 def check_vcf_locations(locations):
@@ -77,23 +78,25 @@ def create_dataset(attributes):
     messages = []
 
     if datasetId:
-        item = DynamoDataset(datasetId)
-        item.assemblyId = attributes.get('assemblyId', '')
-        item.vcfLocations = attributes.get('vcfLocations', [])
-        item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
-        for vcf in set(item.vcfLocations):
-            chroms = get_vcf_chromosomes(vcf)
-            vcfm = VcfChromosomeMap()
-            vcfm.vcf = vcf
-            vcfm.chromosomes = chroms
-            item.vcfChromosomeMap.append(vcfm)
-
-        print(f"Putting item in table: {item.to_json()}")
-        item.save()
-        messages.append("Added dataset info")
-        # dataset information
         json_dataset = attributes.get('dataset', None)
         if json_dataset:
+            # dataset information
+            item = DynamoDataset(datasetId)
+            item.assemblyId = attributes.get('assemblyId', 'UNKNOWN')
+            item.vcfLocations = attributes.get('vcfLocations', [])
+            item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
+            for vcf in set(item.vcfLocations):
+                chroms = get_vcf_chromosomes(vcf)
+                vcfm = VcfChromosomeMap()
+                vcfm.vcf = vcf
+                vcfm.chromosomes = chroms
+                item.vcfChromosomeMap.append(vcfm)
+
+            print(f"Putting item in table: {item.to_json()}")
+            item.save()
+            messages.append("Added dataset info")
+
+            # dataset metadata entry information
             dataset = jsons.load(json_dataset, Dataset)
             dataset.id = datasetId
             dataset._assemblyId = item.assemblyId 
@@ -105,8 +108,6 @@ def create_dataset(attributes):
             messages.append("Added dataset metadata")
 
     if datasetId and cohortId:
-
-
         individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
         biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
         runs = jsons.default_list_deserializer(attributes.get('runs', []), List[Run])

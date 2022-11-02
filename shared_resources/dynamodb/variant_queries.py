@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timezone, timedelta
-from dateutil import parser
+from enum import Enum
 
 import boto3
 from pynamodb.models import Model
@@ -38,7 +38,8 @@ class VariantQuery(Model):
     startTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc())
     endTime = UTCDateTimeAttribute(null=True)
     elapsedTime = NumberAttribute(default_for_new=-1)
-    timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
+    timeToExist = TTLAttribute(default_for_new=timedelta(hours=24))
+    complete = BooleanAttribute(default_for_new=False)
 
 
     # atomically increment
@@ -55,7 +56,6 @@ class VariantQuery(Model):
             VariantQuery.responses.set(VariantQuery.responses + 1),
             VariantQuery.fanOut.set(VariantQuery.fanOut - 1),
             VariantQuery.endTime.set(get_current_time_utc()),
-            VariantQuery.elapsedTime.set((get_current_time_utc() - self.startTime).total_seconds()),
         ])
 
 
@@ -77,12 +77,29 @@ class VariantResponse(Model):
         region = REGION
 
     id = UnicodeAttribute(hash_key=True, default='test')
-    responseNumber = NumberAttribute(default=0)
+    responseNumber = NumberAttribute(range_key=True, default=0)
     responseLocation = S3Location(null=True)
     variantResponseIndex = VariantResponseIndex()
     checkS3 = BooleanAttribute()
     result = UnicodeAttribute(null=True)
-    timeToExist = TTLAttribute(default_for_new=timedelta(seconds=30))
+    timeToExist = TTLAttribute(default_for_new=timedelta(hours=24))
+
+
+class JobStatus(Enum):
+    COMPLETED = 1
+    RUNNING = 2
+    NEW = 3
+
+
+def get_job_status(query_id):
+    try:
+        item = VariantQuery.get(query_id)
+        if item.complete:
+            return JobStatus.COMPLETED
+        else:
+            return JobStatus.RUNNING
+    except VariantQuery.DoesNotExist:
+        return JobStatus.NEW
 
 
 if __name__ == '__main__':

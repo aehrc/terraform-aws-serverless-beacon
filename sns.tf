@@ -37,3 +37,23 @@ resource aws_sns_topic_subscription duplicateVariantSearch {
   protocol = "lambda"
   endpoint = module.lambda-duplicateVariantSearch.lambda_function_arn
 }
+
+resource aws_sns_topic splitQuery {
+  name = "splitQuery"
+}
+
+resource aws_sns_topic_subscription splitQuery {
+  topic_arn = aws_sns_topic.splitQuery.arn
+  protocol = "lambda"
+  endpoint = module.lambda-splitQuery.lambda_function_arn
+}
+
+resource aws_sns_topic performQuery {
+  name = "performQuery"
+}
+
+resource aws_sns_topic_subscription performQuery {
+  topic_arn = aws_sns_topic.performQuery.arn
+  protocol = "lambda"
+  endpoint = module.lambda-performQuery.lambda_function_arn
+}

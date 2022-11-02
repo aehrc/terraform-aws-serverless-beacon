@@ -3,6 +3,7 @@ import json
 from jsonschema import Draft202012Validator
 
 from apiutils.api_response import bad_request
+from apiutils.request_hash import hash_query
 from route_runs import route as route_runs
 from route_runs_id import route as route_runs_id
 from route_runs_id_g_variants import route as route_runs_id_g_variants
@@ -38,6 +39,8 @@ def lambda_handler(event, context):
         if errors:
             return bad_request(errorMessage=', '.join(errors))
 
+    event_hash = hash_query(event)
+
     if event["resource"] == "/runs":
         return route_runs(event)
 
@@ -45,7 +48,7 @@ def lambda_handler(event, context):
         return route_runs_id(event)
 
     elif event['resource'] == '/runs/{id}/g_variants':
-        return route_runs_id_g_variants(event)
+        return route_runs_id_g_variants(event, event_hash)
 
     elif event['resource'] == '/runs/{id}/analyses':
         return route_runs_id_analyses(event)

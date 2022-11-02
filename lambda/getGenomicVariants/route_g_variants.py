@@ -4,16 +4,17 @@ import os
 import base64
 
 from variantutils.search_variants import perform_variant_search
-from apiutils.api_response import bundle_response
+from apiutils.api_response import bundle_response, fetch_from_cache
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.dataset import get_datasets
+from athena.dataset import get_all_datasets
+from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
 
-def route(event):
+
+def route(event, query_id):
     if event['httpMethod'] == 'GET':
         params = event['queryStringParameters'] or dict()
         print(f"Query params {params}")
@@ -76,65 +77,122 @@ def route(event):
         # supporting ontology terms
         pass
         
-    datasets = get_datasets(assemblyId, skip=skip, limit=limit)
     check_all = includeResultsetResponses in ('HIT', 'ALL')
+    status = get_job_status(query_id)
 
-    variants = set()
-    results = list()
-    found = set()
-    # key=pos-ref-alt
-    # val=counts
-    variant_call_counts = defaultdict(int)
-    variant_allele_counts = defaultdict(int)
-    exists, query_responses = perform_variant_search(
-        datasets=datasets,
-        referenceName=referenceName,
-        referenceBases=referenceBases,
-        alternateBases=alternateBases,
-        start=start,
-        end=end,
-        variantType=variantType,
-        variantMinLength=variantMinLength,
-        variantMaxLength=variantMaxLength,
-        requestedGranularity=requestedGranularity,
-        includeResultsetResponses=includeResultsetResponses
-    )
-
-    for query_response in query_responses:
-        exists = exists or query_response.exists
-
-        if exists:
-            if check_all:
-                variants.update(query_response.variants)
-
-                for variant in query_response.variants:
-                    chrom, pos, ref, alt, typ = variant.split('\t')
-                    idx = f'{pos}_{ref}_{alt}'
-                    variant_call_counts[idx] += query_response.call_count
-                    variant_allele_counts[idx] += query_response.all_alleles_count
-                    internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
-
-                    if internal_id not in found:
-                        results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
-                        found.add(internal_id)
-
-    if requestedGranularity == 'boolean':
-        response = responses.get_boolean_response(exists=exists)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-
-    if requestedGranularity == 'count':
-        response = responses.get_counts_response(exists=exists, count=len(variants))
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-
-    if requestedGranularity in ('record', 'aggregated'):
-        response = responses.get_result_sets_response(
-            setType='genomicVariant', 
-            reqPagination=responses.get_pagination_object(skip, limit),
-            exists=exists,
-            total=len(variants),
-            results=results
+    if status == JobStatus.NEW:
+        datasets = get_all_datasets(assemblyId)
+        query_responses = perform_variant_search(
+            datasets=datasets,
+            referenceName=referenceName,
+            referenceBases=referenceBases,
+            alternateBases=alternateBases,
+            start=start,
+            end=end,
+            variantType=variantType,
+            variantMinLength=variantMinLength,
+            variantMaxLength=variantMaxLength,
+            requestedGranularity=requestedGranularity,
+            includeResultsetResponses=includeResultsetResponses,
+            query_id=query_id
         )
+    
+        variants = set()
+        results = list()
+        found = set()
+        # key=pos-ref-alt
+        # val=counts
+        variant_call_counts = defaultdict(int)
+        variant_allele_counts = defaultdict(int)
+        exists = False
+
+        for query_response in query_responses:
+            exists = exists or query_response.exists
+
+            if exists:
+                if requestedGranularity == 'boolean':
+                    break
+                if check_all:
+                    variants.update(query_response.variants)
+
+                    for variant in query_response.variants:
+                        chrom, pos, ref, alt, typ = variant.split('\t')
+                        idx = f'{pos}_{ref}_{alt}'
+                        variant_call_counts[idx] += query_response.call_count
+                        variant_allele_counts[idx] += query_response.all_alleles_count
+                        internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
+
+                        if internal_id not in found:
+                            results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
+                            found.add(internal_id)
+
+        query = VariantQuery.get(query_id)
+        query.update(actions=[
+            VariantQuery.complete.set(True), 
+            VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
+        ])
+
+        if requestedGranularity == 'boolean':
+            response = responses.get_boolean_response(exists=exists)
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response, query_id)
+
+        if requestedGranularity == 'count':
+            response = responses.get_counts_response(exists=exists, count=len(variants))
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response, query_id)
+
+        if requestedGranularity in ('record', 'aggregated'):
+            response = responses.get_result_sets_response(
+                setType='genomicVariant', 
+                reqPagination=responses.get_pagination_object(skip, limit),
+                exists=exists,
+                total=len(variants),
+                results=results
+            )
+            print('Returning Response: {}'.format(json.dumps(response)))
+            return bundle_response(200, response, query_id)
+    
+    elif status == JobStatus.RUNNING:
+        response = responses.get_boolean_response(exists=False, info={'message': 'Query still running.'})
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
+    
+    else:
+        response = fetch_from_cache(query_id)
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
+
+if __name__ == '__main__':
+    event = {
+        "resource": "/g_variants",
+        "path": "/g_variants",
+        "httpMethod": "POST",
+        "body": json.dumps(
+            {
+                "meta": {
+                    "apiVersion": "v2.0"
+                },
+                "query": {
+                    "pagination": {
+                        "limit": 100,
+                        "skip": 0
+                    },
+                    "includeResultsetResponses": "HIT",
+                    "requestedGranularity": "record",
+                    "requestParameters": {
+                        "assemblyId": "GRCH38",
+                        "start": [
+                            10000000
+                        ],
+                        "end": [
+                            10010100
+                        ],
+                        "referenceBases": "A",
+                        "referenceName": "5",
+                        "alternateBases": "N"
+                    }
+                }
+            })
+        }
+    route(event, '36551e7a54877bdf0c8ea8938ab40ff5')
