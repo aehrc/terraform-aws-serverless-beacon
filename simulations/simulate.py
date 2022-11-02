@@ -897,7 +897,7 @@ def upload():
     pool.submit(upload_local, f'{datasets_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/datasets.orc')
 
     # upload cohorts
-    pool.submit(upload_local, f'{cohorts_path}.orc', f's3://{METADATA_BUCKET}/datasets/combined-cohorts.orc')
+    pool.submit(upload_local, f'{cohorts_path}.orc', f's3://{METADATA_BUCKET}/cohorts/combined-cohorts.orc')
     pool.submit(upload_local, f'{cohorts_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/cohorts.orc')
     
     # upload individuals
