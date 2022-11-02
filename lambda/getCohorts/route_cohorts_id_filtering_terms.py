@@ -14,6 +14,7 @@ RUNS_TABLE = os.environ['RUNS_TABLE']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
 TERMS_TABLE = os.environ['TERMS_TABLE']
+COHORTS_TABLE = os.environ['COHORTS_TABLE']
 
 
 def get_terms(terms, skip, limit):
@@ -97,11 +98,17 @@ def route(event):
         WHERE term IN
         (
             SELECT DISTINCT TI.term
+            FROM "{TERMS_INDEX_TABLE}" TI
+            WHERE TI.id = '{cohort_id}' and TI.kind = 'cohorts'
+
+            UNION
+
+            SELECT DISTINCT TI.term
             FROM "{INDIVIDUALS_TABLE}" I
             JOIN 
             "{TERMS_INDEX_TABLE}" TI
             ON TI.id = I.id and TI.kind = 'individuals'
-            where I._cohortid = '2-4'
+            WHERE I._cohortid = '{cohort_id}'
 
             UNION
 
@@ -110,7 +117,7 @@ def route(event):
             JOIN 
             "{TERMS_INDEX_TABLE}" TI
             ON TI.id = B.id and TI.kind = 'biosamples'
-            where B._cohortid = '2-4'
+            WHERE B._cohortid = '{cohort_id}'
 
             UNION
 
@@ -119,7 +126,7 @@ def route(event):
             JOIN 
             "{TERMS_INDEX_TABLE}" TI
             ON TI.id = R.id and TI.kind = 'runs'
-            where R._cohortid = '2-4'
+            WHERE R._cohortid = '{cohort_id}'
 
             UNION
 
@@ -128,7 +135,7 @@ def route(event):
             JOIN 
             "{TERMS_INDEX_TABLE}" TI
             ON TI.id = A.id and TI.kind = 'analyses'
-            where A._cohortid = '2-4'
+            WHERE A._cohortid = '{cohort_id}'
         )
         ORDER BY term
         OFFSET {skip}
