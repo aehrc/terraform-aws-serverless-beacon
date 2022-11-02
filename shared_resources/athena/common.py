@@ -136,4 +136,3 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
                     return queue.put(data['ResultSet']['Rows'])
                 else:
                     return data['ResultSet']['Rows']
-

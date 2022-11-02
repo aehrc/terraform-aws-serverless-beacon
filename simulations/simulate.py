@@ -28,10 +28,10 @@ from utils import get_vcf_chromosomes, get_samples, get_writer, write_local, upl
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 pattern = re.compile(f'^\\w[^:]+:.+$')
 s3 = boto3.client('s3')
-threads_count = 4
+threads_count = 56
 terms_cache_header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-datasets_path = './tmp-datasets.orc'
-cohorts_path = './tmp-cohorts.orc'
+datasets_path = './tmp-datasets'
+cohorts_path = './tmp-cohorts'
 individuals_path = './tmp-individuals'
 biosamples_path = './tmp-biosamples'
 runs_path = './tmp-runs'
@@ -281,7 +281,7 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
         },
         {
             "id": "SNOMED:223506007",
-            "label":" Indian subcontinent (geographic location)"
+            "label":"Indian subcontinent (geographic location)"
         }
     ])
     item.info = {}
@@ -608,9 +608,16 @@ def extract_terms(array):
 def simulate_datasets_cohorts():
     dynamo_items = []
     dataset_samples = dict()
+    path_datasets = f'{datasets_path}.orc'
+    path_datasets_terms = f'{datasets_path}-terms.orc'
+    path_cohorts = f'{cohorts_path}.orc'
+    path_cohorts_terms = f'{cohorts_path}-terms.orc'
 
     # datasets
-    file, writer = get_writer(Dataset, datasets_path)
+    terms_file = open(path_datasets_terms, 'wb+')
+    terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+    file, writer = get_writer(Dataset, path_datasets)
+
     for n, line in enumerate(open('vcf.txt')):
         if line[0] == '#':
             continue
@@ -633,6 +640,10 @@ def simulate_datasets_cohorts():
             id = f'{n}-{m}'
             dataset, dynamo_item = get_random_dataset(
                 id, vcfs, vcfChromosomeMap, seed=id)
+            
+            for term, label, typ in extract_terms([jsons.dump(dataset)]):
+                terms_writer.write(('datasets', dataset.id, term, label, typ))
+            
             dynamo_item.sampleCount = len(samples)
             # dynamo_item.sampleNames = samples
             dynamo_item.sampleNames = ['None']
@@ -641,19 +652,31 @@ def simulate_datasets_cohorts():
             write_local(Dataset, dataset, writer)
     writer.close()
     file.close()
+    terms_writer.close()
+    terms_file.close()
 
     with DynamoDataset.batch_write() as batch:
         for item in tqdm(dynamo_items, desc="Writing datasets to DynamoDB"):
             batch.save(item)
 
     # cohorts
-    file, writer = get_writer(Cohort, cohorts_path)
+    terms_file = open(path_cohorts_terms, 'wb+')
+    terms_writer = pyorc.Writer(terms_file, terms_cache_header)
+    file, writer = get_writer(Cohort, path_cohorts)
+
     for dataset in tqdm(dynamo_items, desc="Simulating cohorts"):
         id = dataset.id
         cohort = get_random_cohort(id=id, seed=id)
+
+        for term, label, typ in extract_terms([jsons.dump(cohort)]):
+                terms_writer.write(('cohorts', cohort.id, term, label, typ))
+
         write_local(Cohort, cohort, writer)
+    
     writer.close()
     file.close()
+    terms_writer.close()
+    terms_file.close()
 
     return dynamo_items, dataset_samples
 
@@ -663,8 +686,8 @@ def simulate_individuals(dynamo_items):
         idx = 1
         thread_path = f'./{individuals_path}-{thread_id}-{idx}.orc'
         thread_terms_path = f'./{individuals_path}-terms-{thread_id}.orc'
-        terms_file_s3 = open(thread_terms_path, 'wb+')
-        terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Individual, thread_path)
         pbar = tqdm(desc=f'Individuals thread - {thread_id}', position=thread_id)
 
@@ -695,7 +718,7 @@ def simulate_individuals(dynamo_items):
         writer.close()
         file.close()
         terms_writer.close()
-        terms_file_s3.close()
+        terms_file.close()
         pbar.close()
         
 
@@ -710,8 +733,8 @@ def simulate_biosamples(dynamo_items):
         idx = 1
         thread_path = f'./{biosamples_path}-{thread_id}-{idx}.orc'
         thread_terms_path =f'./{biosamples_path}-terms-{thread_id}.orc'
-        terms_file_s3 = open(thread_terms_path, 'wb+')
-        terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Biosample, thread_path)
         pbar = tqdm(desc=f'Biosamples thread - {thread_id}', position=thread_id)
 
@@ -743,7 +766,7 @@ def simulate_biosamples(dynamo_items):
         writer.close()
         file.close()
         terms_writer.close()
-        terms_file_s3.close()
+        terms_file.close()
         pbar.close()
 
     threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
@@ -757,8 +780,8 @@ def simulate_runs(dynamo_items):
         idx = 1
         thread_path = f'./{runs_path}-{thread_id}-{idx}.orc'
         thread_terms_path =f'./{runs_path}-terms-{thread_id}.orc'
-        terms_file_s3 = open(thread_terms_path, 'wb+')
-        terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Run, thread_path)
         pbar = tqdm(desc=f'Runs thread - {thread_id}', position=thread_id)
 
@@ -790,7 +813,7 @@ def simulate_runs(dynamo_items):
         writer.close()
         file.close()
         terms_writer.close()
-        terms_file_s3.close()
+        terms_file.close()
         pbar.close()
 
     threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
@@ -804,8 +827,8 @@ def simulate_analyses(dynamo_items, dataset_samples):
         idx = 1
         thread_path = f'./{analyses_path}-{thread_id}-{idx}.orc'
         thread_terms_path =f'./{analyses_path}-terms-{thread_id}.orc'
-        terms_file_s3 = open(thread_terms_path, 'wb+')
-        terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
+        terms_file = open(thread_terms_path, 'wb+')
+        terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Analysis, thread_path)
         pbar = tqdm(desc=f'Analyses thread - {thread_id}', position=thread_id)
 
@@ -844,7 +867,7 @@ def simulate_analyses(dynamo_items, dataset_samples):
         writer.close()
         file.close()
         terms_writer.close()
-        terms_file_s3.close()
+        terms_file.close()
         pbar.close()
 
     threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
@@ -870,9 +893,11 @@ def upload():
     # upload datasets
     path = f's3://{METADATA_BUCKET}/datasets/combined-datasets'
     upload_local(datasets_path, path)
+    upload_local(datasets_path, path)
     
     # upload cohorts
     path = f's3://{METADATA_BUCKET}/cohorts/combined-cohort'
+    upload_local(cohorts_path, path)
     upload_local(cohorts_path, path)
 
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=threads_count)

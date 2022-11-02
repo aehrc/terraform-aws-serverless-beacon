@@ -6,7 +6,7 @@ import os
 
 from smart_open import open as sopen
 
-from .common import AthenaModel
+from .common import AthenaModel, extract_terms
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
@@ -119,6 +119,19 @@ class Run(jsons.JsonSerializable, AthenaModel):
                         for k in cls._table_columns
                     )
                     writer.write(row)
+
+        header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
+        with sopen(f's3://{METADATA_BUCKET}/terms-cache/runs-{key}', 'wb') as s3file:
+            with pyorc.Writer(
+                s3file, 
+                header, 
+                compression=pyorc.CompressionKind.SNAPPY, 
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION) as writer:
+                
+                for run in array:
+                    for term, label, typ in extract_terms([jsons.dump(run)]):
+                        row = ('runs', run.id, term, label, typ)
+                        writer.write(row)
 
 
 if __name__ == '__main__':

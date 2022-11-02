@@ -8,6 +8,7 @@ from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.individual import Individual
 from dynamodb.onto_index import OntoData
+from dynamodb.ontologies import expand_terms
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -92,8 +93,9 @@ def route(event):
     conditions = ''
     if len(filters) > 0:
         # supporting ontology terms
-        individuals_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'individuals') == 'individuals', filters)))
-        conditions = f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='individuals' AND term IN ({individuals_filters})) '''
+        individual_filters = list(filter(lambda x: x.get('scope', 'individuals') == 'individuals', filters))
+        individual_terms = expand_terms(individual_filters)
+        conditions = f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='individuals' AND term IN ({individual_terms})) '''
     
     if requestedGranularity == 'boolean':
         query = get_bool_query(cohort_id)
