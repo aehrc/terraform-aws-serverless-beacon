@@ -6,6 +6,7 @@ import boto3
 import pyorc
 import re
 import threading
+import multiprocessing
 from glob import glob
 import concurrent.futures
 
@@ -665,7 +666,7 @@ def simulate_individuals(dynamo_items):
         terms_file_s3 = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
         file, writer = get_writer(Individual, thread_path)
-        pbar = tqdm(desc=f'Individuals thread - {thread_id}')
+        pbar = tqdm(desc=f'Individuals thread - {thread_id}', position=thread_id)
 
         for n, dataset in enumerate(dynamo_items):
             if n % threads_count != thread_id:
@@ -698,7 +699,7 @@ def simulate_individuals(dynamo_items):
         pbar.close()
         
 
-    threads = [threading.Thread(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
@@ -712,7 +713,7 @@ def simulate_biosamples(dynamo_items):
         terms_file_s3 = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
         file, writer = get_writer(Biosample, thread_path)
-        pbar = tqdm(desc=f'Biosamples thread - {thread_id}')
+        pbar = tqdm(desc=f'Biosamples thread - {thread_id}', position=thread_id)
 
         for n, dataset in enumerate(dynamo_items):
             if n % threads_count != thread_id:
@@ -745,7 +746,7 @@ def simulate_biosamples(dynamo_items):
         terms_file_s3.close()
         pbar.close()
 
-    threads = [threading.Thread(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
@@ -759,7 +760,7 @@ def simulate_runs(dynamo_items):
         terms_file_s3 = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
         file, writer = get_writer(Run, thread_path)
-        pbar = tqdm(desc=f'Runs thread - {thread_id}')
+        pbar = tqdm(desc=f'Runs thread - {thread_id}', position=thread_id)
 
         for n, dataset in enumerate(dynamo_items):
             if n % threads_count != thread_id:
@@ -792,7 +793,7 @@ def simulate_runs(dynamo_items):
         terms_file_s3.close()
         pbar.close()
 
-    threads = [threading.Thread(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
@@ -806,7 +807,7 @@ def simulate_analyses(dynamo_items, dataset_samples):
         terms_file_s3 = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file_s3, terms_cache_header)
         file, writer = get_writer(Analysis, thread_path)
-        pbar = tqdm(desc=f'Analyses thread - {thread_id}')
+        pbar = tqdm(desc=f'Analyses thread - {thread_id}', position=thread_id)
 
         for n, dataset in enumerate(dynamo_items):
             if n % threads_count != thread_id:
@@ -846,7 +847,7 @@ def simulate_analyses(dynamo_items, dataset_samples):
         terms_file_s3.close()
         pbar.close()
 
-    threads = [threading.Thread(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
