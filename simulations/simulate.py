@@ -890,17 +890,15 @@ def simulate():
 
 
 def upload():
-    # upload datasets
-    path = f's3://{METADATA_BUCKET}/datasets/combined-datasets'
-    upload_local(datasets_path, path)
-    upload_local(datasets_path, path)
-    
-    # upload cohorts
-    path = f's3://{METADATA_BUCKET}/cohorts/combined-cohort'
-    upload_local(cohorts_path, path)
-    upload_local(cohorts_path, path)
-
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=threads_count)
+
+    # upload datasets
+    pool.submit(upload_local, f'{datasets_path}.orc', f's3://{METADATA_BUCKET}/datasets/combined-datasets.orc')
+    pool.submit(upload_local, f'{datasets_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/datasets.orc')
+
+    # upload cohorts
+    pool.submit(upload_local, f'{cohorts_path}.orc', f's3://{METADATA_BUCKET}/datasets/combined-cohorts.orc')
+    pool.submit(upload_local, f'{cohorts_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/cohorts.orc')
     
     # upload individuals
     for thread in range(threads_count):
