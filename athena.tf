@@ -839,7 +839,12 @@ resource "aws_glue_catalog_table" "sbeacon-relations" {
     }
 
     columns {
-      name = "analysesid"
+      name = "runid"
+      type = "string"
+    }
+
+    columns {
+      name = "analysisid"
       type = "string"
     }
   }
