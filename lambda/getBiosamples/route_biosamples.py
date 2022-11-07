@@ -12,6 +12,7 @@ BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
+RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
 
 
 def get_count_query(conditions=''):
@@ -77,10 +78,25 @@ def route(event):
 
     conditions = ''
     if len(filters) > 0:
-        # supporting ontology terms
+        conditions = []
+
         biosample_filters = list(filter(lambda x: x.get('scope', 'biosamples') == 'biosamples', filters))
-        biosample_terms = expand_terms(biosample_filters)
-        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='biosamples' AND term IN ({biosample_terms})) '''
+        if biosample_filters:
+            biosample_terms = expand_terms(biosample_filters)
+            conditions = [f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='biosamples' AND term IN ({biosample_terms})) ''']
+
+        individuals_filters = list(filter(lambda x: x.get('scope') == 'individuals', filters))
+        if individuals_filters:
+            individual_terms = expand_terms(individuals_filters)
+            conditions += [f''' id IN (SELECT RI.biosampleid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.individualid = TI.id where TI.kind='individuals' and TI.term IN ({individual_terms})) ''']
+        
+        runs_filters = list(filter(lambda x: x.get('scope') == 'runs', filters))
+        if runs_filters:
+            runs_terms = expand_terms(runs_filters)
+            conditions += [f''' id IN (SELECT RI.biosampleid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.runid = TI.id where TI.kind='runs' and TI.term IN ({runs_terms})) ''']
+        
+        if conditions:
+            conditions = 'WHERE ' + ' AND '.join(conditions)
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

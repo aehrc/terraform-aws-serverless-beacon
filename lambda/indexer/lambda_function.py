@@ -346,7 +346,7 @@ def onto_index():
 
 
 def lambda_handler(event, context):
-    # TODO decide a better of partitioning or not partitioning
+    # TODO decide a better way of partitioning or not partitioning
     # for table in (DATASETS_TABLE, COHORTS_TABLE, INDIVIDUALS_TABLE, BIOSAMPLES_TABLE, RUNS_TABLE, ANALYSES_TABLE):
     #     threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
     # this is the longest process
