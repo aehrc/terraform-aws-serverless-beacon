@@ -391,9 +391,10 @@ module "lambda-getAnalyses" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getAnalyses.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getAnalyses"
 
   tags = var.common-tags
@@ -428,9 +429,10 @@ module "lambda-getGenomicVariants" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getGenomicVariants.json,
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.athena-full-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path = "${path.module}/lambda/getGenomicVariants"
 
   tags = var.common-tags

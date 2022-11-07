@@ -5,7 +5,7 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.cohort import Cohort
-from dynamodb.ontologies import expand_terms
+from athena.common import entity_search_conditions
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -87,32 +87,7 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = ''
-    if len(filters) > 0:
-        conditions = []
-
-        cohort_filters = list(filter(lambda x: x.get('scope', 'cohorts') == 'cohorts', filters))
-        if cohort_filters:
-            cohort_terms = expand_terms(cohort_filters)
-            conditions += [f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='cohorts' AND term IN ({cohort_terms})) ''']
-
-        individual_filters = list(filter(lambda x: x.get('scope') == 'individuals', filters))
-        if individual_filters:
-            individual_terms = expand_terms(individual_filters)
-            conditions += [f''' id IN (SELECT RI.cohortid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.individualid = TI.id where TI.kind='individuals' and TI.term IN ({individual_terms})) ''']
-        
-        biosamples_filters = list(filter(lambda x: x.get('scope') == 'biosamples', filters))
-        if biosamples_filters:
-            biosample_terms = expand_terms(biosamples_filters)
-            conditions += [f''' id IN (SELECT RI.cohortid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.biosampleid = TI.id where TI.kind='biosamples' and TI.term IN ({biosample_terms})) ''']
-        
-        runs_filters = list(filter(lambda x: x.get('scope') == 'runs', filters))
-        if runs_filters:
-            runs_terms = expand_terms(runs_filters)
-            conditions += [f''' id IN (SELECT RI.cohortid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.runid = TI.id where TI.kind='runs' and TI.term IN ({runs_terms})) ''']
-        
-        if conditions:
-            conditions = 'WHERE ' + ' AND '.join(conditions)
+    conditions = entity_search_conditions(filters, 'cohorts')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

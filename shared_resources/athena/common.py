@@ -3,10 +3,14 @@ import os
 import time
 import re
 
+from dynamodb.ontologies import expand_terms
+
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
+TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
+RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
 
 athena = boto3.client('athena')
 pattern = re.compile(f'^\\w[^:]+:.+$')
@@ -136,3 +140,33 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
                     return queue.put(data['ResultSet']['Rows'])
                 else:
                     return data['ResultSet']['Rows']
+
+
+def entity_search_conditions(filters, default_type):
+    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'} - { default_type }
+    type_relations_table_id = {
+        'individuals': 'individualid',
+        'biosamples': 'biosampleid',
+        'runs': 'runid',
+        'analyses': 'analysisid',
+        'datasets': 'datasetid',
+        'cohorts': 'cohortid'
+    }
+
+    conditions = []
+    default_filters = list(filter(lambda x: x.get('scope', default_type) == default_type, filters))
+        
+    if default_filters:
+        expanded_terms = expand_terms(default_filters)
+        conditions += [f''' id IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[default_type]} = TI.id where TI.kind='{default_type}' and TI.term IN ({expanded_terms})) ''']
+
+    for group in types:
+        group_filters = list(filter(lambda x: x.get('scope') == group, filters))
+        
+        if group_filters:
+            expanded_terms = expand_terms(group_filters)
+            conditions += [f''' id IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms})) ''']
+        
+    if conditions:
+        return 'WHERE ' + ' AND '.join(conditions)
+    return ''
