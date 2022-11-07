@@ -48,8 +48,15 @@
                 "$ref": "analysis-schema.json"
             },
             "type": "array"
+        },
+        "index": {
+            "description": "Specifies whether to run the indexer. Only set true when enough data is added to the beacon.",
+            "type": "boolean",
+            "default": false
         }
     },
+    "required": [
+    ],
     "dependentSchemas": {
         "dataset": {
             "required": [

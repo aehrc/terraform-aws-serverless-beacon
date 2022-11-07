@@ -14,6 +14,7 @@ from smart_open import open as sopen
 
 from generate_query_index import QUERY as INDEX_QUERY
 from generate_query_terms import QUERY as TERMS_QUERY
+from generate_query_relations import QUERY as RELATIONS_QUERY
 from dynamodb.ontologies import Ontology, Descendants, Anscestors
 from dynamodb.onto_index import OntoData
 
@@ -35,12 +36,20 @@ ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
 TERMS_CACHE_TABLE = os.environ['TERMS_CACHE_TABLE']
 TERMS_TABLE = os.environ['TERMS_TABLE']
+RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
 
 ENSEMBL_OLS = 'https://www.ebi.ac.uk/ols/api/ontologies'
 ONTOSERVER = 'https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand'
 ONTO_TERMS_QUERY = f''' SELECT term,tablename,colname,type,label FROM "{TERMS_TABLE}" '''
 INDEX_QUERY = INDEX_QUERY.format(table=TERMS_CACHE_TABLE, uri=f's3://{METADATA_BUCKET}/terms-index/')
 TERMS_QUERY = TERMS_QUERY.format(table=TERMS_CACHE_TABLE, uri=f's3://{METADATA_BUCKET}/terms/')
+RELATIONS_QUERY = RELATIONS_QUERY.format(
+    uri=f's3://{METADATA_BUCKET}/relations/',
+    individuals_table=INDIVIDUALS_TABLE,
+    biosamples_table=BIOSAMPLES_TABLE,
+    runs_table=RUNS_TABLE,
+    analyses_table=ANALYSES_TABLE
+)
 
 
 # in future, there could be an issue when descendants entries exceed 400KB
@@ -294,6 +303,21 @@ def record_terms():
     get_result(response['QueryExecutionId'])
 
 
+def record_relations():
+    clean_files(METADATA_BUCKET, 'relations/')
+    drop_tables(RELATIONS_TABLE)
+
+    response = athena.start_query_execution(
+        QueryString=RELATIONS_QUERY,
+        QueryExecutionContext={
+            'Database': METADATA_DATABASE
+        },
+        WorkGroup=ATHENA_WORKGROUP
+    )
+    get_result(response['QueryExecutionId'])
+
+
+# TODO re-evaluate the following function remove or useful?
 def onto_index():
     response = athena.start_query_execution(
         QueryString=ONTO_TERMS_QUERY,
@@ -322,12 +346,15 @@ def onto_index():
 
 
 def lambda_handler(event, context):
-    # TODO decide a better of partitioning or not partitioning
+    # TODO decide a better way of partitioning or not partitioning
     # for table in (DATASETS_TABLE, COHORTS_TABLE, INDIVIDUALS_TABLE, BIOSAMPLES_TABLE, RUNS_TABLE, ANALYSES_TABLE):
     #     threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
     # this is the longest process
     index_thread = threading.Thread(target=index_terms)
     index_thread.start()
+    
+    relations_thread = threading.Thread(target=record_relations)
+    relations_thread.start()
 
     # terms are neded for the tree index
     terms_thread = threading.Thread(target=record_terms)
@@ -335,8 +362,9 @@ def lambda_handler(event, context):
     terms_thread.join()
     index_terms_tree()
 
-    # join last running thread
+    # join last running threads
     index_thread.join()
+    relations_thread.join()
     print('Success')
 
 

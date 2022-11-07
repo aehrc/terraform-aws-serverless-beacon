@@ -35,6 +35,7 @@ locals {
     TERMS_TABLE = aws_glue_catalog_table.sbeacon-terms.name
     TERMS_INDEX_TABLE = aws_glue_catalog_table.sbeacon-terms-index.name
     TERMS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-terms-cache.name
+    RELATIONS_TABLE = aws_glue_catalog_table.sbeacon-relations.name
   }
   # dynamodb variables
   dynamodb_variables = {
