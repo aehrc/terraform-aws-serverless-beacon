@@ -22,3 +22,10 @@ RUN wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz && \
 
 RUN wget https://releases.hashicorp.com/terraform/1.2.8/terraform_1.2.8_linux_386.zip
 RUN unzip terraform_1.2.8_linux_386.zip -d /usr/bin/
+
+RUN wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz -O /tmp/apache-maven-3.5.4-bin.tar.gz
+RUN tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
+RUN PYTHON=python2 amazon-linux-extras install -y java-openjdk11
+
+ENV M2_HOME="/opt/apache-maven-3.5.4"
+ENV PATH="${M2_HOME}/bin:${PATH}"
