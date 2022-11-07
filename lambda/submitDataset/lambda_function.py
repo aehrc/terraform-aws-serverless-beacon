@@ -37,6 +37,8 @@ newSchema = json.load(open(newSchema))
 updateSchema = json.load(open(updateSchema))
 resolveNew = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = newSchema)
 resolveUpdate = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = updateSchema)
+completed = []
+pending = []
 
 
 # just checking if the tabix would work as expected on a valid vcf.gz file
@@ -75,7 +77,8 @@ def check_vcf_locations(locations):
 def create_dataset(attributes):
     datasetId = attributes.get('datasetId', None)
     cohortId = attributes.get('cohortId', None)
-    messages = []
+    index = attributes.get('index', False)
+    global pending, completed
 
     if datasetId:
         json_dataset = attributes.get('dataset', None)
@@ -94,7 +97,7 @@ def create_dataset(attributes):
 
             print(f"Putting item in table: {item.to_json()}")
             item.save()
-            messages.append("Added dataset info")
+            completed.append("Added dataset info")
 
             # dataset metadata entry information
             dataset = jsons.load(json_dataset, Dataset)
@@ -105,7 +108,7 @@ def create_dataset(attributes):
             dataset.createDateTime = str(item.createDateTime)
             dataset.updateDateTime = str(item.updateDateTime)
             Dataset.upload_array([dataset])
-            messages.append("Added dataset metadata")
+            completed.append("Added dataset metadata")
 
     if datasetId and cohortId:
         individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
@@ -114,9 +117,12 @@ def create_dataset(attributes):
         analyses = jsons.default_list_deserializer(attributes.get('analyses', []), List[Analysis])
         
         # setting dataset id
+        # private attributes inside entities are parsed properly
+        # for example _vcfSampleId is mapped to vcfSampleId
         for individual in individuals:
             individual._datasetId = datasetId
             individual._cohortId = cohortId
+            
         for biosample in biosamples:
             biosample._datasetId = datasetId
             biosample._cohortId = cohortId
@@ -130,16 +136,16 @@ def create_dataset(attributes):
         # upload to s3
         if len(individuals) > 0:
             Individual.upload_array(individuals)
-            messages.append("Added individuals")
+            completed.append("Added individuals")
         if len(biosamples) > 0: 
             Biosample.upload_array(biosamples)
-            messages.append("Added biosamples")
+            completed.append("Added biosamples")
         if len(runs) > 0:
             Run.upload_array(runs)
-            messages.append("Added runs")
+            completed.append("Added runs")
         if len(analyses) > 0: 
             Analysis.upload_array(analyses)
-            messages.append("Added analyses")
+            completed.append("Added analyses")
     
     if cohortId:
         # cohort information
@@ -148,22 +154,21 @@ def create_dataset(attributes):
             cohort = jsons.load(json_cohort, Cohort)
             cohort.id = cohortId
             Cohort.upload_array([cohort])
-            messages.append("Added cohorts")
+            completed.append("Added cohorts")
 
-    aws_lambda.invoke(
-        FunctionName=INDEXER_LAMBDA,
-        InvocationType='Event',
-        Payload=jsons.dumps(dict()),
-    )
-
-    return messages
+    if index:
+        aws_lambda.invoke(
+            FunctionName=INDEXER_LAMBDA,
+            InvocationType='Event',
+            Payload=jsons.dumps(dict()),
+        )
+        pending.append("Running indexer")
 
 
 def submit_dataset(body_dict, method):
     new = method == 'POST'
     validation_errors = validate_request(body_dict, new)
-    completed = []
-    pending = []
+    global pending, completed
 
     if validation_errors:
         print()
@@ -181,13 +186,13 @@ def submit_dataset(body_dict, method):
         summarise = False
     # handle data set submission or update
     if new:
-        completed += create_dataset(body_dict)
+        create_dataset(body_dict)
     else:
         update_dataset(body_dict)
     
-    if summarise:
-        summarise_dataset(body_dict['datasetId'])
-        pending.append('Summarising')
+    # if summarise:
+    #     summarise_dataset(body_dict['datasetId'])
+    #     pending.append('Summarising')
 
     return bundle_response(200, { 'Completed': completed, 'Running': pending })
 
@@ -235,6 +240,11 @@ def validate_request(parameters, new):
 
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
+    global completed, pending
+
+    completed = []
+    pending = []
+
     event_body = event.get('body')
 
     if not event_body:
