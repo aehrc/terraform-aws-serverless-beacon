@@ -941,31 +941,30 @@ def upload():
 
 
 if __name__ == "__main__":
-    if not len(sys.argv) == 3 or sys.argv[1] not in ('simulate', 'upload', 'clean'):
-        print('Usage: \n\t$ python simulate.py MODE [simulate|upload|clean] DIR\n')
+    if sys.argv[1] not in ('simulate', 'upload', 'clean'):
+        print('Usage: \n\t$ python simulate.py [simulate|upload|clean]\n')
         sys.exit(1)
-    print('START')
 
-    prefix = sys.argv[2]    
-    datasets_path = f'{prefix}/simulated-datasets'
-    cohorts_path = f'{prefix}/simulated-cohorts'
-    individuals_path = f'{prefix}/simulated-individuals'
-    biosamples_path = f'{prefix}/simulated-biosamples'
-    runs_path = f'{prefix}/simulated-runs'
-    analyses_path = f'{prefix}/simulated-analyses'
+    if sys.argv[1] == 'simulate' or sys.argv[1] == 'upload':
+        if len(sys.argv) != 3:
+            print(f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME') 
+            sys.exit(1)
 
-    if sys.argv[1] == 'simulate':
-        if not (prefix.startswith('.') or prefix.startswith('/')):
-            shutil.rmtree(prefix, ignore_errors=True)
+        prefix = sys.argv[2]    
+        datasets_path = f'{prefix}/simulated-datasets'
+        cohorts_path = f'{prefix}/simulated-cohorts'
+        individuals_path = f'{prefix}/simulated-individuals'
+        biosamples_path = f'{prefix}/simulated-biosamples'
+        runs_path = f'{prefix}/simulated-runs'
+        analyses_path = f'{prefix}/simulated-analyses'
 
-        os.mkdir(prefix)
-        simulate()
-    elif sys.argv[1] == 'upload':
-        upload()
+        if sys.argv[1] == 'simulate':
+            if not (prefix.startswith('.') or prefix.startswith('/')):
+                shutil.rmtree(prefix, ignore_errors=True)
+
+            os.mkdir(prefix)
+            simulate()
+        else:
+            upload()
     else:
-        if not (prefix.startswith('.') or prefix.startswith('/')):
-            shutil.rmtree(prefix, ignore_errors=True)
-
-        os.mkdir(prefix)
         clean()
-    print('END')
