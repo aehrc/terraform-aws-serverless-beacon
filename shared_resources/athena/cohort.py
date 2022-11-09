@@ -62,29 +62,6 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
 
 
     @classmethod
-    def parse_array(cls, array):
-        cohorts = []
-        var_list = list()
-        case_map = { k.lower(): k for k in Cohort().__dict__.keys() }
-
-        for attribute in array[0]['Data']:
-            var_list.append(attribute['VarCharValue'])
-
-        for item in array[1:]:
-            cohort = Cohort()
-
-            for attr, val in zip(var_list, item['Data']):
-                try:
-                    val = json.loads(val['VarCharValue'])
-                except:
-                    val = val.get('VarCharValue', '')
-                cohort.__dict__[case_map[attr]] = val
-            cohorts.append(cohort)
-
-        return cohorts
-
-
-    @classmethod
     def upload_array(cls, array):
         if len(array) == 0:
             return

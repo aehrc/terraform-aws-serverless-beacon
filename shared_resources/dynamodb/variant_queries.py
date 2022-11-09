@@ -38,7 +38,7 @@ class VariantQuery(Model):
     startTime = UTCDateTimeAttribute(default_for_new=get_current_time_utc())
     endTime = UTCDateTimeAttribute(null=True)
     elapsedTime = NumberAttribute(default_for_new=-1)
-    timeToExist = TTLAttribute(default_for_new=timedelta(hours=24))
+    timeToExist = TTLAttribute(default_for_new=timedelta(minutes=5))
     complete = BooleanAttribute(default_for_new=False)
 
 

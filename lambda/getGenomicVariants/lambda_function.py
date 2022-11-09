@@ -42,13 +42,13 @@ def lambda_handler(event, context):
         return route_g_variants(event, event_hash)
 
     elif event['resource'] == '/g_variants/{id}':
-        return route_g_variants_id(event)
+        return route_g_variants_id(event, event_hash)
 
     elif event['resource'] == '/g_variants/{id}/individuals':
-        return route_g_variants_id_individuals(event)
+        return route_g_variants_id_individuals(event, event_hash)
 
     elif event['resource'] == '/g_variants/{id}/biosamples':
-        return route_g_variants_id_biosamples(event)
+        return route_g_variants_id_biosamples(event, event_hash)
 
 
 if __name__ == '__main__':

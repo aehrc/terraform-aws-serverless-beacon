@@ -3,7 +3,6 @@ import boto3
 import json
 import pyorc
 import os
-import csv
 
 from smart_open import open as sopen
 
@@ -71,54 +70,6 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
 
 
     @classmethod
-    def parse_array(cls, array):
-        datasets = []
-        var_list = list()
-        case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
-
-        for attribute in array[0]['Data']:
-            var_list.append(attribute['VarCharValue'])
-
-        for item in array[1:]:
-            dataset = Dataset()
-
-            for attr, val in zip(var_list, item['Data']):
-                try:
-                    val = json.loads(val['VarCharValue'])
-                except:
-                    val = val.get('VarCharValue', '')
-                dataset.__dict__[case_map[attr]] = val
-            datasets.append(dataset)
-
-        return datasets
-
-
-    @classmethod
-    def parse_array_v2(cls, exec_id):
-        datasets = []
-        var_list = list()
-        case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
-
-        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
-            reader = csv.reader(s3f)
-
-            for n, row in enumerate(reader):
-                if n==0:
-                    var_list = row
-                else:
-                    dataset = Dataset()
-                    for attr, val in zip(var_list, row):
-                        try:
-                            val = json.loads(val)
-                        except:
-                            val = val
-                        dataset.__dict__[case_map[attr]] = val
-                    datasets.append(dataset)
-
-        return datasets
-
-
-    @classmethod
     def upload_array(cls, array):
         if len(array) == 0:
             return
@@ -163,9 +114,7 @@ def get_datasets(assembly_id, dataset_id=None, dataset_ids=None, skip=0, limit=1
             FROM "{{database}}"."{{table}}" 
             WHERE _assemblyid='{assembly_id}' 
             AND id='{dataset_id}'
-            ORDER BY id 
-            OFFSET {skip} 
-            LIMIT {limit};
+            LIMIT 1
         """
     elif dataset_ids:
         query = f"""
@@ -187,15 +136,6 @@ def get_datasets(assembly_id, dataset_id=None, dataset_ids=None, skip=0, limit=1
             LIMIT {limit};
         """
     return Dataset.get_by_query(query)
-
-
-def get_all_datasets(assembly_id):
-    query = f"""
-        SELECT id, _vcflocations, _vcfchromosomemap 
-        FROM "{{database}}"."{{table}}" 
-        WHERE _assemblyid='{assembly_id}';
-    """
-    return Dataset.get_by_query_v2(query)
 
 
 if __name__ == '__main__':

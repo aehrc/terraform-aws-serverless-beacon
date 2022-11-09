@@ -20,6 +20,10 @@ locals {
   sbeacon_variables = {
     BEACON_API_VERSION = local.api_version
     BEACON_ID = var.beacon-id
+    VERSION = local.version
+    BEACON_NAME = var.beacon-name
+    ORGANISATION_ID = var.organisation-id
+    ORGANISATION_NAME = var.organisation-name
   }
   # athena related variables
   athena_variables = {
@@ -65,7 +69,7 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   architectures = ["x86_64"]
-  memory_size = 256
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -74,7 +78,6 @@ module "lambda-submitDataset" {
   ]
   number_of_policy_jsons = 2
   source_path = "${path.module}/lambda/submitDataset"
-
   tags = var.common-tags
 
   environment_variables = merge(
@@ -104,7 +107,7 @@ module "lambda-summariseDataset" {
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-summariseDataset.json
@@ -120,6 +123,10 @@ module "lambda-summariseDataset" {
     VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     ABS_MAX_DATA_SPLIT = local.maximum_load_file_size
   }
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -132,7 +139,7 @@ module "lambda-summariseVcf" {
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-summariseVcf.json
@@ -144,6 +151,10 @@ module "lambda-summariseVcf" {
     VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
   }
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -263,22 +274,22 @@ module "lambda-getInfo" {
   description = "Returns basic information about the beacon and the datasets."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getInfo.json
   source_path = "${path.module}/lambda/getInfo"
   tags = var.common-tags
 
-  environment_variables = {
-    BEACON_API_VERSION = local.api_version
-    VERSION = local.version
-    BEACON_ID = var.beacon-id
-    BEACON_NAME = var.beacon-name
-    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    ORGANISATION_ID = var.organisation-id
-    ORGANISATION_NAME = var.organisation-name
-  }
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables,
+    local.dynamodb_variables
+  )
+  
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -291,7 +302,7 @@ module "lambda-getConfiguration" {
   description = "Get the beacon configuration."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getConfiguration.json
@@ -299,7 +310,15 @@ module "lambda-getConfiguration" {
 
   tags = var.common-tags
 
-  environment_variables = local.sbeacon_variables
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -312,7 +331,7 @@ module "lambda-getMap" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getMap.json
@@ -320,7 +339,15 @@ module "lambda-getMap" {
 
   tags = var.common-tags
 
-  environment_variables = local.sbeacon_variables
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -333,7 +360,7 @@ module "lambda-getEntryTypes" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getEntryTypes.json
@@ -341,7 +368,15 @@ module "lambda-getEntryTypes" {
 
   tags = var.common-tags
 
-  environment_variables = local.sbeacon_variables
+  environment_variables = merge(
+    local.sbeacon_variables,
+    local.athena_variables,
+    local.dynamodb_variables
+  )
+
+  layers = [
+    local.python_libraries_layer
+  ]
 }
 
 #
@@ -354,7 +389,7 @@ module "lambda-getFilteringTerms" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -386,7 +421,7 @@ module "lambda-getAnalyses" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -424,7 +459,7 @@ module "lambda-getGenomicVariants" {
   description = "Get the variants."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 256
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -462,7 +497,7 @@ module "lambda-getIndividuals" {
   description = "Get the individuals."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -500,7 +535,7 @@ module "lambda-getBiosamples" {
   description = "Get the biosamples."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -538,7 +573,7 @@ module "lambda-getDatasets" {
   description = "Get the datasets."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 256
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -576,7 +611,7 @@ module "lambda-getCohorts" {
   description = "Get the cohorts."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -613,7 +648,7 @@ module "lambda-getRuns" {
   description = "Get the runs."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [
@@ -651,7 +686,7 @@ module "lambda-splitQuery" {
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 128
+  memory_size = 2048
   timeout = 300
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-splitQuery.json
@@ -678,8 +713,9 @@ module "lambda-performQuery" {
   description = "Queries a slice of a vcf for a specified variant."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 512
+  memory_size = 2048
   timeout = 300
+  ephemeral_storage_size = 1024
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-performQuery.json
   source_path = "${path.module}/lambda/performQuery"
@@ -708,7 +744,7 @@ module "lambda-indexer" {
   description = "Run the indexing tasks."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   attach_policy_jsons = true
   policy_jsons = [

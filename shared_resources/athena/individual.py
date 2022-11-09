@@ -76,29 +76,6 @@ class Individual(jsons.JsonSerializable, AthenaModel):
 
     def __eq__(self, other):
         return self.id == other.id
-    
-
-    @classmethod
-    def parse_array(cls, array):
-        individuals = []
-        var_list = list()
-        case_map = { k.lower(): k for k in Individual().__dict__.keys() }
-
-        for attribute in array[0]['Data']:
-            var_list.append(attribute['VarCharValue'])
-
-        for item in array[1:]:
-            individual = Individual()
-
-            for attr, val in zip(var_list, item['Data']):
-                try:
-                    val = json.loads(val['VarCharValue'])
-                except:
-                    val = val.get('VarCharValue', '')
-                individual.__dict__[case_map[attr]] = val
-            individuals.append(individual)
-
-        return individuals
 
 
     @classmethod

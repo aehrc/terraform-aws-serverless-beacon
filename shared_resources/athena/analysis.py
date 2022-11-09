@@ -70,30 +70,6 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
 
     def __eq__(self, other):
         return self.id == other.id
-    
-
-    @classmethod
-    def parse_array(cls, array):
-        analyses = []
-        var_list = list()
-        # TODO
-        case_map = { k.lower(): k for k in Analysis().__dict__.keys() }
-
-        for attribute in array[0]['Data']:
-            var_list.append(attribute['VarCharValue'])
-
-        for item in array[1:]:
-            analysis = Analysis()
-
-            for attr, val in zip(var_list, item['Data']):
-                try:
-                    val = json.loads(val['VarCharValue'])
-                except:
-                    val = val.get('VarCharValue', '')
-                analysis.__dict__[case_map[attr]] = val
-            analyses.append(analysis)
-
-        return analyses
 
 
     @classmethod

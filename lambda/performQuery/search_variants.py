@@ -5,6 +5,7 @@ from uuid import uuid4
 import boto3
 from botocore.exceptions import ClientError
 import time
+import random
 
 from payloads.lambda_payloads import PerformQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
@@ -41,9 +42,11 @@ def perform_query(payload: PerformQueryPayload):
         # '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
         payload.vcf_location
     ]
-    print(repr('CMD: ' + ' '.join(args[:5] + [repr(args[5])] + args[6:])))
+    print('CMD: ' + ' '.join(args[:5] + [repr(args[5])] + args[6:]))
 
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
+
+    print('Iterating bcftools result')
     v_prefix = '<{}'.format(payload.variant_type)
     # region is of form: "chrom:start-end"
     first_bp = int(payload.region[payload.region.find(':') + 1: payload.region.find('-')])
@@ -81,11 +84,9 @@ def perform_query(payload: PerformQueryPayload):
         if not payload.end_min <= pos + ref_length - 1 <= payload.end_max:
             continue
 
-        # validation; if not N validate regex
-        if not approx:
-            rgx = re.compile('^' + payload.reference_bases.replace('N', '[ACGTN]{1}') + '$')
-            if not rgx.match(reference.upper()):
-                continue
+        # validation; if not N validate
+        if not approx and reference.upper() != payload.reference_bases:
+            continue
 
         alts = all_alts.split(',')
 
@@ -249,7 +250,7 @@ def perform_query(payload: PerformQueryPayload):
 
     # if payload.requested_granularity in ('record', 'aggregated'):
     #     sample_names = [sample for n, sample in enumerate(all_sample_names) if n in sample_indices]
-    print('bcftools complete')
+    print('Iterating bcftools result complete')
     response = PerformQueryResponse(
         exists = exists,
         dataset_id = payload.dataset_id,
@@ -299,11 +300,13 @@ def perform_query(payload: PerformQueryPayload):
             except Exception as e:
                 print('retrying')
                 msg = e
-                time.sleep(1)
+                time.sleep(random.random())
+                errored = True
         if errored:
             print('ERRORED ', msg)
         query.markFinished()
     except ClientError as e:
         print(f"Error: {e}")
 
+    print('Writing results complete')
     return response

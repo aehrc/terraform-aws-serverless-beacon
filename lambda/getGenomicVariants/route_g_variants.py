@@ -2,16 +2,79 @@ from collections import defaultdict
 import json
 import os
 import base64
+import csv
+import sys
+
+from smart_open import open as sopen
 
 from variantutils.search_variants import perform_variant_search
 from apiutils.api_response import bundle_response, fetch_from_cache
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.dataset import get_all_datasets
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
+from athena.common import entity_search_conditions, run_custom_query
+from athena.dataset import Dataset
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
+DATASETS_TABLE = os.environ['DATASETS_TABLE']
+ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
+csv.field_size_limit(sys.maxsize)
+
+
+def datasets_query(conditions, assembly_id):
+    query = f'''
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, array_agg(A._vcfsampleid) as samples
+    FROM "{METADATA_DATABASE}"."{ANALYSES_TABLE}" A
+    JOIN "{METADATA_DATABASE}"."{DATASETS_TABLE}" D
+    ON A._datasetid = D.id
+    {conditions} 
+    AND D._assemblyid='{assembly_id}' 
+    GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
+    '''
+    return query
+
+
+def datasets_query_fast(assembly_id):
+    query = f'''
+    SELECT id, _vcflocations, _vcfchromosomemap
+    FROM "{METADATA_DATABASE}"."{DATASETS_TABLE}"
+    WHERE _assemblyid='{assembly_id}' 
+    '''
+    return query
+
+
+def parse_array(exec_id):
+        datasets = []
+        samples = []
+
+        var_list = list()
+        case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
+
+        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+            reader = csv.reader(s3f)
+
+            for n, row in enumerate(reader):
+                if n==0:
+                    var_list = row
+                else:
+                    instance = Dataset()
+                    for attr, val in zip(var_list, row):
+                        if attr == 'samples':
+                            samples.append(val.replace('[', '').replace(']', '').split(', '))
+                        elif attr not in case_map:
+                            continue
+                        else:
+                            try:
+                                val = json.loads(val)
+                            except:
+                                val = val
+                            instance.__dict__[case_map[attr]] = val
+                    datasets.append(instance)
+
+        return datasets, samples
 
 
 def route(event, query_id):
@@ -73,15 +136,23 @@ def route(event, query_id):
         variantType = requestParameters.get("variantType", None)
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    if len(filters) > 0:
-        # supporting ontology terms
-        pass
         
     check_all = includeResultsetResponses in ('HIT', 'ALL')
     status = get_job_status(query_id)
 
     if status == JobStatus.NEW:
-        datasets = get_all_datasets(assemblyId)
+        conditions = entity_search_conditions(filters, 'analyses', id_modifier='A.id')
+        
+        if conditions:
+            query = datasets_query(conditions, assemblyId)
+            exec_id = run_custom_query(query, return_id=True)
+            print('execution id ', exec_id)
+            datasets, samples = parse_array(exec_id)
+        else:
+            query = datasets_query_fast(assemblyId)
+            datasets = Dataset.get_by_query(query)
+            samples = []
+
         query_responses = perform_variant_search(
             datasets=datasets,
             referenceName=referenceName,
@@ -94,7 +165,8 @@ def route(event, query_id):
             variantMaxLength=variantMaxLength,
             requestedGranularity=requestedGranularity,
             includeResultsetResponses=includeResultsetResponses,
-            query_id=query_id
+            query_id=query_id,
+            dataset_samples=samples
         )
     
         variants = set()
@@ -163,36 +235,22 @@ def route(event, query_id):
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
+
 if __name__ == '__main__':
-    event = {
-        "resource": "/g_variants",
-        "path": "/g_variants",
-        "httpMethod": "POST",
-        "body": json.dumps(
-            {
-                "meta": {
-                    "apiVersion": "v2.0"
-                },
-                "query": {
-                    "pagination": {
-                        "limit": 100,
-                        "skip": 0
-                    },
-                    "includeResultsetResponses": "HIT",
-                    "requestedGranularity": "record",
-                    "requestParameters": {
-                        "assemblyId": "GRCH38",
-                        "start": [
-                            10000000
-                        ],
-                        "end": [
-                            10010100
-                        ],
-                        "referenceBases": "A",
-                        "referenceName": "5",
-                        "alternateBases": "N"
-                    }
-                }
-            })
+
+    from utils.chrom_matching import get_matching_chromosome
+
+    datasets, samples = parse_array('db94bb9a-fb07-488a-a36c-c0ca899274fc')
+
+    print(len(datasets), len(samples))
+
+    for x, y in zip(datasets, samples):
+        vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
+            vcfm['chromosomes'], '5') for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
+
+        vcf_locations = {
+            vcf: vcf_chromosomes[vcf]
+            for vcf in x._vcfLocations
+            if vcf_chromosomes[vcf]
         }
-    route(event, '36551e7a54877bdf0c8ea8938ab40ff5')
+        print(vcf_locations, y[0])

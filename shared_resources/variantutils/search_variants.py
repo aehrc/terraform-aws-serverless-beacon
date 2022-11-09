@@ -1,6 +1,7 @@
 import concurrent.futures
 import jsons
 import time
+import copy
 
 import boto3
 
@@ -30,7 +31,8 @@ def perform_variant_search(*,
         requestedGranularity,
         includeResultsetResponses,
         query_id='TEST',
-        passthrough=dict()
+        passthrough=dict(),
+        dataset_samples=[]
 ):
     try:
         # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
@@ -69,19 +71,26 @@ def perform_variant_search(*,
     pool = concurrent.futures.ThreadPoolExecutor(32)
 
     # parallelism across datasets
-    for dataset in datasets:
+    for n, dataset in enumerate(datasets):
         vcf_locations = {
             vcf: vcf_chromosomes[vcf]
             for vcf in dataset._vcfLocations
             if vcf_chromosomes[vcf]
         }
 
+        event_passthrough = copy.deepcopy(passthrough)
+        
+        # adjust event passthrough if needed
+        if len(dataset_samples) == len(datasets) and len(dataset_samples[n]) > 0:
+            event_passthrough['sampleNames'] = dataset_samples[n]
+            event_passthrough['selectedSamplesOnly'] = True
+
         # record perform query fan out size
         perform_query_fan_out += split_query_fan_out * len(vcf_locations)
 
         # call split query for each dataset found
         payload = SplitQueryPayload(
-            passthrough=passthrough,
+            passthrough=event_passthrough,
             dataset_id=dataset.id,
             query_id=query_id,
             vcf_locations=vcf_locations,

@@ -18,7 +18,8 @@ s3 = boto3.client('s3')
 def get_record_query(id):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
-    WHERE "id"='{id}';
+    WHERE "id"='{id}'
+    LIMIT 1;
     '''
 
     return query

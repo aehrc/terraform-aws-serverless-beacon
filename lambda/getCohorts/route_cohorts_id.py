@@ -31,7 +31,8 @@ def get_record_query(id):
             WHERE _cohortid='{id}'
             GROUP BY _cohortid
         ) as B
-    ON A.id = B._cohortid;
+    ON A.id = B._cohortid
+    LIMIT 1;
     '''
 
     return query
