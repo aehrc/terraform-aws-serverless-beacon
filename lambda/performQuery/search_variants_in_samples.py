@@ -41,6 +41,8 @@ def perform_query(payload: PerformQueryPayload):
         payload.vcf_location
     ]
 
+    print('CMD: ' + ' '.join(args[:5] + [repr(args[5])] + args[6:]))
+
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
     v_prefix = '<{}'.format(payload.variant_type)
     # region is of form: "chrom:start-end"

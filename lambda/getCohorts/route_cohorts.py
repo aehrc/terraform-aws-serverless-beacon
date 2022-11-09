@@ -5,27 +5,30 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.cohort import Cohort
-from dynamodb.onto_index import OntoData
+from athena.common import entity_search_conditions
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 COHORTS_TABLE = os.environ['COHORTS_TABLE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
+TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
+RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
 
 
 def get_count_query(conditions=[]):
     query = f'''
     SELECT COUNT(id) FROM "{{database}}"."{{table}}"
-    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
+    {conditions};
     '''
     return query
 
 
 def get_bool_query(conditions=[]):
     query = f'''
-    SELECT 1 FROM "{{database}}"."{{table}}" LIMIT 1
-    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)};
+    SELECT 1 FROM "{{database}}"."{{table}}" 
+    {conditions}
+    LIMIT 1;
     '''
     return query
 
@@ -42,7 +45,8 @@ def get_record_query(skip, limit, conditions=[]):
             GROUP BY _cohortid
         ) as B
     ON A.id = B._cohortid
-    {('WHERE ' if len(conditions) > 0 else '') + ' AND '.join(conditions)}
+    {conditions}
+    ORDER BY A.id
     OFFSET {skip}
     LIMIT {limit};
     '''
@@ -83,46 +87,24 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    # scope = cohorts
-    terms_found = True
-    term_columns = []
-    sql_conditions = []
-
-    if len(filters) > 0:
-        # supporting ontology terms
-        for fil in filters:
-            terms_found = False
-            for item in OntoData.tableTermsIndex.query(hash_key=f'{COHORTS_TABLE}\t{fil["id"]}'):
-                term_columns.append((item.term, item.columnName))
-                terms_found = True
-   
-    for term, col in term_columns:
-        cond = f'''
-            JSON_EXTRACT_SCALAR("{col}", '$.id')='{term}' 
-        '''
-        sql_conditions.append(cond)
-
-    if not terms_found:
-        response = responses.get_boolean_response(exists=False)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+    conditions = entity_search_conditions(filters, 'cohorts')
 
     if requestedGranularity == 'boolean':
-        query = get_bool_query(sql_conditions)
+        query = get_bool_query(conditions)
         exists = Cohort.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
-        query = get_count_query(sql_conditions)
+        query = get_count_query(conditions)
         count = Cohort.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(skip, limit, sql_conditions)
+        query = get_record_query(skip, limit, conditions)
         cohorts = Cohort.get_by_query(query)
         response = responses.get_result_sets_response(
             setType='cohorts', 

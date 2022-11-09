@@ -100,29 +100,6 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
 
 
     @classmethod
-    def parse_array(cls, array):
-        biosamples = []
-        var_list = list()
-        case_map = { k.lower(): k for k in Biosample().__dict__.keys() }
-
-        for attribute in array[0]['Data']:
-            var_list.append(attribute['VarCharValue'])
-
-        for item in array[1:]:
-            biosample = Biosample()
-
-            for attr, val in zip(var_list, item['Data']):
-                try:
-                    val = json.loads(val['VarCharValue'])
-                except:
-                    val = val.get('VarCharValue', '')
-                biosample.__dict__[case_map[attr]] = val
-            biosamples.append(biosample)
-
-        return biosamples
-
-
-    @classmethod
     def upload_array(cls, array):
         if len(array) == 0:
             return

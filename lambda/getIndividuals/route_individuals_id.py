@@ -14,7 +14,8 @@ BEACON_ID = os.environ['BEACON_ID']
 def get_record_query(id):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
-    WHERE "id"='{id}';
+    WHERE "id"='{id}'
+    LIMIT 1;
     '''
 
     return query

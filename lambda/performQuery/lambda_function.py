@@ -1,6 +1,8 @@
 import json
 import jsons
 import re
+import os
+import glob
 
 import search_variants
 import search_variant_samples
@@ -20,6 +22,13 @@ get_all_calls = all_count_pattern.findall
 
 
 def lambda_handler(event, context):
+    files = glob.glob('/tmp/*')
+    for file in files:
+        try:
+            os.unlink(file)
+        except OSError as e:
+            print(f"Error: {file} - {e.strerror}")
+
     print('Event Received: {}'.format(json.dumps(event)))
     
     try:

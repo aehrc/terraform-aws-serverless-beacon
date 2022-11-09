@@ -2,11 +2,19 @@ import boto3
 import os
 import time
 import re
+import csv
+import json
+
+from smart_open import open as sopen
+
+from dynamodb.ontologies import expand_terms
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
+TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
+RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
 
 athena = boto3.client('athena')
 pattern = re.compile(f'^\\w[^:]+:.+$')
@@ -28,27 +36,14 @@ class AthenaModel:
     @classmethod
     def get_by_query(cls, query, queue=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
+        exec_id = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True)
 
-        if not len(result) > 0:
-            return []
-        elif queue is None:
-            return cls.parse_array(result)
-        else:
-            queue.put(cls.parse_array(result))
-
-    
-    @classmethod
-    def get_by_query_v2(cls, query, queue=None):
-        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True)
-
-        if not len(result) > 0:
-            return []
-        elif queue is None:
-            return cls.parse_array_v2(result)
-        else:
-            queue.put(cls.parse_array_v2(result))
+        if exec_id:
+            if queue is None:
+                return cls.parse_array(exec_id)
+            else:
+                queue.put(cls.parse_array(exec_id))
+        return []
 
     
     @classmethod
@@ -62,6 +57,33 @@ class AthenaModel:
             return len(result) > 1
         else:
             queue.put(len(result) > 1)
+
+    
+    @classmethod
+    def parse_array(cls, exec_id):
+        instances = []
+        var_list = list()
+        case_map = { k.lower(): k for k in cls().__dict__.keys() }
+
+        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+            reader = csv.reader(s3f)
+
+            for n, row in enumerate(reader):
+                if n==0:
+                    var_list = row
+                else:
+                    instance = cls()
+                    for attr, val in zip(var_list, row):
+                        if not attr in case_map:
+                            continue
+                        try:
+                            val = json.loads(val)
+                        except:
+                            val = val
+                        instance.__dict__[case_map[attr]] = val
+                    instances.append(instance)
+
+        return instances
 
 
     @classmethod
@@ -119,11 +141,11 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
 
             if retries == 60:
                 print('Timed out')
-                return []
+                return None
             continue
         elif status in ('FAILED', 'CANCELLED'):
             print('Error: ', exec['QueryExecution']['Status'])
-            return []
+            return None
         else:
             if return_id:
                 return response['QueryExecutionId']
@@ -136,3 +158,33 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
                     return queue.put(data['ResultSet']['Rows'])
                 else:
                     return data['ResultSet']['Rows']
+
+
+def entity_search_conditions(filters, default_type, id_modifier='id'):
+    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'} - { default_type }
+    type_relations_table_id = {
+        'individuals': 'individualid',
+        'biosamples': 'biosampleid',
+        'runs': 'runid',
+        'analyses': 'analysisid',
+        'datasets': 'datasetid',
+        'cohorts': 'cohortid'
+    }
+
+    conditions = []
+    default_filters = list(filter(lambda x: x.get('scope', default_type) == default_type, filters))
+        
+    if default_filters:
+        expanded_terms = expand_terms(default_filters)
+        conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[default_type]} = TI.id where TI.kind='{default_type}' and TI.term IN ({expanded_terms})) ''']
+
+    for group in types:
+        group_filters = list(filter(lambda x: x.get('scope') == group, filters))
+        
+        if group_filters:
+            expanded_terms = expand_terms(group_filters)
+            conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms})) ''']
+        
+    if conditions:
+        return 'WHERE ' + ' AND '.join(conditions)
+    return ''

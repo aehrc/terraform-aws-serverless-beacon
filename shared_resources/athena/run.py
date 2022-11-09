@@ -73,30 +73,6 @@ class Run(jsons.JsonSerializable, AthenaModel):
     
 
     @classmethod
-    def parse_array(cls, array):
-        runs = []
-        var_list = list()
-        # TODO
-        case_map = { k.lower(): k for k in Run().__dict__.keys() }
-
-        for attribute in array[0]['Data']:
-            var_list.append(attribute['VarCharValue'])
-
-        for item in array[1:]:
-            run = Run()
-
-            for attr, val in zip(var_list, item['Data']):
-                try:
-                    val = json.loads(val['VarCharValue'])
-                except:
-                    val = val.get('VarCharValue', '')
-                run.__dict__[case_map[attr]] = val
-            runs.append(run)
-
-        return runs
-
-
-    @classmethod
     def upload_array(cls, array):
         if len(array) == 0:
             return

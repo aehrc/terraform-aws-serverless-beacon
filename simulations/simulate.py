@@ -5,13 +5,12 @@ import sys
 import boto3
 import pyorc
 import re
-import threading
 import multiprocessing
 from glob import glob
 import concurrent.futures
+import shutil
 
 from tqdm import tqdm
-from smart_open import open as sopen
 import jsons
 
 from athena.dataset import Dataset
@@ -22,20 +21,18 @@ from athena.run import Run
 from athena.analysis import Analysis
 from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
 from dynamodb.ontologies import Ontology, Descendants, Anscestors
+from dynamodb.variant_queries import VariantQuery, VariantResponse
 from utils import get_vcf_chromosomes, get_samples, get_writer, write_local, upload_local
 
 
 METADATA_BUCKET = os.environ['METADATA_BUCKET']
+VARIANTS_BUCKET = os.environ['VARIANTS_BUCKET']
+
 pattern = re.compile(f'^\\w[^:]+:.+$')
 s3 = boto3.client('s3')
+
 threads_count = 56
 terms_cache_header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-datasets_path = './tmp-datasets'
-cohorts_path = './tmp-cohorts'
-individuals_path = './tmp-individuals'
-biosamples_path = './tmp-biosamples'
-runs_path = './tmp-runs'
-analyses_path = './tmp-analyses'
 
 
 def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
@@ -559,9 +556,10 @@ def clean_files(bucket, prefix):
         files_to_delete = []
         for object in response.get('Contents', []):
             files_to_delete.append({"Key": object["Key"]})
-        s3.delete_objects(
-            Bucket=bucket, 
-            Delete={ "Objects": files_to_delete })
+        if files_to_delete:
+            s3.delete_objects(
+                Bucket=bucket, 
+                Delete={ "Objects": files_to_delete })
         pbar.update(len(files_to_delete))
         has_more = response['IsTruncated']
 
@@ -583,7 +581,17 @@ def clean():
         for dynamo_item in tqdm(Descendants.scan(), desc='Cleaning Descendants'):
             batch.delete(dynamo_item)
 
-    clean_files(METADATA_BUCKET, '')
+    with VariantQuery.batch_write() as batch:
+        for dynamo_item in tqdm(VariantQuery.scan(), desc='Cleaning VariantQuery'):
+            batch.delete(dynamo_item)
+        
+    with VariantResponse.batch_write() as batch:
+        for dynamo_item in tqdm(VariantResponse.scan(), desc='Cleaning VariantResponse'):
+            batch.delete(dynamo_item)
+        
+
+    clean_files(METADATA_BUCKET, '/')
+    clean_files(VARIANTS_BUCKET, 'variant-queries/')
 
 
 def extract_terms(array):
@@ -609,6 +617,7 @@ def simulate_datasets_cohorts():
     dynamo_items = []
     dataset_samples = dict()
     path_datasets = f'{datasets_path}.orc'
+    path_datasets_dynamo = f'{datasets_path}.json'
     path_datasets_terms = f'{datasets_path}-terms.orc'
     path_cohorts = f'{cohorts_path}.orc'
     path_cohorts_terms = f'{cohorts_path}-terms.orc'
@@ -655,9 +664,9 @@ def simulate_datasets_cohorts():
     terms_writer.close()
     terms_file.close()
 
-    with DynamoDataset.batch_write() as batch:
-        for item in tqdm(dynamo_items, desc="Writing datasets to DynamoDB"):
-            batch.save(item)
+    with open(path_datasets_dynamo, 'w+') as jsonf:
+        for item in dynamo_items:
+            jsonf.write(item.to_json() + '\n')
 
     # cohorts
     terms_file = open(path_cohorts_terms, 'wb+')
@@ -669,7 +678,7 @@ def simulate_datasets_cohorts():
         cohort = get_random_cohort(id=id, seed=id)
 
         for term, label, typ in extract_terms([jsons.dump(cohort)]):
-                terms_writer.write(('cohorts', cohort.id, term, label, typ))
+            terms_writer.write(('cohorts', cohort.id, term, label, typ))
 
         write_local(Cohort, cohort, writer)
     
@@ -890,7 +899,7 @@ def simulate():
 
 
 def upload():
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=threads_count)
+    pool = concurrent.futures.ProcessPoolExecutor(max_workers=threads_count)
 
     # upload datasets
     pool.submit(upload_local, f'{datasets_path}.orc', f's3://{METADATA_BUCKET}/datasets/combined-datasets.orc')
@@ -902,10 +911,10 @@ def upload():
     
     # upload individuals
     for thread in range(threads_count):
-        pool.submit(upload_local, f'./{individuals_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/individuals-{thread}.orc')
-        pool.submit(upload_local, f'./{biosamples_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc')
-        pool.submit(upload_local, f'./{runs_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/runs-{thread}.orc')
-        pool.submit(upload_local, f'./{analyses_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/analyses-{thread}.orc')
+        pool.submit(upload_local, f'{individuals_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/individuals-{thread}.orc')
+        pool.submit(upload_local, f'{biosamples_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc')
+        pool.submit(upload_local, f'{runs_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/runs-{thread}.orc')
+        pool.submit(upload_local, f'{analyses_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/analyses-{thread}.orc')
         
         for file in glob(f'{individuals_path}-{thread}-*'):
             idx = file.split('/')[-1].replace('.orc', '')
@@ -924,16 +933,38 @@ def upload():
             pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/analyses/analyses-{thread}-{idx}')
     pool.shutdown()
 
+    with DynamoDataset.batch_write() as batch:
+        for line in tqdm(open(f'{datasets_path}.json'), desc="Writing datasets to DynamoDB"):
+            item = DynamoDataset()
+            item.from_json(line.strip())
+            batch.save(item)
+
 
 if __name__ == "__main__":
-    if not len(sys.argv) == 2 or sys.argv[1] not in ('simulate', 'upload', 'clean'):
-        print('Usage: \n\t$ python simulate.py MODE [simulate|upload|clean]\n')
+    if sys.argv[1] not in ('simulate', 'upload', 'clean'):
+        print('Usage: \n\t$ python simulate.py [simulate|upload|clean]\n')
         sys.exit(1)
-    print('START')
-    if sys.argv[1] == 'simulate':
-        simulate()
-    elif sys.argv[1] == 'upload':
-        upload()
+
+    if sys.argv[1] == 'simulate' or sys.argv[1] == 'upload':
+        if len(sys.argv) != 3:
+            print(f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME') 
+            sys.exit(1)
+
+        prefix = sys.argv[2]    
+        datasets_path = f'{prefix}/simulated-datasets'
+        cohorts_path = f'{prefix}/simulated-cohorts'
+        individuals_path = f'{prefix}/simulated-individuals'
+        biosamples_path = f'{prefix}/simulated-biosamples'
+        runs_path = f'{prefix}/simulated-runs'
+        analyses_path = f'{prefix}/simulated-analyses'
+
+        if sys.argv[1] == 'simulate':
+            if not (prefix.startswith('.') or prefix.startswith('/')):
+                shutil.rmtree(prefix, ignore_errors=True)
+
+            os.mkdir(prefix)
+            simulate()
+        else:
+            upload()
     else:
         clean()
-    print('END')

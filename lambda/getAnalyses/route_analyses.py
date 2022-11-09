@@ -5,12 +5,14 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.analysis import Analysis
+from athena.common import entity_search_conditions
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
+RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
 
 
 def get_count_query(conditions=''):
@@ -81,11 +83,7 @@ def route(event):
             # raise error
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = ''
-    if len(filters) > 0:
-        # supporting ontology terms
-        analysis_filter = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'analyses') == 'analyses', filters)))
-        conditions = f''' WHERE id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='analyses' AND term IN ({analysis_filter})) '''
+    conditions = entity_search_conditions(filters, 'analyses')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

@@ -5,7 +5,7 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.biosample import Biosample
-from dynamodb.ontologies import expand_terms
+from athena.common import entity_search_conditions
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -76,27 +76,7 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = ''
-    if len(filters) > 0:
-        conditions = []
-
-        biosample_filters = list(filter(lambda x: x.get('scope', 'biosamples') == 'biosamples', filters))
-        if biosample_filters:
-            biosample_terms = expand_terms(biosample_filters)
-            conditions = [f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='biosamples' AND term IN ({biosample_terms})) ''']
-
-        individuals_filters = list(filter(lambda x: x.get('scope') == 'individuals', filters))
-        if individuals_filters:
-            individual_terms = expand_terms(individuals_filters)
-            conditions += [f''' id IN (SELECT RI.biosampleid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.individualid = TI.id where TI.kind='individuals' and TI.term IN ({individual_terms})) ''']
-        
-        runs_filters = list(filter(lambda x: x.get('scope') == 'runs', filters))
-        if runs_filters:
-            runs_terms = expand_terms(runs_filters)
-            conditions += [f''' id IN (SELECT RI.biosampleid FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.runid = TI.id where TI.kind='runs' and TI.term IN ({runs_terms})) ''']
-        
-        if conditions:
-            conditions = 'WHERE ' + ' AND '.join(conditions)
+    conditions = entity_search_conditions(filters, 'biosamples')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)
