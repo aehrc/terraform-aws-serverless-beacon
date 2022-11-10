@@ -146,7 +146,6 @@ def route(event, query_id):
         if conditions:
             query = datasets_query(conditions, assemblyId)
             exec_id = run_custom_query(query, return_id=True)
-            print('execution id ', exec_id)
             datasets, samples = parse_array(exec_id)
         else:
             query = datasets_query_fast(assemblyId)

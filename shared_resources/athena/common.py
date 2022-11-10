@@ -160,7 +160,7 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
                     return data['ResultSet']['Rows']
 
 
-def entity_search_conditions(filters, default_type, id_modifier='id'):
+def entity_search_conditions(filters, default_type, id_modifier='id', with_where=True):
     types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'} - { default_type }
     type_relations_table_id = {
         'individuals': 'individualid',
@@ -186,5 +186,8 @@ def entity_search_conditions(filters, default_type, id_modifier='id'):
             conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms})) ''']
         
     if conditions:
-        return 'WHERE ' + ' AND '.join(conditions)
+        if with_where:
+            return 'WHERE ' + ' AND '.join(conditions)
+        else:
+            return ' AND '.join(conditions)
     return ''

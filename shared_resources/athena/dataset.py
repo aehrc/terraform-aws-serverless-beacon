@@ -107,7 +107,7 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
                         writer.write(row)
 
 
-def get_datasets(assembly_id, dataset_id=None, dataset_ids=None, skip=0, limit=100):
+def get_datasets(assembly_id, dataset_id=None, dataset_ids=None, conditions='', skip=0, limit=100):
     if dataset_id:
         query = f"""
             SELECT id, _vcflocations, _vcfchromosomemap 
