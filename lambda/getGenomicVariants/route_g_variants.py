@@ -204,20 +204,4 @@ def route(event, query_id):
 
 
 if __name__ == '__main__':
-
-    from utils.chrom_matching import get_matching_chromosome
-
-    datasets, samples = parse_array('db94bb9a-fb07-488a-a36c-c0ca899274fc')
-
-    print(len(datasets), len(samples))
-
-    for x, y in zip(datasets, samples):
-        vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
-            vcfm['chromosomes'], '5') for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
-
-        vcf_locations = {
-            vcf: vcf_chromosomes[vcf]
-            for vcf in x._vcfLocations
-            if vcf_chromosomes[vcf]
-        }
-        print(vcf_locations, y[0])
+    pass
