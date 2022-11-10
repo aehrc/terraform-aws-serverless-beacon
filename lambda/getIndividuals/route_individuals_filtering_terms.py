@@ -1,5 +1,8 @@
 import json
 import os
+import csv
+
+from smart_open import open as sopen
 
 from apiutils.api_response import bundle_response
 from athena.common import run_custom_query
@@ -9,6 +12,7 @@ BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
 TERMS_TABLE = os.environ['TERMS_TABLE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
 def get_terms(terms, skip, limit):
@@ -80,21 +84,27 @@ def route(event):
 
     print('Performing query \n', query)
         
-    rows = run_custom_query(query)
+    exec_id = run_custom_query(query, return_id=True)
     filteringTerms = []
-    for row in rows[1:]:
-        term, label, typ = row['Data']
-        term, label, typ = term['VarCharValue'], label.get('VarCharValue'), typ.get('VarCharValue')
-        filteringTerms.append({
-            "id": term,
-            "label": label,
-            "type": typ
-        })
+    
+    with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+        reader = csv.reader(s3f)
+
+        for n, row in enumerate(reader):
+            if n==0:
+                continue
+            term, label, typ = row
+            filteringTerms.append({
+                "id": term,
+                "label": label,
+                "type": typ
+            })
 
     response = get_terms(
-        sorted(filteringTerms, key=lambda x: x['id']),
+        filteringTerms,
         skip=skip,
         limit=limit
     )
+
     print('Returning Response: {}'.format(json.dumps(response)))
     return response

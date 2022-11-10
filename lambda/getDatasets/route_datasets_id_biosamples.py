@@ -84,7 +84,7 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     dataset = event["pathParameters"].get("id", None)
-    conditions = entity_search_conditions(filters, 'biosamples', with_where=False)
+    conditions = entity_search_conditions(filters, 'biosamples', 'biosamples', with_where=False)
     
     if requestedGranularity == 'boolean':
         query = get_bool_query(dataset, conditions)

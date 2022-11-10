@@ -10,7 +10,7 @@ from apiutils.api_response import bundle_response, fetch_from_cache
 from variantutils.search_variants import perform_variant_search
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.dataset import Dataset
+from athena.dataset import Dataset, parse_datasets_with_samples
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
 from athena.common import entity_search_conditions, run_custom_query
 
@@ -24,7 +24,7 @@ METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 def datasets_query(conditions, assembly_id, dataset_id):
     query = f'''
-    SELECT D.id, D._vcflocations, D._vcfchromosomemap, array_agg(A._vcfsampleid) as samples
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
     FROM "{METADATA_DATABASE}"."{ANALYSES_TABLE}" A
     JOIN "{METADATA_DATABASE}"."{DATASETS_TABLE}" D
     ON A._datasetid = D.id
@@ -44,37 +44,6 @@ def datasets_query_fast(assembly_id, dataset_id):
     AND id='{dataset_id}'
     '''
     return query
-
-
-def parse_array(exec_id):
-        datasets = []
-        samples = []
-
-        var_list = list()
-        case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
-
-        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
-            reader = csv.reader(s3f)
-
-            for n, row in enumerate(reader):
-                if n==0:
-                    var_list = row
-                else:
-                    instance = Dataset()
-                    for attr, val in zip(var_list, row):
-                        if attr == 'samples':
-                            samples.append(val.replace('[', '').replace(']', '').split(', '))
-                        elif attr not in case_map:
-                            continue
-                        else:
-                            try:
-                                val = json.loads(val)
-                            except:
-                                val = val
-                            instance.__dict__[case_map[attr]] = val
-                    datasets.append(instance)
-
-        return datasets, samples
 
 
 def route(event, query_id):
@@ -131,12 +100,12 @@ def route(event, query_id):
     status = get_job_status(query_id)
     
     if status == JobStatus.NEW:
-        conditions = entity_search_conditions(filters, 'analyses', id_modifier='A.id')
+        conditions = entity_search_conditions(filters, 'analyses', 'datasets', id_modifier='A.id')
         
         if conditions:
             query = datasets_query(conditions, assemblyId, dataset_id)
             exec_id = run_custom_query(query, return_id=True)
-            datasets, samples = parse_array(exec_id)
+            datasets, samples = parse_datasets_with_samples(exec_id)
         else:
             query = datasets_query_fast(assemblyId, dataset_id)
             datasets = Dataset.get_by_query(query)

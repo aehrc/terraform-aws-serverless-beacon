@@ -76,7 +76,7 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
         filters = query.get("filters", [])
 
-    conditions = entity_search_conditions(filters, 'individuals')
+    conditions = entity_search_conditions(filters, 'individuals', 'individuals')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

@@ -3,6 +3,8 @@ import boto3
 import json
 import pyorc
 import os
+import csv
+import sys
 
 from smart_open import open as sopen
 
@@ -14,6 +16,7 @@ DATASETS_TABLE = os.environ['DATASETS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
+csv.field_size_limit(sys.maxsize)
 
 
 class Dataset(jsons.JsonSerializable, AthenaModel):
@@ -136,6 +139,37 @@ def get_datasets(assembly_id, dataset_id=None, dataset_ids=None, conditions='', 
             LIMIT {limit};
         """
     return Dataset.get_by_query(query)
+
+
+def parse_datasets_with_samples(exec_id):
+        datasets = []
+        samples = []
+
+        var_list = list()
+        case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
+
+        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+            reader = csv.reader(s3f)
+
+            for n, row in enumerate(reader):
+                if n==0:
+                    var_list = row
+                else:
+                    instance = Dataset()
+                    for attr, val in zip(var_list, row):
+                        if attr == 'samples':
+                            samples.append(val.replace('[', '').replace(']', '').split(', '))
+                        elif attr not in case_map:
+                            continue
+                        else:
+                            try:
+                                val = json.loads(val)
+                            except:
+                                val = val
+                            instance.__dict__[case_map[attr]] = val
+                    datasets.append(instance)
+
+        return datasets, samples
 
 
 if __name__ == '__main__':

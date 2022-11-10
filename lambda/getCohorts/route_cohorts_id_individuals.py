@@ -88,7 +88,7 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     cohort_id = event["pathParameters"].get("id", None)
-    conditions = entity_search_conditions(filters, 'individuals', with_where=False)
+    conditions = entity_search_conditions(filters, 'individuals', 'individuals', with_where=False)
     
     if requestedGranularity == 'boolean':
         query = get_bool_query(cohort_id)
