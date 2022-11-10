@@ -888,6 +888,10 @@ resource "aws_athena_workgroup" "sbeacon-workgroup" {
     enforce_workgroup_configuration    = false
     publish_cloudwatch_metrics_enabled = true
 
+    engine_version {
+      selected_engine_version = "Athena engine version 3"
+    }
+
     result_configuration {
       output_location = "s3://${aws_s3_bucket.metadata-bucket.bucket}/query-results/"
     }
