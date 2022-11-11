@@ -5,22 +5,30 @@ import base64
 
 from apiutils.api_response import bundle_response, fetch_from_cache
 from variantutils.search_variants import perform_variant_search
-from dynamodb.datasets import Dataset
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.analysis import Analysis
-from athena.dataset import get_datasets
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
+from athena.common import entity_search_conditions, run_custom_query
+from athena.dataset import parse_datasets_with_samples
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+DATASETS_TABLE = os.environ['DATASETS_TABLE']
+ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
-def get_record_query(id, conditions=[]):
+def datasets_query(conditions, assembly_id, run_id):
     query = f'''
-    SELECT id, _datasetid, _vcfsampleid FROM "{{database}}"."{{table}}"
-    WHERE "runid"='{id}'
-    {' AND '.join(conditions)}
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
+    FROM "{METADATA_DATABASE}"."{ANALYSES_TABLE}" A
+    JOIN "{METADATA_DATABASE}"."{DATASETS_TABLE}" D
+    ON A._datasetid = D.id
+    WHERE A.runid='{run_id}'
+    AND D._assemblyid='{assembly_id}'
+    {(' AND ' + conditions) if len(conditions) > 0 else ''} 
+    GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
     '''
     return query
 
@@ -78,16 +86,10 @@ def route(event, query_id):
     status = get_job_status(query_id)
 
     if status == JobStatus.NEW:
-        analyses = Analysis.get_by_query(get_record_query(run_id))
-        if not len(analyses) > 0:
-            response = responses.get_boolean_response(exists=False)
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response)
-
-        datasets = get_datasets(
-                        assemblyId, 
-                        dataset_ids=[analysis._datasetId for analysis in analyses],
-                        limit=len(analyses))
+        conditions = entity_search_conditions(filters, 'analyses', 'runs', id_modifier='A.id', with_where=False)
+        query = datasets_query(conditions, assemblyId, run_id)
+        exec_id = run_custom_query(query, return_id=True)
+        datasets, samples = parse_datasets_with_samples(exec_id)
         check_all = includeResultsetResponses in ('HIT', 'ALL')
 
         variants = set()
@@ -99,11 +101,6 @@ def route(event, query_id):
         exists = False
 
         query_responses = perform_variant_search(
-            passthrough={
-                'selectedSamplesOnly': True,
-                # TODO run may have multiple analyses implement that
-                'sampleNames': [analyses[0]._vcfSampleId]
-            },
             datasets=datasets,
             referenceName=referenceName,
             referenceBases=referenceBases,
@@ -115,7 +112,8 @@ def route(event, query_id):
             variantMaxLength=variantMaxLength,
             requestedGranularity=requestedGranularity,
             includeResultsetResponses=includeResultsetResponses,
-            query_id=query_id
+            query_id=query_id,
+            dataset_samples=samples
         )
 
         for query_response in query_responses:

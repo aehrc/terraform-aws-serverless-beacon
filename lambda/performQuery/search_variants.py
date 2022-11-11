@@ -35,6 +35,7 @@ def perform_query(payload: PerformQueryPayload):
     :param requested_granularity: one of "boolean", "count", "aggregated", "record"
     '''
     # running setup of bcftools
+    # TODO use views to recompute AN/AC
     args = [
         'bcftools', 'query',
         '--regions', payload.region,

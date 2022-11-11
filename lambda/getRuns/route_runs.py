@@ -14,15 +14,15 @@ RUNS_TABLE = os.environ['RUNS_TABLE']
 TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
 
 
-def get_count_query(conditions=[]):
+def get_count_query(conditions=''):
     query = f'''
     SELECT COUNT(id) FROM "{{database}}"."{{table}}"
-    {conditions};
+    {conditions}
     '''
     return query
 
 
-def get_bool_query(conditions=[]):
+def get_bool_query(conditions=''):
     query = f'''
     SELECT 1 FROM "{{database}}"."{{table}}"
     {conditions}
@@ -31,10 +31,11 @@ def get_bool_query(conditions=[]):
     return query
 
 
-def get_record_query(skip, limit, conditions=[]):
+def get_record_query(skip, limit, conditions=''):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
     {conditions}
+    ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
     '''
