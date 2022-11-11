@@ -161,7 +161,7 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
 
 
 def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', with_where=True):
-    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'} - { default_scope }
+    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'}
     type_relations_table_id = {
         'individuals': 'individualid',
         'biosamples': 'biosampleid',
@@ -172,14 +172,9 @@ def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', 
     }
 
     conditions = []
-    default_scope_filters = list(filter(lambda x: x.get('scope', default_scope) == default_scope, filters))
-        
-    if default_scope_filters:
-        expanded_terms = expand_terms(default_scope_filters)
-        conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[default_scope]} = TI.id where TI.kind='{default_scope}' and TI.term IN ({expanded_terms})) ''']
 
     for group in types:
-        group_filters = list(filter(lambda x: x.get('scope') == group, filters))
+        group_filters = list(filter(lambda x: x.get('scope', default_scope) == group, filters))
         
         if group_filters:
             expanded_terms = expand_terms(group_filters)
