@@ -92,14 +92,15 @@ class JobStatus(Enum):
 
 
 def get_job_status(query_id):
-    try:
-        item = VariantQuery.get(query_id)
-        if item.complete:
-            return JobStatus.COMPLETED
-        else:
-            return JobStatus.RUNNING
-    except VariantQuery.DoesNotExist:
-        return JobStatus.NEW
+    # TODO implement caching
+    # try:
+    #     item = VariantQuery.get(query_id)
+    #     if item.complete:
+    #         return JobStatus.COMPLETED
+    #     else:
+    #         return JobStatus.RUNNING
+    # except VariantQuery.DoesNotExist:
+    return JobStatus.NEW
 
 
 if __name__ == '__main__':

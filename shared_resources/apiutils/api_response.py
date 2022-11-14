@@ -35,9 +35,10 @@ def bad_request(*, apiVersion=None, errorMessage=None, filters=[], pagination={}
 
 
 def bundle_response(status_code, body, query_id=None):
-    if query_id:
-        with sopen(f's3://{METADATA_BUCKET}/query-responses/{query_id}.json', 'w') as s3f:
-            json.dump(body, s3f)
+    # TODO implement caching
+    # if query_id:
+    #     with sopen(f's3://{METADATA_BUCKET}/query-responses/{query_id}.json', 'w') as s3f:
+    #         json.dump(body, s3f)
     return {
         'statusCode': status_code,
         'headers': HEADERS,

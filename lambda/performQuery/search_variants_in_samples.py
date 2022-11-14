@@ -28,7 +28,7 @@ get_all_calls = all_count_pattern.findall
 s3 = boto3.client('s3')
 
 
-def perform_query(payload: PerformQueryPayload):
+def perform_query(payload: PerformQueryPayload, is_async):
     '''
     :param requested_granularity: one of "boolean", "count", "aggregated", "record"
     '''
@@ -42,6 +42,10 @@ def perform_query(payload: PerformQueryPayload):
     ]
 
     print('CMD: ' + ' '.join(args[:5] + [repr(args[5])] + args[6:]))
+
+    # TODO set these
+    include_samples = payload.passthrough.get('includeSamples', False)
+    include_variants = payload.passthrough.get('includeVariants', True)
 
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
     v_prefix = '<{}'.format(payload.variant_type)
@@ -254,39 +258,39 @@ def perform_query(payload: PerformQueryPayload):
         sample_indices = list(sample_indices),
         sample_names = sample_names
     )
+    if is_async:
+        try:
+            uuid = uuid4().hex
+            body = response.dumps()
 
-    try:
-        uuid = uuid4().hex
-        body = response.dumps()
+            query = db.VariantQuery(payload.query_id)
+            result = db.VariantResponse(payload.query_id)
+            result.responseNumber = query.getResponseNumber()
 
-        query = db.VariantQuery(payload.query_id)
-        result = db.VariantResponse(payload.query_id)
-        result.responseNumber = query.getResponseNumber()
+            if len(body) < 1024 * 300:
+                # response
+                result.checkS3 = False
+                result.result = body
+            else:
+                key = f'variant-queries/{uuid}.json'
+                s3.put_object(
+                    Body = body.encode(),
+                    Bucket = VARIANTS_BUCKET,
+                    Key = key
+                )
+                print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
+                # s3 details
+                s3loc = db.S3Location()
+                s3loc.bucket = VARIANTS_BUCKET
+                s3loc.key = key
+                # response
+                result.responseLocation = s3loc
+                result.checkS3 = True
 
-        if len(body) < 1024 * 300:
-            # response
-            result.checkS3 = False
-            result.result = body
-        else:
-            key = f'variant-queries/{uuid}.json'
-            s3.put_object(
-                Body = body.encode(),
-                Bucket = VARIANTS_BUCKET,
-                Key = key
-            )
-            print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
-            # s3 details
-            s3loc = db.S3Location()
-            s3loc.bucket = VARIANTS_BUCKET
-            s3loc.key = key
-            # response
-            result.responseLocation = s3loc
-            result.checkS3 = True
-
-        result.save()
-        query.markFinished()
-    except ClientError as e:
-        print(f"Error: {e}")
+            result.save()
+            query.markFinished()
+        except ClientError as e:
+            print(f"Error: {e}")
 
     return response
 

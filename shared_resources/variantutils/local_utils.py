@@ -1,6 +1,7 @@
 import os
 import jsons
 import json
+import queue
 
 import boto3
 
@@ -25,14 +26,19 @@ def get_split_query_fan_out(start_min, start_max):
 
 
 def split_query(payload: SplitQueryPayload):
-    # aws_lambda.invoke(
-    #     FunctionName=SPLIT_QUERY,
-    #     InvocationType='Event',
-    #     Payload=jsons.dumps(payload),
-    # )
-
     kwargs = {
         'TopicArn': SPLIT_QUERY_TOPIC_ARN,
         'Message': jsons.dumps(payload)
     }
-    response = sns.publish(**kwargs)
+
+    sns.publish(**kwargs)
+
+
+def split_query_sync(payload: SplitQueryPayload, results_queue: queue.Queue):
+    response = aws_lambda.invoke(
+        FunctionName=SPLIT_QUERY,
+        InvocationType='RequestResponse',
+        Payload=jsons.dumps(payload),
+    )
+
+    results_queue.put(json.loads(response['Payload'].read()))

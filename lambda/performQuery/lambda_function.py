@@ -5,7 +5,6 @@ import os
 import glob
 
 import search_variants
-import search_variant_samples
 import search_variants_in_samples
 from payloads.lambda_payloads import PerformQueryPayload
 
@@ -30,21 +29,21 @@ def lambda_handler(event, context):
             print(f"Error: {file} - {e.strerror}")
 
     print('Event Received: {}'.format(json.dumps(event)))
-    
+    is_async = False
     try:
         event = json.loads(event['Records'][0]['Sns']['Message'])
+        is_async = True
         print('using sns event')
     except:
+        is_async = False
         print('using invoke event')
 
     performQueryPayload = jsons.load(event, PerformQueryPayload)
     # switch operations
-    if performQueryPayload.passthrough.get('samplesOnly', False):
-        response = search_variant_samples.perform_query(performQueryPayload)
-    elif performQueryPayload.passthrough.get('selectedSamplesOnly', False):
-        response = search_variants_in_samples.perform_query(performQueryPayload)
+    if performQueryPayload.passthrough.get('selectedSamplesOnly', False):
+        response = search_variants_in_samples.perform_query(performQueryPayload, is_async)
     else:
-        response = search_variants.perform_query(performQueryPayload)
+        response = search_variants.perform_query(performQueryPayload, is_async)
 
     print(f'Returning response')
     return response.dump()

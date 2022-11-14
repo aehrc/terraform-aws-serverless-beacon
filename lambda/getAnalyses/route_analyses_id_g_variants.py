@@ -4,22 +4,32 @@ import os
 import base64
 
 from apiutils.api_response import bundle_response, fetch_from_cache
-from variantutils.search_variants import perform_variant_search
+from variantutils.search_variants import perform_variant_search_sync
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.analysis import Analysis
-from athena.dataset import get_datasets
-from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
+from dynamodb.variant_queries import get_job_status, JobStatus
+from athena.common import entity_search_conditions, run_custom_query
+from athena.dataset import parse_datasets_with_samples
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+DATASETS_TABLE = os.environ['DATASETS_TABLE']
+ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
-def get_record_query(id, conditions=[]):
+def datasets_query(conditions, assembly_id, analysis_id):
     query = f'''
-    SELECT _datasetid, _vcfsampleid FROM "{{database}}"."{{table}}"
-    WHERE "individualid"='{id}'
-    {' AND '.join(conditions)}
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
+    FROM "{METADATA_DATABASE}"."{ANALYSES_TABLE}" A
+    JOIN "{METADATA_DATABASE}"."{DATASETS_TABLE}" D
+    ON A._datasetid = D.id
+    WHERE A.id='{analysis_id}'
+    AND D._assemblyid='{assembly_id}'
+    {(' AND ' + conditions) if len(conditions) > 0 else ''} 
+    GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
+    LIMIT 1
     '''
     return query
 
@@ -74,93 +84,67 @@ def route(event, query_id):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     analysis_id = event["pathParameters"].get("id", None)
-    status = get_job_status(query_id)
+    conditions = entity_search_conditions(filters, 'analyses', 'analyses', id_modifier='A.id', with_where=False)
+    query = datasets_query(conditions, assemblyId, analysis_id)
+    exec_id = run_custom_query(query, return_id=True)
+    datasets, samples = parse_datasets_with_samples(exec_id)
+    check_all = includeResultsetResponses in ('HIT', 'ALL')
 
-    if status == JobStatus.NEW:
-        analyses = Analysis.get_by_query(get_record_query(analysis_id))
+    variants = set()
+    results = list()
+    # key=pos-ref-alt
+    # val=counts
+    variant_call_counts = defaultdict(int)
+    variant_allele_counts = defaultdict(int)
+    exists = False
 
-        # TODO there could be many analyses for an individual
-        # decide the required fan out based on that, currently just picking the first
-        if not len(analyses) > 0:
-            response = responses.get_boolean_response(exists=False)
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response)
+    query_responses = perform_variant_search_sync(
+        datasets=datasets,
+        referenceName=referenceName,
+        referenceBases=referenceBases,
+        alternateBases=alternateBases,
+        start=start,
+        end=end,
+        variantType=variantType,
+        variantMinLength=variantMinLength,
+        variantMaxLength=variantMaxLength,
+        requestedGranularity=requestedGranularity,
+        includeResultsetResponses=includeResultsetResponses,
+        dataset_samples=samples
+    )
 
-        datasets = get_datasets(
-                        assemblyId, 
-                        dataset_ids=[analysis._datasetId for analysis in analyses],
-                        limit=len(analyses))
-        check_all = includeResultsetResponses in ('HIT', 'ALL')
+    for query_response in query_responses:
+        exists = exists or query_response.exists
 
-        variants = set()
-        results = list()
-        # key=pos-ref-alt
-        # val=counts
-        variant_call_counts = defaultdict(int)
-        variant_allele_counts = defaultdict(int)
-        exists = False
+        if exists:
+            if check_all:
+                variants.update(query_response.variants)
 
-        query_responses = perform_variant_search(
-            passthrough={
-                'selectedSamplesOnly': True,
-                'sampleNames': [analyses[0]._vcfSampleId]
-            },
-            datasets=datasets,
-            referenceName=referenceName,
-            referenceBases=referenceBases,
-            alternateBases=alternateBases,
-            start=start,
-            end=end,
-            variantType=variantType,
-            variantMinLength=variantMinLength,
-            variantMaxLength=variantMaxLength,
-            requestedGranularity=requestedGranularity,
-            includeResultsetResponses=includeResultsetResponses,
-            query_id=query_id
-        )
+                for variant in query_response.variants:
+                    chrom, pos, ref, alt, typ = variant.split('\t')
+                    idx = f'{pos}_{ref}_{alt}'
+                    variant_call_counts[idx] += query_response.call_count
+                    variant_allele_counts[idx] += query_response.all_alleles_count
+                    internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
+                    results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
 
-        for query_response in query_responses:
-            exists = exists or query_response.exists
-
-            if exists:
-                if check_all:
-                    variants.update(query_response.variants)
-
-                    for variant in query_response.variants:
-                        chrom, pos, ref, alt, typ = variant.split('\t')
-                        idx = f'{pos}_{ref}_{alt}'
-                        variant_call_counts[idx] += query_response.call_count
-                        variant_allele_counts[idx] += query_response.all_alleles_count
-                        internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
-                        results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
-
-        if requestedGranularity == 'boolean':
-            response = responses.get_boolean_response(exists=exists)
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response, query_id)
-
-        if requestedGranularity == 'count':
-            response = responses.get_counts_response(exists=exists, count=len(variants))
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response, query_id)
-
-        if requestedGranularity in ('record', 'aggregated'):
-            response = responses.get_result_sets_response(
-                setType='genomicVariant', 
-                exists=exists,
-                total=len(variants),
-                results=results
-            )
-            print('Returning Response: {}'.format(json.dumps(response)))
-            return bundle_response(200, response, query_id)
-
-    elif status == JobStatus.RUNNING:
-        response = responses.get_boolean_response(exists=False, info={'message': 'Query still running.'})
+    if requestedGranularity == 'boolean':
+        response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
-    
-    else:
-        response = fetch_from_cache(query_id)
+
+    if requestedGranularity == 'count':
+        response = responses.get_counts_response(exists=exists, count=len(variants))
+        print('Returning Response: {}'.format(json.dumps(response)))
+        return bundle_response(200, response)
+
+    if requestedGranularity in ('record', 'aggregated'):
+        response = responses.get_result_sets_response(
+            setType='genomicVariant', 
+            exists=exists,
+            total=len(variants),
+            results=results
+        )
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 

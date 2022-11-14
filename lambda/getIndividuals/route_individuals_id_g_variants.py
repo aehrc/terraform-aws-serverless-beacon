@@ -4,7 +4,7 @@ import os
 import base64
 
 from apiutils.api_response import bundle_response, fetch_from_cache
-from variantutils.search_variants import perform_variant_search
+from variantutils.search_variants import perform_variant_search_sync
 import apiutils.responses as responses
 import apiutils.entries as entries
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
@@ -100,7 +100,7 @@ def route(event, query_id):
         variant_allele_counts = defaultdict(int)
         exists = False
 
-        query_responses = perform_variant_search(
+        query_responses = perform_variant_search_sync(
             datasets=datasets,
             referenceName=referenceName,
             referenceBases=referenceBases,
@@ -131,11 +131,11 @@ def route(event, query_id):
                         internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
                         results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
         
-        query = VariantQuery.get(query_id)
-        query.update(actions=[
-            VariantQuery.complete.set(True), 
-            VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
-        ])
+        # query = VariantQuery.get(query_id)
+        # query.update(actions=[
+        #     VariantQuery.complete.set(True), 
+        #     VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
+        # ])
 
         if requestedGranularity == 'boolean':
             response = responses.get_boolean_response(exists=exists)

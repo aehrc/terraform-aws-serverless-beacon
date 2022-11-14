@@ -30,7 +30,7 @@ get_all_calls = all_count_pattern.findall
 s3 = boto3.client('s3')
 
 
-def perform_query(payload: PerformQueryPayload):
+def perform_query(payload: PerformQueryPayload, is_async):
     '''
     :param requested_granularity: one of "boolean", "count", "aggregated", "record"
     '''
@@ -39,13 +39,16 @@ def perform_query(payload: PerformQueryPayload):
     args = [
         'bcftools', 'query',
         '--regions', payload.region,
-        '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\n',
-        # '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
+        # '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\n',
+        '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
         payload.vcf_location
     ]
     print('CMD: ' + ' '.join(args[:5] + [repr(args[5])] + args[6:]))
 
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
+    
+    include_samples = payload.passthrough.get('includeSamples', False)
+    include_variants = payload.passthrough.get('includeVariants', True)
 
     print('Iterating bcftools result')
     v_prefix = '<{}'.format(payload.variant_type)
@@ -58,18 +61,17 @@ def perform_query(payload: PerformQueryPayload):
     variants = []
     call_count = 0
     all_alleles_count = 0
-    # sample_indices = set()
-    # all_sample_names = []
-    # sample_names = []
+    sample_indices = set()
+    all_sample_names = []
+    sample_names = []
     variant_max_length = float('inf') if payload.variant_max_length < 0 else payload.variant_max_length
 
     # iterate through bcftools output
     for line in query_process.stdout:
         try:
-            # (position, reference, all_alts, info_str, genotypes, samples) = line.split('\t')
-            (position, reference, all_alts, info_str, genotypes) = line.split('\t')
-            # if len(all_sample_names) == 0:
-            #     all_sample_names = [sample for sample in samples.strip().strip(',').split(',')]
+            (position, reference, all_alts, info_str, genotypes, samples) = line.split('\t')
+            if len(all_sample_names) == 0:
+                all_sample_names = [sample for sample in samples.strip().strip(',').split(',')]
         except ValueError as e:
             print(repr(line.split('\t')))
             raise e
@@ -227,8 +229,8 @@ def perform_query(payload: PerformQueryPayload):
                 break
             hit_string = '|'.join(str(i + 1) for i in hit_indexes)
             pattern = re.compile(f'(^|[|/])({hit_string})([|/]|$)')
-            # if payload.requested_granularity in ('record', 'aggregated'):
-            #     sample_indices.update([i for i, gt in enumerate(genotypes.split(',')) if pattern.search(gt)])
+            if payload.requested_granularity in ('record', 'aggregated') and include_samples:
+                sample_indices.update([i for i, gt in enumerate(genotypes.split(',')) if pattern.search(gt)])
         
         # Used for calculating frequency. This will be a misleading value if the
         # alleles are spread over multiple vcf records. Ideally we should
@@ -249,9 +251,11 @@ def perform_query(payload: PerformQueryPayload):
             break
     query_process.stdout.close()
 
-    # if payload.requested_granularity in ('record', 'aggregated'):
-    #     sample_names = [sample for n, sample in enumerate(all_sample_names) if n in sample_indices]
+    if payload.requested_granularity in ('record', 'aggregated') and include_samples:
+        sample_names = [sample for n, sample in enumerate(all_sample_names) if n in sample_indices]
+    
     print('Iterating bcftools result complete')
+    
     response = PerformQueryResponse(
         exists = exists,
         dataset_id = payload.dataset_id,
@@ -259,55 +263,54 @@ def perform_query(payload: PerformQueryPayload):
         all_alleles_count = all_alleles_count,
         variants = variants,
         call_count = call_count,
-        sample_indices = [], #list(sample_indices),
-        sample_names = [] #sample_names
+        sample_indices = [], #list(sample_indices), TODO is this needed?
+        sample_names = [] if not include_samples else sample_names
     )
 
-    try:
-        uuid = uuid4().hex
-        body = response.dumps()
+    if is_async:
+        try:
+            uuid = uuid4().hex
+            body = response.dumps()
 
-        query = db.VariantQuery(payload.query_id)
-        result = db.VariantResponse(payload.query_id)
-        result.responseNumber = query.getResponseNumber()
+            query = db.VariantQuery(payload.query_id)
+            result = db.VariantResponse(payload.query_id)
+            result.responseNumber = query.getResponseNumber()
 
-        if len(body) < 1024 * 300:
-            # response
-            result.checkS3 = False
-            result.result = body
-        else:
-            key = f'variant-queries/{uuid}.json'
-            s3.put_object(
-                Body = body.encode(),
-                Bucket = VARIANTS_BUCKET,
-                Key = key
-            )
-            print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
-            # s3 details
-            s3loc = db.S3Location()
-            s3loc.bucket = VARIANTS_BUCKET
-            s3loc.key = key
-            # response
-            result.responseLocation = s3loc
-            result.checkS3 = True
-        # TODO make more elegant
-        errored = True
-        msg = ''
-        for _ in range(10):
-            try:
-                result.save()
-                errored = False
-                break
-            except Exception as e:
-                print('retrying')
-                msg = e
-                time.sleep(random.random())
-                errored = True
-        if errored:
-            print('ERRORED ', msg)
-        query.markFinished()
-    except ClientError as e:
-        print(f"Error: {e}")
-
-    print('Writing results complete')
+            if len(body) < 1024 * 300:
+                # response
+                result.checkS3 = False
+                result.result = body
+            else:
+                key = f'variant-queries/{uuid}.json'
+                s3.put_object(
+                    Body = body.encode(),
+                    Bucket = VARIANTS_BUCKET,
+                    Key = key
+                )
+                print(f'Uploaded - {VARIANTS_BUCKET}/{key}')
+                # s3 details
+                s3loc = db.S3Location()
+                s3loc.bucket = VARIANTS_BUCKET
+                s3loc.key = key
+                # response
+                result.responseLocation = s3loc
+                result.checkS3 = True
+            # TODO make more elegant
+            errored = True
+            msg = ''
+            for _ in range(10):
+                try:
+                    result.save()
+                    errored = False
+                    break
+                except Exception as e:
+                    print('retrying')
+                    msg = e
+                    time.sleep(random.random())
+                    errored = True
+            if errored:
+                print('ERRORED ', msg)
+            query.markFinished()
+        except ClientError as e:
+            print(f"Error: {e}")
     return response

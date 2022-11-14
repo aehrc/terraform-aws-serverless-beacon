@@ -2,6 +2,10 @@ provider "aws" {
   region =  var.region
 }
 
+# DOCS
+# Lambda memory - https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
+#                 https://stackoverflow.com/questions/66522916/aws-lambda-memory-vs-cpu-configuration
+
 locals {
   api_version = "v2.0.0"
   version = "v0.0.1"
@@ -69,8 +73,8 @@ module "lambda-submitDataset" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
   architectures = ["x86_64"]
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-submitDataset.json,
@@ -107,8 +111,8 @@ module "lambda-summariseDataset" {
   description = "Calculates summary counts for a dataset."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-summariseDataset.json
   source_path = "${path.module}/lambda/summariseDataset"
@@ -139,8 +143,8 @@ module "lambda-summariseVcf" {
   description = "Calculates information in a vcf and saves it in datasets dynamoDB."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-summariseVcf.json
   source_path = "${path.module}/lambda/summariseVcf"
@@ -168,8 +172,8 @@ module "lambda-summariseSlice" {
   handler = "function"
   runtime = "provided"
   architectures = ["x86_64"]
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-summariseSlice.json
   
@@ -225,7 +229,7 @@ module "lambda-duplicateVariantSearch" {
   runtime = "provided"
   architectures = ["x86_64"]
   memory_size = 8192
-  timeout = 900
+  timeout = 60
   attach_policy_json = true
   policy_json =  data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
 
@@ -274,8 +278,8 @@ module "lambda-getInfo" {
   description = "Returns basic information about the beacon and the datasets."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getInfo.json
   source_path = "${path.module}/lambda/getInfo"
@@ -302,8 +306,8 @@ module "lambda-getConfiguration" {
   description = "Get the beacon configuration."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getConfiguration.json
   source_path = "${path.module}/lambda/getConfiguration"
@@ -331,8 +335,8 @@ module "lambda-getMap" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getMap.json
   source_path = "${path.module}/lambda/getMap"
@@ -360,8 +364,8 @@ module "lambda-getEntryTypes" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-getEntryTypes.json
   source_path = "${path.module}/lambda/getEntryTypes"
@@ -389,8 +393,8 @@ module "lambda-getFilteringTerms" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json
@@ -421,8 +425,8 @@ module "lambda-getAnalyses" {
   description = "Get the beacon map."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getAnalyses.json,
@@ -459,8 +463,8 @@ module "lambda-getGenomicVariants" {
   description = "Get the variants."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getGenomicVariants.json,
@@ -497,8 +501,8 @@ module "lambda-getIndividuals" {
   description = "Get the individuals."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getIndividuals.json,
@@ -535,8 +539,8 @@ module "lambda-getBiosamples" {
   description = "Get the biosamples."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getBiosamples.json,
@@ -573,8 +577,8 @@ module "lambda-getDatasets" {
   description = "Get the datasets."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getDatasets.json,
@@ -611,8 +615,8 @@ module "lambda-getCohorts" {
   description = "Get the cohorts."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getCohorts.json,
@@ -648,8 +652,8 @@ module "lambda-getRuns" {
   description = "Get the runs."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getRuns.json,
@@ -686,7 +690,7 @@ module "lambda-splitQuery" {
   description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 1769
   timeout = 300
   attach_policy_json = true
   policy_json = data.aws_iam_policy_document.lambda-splitQuery.json
@@ -713,7 +717,7 @@ module "lambda-performQuery" {
   description = "Queries a slice of a vcf for a specified variant."
   handler = "lambda_function.lambda_handler"
   runtime = "python3.9"
-  memory_size = 2048
+  memory_size = 1769
   timeout = 300
   ephemeral_storage_size = 1024
   attach_policy_json = true
@@ -744,8 +748,8 @@ module "lambda-indexer" {
   description = "Run the indexing tasks."
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
-  memory_size = 2048
-  timeout = 900
+  memory_size = 1769
+  timeout = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json,

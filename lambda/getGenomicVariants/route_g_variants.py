@@ -7,7 +7,7 @@ import sys
 
 from smart_open import open as sopen
 
-from variantutils.search_variants import perform_variant_search
+from variantutils.search_variants import perform_variant_search_sync
 from apiutils.api_response import bundle_response, fetch_from_cache
 import apiutils.responses as responses
 import apiutils.entries as entries
@@ -66,7 +66,7 @@ def route(event, query_id):
         allele = params.get("allele", None)
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
-        filters = params.get("filters", [])
+        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
@@ -120,7 +120,7 @@ def route(event, query_id):
             datasets = Dataset.get_by_query(query)
             samples = []
 
-        query_responses = perform_variant_search(
+        query_responses = perform_variant_search_sync(
             datasets=datasets,
             referenceName=referenceName,
             referenceBases=referenceBases,
@@ -165,11 +165,11 @@ def route(event, query_id):
                             results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
                             found.add(internal_id)
 
-        query = VariantQuery.get(query_id)
-        query.update(actions=[
-            VariantQuery.complete.set(True), 
-            VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
-        ])
+        # query = VariantQuery.get(query_id)
+        # query.update(actions=[
+        #     VariantQuery.complete.set(True), 
+        #     VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
+        # ])
 
         if requestedGranularity == 'boolean':
             response = responses.get_boolean_response(exists=exists)
