@@ -83,7 +83,7 @@ def route(event):
             # raise error
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = entity_search_conditions(filters, 'analyses')
+    conditions = entity_search_conditions(filters, 'analyses', 'analyses')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

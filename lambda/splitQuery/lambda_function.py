@@ -1,6 +1,7 @@
 import json
 import os
 import concurrent.futures
+import queue
 
 import boto3
 import jsons
@@ -16,17 +17,22 @@ aws_lambda = boto3.client('lambda')
 sns = boto3.client('sns')
 
 
-def perform_query(payload):
-    # response = aws_lambda.invoke(
-    #     FunctionName=PERFORM_QUERY,
-    #     InvocationType='Event',
-    #     Payload=jsons.dumps(payload),
-    # )
+def perform_query(payload: PerformQueryPayload):
     kwargs = {
         'TopicArn': PERFORM_QUERY_TOPIC_ARN,
         'Message': jsons.dumps(payload)
     }
     sns.publish(**kwargs)
+
+
+def perform_query_sync(payload: PerformQueryPayload, results_queue: queue.Queue):
+    response = aws_lambda.invoke(
+        FunctionName=PERFORM_QUERY,
+        InvocationType='RequestResponse',
+        Payload=jsons.dumps(payload),
+    )
+
+    results_queue.put(json.loads(response['Payload'].read()))
 
 
 def split_query(split_payload: SplitQueryPayload):
@@ -65,22 +71,61 @@ def split_query(split_payload: SplitQueryPayload):
     pool.shutdown()
 
 
+def split_query_sync(split_payload: SplitQueryPayload):
+    # to find HITs or ALL we must analyse all vcfs
+    check_all = split_payload.include_datasets in ('HIT', 'ALL')
+
+    split_start = split_payload.start_min
+    pool = concurrent.futures.ThreadPoolExecutor(32)
+    results_queue = queue.Queue()
+
+    while split_start <= split_payload.start_max:
+        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.start_max)
+        # perform query on this split of the vcf
+        for vcf_location, chrom in split_payload.vcf_locations.items():
+            payload = PerformQueryPayload(
+                passthrough=split_payload.passthrough,
+                dataset_id=split_payload.dataset_id,
+                query_id=split_payload.query_id,
+                reference_bases=split_payload.reference_bases,
+                end_min=split_payload.end_min,
+                end_max=split_payload.end_max,
+                alternate_bases=split_payload.alternate_bases,
+                variant_type=split_payload.variant_type,
+                requested_granularity=split_payload.requested_granularity,
+                variant_min_length=split_payload.variant_min_length,
+                variant_max_length=split_payload.variant_max_length,
+                include_details=check_all,
+                # region for bcftools
+                region=f'{chrom}:{split_start}-{split_end}',
+                vcf_location=vcf_location
+            )
+            pool.submit(perform_query_sync, payload, results_queue)
+
+        # next split
+        split_start += SPLIT_SIZE
+
+    pool.shutdown()
+
+    return list(results_queue.queue)
+
+
 def lambda_handler(event, context):
     print('Event Received: {}'.format(json.dumps(event)))
     
     try:
         event = json.loads(event['Records'][0]['Sns']['Message'])
         print('using sns event')
+        split_payload = jsons.load(event, SplitQueryPayload)
+        print(split_payload)
+        split_query(split_payload)
+        print('Completed split query')
     except:
         print('using invoke event')
+        split_payload = jsons.load(event, SplitQueryPayload)
+        response = split_query_sync(split_payload)
 
-    split_payload = jsons.load(event, SplitQueryPayload)
-
-    print(split_payload)
-    response = split_query(split_payload)
-    print('Completed split query')
-
-    return response
+        return response
 
 
 if __name__ == '__main__':

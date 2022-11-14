@@ -5,7 +5,7 @@ import jsons
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.biosample import Biosample
-from dynamodb.onto_index import OntoData
+from athena.common import entity_search_conditions
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -18,7 +18,7 @@ def get_bool_query(id, conditions=''):
     query = f'''
     SELECT 1 FROM "{{database}}"."{{table}}"
     WHERE "_datasetid"='{id}'
-    {'AND ' + conditions if conditions != '' else ''}
+    {('AND ' + conditions) if len(conditions) > 0 else ''}
     LIMIT 1;
     '''
 
@@ -29,7 +29,7 @@ def get_count_query(id, conditions=''):
     query = f'''
     SELECT COUNT(*) FROM "{{database}}"."{{table}}"
     WHERE "_datasetid"='{id}'
-    {'AND ' + conditions if conditions != '' else ''};
+    {('AND ' + conditions) if len(conditions) > 0 else ''}
     '''
 
     return query
@@ -39,7 +39,7 @@ def get_record_query(id, skip, limit, conditions=''):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
     WHERE "_datasetid"='{id}'
-    {'AND ' + conditions if conditions != '' else ''}
+    {('AND ' + conditions) if len(conditions) > 0 else ''}
     ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
@@ -84,12 +84,7 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     dataset = event["pathParameters"].get("id", None)
-
-    conditions = ''
-    if len(filters) > 0:
-        # supporting ontology terms
-        biosamples_filters = ','.join(map(lambda y: f"'{y['id']}'", filter(lambda x: x.get('scope', 'biosamples') == 'biosamples', filters)))
-        conditions = f''' id IN (SELECT id FROM {TERMS_INDEX_TABLE} WHERE kind='biosamples' AND term IN ({biosamples_filters})) '''
+    conditions = entity_search_conditions(filters, 'biosamples', 'biosamples', with_where=False)
     
     if requestedGranularity == 'boolean':
         query = get_bool_query(dataset, conditions)

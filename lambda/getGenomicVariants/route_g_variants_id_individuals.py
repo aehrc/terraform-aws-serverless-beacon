@@ -7,16 +7,42 @@ import base64
 import jsons
 
 from apiutils.api_response import bundle_response, fetch_from_cache
-from variantutils.search_variants import perform_variant_search
+from variantutils.search_variants import perform_variant_search_sync
 import apiutils.responses as responses
 from athena.individual import Individual
-from athena.dataset import get_datasets
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
+from athena.dataset import Dataset, parse_datasets_with_samples
+from athena.common import entity_search_conditions, run_custom_query
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
+DATASETS_TABLE = os.environ['DATASETS_TABLE']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
+METADATA_DATABASE = os.environ['METADATA_DATABASE']
+METADATA_BUCKET = os.environ['METADATA_BUCKET']
+
+
+def datasets_query(conditions, assembly_id):
+    query = f'''
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
+    FROM "{METADATA_DATABASE}"."{ANALYSES_TABLE}" A
+    JOIN "{METADATA_DATABASE}"."{DATASETS_TABLE}" D
+    ON A._datasetid = D.id
+    {conditions} 
+    AND D._assemblyid='{assembly_id}' 
+    GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
+    '''
+    return query
+
+
+def datasets_query_fast(assembly_id):
+    query = f'''
+    SELECT id, _vcflocations, _vcfchromosomemap
+    FROM "{METADATA_DATABASE}"."{DATASETS_TABLE}"
+    WHERE _assemblyid='{assembly_id}' 
+    '''
+    return query
 
 
 def get_count_query(dataset_id, sample_names):
@@ -129,11 +155,18 @@ def route(event, query_id):
     dataset_samples = defaultdict(set)
 
     if status == JobStatus.NEW:
-        datasets = get_datasets(assemblyId, skip=0, limit='ALL')
-        query_responses = perform_variant_search(
-            passthrough={
-                'samplesOnly': True
-            },
+        conditions = entity_search_conditions(filters, 'analyses', 'individuals', id_modifier='A.id')
+        
+        if conditions:
+            query = datasets_query(conditions, assemblyId)
+            exec_id = run_custom_query(query, return_id=True)
+            datasets, samples = parse_datasets_with_samples(exec_id)
+        else:
+            query = datasets_query_fast(assemblyId)
+            datasets = Dataset.get_by_query(query)
+            samples = []
+
+        query_responses = perform_variant_search_sync(
             datasets=datasets,
             referenceName=referenceName,
             referenceBases=referenceBases,
@@ -145,7 +178,9 @@ def route(event, query_id):
             variantMaxLength=-1,
             requestedGranularity='record', # we need the records for this task
             includeResultsetResponses='ALL',
-            query_id=query_id
+            query_id=query_id,
+            dataset_samples=samples,
+            passthrough={ 'includeSamples': True }
         )
 
         exists = False
@@ -160,8 +195,10 @@ def route(event, query_id):
 
         query_results = queue.Queue()
         threads = []
+        print(dataset_samples )
         
         for dataset_id, sample_names in dataset_samples.items():
+
             if (len(sample_names)) > 0:
                 if requestedGranularity == 'boolean':
                     query = get_bool_query(dataset_id, sample_names)
@@ -196,11 +233,11 @@ def route(event, query_id):
         [thread.join() for thread in threads]
         query_results = list(query_results.queue)
 
-        query = VariantQuery.get(query_id)
-        query.update(actions=[
-            VariantQuery.complete.set(True), 
-            VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
-        ])
+        # query = VariantQuery.get(query_id)
+        # query.update(actions=[
+        #     VariantQuery.complete.set(True), 
+        #     VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
+        # ])
 
         if requestedGranularity == 'boolean':
             exists = any(query_results)

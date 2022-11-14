@@ -36,6 +36,7 @@ def get_record_query(skip, limit, conditions=''):
     query = f'''
     SELECT * FROM "{{database}}"."{{table}}"
     {conditions}
+    ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
     '''
@@ -76,7 +77,7 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = entity_search_conditions(filters, 'biosamples')
+    conditions = entity_search_conditions(filters, 'biosamples', 'biosamples')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)

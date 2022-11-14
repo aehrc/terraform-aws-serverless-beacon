@@ -136,10 +136,10 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
         status = exec['QueryExecution']['Status']['State']
         
         if status in ('QUEUED', 'RUNNING'):
-            time.sleep(0.5)
+            time.sleep(0.1)
             retries += 1
 
-            if retries == 60:
+            if retries == 300:
                 print('Timed out')
                 return None
             continue
@@ -160,8 +160,8 @@ def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGRO
                     return data['ResultSet']['Rows']
 
 
-def entity_search_conditions(filters, default_type, id_modifier='id'):
-    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'} - { default_type }
+def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', with_where=True):
+    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'}
     type_relations_table_id = {
         'individuals': 'individualid',
         'biosamples': 'biosampleid',
@@ -172,19 +172,17 @@ def entity_search_conditions(filters, default_type, id_modifier='id'):
     }
 
     conditions = []
-    default_filters = list(filter(lambda x: x.get('scope', default_type) == default_type, filters))
-        
-    if default_filters:
-        expanded_terms = expand_terms(default_filters)
-        conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[default_type]} = TI.id where TI.kind='{default_type}' and TI.term IN ({expanded_terms})) ''']
 
     for group in types:
-        group_filters = list(filter(lambda x: x.get('scope') == group, filters))
+        group_filters = list(filter(lambda x: x.get('scope', default_scope) == group, filters))
         
         if group_filters:
             expanded_terms = expand_terms(group_filters)
-            conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[default_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms})) ''']
+            conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms})) ''']
         
     if conditions:
-        return 'WHERE ' + ' AND '.join(conditions)
+        if with_where:
+            return 'WHERE ' + ' AND '.join(conditions)
+        else:
+            return ' AND '.join(conditions)
     return ''

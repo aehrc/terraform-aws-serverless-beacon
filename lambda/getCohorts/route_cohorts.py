@@ -87,7 +87,7 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = entity_search_conditions(filters, 'cohorts')
+    conditions = entity_search_conditions(filters, 'cohorts', 'cohorts')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)
