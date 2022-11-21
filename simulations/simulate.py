@@ -169,67 +169,126 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
     item = Individual(id=id, datasetId=datasetId, cohortId=cohortId)
     item.diseases = random.sample(
         [
+            # alzheimer
             {
                 "diseaseCode": {
-                    "id": "EFO:0000400",
-                    "label": "insulin-dependent diabetes mellitus"
+                    "id": "SNOMED:722600006",
+                    "label": "Non-amnestic Alzheimer disease"
                 }
             },
             {
                 "diseaseCode": {
-                    "id": "MONDO:0005090",
-                    "label": "schizophrenia"
+                    "id": "SNOMED:23853001",
+                    "label": "Disorder of the central nervous system"
                 }
             },
             {
                 "diseaseCode": {
-                    "id": "EFO:0000249",
-                    "label": "alzheimer's disease"
+                    "id": "SNOMED:80690008",
+                    "label": "Degenerative disease of the central nervous system"
                 }
             },
             {
                 "diseaseCode": {
-                    "id": "MONDO:0005812",
-                    "label": "influenza due to certain identified influenza virus"
+                    "id": "SNOMED:26929004",
+                    "label": "Alzheimer's disease"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:135811000119107",
+                    "label": "Lewy body dementia with behavioral disturbance (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:312991009",
+                    "label": "Senile dementia of the Lewy body type (disorder)"
+                }
+            },
+            # coronary heart disease
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:194828000",
+                    "label": "Angina (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:429559004",
+                    "label": "Typical angina (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:56265001",
+                    "label": "Heart disease (disorder)"
+                }
+            },
+            # diabetes
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:73211009",
+                    "label": "Diabetes mellitus (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:81531005",
+                    "label": "Diabetes mellitus type 2 in obese (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:359642000",
+                    "label": "Diabetes mellitus type 2 in nonobese (disorder)"
                 }
             }
         ], random.randint(0, 3))
     item.ethnicity = random.choice([
         {
-            "id": "NCIT:C42331",
-            "label": "African"
+            "id": "SNOMED:15086000",
+            "label": "African American"
         },
         {
-            "id": "NCIT:C41260",
-            "label": "Asian"
+            "id": "SNOMED:315280000",
+            "label": "Asian - ethnic group"
         },
         {
-            "id": "SNOMED:413582008",
-            "label": "Asian race (racial group)"
+            "id": "SNOMED:77502007",
+            "label": "Atacamenos"
         },
         {
-            "id": "NCIT:C126535",
-            "label": "Australian"
+            "id": "SNOMED:38144004",
+            "label": "Athabascans"
         },
         {
-            "id": "SNOMED:413464008",
-            "label": "African race (racial group)"
+            "id": "SNOMED:43608005",
+            "label": "Australian Aborigines"
         },
         {
-            "id": "NCIT:C43851",
-            "label": "European"
+            "id": "SNOMED:68486007",
+            "label": "Austrians"
         },
         {
-            "id": "NCIT:C77812",
-            "label": "North American"
+            "id": "SNOMED:33897005",
+            "label": "Chinese"
         },
         {
-            "id": "NCIT:C126531",
-            "label": "Latin American"
+            "id": "SNOMED:186040000",
+            "label": "Cook Island Māori"
         },
         {
-            "id": "NCIT:C104495",
-            "label": "Other race"
+            "id": "SNOMED:113171009",
+            "label": "Coushatta"
+        },
+        {
+            "id": "SNOMED:286009",
+            "label": "Czech"
+        },
+        {
+            "id": "SNOMED:76253004",
+            "label": "Zulu"
         }
     ])
     item.exposures = random.sample([
@@ -261,24 +320,37 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
     ], random.randint(0, 2))
     item.geographicOrigin = random.choice([
         {
-            "id": "GAZ:00002955",
-            "label": "Slovenia"
+            "id": "SNOMED:223498002",
+            "label": "Africa"
         },
         {
-            "id": "GAZ:00002459",
-            "label": "United States of America"
+            "id": "SNOMED:223544003",
+            "label": "Angola"
         },
         {
-            "id": "GAZ:00316959",
-            "label": "Municipality of El Masnou"
+            "id": "SNOMED:223356001",
+            "label": "Anguilla island"
         },
         {
-            "id": "GAZ:00000460",
-            "label": "Eurasia"
+            "id": "SNOMED:223551007",
+            "label": "Zimbabwe"
+        },
+        {
+
+            "id": "SNOMED:223600005",
+            "label": "India"
         },
         {
             "id": "SNOMED:223506007",
-            "label":"Indian subcontinent (geographic location)"
+            "label": "Indian subcontinent"
+        },
+        {
+            "id": "SNOMED:223713009",
+            "label": "Argentina"
+        },
+        {
+            "id": "SNOMED:223688001",
+            "label": "United States of America"
         }
     ])
     item.info = {}
@@ -613,7 +685,7 @@ def extract_terms(array):
             yield from extract_terms(item)
 
 
-def simulate_datasets_cohorts():
+def simulate_datasets_cohorts(template):
     dynamo_items = []
     dataset_samples = dict()
     path_datasets = f'{datasets_path}.orc'
@@ -626,10 +698,12 @@ def simulate_datasets_cohorts():
     terms_file = open(path_datasets_terms, 'wb+')
     terms_writer = pyorc.Writer(terms_file, terms_cache_header)
     file, writer = get_writer(Dataset, path_datasets)
-
-    for n, line in enumerate(open('vcf.txt')):
+    n = 1
+    
+    for line in open(template).read().strip().split('\n'):
         if line[0] == '#':
             continue
+        n += 1
         data = line.strip().split(' ')
         multiplier = int(data[0])
         vcfs = data[1:]
@@ -885,8 +959,8 @@ def simulate_analyses(dynamo_items, dataset_samples):
     print()
 
 
-def simulate():
-    dynamo_items, dataset_samples = simulate_datasets_cohorts()
+def simulate(template):
+    dynamo_items, dataset_samples = simulate_datasets_cohorts(template)
     print('Simulating individuals', flush=True)
     simulate_individuals(dynamo_items)
     print('Simulating biosamples', flush=True)
@@ -945,7 +1019,27 @@ if __name__ == "__main__":
         print('Usage: \n\t$ python simulate.py [simulate|upload|clean]\n')
         sys.exit(1)
 
-    if sys.argv[1] == 'simulate' or sys.argv[1] == 'upload':
+    if sys.argv[1] == 'simulate':
+        if len(sys.argv) != 4:
+            print(f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME TEMPLATE') 
+            sys.exit(1)
+            
+        prefix = sys.argv[2]    
+        template = sys.argv[3]    
+        datasets_path = f'{prefix}/simulated-datasets'
+        cohorts_path = f'{prefix}/simulated-cohorts'
+        individuals_path = f'{prefix}/simulated-individuals'
+        biosamples_path = f'{prefix}/simulated-biosamples'
+        runs_path = f'{prefix}/simulated-runs'
+        analyses_path = f'{prefix}/simulated-analyses'
+        
+        if not (prefix.startswith('.') or prefix.startswith('/')):
+            shutil.rmtree(prefix, ignore_errors=True)
+
+        os.mkdir(prefix)
+        simulate(template)            
+    
+    if sys.argv[1] == 'upload':
         if len(sys.argv) != 3:
             print(f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME') 
             sys.exit(1)
@@ -958,13 +1052,6 @@ if __name__ == "__main__":
         runs_path = f'{prefix}/simulated-runs'
         analyses_path = f'{prefix}/simulated-analyses'
 
-        if sys.argv[1] == 'simulate':
-            if not (prefix.startswith('.') or prefix.startswith('/')):
-                shutil.rmtree(prefix, ignore_errors=True)
-
-            os.mkdir(prefix)
-            simulate()
-        else:
-            upload()
+        upload()
     else:
         clean()
