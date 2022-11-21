@@ -749,7 +749,7 @@ module "lambda-indexer" {
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
   memory_size = 1769
-  timeout = 60
+  timeout = 600
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json,
