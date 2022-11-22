@@ -9,6 +9,7 @@ import multiprocessing
 from glob import glob
 import concurrent.futures
 import shutil
+import json
 
 from tqdm import tqdm
 import jsons
@@ -49,26 +50,63 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     ])
     item.dataUseConditions = random.choice([
         {
-            "duoDataUse": [
-                {
-                    "id": "DUO:0000007",
-                    "label": "disease specific research",
-                    "modifiers": [
-                        {
-                            "id": "EFO:0001645",
-                            "label": "coronary artery disease"
-                        }
-                    ],
-                    "version": "17-07-2016"
-                }
-            ]
+            "duoDataUse": random.sample(
+                [
+                    {
+                        "id": "DUO:0000042",
+                        "label": "general research use",
+                        "version": "17-07-2016"
+                    },
+                    {
+                        "id": "DUO:0000006",
+                        "label": "health or medical or biomedical research",
+                        "version": "17-07-2016"
+                    },
+                    {
+                        "id": "DUO:0000007",
+                        "label": "disease specific research",
+                        "version": "17-07-2016",
+                        "modifiers": random.sample(
+                            [
+                                {
+                                    "id": "MONDO:0043543",
+                                    "label": "iatrogenic disease"
+                                },
+                                {
+                                    "id": "MONDO:0043544",
+                                    "label": "nosocomial infection"
+                                },
+                                {
+                                    "id": "MONDO:0016778",
+                                    "label": "iatrogenic botulism"
+                                },
+                                {
+                                    "id": "EFO:0002613",
+                                    "label": "iatrogenic Kaposi's sarcoma"
+                                },
+                                {
+                                    "id": "MONDO:0034976",
+                                    "label": "iatrogenic Creutzfeldt-Jakob disease"
+                                },
+                                {
+                                    "id": "EFO:0010238",
+                                    "label": "perinatal disease"
+                                }
+                            ], random.randint(0, 2))
+                    },
+                    {
+                        "id": "DUO:0000011",
+                        "label": "population origins or ancestry research only",
+                        "version": "17-07-2016"
+                    }
+                ], random.randint(0,2))
         },
         {
             "duoDataUse": [
                 {
                     "id": "DUO:0000004",
                     "label": "no restriction",
-                    "version": "2022-03-23"
+                    "version": "17-07-2016"
                 }
             ]
         }
@@ -102,6 +140,7 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     ])
 
     dynamo_item = DynamoDataset(id)
+    # keep 1 assemblyId for maximum stress on system
     dynamo_item.assemblyId = random.choice(["GRCH38"])
     dynamo_item.vcfGroups = [vcfLocations]
     dynamo_item.vcfLocations = vcfLocations
@@ -155,9 +194,12 @@ def get_random_cohort(id, seed=0):
     item.exclusionCriteria = {}
     item.inclusionCriteria = {}
     item.name = random.choice([
-        "Wellcome Trust Case Control Consortium",
-        "GCAT Genomes for Life",
-        "ACGT example organisation"
+        "CGG group",
+        "Gnihton genomics patients",
+        "Gnihtemos patients",
+        "Lamron cohort",
+        "Gnizama Genomics",
+        "ChetChet organisation for genomics"
     ])
 
     return item
@@ -245,52 +287,7 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
                 }
             }
         ], random.randint(0, 3))
-    item.ethnicity = random.choice([
-        {
-            "id": "SNOMED:15086000",
-            "label": "African American"
-        },
-        {
-            "id": "SNOMED:315280000",
-            "label": "Asian - ethnic group"
-        },
-        {
-            "id": "SNOMED:77502007",
-            "label": "Atacamenos"
-        },
-        {
-            "id": "SNOMED:38144004",
-            "label": "Athabascans"
-        },
-        {
-            "id": "SNOMED:43608005",
-            "label": "Australian Aborigines"
-        },
-        {
-            "id": "SNOMED:68486007",
-            "label": "Austrians"
-        },
-        {
-            "id": "SNOMED:33897005",
-            "label": "Chinese"
-        },
-        {
-            "id": "SNOMED:186040000",
-            "label": "Cook Island Māori"
-        },
-        {
-            "id": "SNOMED:113171009",
-            "label": "Coushatta"
-        },
-        {
-            "id": "SNOMED:286009",
-            "label": "Czech"
-        },
-        {
-            "id": "SNOMED:76253004",
-            "label": "Zulu"
-        }
-    ])
+    item.ethnicity = random.choice(json.load(open('./data/individual-ethnicity.json')))
     item.exposures = random.sample([
         {
             "exposureCode": {

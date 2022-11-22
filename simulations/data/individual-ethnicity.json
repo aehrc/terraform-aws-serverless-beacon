@@ -1,0 +1,958 @@
+[
+    {
+        "id": "SNOMED:88790004",
+        "label": "Abyssinians (Amharas)"
+    },
+    {
+        "id": "SNOMED:25750005",
+        "label": "Admiralty Islanders"
+    },
+    {
+        "id": "SNOMED:15086000",
+        "label": "African American"
+    },
+    {
+        "id": "SNOMED:413465009",
+        "label": "Afro-Caribbean"
+    },
+    {
+        "id": "SNOMED:413466005",
+        "label": "Afro-Caucasian"
+    },
+    {
+        "id": "SNOMED:27683006",
+        "label": "Ainu"
+    },
+    {
+        "id": "SNOMED:89026003",
+        "label": "Alacaluf"
+    },
+    {
+        "id": "SNOMED:21047009",
+        "label": "Aleuts"
+    },
+    {
+        "id": "SNOMED:66920001",
+        "label": "Amerind"
+    },
+    {
+        "id": "SNOMED:42632009",
+        "label": "Andamanese"
+    },
+    {
+        "id": "SNOMED:74302004",
+        "label": "Apache"
+    },
+    {
+        "id": "SNOMED:90027003",
+        "label": "Arabs"
+    },
+    {
+        "id": "SNOMED:113169009",
+        "label": "Armenians"
+    },
+    {
+        "id": "SNOMED:315280000",
+        "label": "Asian - ethnic group"
+    },
+    {
+        "id": "SNOMED:77502007",
+        "label": "Atacamenos"
+    },
+    {
+        "id": "SNOMED:38144004",
+        "label": "Athabascans"
+    },
+    {
+        "id": "SNOMED:43608005",
+        "label": "Australian Aborigines"
+    },
+    {
+        "id": "SNOMED:68486007",
+        "label": "Austrians"
+    },
+    {
+        "id": "SNOMED:113170005",
+        "label": "Aymara"
+    },
+    {
+        "id": "SNOMED:67931002",
+        "label": "Aztec"
+    },
+    {
+        "id": "SNOMED:46723002",
+        "label": "Badagas"
+    },
+    {
+        "id": "SNOMED:704390004",
+        "label": "Bajau"
+    },
+    {
+        "id": "SNOMED:186003008",
+        "label": "Bangladeshi"
+    },
+    {
+        "id": "SNOMED:39764005",
+        "label": "Bantu"
+    },
+    {
+        "id": "SNOMED:58047002",
+        "label": "Barundi"
+    },
+    {
+        "id": "SNOMED:45465003",
+        "label": "Basques"
+    },
+    {
+        "id": "SNOMED:23922002",
+        "label": "Batutsi"
+    },
+    {
+        "id": "SNOMED:56056003",
+        "label": "Belgians"
+    },
+    {
+        "id": "SNOMED:2852001",
+        "label": "Bhutanese"
+    },
+    {
+        "id": "SNOMED:704391000",
+        "label": "Bidayuh"
+    },
+    {
+        "id": "SNOMED:315240009",
+        "label": "Black - ethnic group"
+    },
+    {
+        "id": "SNOMED:18167009",
+        "label": "Black African"
+    },
+    {
+        "id": "SNOMED:315635008",
+        "label": "Black African and White"
+    },
+    {
+        "id": "SNOMED:275587000",
+        "label": "Black Arab"
+    },
+    {
+        "id": "SNOMED:185990008",
+        "label": "Black British"
+    },
+    {
+        "id": "SNOMED:185988007",
+        "label": "Black Caribbean"
+    },
+    {
+        "id": "SNOMED:315634007",
+        "label": "Black Caribbean and White"
+    },
+    {
+        "id": "SNOMED:270460000",
+        "label": "Black Caribbean/W.I./Guyana"
+    },
+    {
+        "id": "SNOMED:275589002",
+        "label": "Black East African Asian"
+    },
+    {
+        "id": "SNOMED:270462008",
+        "label": "Black East African Asian/Indo-Caribbean"
+    },
+    {
+        "id": "SNOMED:309644006",
+        "label": "Black Guyana"
+    },
+    {
+        "id": "SNOMED:185995003",
+        "label": "Black Indian sub-continent"
+    },
+    {
+        "id": "SNOMED:275590006",
+        "label": "Black Indo-Caribbean"
+    },
+    {
+        "id": "SNOMED:275588005",
+        "label": "Black Iranian"
+    },
+    {
+        "id": "SNOMED:521000220104",
+        "label": "Black Irish"
+    },
+    {
+        "id": "SNOMED:39007007",
+        "label": "Black Jews"
+    },
+    {
+        "id": "SNOMED:270461001",
+        "label": "Black N African/Arab/Iranian"
+    },
+    {
+        "id": "SNOMED:275586009",
+        "label": "Black North African"
+    },
+    {
+        "id": "SNOMED:309643000",
+        "label": "Black West Indian"
+    },
+    {
+        "id": "SNOMED:65776006",
+        "label": "Blackfeet"
+    },
+    {
+        "id": "SNOMED:32873005",
+        "label": "Bloods"
+    },
+    {
+        "id": "SNOMED:48679001",
+        "label": "Bogobos"
+    },
+    {
+        "id": "SNOMED:38750003",
+        "label": "Bororo"
+    },
+    {
+        "id": "SNOMED:72337002",
+        "label": "Brazilian Indians"
+    },
+    {
+        "id": "SNOMED:47250000",
+        "label": "Bruneians"
+    },
+    {
+        "id": "SNOMED:29343004",
+        "label": "Bulgarian"
+    },
+    {
+        "id": "SNOMED:718962008",
+        "label": "Bulgarian Roma"
+    },
+    {
+        "id": "SNOMED:40165009",
+        "label": "Buriats"
+    },
+    {
+        "id": "SNOMED:85371009",
+        "label": "Bushmen"
+    },
+    {
+        "id": "SNOMED:73524008",
+        "label": "Caingang"
+    },
+    {
+        "id": "SNOMED:733446001",
+        "label": "Canadian"
+    },
+    {
+        "id": "SNOMED:41798002",
+        "label": "Caroline Islanders"
+    },
+    {
+        "id": "SNOMED:14045001",
+        "label": "Caucasian"
+    },
+    {
+        "id": "SNOMED:57405008",
+        "label": "Chenchu"
+    },
+    {
+        "id": "SNOMED:33897005",
+        "label": "Chinese"
+    },
+    {
+        "id": "SNOMED:71949006",
+        "label": "Chippewa"
+    },
+    {
+        "id": "SNOMED:6373008",
+        "label": "Choco"
+    },
+    {
+        "id": "SNOMED:52075006",
+        "label": "Congolese"
+    },
+    {
+        "id": "SNOMED:186040000",
+        "label": "Cook Island Māori"
+    },
+    {
+        "id": "SNOMED:113171009",
+        "label": "Coushatta"
+    },
+    {
+        "id": "SNOMED:43056000",
+        "label": "Cuna"
+    },
+    {
+        "id": "SNOMED:286009",
+        "label": "Czech"
+    },
+    {
+        "id": "SNOMED:718959005",
+        "label": "Czech Roma"
+    },
+    {
+        "id": "SNOMED:14176005",
+        "label": "Danes"
+    },
+    {
+        "id": "SNOMED:43890005",
+        "label": "Dieguenos"
+    },
+    {
+        "id": "SNOMED:9533000",
+        "label": "Dutch"
+    },
+    {
+        "id": "SNOMED:32513008",
+        "label": "Dyaks"
+    },
+    {
+        "id": "SNOMED:28821007",
+        "label": "Easter Islanders"
+    },
+    {
+        "id": "SNOMED:1919006",
+        "label": "Egyptians"
+    },
+    {
+        "id": "SNOMED:60157000",
+        "label": "Ellice Islanders"
+    },
+    {
+        "id": "SNOMED:25804004",
+        "label": "English"
+    },
+    {
+        "id": "SNOMED:85515006",
+        "label": "Eskimo"
+    },
+    {
+        "id": "SNOMED:18583004",
+        "label": "Estonians"
+    },
+    {
+        "id": "SNOMED:414152003",
+        "label": "European"
+    },
+    {
+        "id": "SNOMED:10008004",
+        "label": "Ewe"
+    },
+    {
+        "id": "SNOMED:69865008",
+        "label": "Fijian"
+    },
+    {
+        "id": "SNOMED:76768002",
+        "label": "Filipinos"
+    },
+    {
+        "id": "SNOMED:10117001",
+        "label": "Finns"
+    },
+    {
+        "id": "SNOMED:13233008",
+        "label": "Flathead"
+    },
+    {
+        "id": "SNOMED:19434008",
+        "label": "French"
+    },
+    {
+        "id": "SNOMED:37843006",
+        "label": "Fulani"
+    },
+    {
+        "id": "SNOMED:90822005",
+        "label": "Gambians"
+    },
+    {
+        "id": "SNOMED:32045009",
+        "label": "Georgians"
+    },
+    {
+        "id": "SNOMED:7695005",
+        "label": "Germans"
+    },
+    {
+        "id": "SNOMED:37474002",
+        "label": "Ghanaians"
+    },
+    {
+        "id": "SNOMED:90348007",
+        "label": "Ghashgai"
+    },
+    {
+        "id": "SNOMED:49202008",
+        "label": "Gilbertese"
+    },
+    {
+        "id": "SNOMED:1451003",
+        "label": "Greeks"
+    },
+    {
+        "id": "SNOMED:10292001",
+        "label": "Guamians"
+    },
+    {
+        "id": "SNOMED:40182006",
+        "label": "Gypsies"
+    },
+    {
+        "id": "SNOMED:20140003",
+        "label": "Hawaiians"
+    },
+    {
+        "id": "SNOMED:72201005",
+        "label": "Hobe"
+    },
+    {
+        "id": "SNOMED:66406004",
+        "label": "Huasteco"
+    },
+    {
+        "id": "SNOMED:76883002",
+        "label": "Huichol"
+    },
+    {
+        "id": "SNOMED:64693008",
+        "label": "Hungarian"
+    },
+    {
+        "id": "SNOMED:718963003",
+        "label": "Hungarian Roma"
+    },
+    {
+        "id": "SNOMED:2720008",
+        "label": "Hututu"
+    },
+    {
+        "id": "SNOMED:704392007",
+        "label": "Iban"
+    },
+    {
+        "id": "SNOMED:59366001",
+        "label": "Ibo"
+    },
+    {
+        "id": "SNOMED:72809004",
+        "label": "Icelanders"
+    },
+    {
+        "id": "SNOMED:55990000",
+        "label": "Inca"
+    },
+    {
+        "id": "SNOMED:186001005",
+        "label": "Indian (East Indian)"
+    },
+    {
+        "id": "SNOMED:64483007",
+        "label": "Indians (Hindi-speaking)"
+    },
+    {
+        "id": "SNOMED:21993009",
+        "label": "Indonesians"
+    },
+    {
+        "id": "SNOMED:69983001",
+        "label": "Irani"
+    },
+    {
+        "id": "SNOMED:27700004",
+        "label": "Iraqi"
+    },
+    {
+        "id": "SNOMED:315283003",
+        "label": "Irish traveller"
+    },
+    {
+        "id": "SNOMED:83939006",
+        "label": "Irula"
+    },
+    {
+        "id": "SNOMED:31637002",
+        "label": "Italians"
+    },
+    {
+        "id": "SNOMED:414551003",
+        "label": "Japanese"
+    },
+    {
+        "id": "SNOMED:20449009",
+        "label": "Javanese"
+    },
+    {
+        "id": "SNOMED:704387005",
+        "label": "Kadazan"
+    },
+    {
+        "id": "SNOMED:15801006",
+        "label": "Kapingas"
+    },
+    {
+        "id": "SNOMED:11794009",
+        "label": "Kenyans"
+    },
+    {
+        "id": "SNOMED:870448005",
+        "label": "Khoikhoi"
+    },
+    {
+        "id": "SNOMED:72248007",
+        "label": "Kikuyu"
+    },
+    {
+        "id": "SNOMED:53195006",
+        "label": "Kirghiz"
+    },
+    {
+        "id": "SNOMED:38361009",
+        "label": "Koreans"
+    },
+    {
+        "id": "SNOMED:77686000",
+        "label": "Kwakiutl"
+    },
+    {
+        "id": "SNOMED:75326007",
+        "label": "Labradors"
+    },
+    {
+        "id": "SNOMED:20291009",
+        "label": "Lacandon"
+    },
+    {
+        "id": "SNOMED:67165000",
+        "label": "Lapps"
+    },
+    {
+        "id": "SNOMED:9158000",
+        "label": "Liberians"
+    },
+    {
+        "id": "SNOMED:83584002",
+        "label": "Luo"
+    },
+    {
+        "id": "SNOMED:21868006",
+        "label": "Madagascans"
+    },
+    {
+        "id": "SNOMED:1340002",
+        "label": "Malays"
+    },
+    {
+        "id": "SNOMED:75301003",
+        "label": "Mapuche"
+    },
+    {
+        "id": "SNOMED:4299001",
+        "label": "Marathas"
+    },
+    {
+        "id": "SNOMED:59597001",
+        "label": "Marshallese"
+    },
+    {
+        "id": "SNOMED:63457007",
+        "label": "Maya"
+    },
+    {
+        "id": "SNOMED:704388000",
+        "label": "Melanau"
+    },
+    {
+        "id": "SNOMED:414661004",
+        "label": "Melanesian"
+    },
+    {
+        "id": "SNOMED:23534002",
+        "label": "Melanesians"
+    },
+    {
+        "id": "SNOMED:74159009",
+        "label": "Melanuans"
+    },
+    {
+        "id": "SNOMED:47327008",
+        "label": "Mexican Indians"
+    },
+    {
+        "id": "SNOMED:3698008",
+        "label": "Micronesians"
+    },
+    {
+        "id": "SNOMED:24812003",
+        "label": "Mongol"
+    },
+    {
+        "id": "SNOMED:41076003",
+        "label": "Mozambiquans"
+    },
+    {
+        "id": "SNOMED:67439005",
+        "label": "Msutu"
+    },
+    {
+        "id": "SNOMED:704389008",
+        "label": "Murut"
+    },
+    {
+        "id": "SNOMED:73736004",
+        "label": "Māori"
+    },
+    {
+        "id": "SNOMED:81846005",
+        "label": "Naiars"
+    },
+    {
+        "id": "SNOMED:57539009",
+        "label": "Navaho"
+    },
+    {
+        "id": "SNOMED:91488008",
+        "label": "New Britons"
+    },
+    {
+        "id": "SNOMED:34334001",
+        "label": "New Caledonians"
+    },
+    {
+        "id": "SNOMED:63732001",
+        "label": "New Hebrideans"
+    },
+    {
+        "id": "SNOMED:186035008",
+        "label": "New Zealand ethnic groups"
+    },
+    {
+        "id": "SNOMED:186036009",
+        "label": "New Zealand European"
+    },
+    {
+        "id": "SNOMED:186039002",
+        "label": "New Zealand Māori"
+    },
+    {
+        "id": "SNOMED:87323008",
+        "label": "Nez Percé"
+    },
+    {
+        "id": "SNOMED:88934004",
+        "label": "Nigerians"
+    },
+    {
+        "id": "SNOMED:186041001",
+        "label": "Niuean"
+    },
+    {
+        "id": "SNOMED:17095009",
+        "label": "Norwegians"
+    },
+    {
+        "id": "SNOMED:18575005",
+        "label": "Oceanian"
+    },
+    {
+        "id": "SNOMED:10432001",
+        "label": "Onge"
+    },
+    {
+        "id": "SNOMED:704386001",
+        "label": "Orang asli"
+    },
+    {
+        "id": "SNOMED:91191002",
+        "label": "Oraons"
+    },
+    {
+        "id": "SNOMED:414978006",
+        "label": "Oriental"
+    },
+    {
+        "id": "SNOMED:51827000",
+        "label": "Oriental Jews"
+    },
+    {
+        "id": "SNOMED:27301002",
+        "label": "Paez"
+    },
+    {
+        "id": "SNOMED:186002003",
+        "label": "Pakistani"
+    },
+    {
+        "id": "SNOMED:81035008",
+        "label": "Pakistani (Urduspeakers)"
+    },
+    {
+        "id": "SNOMED:4073004",
+        "label": "Palauans"
+    },
+    {
+        "id": "SNOMED:17789004",
+        "label": "Papuans"
+    },
+    {
+        "id": "SNOMED:81653003",
+        "label": "Pehuenches"
+    },
+    {
+        "id": "SNOMED:28562006",
+        "label": "Poles"
+    },
+    {
+        "id": "SNOMED:718964009",
+        "label": "Polish Roma"
+    },
+    {
+        "id": "SNOMED:23517005",
+        "label": "Polynesians"
+    },
+    {
+        "id": "SNOMED:80208004",
+        "label": "Portuguese"
+    },
+    {
+        "id": "SNOMED:3353005",
+        "label": "Pueblo"
+    },
+    {
+        "id": "SNOMED:704385002",
+        "label": "Punjabi"
+    },
+    {
+        "id": "SNOMED:71176007",
+        "label": "Pygmies"
+    },
+    {
+        "id": "SNOMED:79434006",
+        "label": "Quechua"
+    },
+    {
+        "id": "SNOMED:160531006",
+        "label": "Race: West indian"
+    },
+    {
+        "id": "SNOMED:718958002",
+        "label": "Roma"
+    },
+    {
+        "id": "SNOMED:445343003",
+        "label": "Romanian"
+    },
+    {
+        "id": "SNOMED:718960000",
+        "label": "Romanian Roma"
+    },
+    {
+        "id": "SNOMED:85163001",
+        "label": "Russians"
+    },
+    {
+        "id": "SNOMED:19085009",
+        "label": "Saipanese"
+    },
+    {
+        "id": "SNOMED:86275006",
+        "label": "Samoan"
+    },
+    {
+        "id": "SNOMED:735001008",
+        "label": "Scandinavian"
+    },
+    {
+        "id": "SNOMED:48375000",
+        "label": "Seminole"
+    },
+    {
+        "id": "SNOMED:3818007",
+        "label": "Senegalese"
+    },
+    {
+        "id": "SNOMED:50405005",
+        "label": "Senoi"
+    },
+    {
+        "id": "SNOMED:53460002",
+        "label": "Serbs"
+    },
+    {
+        "id": "SNOMED:82174001",
+        "label": "Shona"
+    },
+    {
+        "id": "SNOMED:22007004",
+        "label": "Shoshone"
+    },
+    {
+        "id": "SNOMED:28796001",
+        "label": "Siamese"
+    },
+    {
+        "id": "SNOMED:36329002",
+        "label": "Slovak"
+    },
+    {
+        "id": "SNOMED:718961001",
+        "label": "Slovak Roma"
+    },
+    {
+        "id": "SNOMED:48294008",
+        "label": "Solomon Islanders"
+    },
+    {
+        "id": "SNOMED:46110004",
+        "label": "Somalis"
+    },
+    {
+        "id": "SNOMED:26215007",
+        "label": "South Asian Aborigine"
+    },
+    {
+        "id": "SNOMED:108342005",
+        "label": "South Asian AND/OR Australian aborigine"
+    },
+    {
+        "id": "SNOMED:186044009",
+        "label": "South East Asian"
+    },
+    {
+        "id": "SNOMED:28409002",
+        "label": "Spaniards"
+    },
+    {
+        "id": "SNOMED:88839008",
+        "label": "Sudanese"
+    },
+    {
+        "id": "SNOMED:81403004",
+        "label": "Swedes"
+    },
+    {
+        "id": "SNOMED:76574004",
+        "label": "Swiss"
+    },
+    {
+        "id": "SNOMED:59487007",
+        "label": "Syrians"
+    },
+    {
+        "id": "SNOMED:63736003",
+        "label": "Taiwanese"
+    },
+    {
+        "id": "SNOMED:12556008",
+        "label": "Tamils"
+    },
+    {
+        "id": "SNOMED:13440006",
+        "label": "Tanganyikans"
+    },
+    {
+        "id": "SNOMED:91066000",
+        "label": "Tatars"
+    },
+    {
+        "id": "SNOMED:83365001",
+        "label": "Thais"
+    },
+    {
+        "id": "SNOMED:75704009",
+        "label": "Toba"
+    },
+    {
+        "id": "SNOMED:81283004",
+        "label": "Todas"
+    },
+    {
+        "id": "SNOMED:186042008",
+        "label": "Tokelauan"
+    },
+    {
+        "id": "SNOMED:81560001",
+        "label": "Tongan"
+    },
+    {
+        "id": "SNOMED:2688009",
+        "label": "Tristan da Cunhans"
+    },
+    {
+        "id": "SNOMED:33182009",
+        "label": "Trukese"
+    },
+    {
+        "id": "SNOMED:44460002",
+        "label": "Turks"
+    },
+    {
+        "id": "SNOMED:14470009",
+        "label": "Tutsi"
+    },
+    {
+        "id": "SNOMED:76775001",
+        "label": "Ugandans"
+    },
+    {
+        "id": "SNOMED:733078003",
+        "label": "Ukrainian"
+    },
+    {
+        "id": "SNOMED:35007000",
+        "label": "Utes"
+    },
+    {
+        "id": "SNOMED:62598008",
+        "label": "Venezuelan Indians"
+    },
+    {
+        "id": "SNOMED:312859007",
+        "label": "Vietnamese"
+    },
+    {
+        "id": "SNOMED:14999008",
+        "label": "Welsh"
+    },
+    {
+        "id": "SNOMED:8124001",
+        "label": "West Africans"
+    },
+    {
+        "id": "SNOMED:185984009",
+        "label": "White - ethnic group"
+    },
+    {
+        "id": "SNOMED:315236000",
+        "label": "White British"
+    },
+    {
+        "id": "SNOMED:315237009",
+        "label": "White Irish"
+    },
+    {
+        "id": "SNOMED:401213008",
+        "label": "White Scottish"
+    },
+    {
+        "id": "SNOMED:18664001",
+        "label": "Xavante"
+    },
+    {
+        "id": "SNOMED:80528001",
+        "label": "Xosa"
+    },
+    {
+        "id": "SNOMED:76460008",
+        "label": "Yanomama"
+    },
+    {
+        "id": "SNOMED:48118002",
+        "label": "Yapese"
+    },
+    {
+        "id": "SNOMED:76253004",
+        "label": "Zulu"
+    }
+]
