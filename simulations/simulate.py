@@ -9,6 +9,7 @@ import multiprocessing
 from glob import glob
 import concurrent.futures
 import shutil
+import json
 
 from tqdm import tqdm
 import jsons
@@ -49,26 +50,63 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     ])
     item.dataUseConditions = random.choice([
         {
-            "duoDataUse": [
-                {
-                    "id": "DUO:0000007",
-                    "label": "disease specific research",
-                    "modifiers": [
-                        {
-                            "id": "EFO:0001645",
-                            "label": "coronary artery disease"
-                        }
-                    ],
-                    "version": "17-07-2016"
-                }
-            ]
+            "duoDataUse": random.sample(
+                [
+                    {
+                        "id": "DUO:0000042",
+                        "label": "general research use",
+                        "version": "17-07-2016"
+                    },
+                    {
+                        "id": "DUO:0000006",
+                        "label": "health or medical or biomedical research",
+                        "version": "17-07-2016"
+                    },
+                    {
+                        "id": "DUO:0000007",
+                        "label": "disease specific research",
+                        "version": "17-07-2016",
+                        "modifiers": random.sample(
+                            [
+                                {
+                                    "id": "MONDO:0043543",
+                                    "label": "iatrogenic disease"
+                                },
+                                {
+                                    "id": "MONDO:0043544",
+                                    "label": "nosocomial infection"
+                                },
+                                {
+                                    "id": "MONDO:0016778",
+                                    "label": "iatrogenic botulism"
+                                },
+                                {
+                                    "id": "EFO:0002613",
+                                    "label": "iatrogenic Kaposi's sarcoma"
+                                },
+                                {
+                                    "id": "MONDO:0034976",
+                                    "label": "iatrogenic Creutzfeldt-Jakob disease"
+                                },
+                                {
+                                    "id": "EFO:0010238",
+                                    "label": "perinatal disease"
+                                }
+                            ], random.randint(0, 2))
+                    },
+                    {
+                        "id": "DUO:0000011",
+                        "label": "population origins or ancestry research only",
+                        "version": "17-07-2016"
+                    }
+                ], random.randint(0,2))
         },
         {
             "duoDataUse": [
                 {
                     "id": "DUO:0000004",
                     "label": "no restriction",
-                    "version": "2022-03-23"
+                    "version": "17-07-2016"
                 }
             ]
         }
@@ -102,6 +140,7 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     ])
 
     dynamo_item = DynamoDataset(id)
+    # keep 1 assemblyId for maximum stress on system
     dynamo_item.assemblyId = random.choice(["GRCH38"])
     dynamo_item.vcfGroups = [vcfLocations]
     dynamo_item.vcfLocations = vcfLocations
@@ -155,9 +194,12 @@ def get_random_cohort(id, seed=0):
     item.exclusionCriteria = {}
     item.inclusionCriteria = {}
     item.name = random.choice([
-        "Wellcome Trust Case Control Consortium",
-        "GCAT Genomes for Life",
-        "ACGT example organisation"
+        "CGG group",
+        "Gnihton genomics patients",
+        "Gnihtemos patients",
+        "Lamron cohort",
+        "Gnizama Genomics",
+        "ChetChet organisation for genomics"
     ])
 
     return item
@@ -169,116 +211,160 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
     item = Individual(id=id, datasetId=datasetId, cohortId=cohortId)
     item.diseases = random.sample(
         [
+            # alzheimer
             {
                 "diseaseCode": {
-                    "id": "EFO:0000400",
-                    "label": "insulin-dependent diabetes mellitus"
+                    "id": "SNOMED:722600006",
+                    "label": "Non-amnestic Alzheimer disease"
                 }
             },
             {
                 "diseaseCode": {
-                    "id": "MONDO:0005090",
-                    "label": "schizophrenia"
+                    "id": "SNOMED:23853001",
+                    "label": "Disorder of the central nervous system"
                 }
             },
             {
                 "diseaseCode": {
-                    "id": "EFO:0000249",
-                    "label": "alzheimer's disease"
+                    "id": "SNOMED:80690008",
+                    "label": "Degenerative disease of the central nervous system"
                 }
             },
             {
                 "diseaseCode": {
-                    "id": "MONDO:0005812",
-                    "label": "influenza due to certain identified influenza virus"
+                    "id": "SNOMED:26929004",
+                    "label": "Alzheimer's disease"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:135811000119107",
+                    "label": "Lewy body dementia with behavioral disturbance (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:312991009",
+                    "label": "Senile dementia of the Lewy body type (disorder)"
+                }
+            },
+            # coronary heart disease
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:194828000",
+                    "label": "Angina (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:429559004",
+                    "label": "Typical angina (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:56265001",
+                    "label": "Heart disease (disorder)"
+                }
+            },
+            # diabetes
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:73211009",
+                    "label": "Diabetes mellitus (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:81531005",
+                    "label": "Diabetes mellitus type 2 in obese (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:359642000",
+                    "label": "Diabetes mellitus type 2 in nonobese (disorder)"
                 }
             }
         ], random.randint(0, 3))
-    item.ethnicity = random.choice([
-        {
-            "id": "NCIT:C42331",
-            "label": "African"
-        },
-        {
-            "id": "NCIT:C41260",
-            "label": "Asian"
-        },
-        {
-            "id": "SNOMED:413582008",
-            "label": "Asian race (racial group)"
-        },
-        {
-            "id": "NCIT:C126535",
-            "label": "Australian"
-        },
-        {
-            "id": "SNOMED:413464008",
-            "label": "African race (racial group)"
-        },
-        {
-            "id": "NCIT:C43851",
-            "label": "European"
-        },
-        {
-            "id": "NCIT:C77812",
-            "label": "North American"
-        },
-        {
-            "id": "NCIT:C126531",
-            "label": "Latin American"
-        },
-        {
-            "id": "NCIT:C104495",
-            "label": "Other race"
-        }
-    ])
+    item.ethnicity = random.choice(json.load(open('./data/individual-ethnicity.json')))
     item.exposures = random.sample([
         {
             "exposureCode": {
-                "id": "NCIT:C94596"
+                "id": "SNOMED:773760007",
+                "label": "Traumatic event"
             }
         },
         {
             "exposureCode": {
-                "id": "NCIT:C50738"
+                "id": "SNOMED:242271001",
+                "label": "Accidental exposure to aerosol paint"
             }
         },
         {
             "exposureCode": {
-                "id": "NCIT:C156623"
+                "id": "SNOMED:242816007",
+                "label": "Exposure of patient to medical therapeutic radiation"
             }
         },
         {
             "exposureCode": {
-                "id": "NCIT:C94492"
+                "id": "SNOMED:242812009",
+                "label": "Exposure of patient to radiation from diagnostic isotopes"
             }
         },
         {
             "exposureCode": {
-                "id": "NCIT:C154864"
+                "id": "SNOMED:16090531000119106",
+                "label": "Exposure to arsenic"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "SNOMED:699373005",
+                "label": "Exposure to asbestos"
+            }
+        },
+        {
+            "exposureCode": {
+                "id": "SNOMED:409510007",
+                "label": "Inhalational exposure to biological agent"
             }
         }
     ], random.randint(0, 2))
     item.geographicOrigin = random.choice([
         {
-            "id": "GAZ:00002955",
-            "label": "Slovenia"
+            "id": "SNOMED:223498002",
+            "label": "Africa"
         },
         {
-            "id": "GAZ:00002459",
-            "label": "United States of America"
+            "id": "SNOMED:223544003",
+            "label": "Angola"
         },
         {
-            "id": "GAZ:00316959",
-            "label": "Municipality of El Masnou"
+            "id": "SNOMED:223356001",
+            "label": "Anguilla island"
         },
         {
-            "id": "GAZ:00000460",
-            "label": "Eurasia"
+            "id": "SNOMED:223551007",
+            "label": "Zimbabwe"
+        },
+        {
+
+            "id": "SNOMED:223600005",
+            "label": "India"
         },
         {
             "id": "SNOMED:223506007",
-            "label":"Indian subcontinent (geographic location)"
+            "label": "Indian subcontinent"
+        },
+        {
+            "id": "SNOMED:223713009",
+            "label": "Argentina"
+        },
+        {
+            "id": "SNOMED:223688001",
+            "label": "United States of America"
         }
     ])
     item.info = {}
@@ -322,20 +408,24 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
     item.phenotypicFeatures = []
     item.sex = random.choice([
         {
-            "id": "NCIT:C16576",
-            "label": "female"
+            "id": "SNOMED:248152002",
+            "label": "Female"
         },
         {
-            "id": "NCIT:C20197",
-            "label": "male"
+            "id": "SNOMED:407377005",
+            "label": "Female-to-male transsexual"
         },
         {
-            "id": "NCIT:C1799",
-            "label": "unknown"
+            "id": "SNOMED:248153007",
+            "label": "Male"
         },
         {
-            "id": "SNOMED:223589002",
-            "label": "Indonesia (geographic location)"
+            "id": "SNOMED:407378000",
+            "label": "Surgically transgendered transsexual, male-to-female"
+        },
+        {
+            "id": "SNOMED:407374003",
+            "label": "Transsexual"
         }
     ])
     item.treatments = []
@@ -350,28 +440,28 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
                      cohortId=cohortId, individualId=individualId)
     item.biosampleStatus = random.choice([
         {
-            "id": "EFO:0009654",
-            "label": "reference sample"
+            "id": "SNOMED:365641003",
+            "label": "Minor blood groups - finding"
         },
         {
-            "id": "EFO:0009655",
-            "label": "abnormal sample"
+            "id": "SNOMED:276447000",
+            "label": "Mite present"
         },
         {
-            "id": "EFO:0009656",
-            "label": "neoplastic sample"
+            "id": "SNOMED:702781009",
+            "label": "Mitochondrial 1555 A to G mutation negative"
         },
         {
-            "id": "EFO:0010941",
-            "label": "metastasis sample"
+            "id": "SNOMED:702782002",
+            "label": "Mitochondrial 1555 A to G mutation positive"
         },
         {
-            "id": "EFO:0010942",
-            "label": "primary tumor sample"
+            "id": "SNOMED:310293008",
+            "label": "Mitochondrial antibodies negative"
         },
         {
-            "id": "EFO:0010943",
-            "label": "recurrent tumor sample"
+            "id": "SNOMED:310294002",
+            "label": "Mitochondrial antibodies positive"
         }
     ])
     item.collectionDate = random.choice([
@@ -389,8 +479,20 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
     item.histologicalDiagnosis = random.choice([
         {},
         {
-            "id": "NCIT:C3778",
-            "label": "Serous Cystadenocarcinoma"
+            "id": "SNOMED:237592006",
+            "label": "Abnormality of bombesin secretion"
+        },
+        {
+            "id": "SNOMED:362965005",
+            "label": "Disorder of body system (disorder)"
+        },
+        {
+            "id": "SNOMED:719046005",
+            "label": "12q14 microdeletion syndrome"
+        },
+        {
+            "id": "SNOMED:771439009",
+            "label": "14q22q23 microdeletion syndrome"
         }
     ])
     item.measurements = []
@@ -434,38 +536,70 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
     item.sampleOriginDetail = random.choice([
         {},
         {
-            "id": "UBERON:0000474",
-            "label": "female reproductive system"
+            "id": "SNOMED:258500001",
+            "label": "Nasopharyngeal swab"
         },
         {
-            "id": "BTO:0002181",
-            "label": "HEK-293T cell"
+            "id": "SNOMED:472881004",
+            "label": "Pharyngeal swab"
         },
         {
-            "id": "OBI:0002606",
-            "label": "nasopharyngeal swab specimen"
+            "id": "SNOMED:258603007",
+            "label": "Respiratory specimen"
+        },
+        {
+            "id": "SNOMED:258497007",
+            "label": "Abscess swab"
+        },
+        {
+            "id": "SNOMED:258407001",
+            "label": "Abscess tissue"
+        },
+        {
+            "id": "SNOMED:385338007",
+            "label": "Specimen from anus obtained by transanal disk excision"
+        },
+        {
+            "id": "SNOMED:734336008",
+            "label": "Specimen from aorta"
         }
     ])
     item.sampleOriginType = random.choice([
         {},
         {
-            "id": "OBI:0001479",
-            "label": "specimen from organism"
+            "id": "SNOMED:31675002",
+            "label": "Capillary blood"
         },
         {
-            "id": "OBI:0001876",
-            "label": "cell culture"
+            "id": "SNOMED:782814004",
+            "label": "Cultured autograft of skin"
         },
         {
-            "id": "OBI:0100058",
-            "label": "xenograft"
+            "id": "SNOMED:702451000",
+            "label": "Cultured cells"
+        },
+        {
+            "id": "SNOMED:421955000",
+            "label": "Culture medium"
+        },
+        {
+            "id": "SNOMED:422236008",
+            "label": "Agar medium"
         }
     ])
     item.sampleProcessing = random.choice([
         {},
         {
-            "id": "EFO:0009129",
-            "label": "mechanical dissociation"
+            "id": "SNOMED:87021001",
+            "label": "Mechanical vitrectomy by pars plana approach"
+        },
+        {
+            "id": "SNOMED:72019009",
+            "label": "Mechanical vitrectomy by posterior approach"
+        },
+        {
+            "id": "SNOMED:18809007",
+            "label": "Meckel's ganglionectomy"
         }
     ])
     item.sampleStorage = {},
@@ -558,8 +692,8 @@ def clean_files(bucket, prefix):
             files_to_delete.append({"Key": object["Key"]})
         if files_to_delete:
             s3.delete_objects(
-                Bucket=bucket, 
-                Delete={ "Objects": files_to_delete })
+                Bucket=bucket,
+                Delete={"Objects": files_to_delete})
         pbar.update(len(files_to_delete))
         has_more = response['IsTruncated']
 
@@ -584,11 +718,10 @@ def clean():
     with VariantQuery.batch_write() as batch:
         for dynamo_item in tqdm(VariantQuery.scan(), desc='Cleaning VariantQuery'):
             batch.delete(dynamo_item)
-        
+
     with VariantResponse.batch_write() as batch:
         for dynamo_item in tqdm(VariantResponse.scan(), desc='Cleaning VariantResponse'):
             batch.delete(dynamo_item)
-        
 
     clean_files(METADATA_BUCKET, '/')
     clean_files(VARIANTS_BUCKET, 'variant-queries/')
@@ -613,7 +746,7 @@ def extract_terms(array):
             yield from extract_terms(item)
 
 
-def simulate_datasets_cohorts():
+def simulate_datasets_cohorts(template):
     dynamo_items = []
     dataset_samples = dict()
     path_datasets = f'{datasets_path}.orc'
@@ -626,10 +759,12 @@ def simulate_datasets_cohorts():
     terms_file = open(path_datasets_terms, 'wb+')
     terms_writer = pyorc.Writer(terms_file, terms_cache_header)
     file, writer = get_writer(Dataset, path_datasets)
+    n = 1
 
-    for n, line in enumerate(open('vcf.txt')):
+    for line in open(template).read().strip().split('\n'):
         if line[0] == '#':
             continue
+        n += 1
         data = line.strip().split(' ')
         multiplier = int(data[0])
         vcfs = data[1:]
@@ -649,10 +784,10 @@ def simulate_datasets_cohorts():
             id = f'{n}-{m}'
             dataset, dynamo_item = get_random_dataset(
                 id, vcfs, vcfChromosomeMap, seed=id)
-            
+
             for term, label, typ in extract_terms([jsons.dump(dataset)]):
                 terms_writer.write(('datasets', dataset.id, term, label, typ))
-            
+
             dynamo_item.sampleCount = len(samples)
             # dynamo_item.sampleNames = samples
             dynamo_item.sampleNames = ['None']
@@ -681,7 +816,7 @@ def simulate_datasets_cohorts():
             terms_writer.write(('cohorts', cohort.id, term, label, typ))
 
         write_local(Cohort, cohort, writer)
-    
+
     writer.close()
     file.close()
     terms_writer.close()
@@ -689,7 +824,7 @@ def simulate_datasets_cohorts():
 
     return dynamo_items, dataset_samples
 
-    
+
 def simulate_individuals(dynamo_items):
     def runner(thread_id):
         idx = 1
@@ -698,25 +833,27 @@ def simulate_individuals(dynamo_items):
         terms_file = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Individual, thread_path)
-        pbar = tqdm(desc=f'Individuals thread - {thread_id}', position=thread_id)
+        pbar = tqdm(
+            desc=f'Individuals thread - {thread_id}', position=thread_id)
 
         for n, dataset in enumerate(dynamo_items):
             if n % threads_count != thread_id:
                 continue
-            
+
             id = dataset.id
             nosamples = dataset.sampleCount
-            
+
             for itr in range(nosamples):
                 individual = get_random_individual(
                     id=f'{id}-{itr}', datasetId=id, cohortId=id, seed=f'{id}-{itr}')
-                
+
                 for term, label, typ in extract_terms([jsons.dump(individual)]):
-                    terms_writer.write(('individuals', individual.id, term, label, typ))
-                
+                    terms_writer.write(
+                        ('individuals', individual.id, term, label, typ))
+
                 write_local(Individual, individual, writer)
                 idx += 1
-                
+
                 if idx % 1000000 == 0:
                     writer.close()
                     file.close()
@@ -729,9 +866,9 @@ def simulate_individuals(dynamo_items):
         terms_writer.close()
         terms_file.close()
         pbar.close()
-        
 
-    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(
+        thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
@@ -741,35 +878,37 @@ def simulate_biosamples(dynamo_items):
     def runner(thread_id):
         idx = 1
         thread_path = f'./{biosamples_path}-{thread_id}-{idx}.orc'
-        thread_terms_path =f'./{biosamples_path}-terms-{thread_id}.orc'
+        thread_terms_path = f'./{biosamples_path}-terms-{thread_id}.orc'
         terms_file = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Biosample, thread_path)
-        pbar = tqdm(desc=f'Biosamples thread - {thread_id}', position=thread_id)
+        pbar = tqdm(
+            desc=f'Biosamples thread - {thread_id}', position=thread_id)
 
         for n, dataset in enumerate(dynamo_items):
             if n % threads_count != thread_id:
                 continue
-            
+
             id = dataset.id
             nosamples = dataset.sampleCount
-            
+
             for itr in range(nosamples):
                 biosample = get_random_biosample(
                     id=f'{id}-{itr}', datasetId=id, cohortId=id, individualId=f'{id}-{itr}', seed=f'{id}-{itr}')
-                
+
                 for term, label, typ in extract_terms([jsons.dump(biosample)]):
-                    terms_writer.write(('biosamples', biosample.id, term, label, typ))
+                    terms_writer.write(
+                        ('biosamples', biosample.id, term, label, typ))
 
                 write_local(Biosample, biosample, writer)
                 idx += 1
-                
+
                 if idx % 1000000 == 0:
                     writer.close()
                     file.close()
                     thread_path = f'./{biosamples_path}-{thread_id}-{idx}.orc'
                     file, writer = get_writer(Biosample, thread_path)
-                
+
                 pbar.update()
 
         writer.close()
@@ -778,7 +917,8 @@ def simulate_biosamples(dynamo_items):
         terms_file.close()
         pbar.close()
 
-    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(
+        thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
@@ -788,7 +928,7 @@ def simulate_runs(dynamo_items):
     def runner(thread_id):
         idx = 1
         thread_path = f'./{runs_path}-{thread_id}-{idx}.orc'
-        thread_terms_path =f'./{runs_path}-terms-{thread_id}.orc'
+        thread_terms_path = f'./{runs_path}-terms-{thread_id}.orc'
         terms_file = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Run, thread_path)
@@ -800,17 +940,17 @@ def simulate_runs(dynamo_items):
 
             id = dataset.id
             nosamples = dataset.sampleCount
-            
+
             for itr in range(nosamples):
                 run = get_random_run(id=f'{id}-{itr}', datasetId=id, cohortId=id,
-                                    individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
-                
+                                     individualId=f'{id}-{itr}', biosampleId=f'{id}-{itr}', seed=f'{id}-{itr}')
+
                 for term, label, typ in extract_terms([jsons.dump(run)]):
                     terms_writer.write(('runs', run.id, term, label, typ))
 
                 write_local(Run, run, writer)
                 idx += 1
-                
+
                 if idx % 1000000 == 0:
                     writer.close()
                     file.close()
@@ -825,7 +965,8 @@ def simulate_runs(dynamo_items):
         terms_file.close()
         pbar.close()
 
-    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(
+        thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
@@ -835,7 +976,7 @@ def simulate_analyses(dynamo_items, dataset_samples):
     def runner(thread_id):
         idx = 1
         thread_path = f'./{analyses_path}-{thread_id}-{idx}.orc'
-        thread_terms_path =f'./{analyses_path}-terms-{thread_id}.orc'
+        thread_terms_path = f'./{analyses_path}-terms-{thread_id}.orc'
         terms_file = open(thread_terms_path, 'wb+')
         terms_writer = pyorc.Writer(terms_file, terms_cache_header)
         file, writer = get_writer(Analysis, thread_path)
@@ -850,18 +991,19 @@ def simulate_analyses(dynamo_items, dataset_samples):
 
             for itr in range(nosamples):
                 analysis = get_random_analysis(
-                    id=f'{id}-{itr}', 
-                    datasetId=id, 
-                    cohortId=id, 
+                    id=f'{id}-{itr}',
+                    datasetId=id,
+                    cohortId=id,
                     individualId=f'{id}-{itr}',
-                    biosampleId=f'{id}-{itr}', 
-                    runId=f'{id}-{itr}', 
-                    # vcfSampleId=dataset.sampleNames[itr], 
-                    vcfSampleId=dataset_samples[id][itr], 
+                    biosampleId=f'{id}-{itr}',
+                    runId=f'{id}-{itr}',
+                    # vcfSampleId=dataset.sampleNames[itr],
+                    vcfSampleId=dataset_samples[id][itr],
                     seed=f'{id}-{itr}')
-                
+
                 for term, label, typ in extract_terms([jsons.dump(analysis)]):
-                    terms_writer.write(('analyses', analysis.id, term, label, typ))
+                    terms_writer.write(
+                        ('analyses', analysis.id, term, label, typ))
 
                 write_local(Analysis, analysis, writer)
                 idx += 1
@@ -879,14 +1021,15 @@ def simulate_analyses(dynamo_items, dataset_samples):
         terms_file.close()
         pbar.close()
 
-    threads = [multiprocessing.Process(target=runner, args=(thread_id,)) for thread_id in range(threads_count)]
+    threads = [multiprocessing.Process(target=runner, args=(
+        thread_id,)) for thread_id in range(threads_count)]
     [thread.start() for thread in threads]
     [thread.join() for thread in threads]
     print()
 
 
-def simulate():
-    dynamo_items, dataset_samples = simulate_datasets_cohorts()
+def simulate(template):
+    dynamo_items, dataset_samples = simulate_datasets_cohorts(template)
     print('Simulating individuals', flush=True)
     simulate_individuals(dynamo_items)
     print('Simulating biosamples', flush=True)
@@ -902,35 +1045,47 @@ def upload():
     pool = concurrent.futures.ProcessPoolExecutor(max_workers=threads_count)
 
     # upload datasets
-    pool.submit(upload_local, f'{datasets_path}.orc', f's3://{METADATA_BUCKET}/datasets/combined-datasets.orc')
-    pool.submit(upload_local, f'{datasets_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/datasets.orc')
+    pool.submit(upload_local, f'{datasets_path}.orc',
+                f's3://{METADATA_BUCKET}/datasets/combined-datasets.orc')
+    pool.submit(upload_local, f'{datasets_path}-terms.orc',
+                f's3://{METADATA_BUCKET}/terms-cache/datasets.orc')
 
     # upload cohorts
-    pool.submit(upload_local, f'{cohorts_path}.orc', f's3://{METADATA_BUCKET}/cohorts/combined-cohorts.orc')
-    pool.submit(upload_local, f'{cohorts_path}-terms.orc', f's3://{METADATA_BUCKET}/terms-cache/cohorts.orc')
-    
+    pool.submit(upload_local, f'{cohorts_path}.orc',
+                f's3://{METADATA_BUCKET}/cohorts/combined-cohorts.orc')
+    pool.submit(upload_local, f'{cohorts_path}-terms.orc',
+                f's3://{METADATA_BUCKET}/terms-cache/cohorts.orc')
+
     # upload individuals
     for thread in range(threads_count):
-        pool.submit(upload_local, f'{individuals_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/individuals-{thread}.orc')
-        pool.submit(upload_local, f'{biosamples_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc')
-        pool.submit(upload_local, f'{runs_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/runs-{thread}.orc')
-        pool.submit(upload_local, f'{analyses_path}-terms-{thread}.orc', f's3://{METADATA_BUCKET}/terms-cache/analyses-{thread}.orc')
-        
+        pool.submit(upload_local, f'{individuals_path}-terms-{thread}.orc',
+                    f's3://{METADATA_BUCKET}/terms-cache/individuals-{thread}.orc')
+        pool.submit(upload_local, f'{biosamples_path}-terms-{thread}.orc',
+                    f's3://{METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc')
+        pool.submit(upload_local, f'{runs_path}-terms-{thread}.orc',
+                    f's3://{METADATA_BUCKET}/terms-cache/runs-{thread}.orc')
+        pool.submit(upload_local, f'{analyses_path}-terms-{thread}.orc',
+                    f's3://{METADATA_BUCKET}/terms-cache/analyses-{thread}.orc')
+
         for file in glob(f'{individuals_path}-{thread}-*'):
             idx = file.split('/')[-1].replace('.orc', '')
-            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/individuals/individuals-{thread}-{idx}.orc')
+            pool.submit(
+                upload_local, file, f's3://{METADATA_BUCKET}/individuals/individuals-{thread}-{idx}.orc')
 
         for file in glob(f'{biosamples_path}-{thread}-*'):
             idx = file.split('/')[-1].replace('.orc', '')
-            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/biosamples/biosamples-{thread}-{idx}')
-        
+            pool.submit(
+                upload_local, file, f's3://{METADATA_BUCKET}/biosamples/biosamples-{thread}-{idx}')
+
         for file in glob(f'{runs_path}-{thread}-*'):
             idx = file.split('/')[-1].replace('.orc', '')
-            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/runs/runs-{thread}-{idx}')
-        
+            pool.submit(upload_local, file,
+                        f's3://{METADATA_BUCKET}/runs/runs-{thread}-{idx}')
+
         for file in glob(f'{analyses_path}-{thread}-*'):
             idx = file.split('/')[-1].replace('.orc', '')
-            pool.submit(upload_local, file, f's3://{METADATA_BUCKET}/analyses/analyses-{thread}-{idx}')
+            pool.submit(
+                upload_local, file, f's3://{METADATA_BUCKET}/analyses/analyses-{thread}-{idx}')
     pool.shutdown()
 
     with DynamoDataset.batch_write() as batch:
@@ -945,12 +1100,14 @@ if __name__ == "__main__":
         print('Usage: \n\t$ python simulate.py [simulate|upload|clean]\n')
         sys.exit(1)
 
-    if sys.argv[1] == 'simulate' or sys.argv[1] == 'upload':
-        if len(sys.argv) != 3:
-            print(f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME') 
+    if sys.argv[1] == 'simulate':
+        if len(sys.argv) != 4:
+            print(
+                f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME TEMPLATE')
             sys.exit(1)
 
-        prefix = sys.argv[2]    
+        prefix = sys.argv[2]
+        template = sys.argv[3]
         datasets_path = f'{prefix}/simulated-datasets'
         cohorts_path = f'{prefix}/simulated-cohorts'
         individuals_path = f'{prefix}/simulated-individuals'
@@ -958,13 +1115,26 @@ if __name__ == "__main__":
         runs_path = f'{prefix}/simulated-runs'
         analyses_path = f'{prefix}/simulated-analyses'
 
-        if sys.argv[1] == 'simulate':
-            if not (prefix.startswith('.') or prefix.startswith('/')):
-                shutil.rmtree(prefix, ignore_errors=True)
+        if not (prefix.startswith('.') or prefix.startswith('/')):
+            shutil.rmtree(prefix, ignore_errors=True)
 
-            os.mkdir(prefix)
-            simulate()
-        else:
-            upload()
+        os.mkdir(prefix)
+        simulate(template)
+
+    if sys.argv[1] == 'upload':
+        if len(sys.argv) != 3:
+            print(
+                f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME')
+            sys.exit(1)
+
+        prefix = sys.argv[2]
+        datasets_path = f'{prefix}/simulated-datasets'
+        cohorts_path = f'{prefix}/simulated-cohorts'
+        individuals_path = f'{prefix}/simulated-individuals'
+        biosamples_path = f'{prefix}/simulated-biosamples'
+        runs_path = f'{prefix}/simulated-runs'
+        analyses_path = f'{prefix}/simulated-analyses'
+
+        upload()
     else:
         clean()

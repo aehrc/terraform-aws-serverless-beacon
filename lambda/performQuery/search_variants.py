@@ -34,21 +34,21 @@ def perform_query(payload: PerformQueryPayload, is_async):
     '''
     :param requested_granularity: one of "boolean", "count", "aggregated", "record"
     '''
+    include_samples = payload.passthrough.get('includeSamples', False)
+    include_variants = payload.passthrough.get('includeVariants', True)
+
     # running setup of bcftools
     # TODO use views to recompute AN/AC
     args = [
         'bcftools', 'query',
         '--regions', payload.region,
-        # '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\n',
-        '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n',
+        '--format', '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\t[%SAMPLE,]\n' if include_samples else '%POS\t%REF\t%ALT\t%INFO\t[%GT,]\n',
         payload.vcf_location
     ]
     print('CMD: ' + ' '.join(args[:5] + [repr(args[5])] + args[6:]))
 
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
     
-    include_samples = payload.passthrough.get('includeSamples', False)
-    include_variants = payload.passthrough.get('includeVariants', True)
 
     print('Iterating bcftools result')
     v_prefix = '<{}'.format(payload.variant_type)
@@ -69,9 +69,12 @@ def perform_query(payload: PerformQueryPayload, is_async):
     # iterate through bcftools output
     for line in query_process.stdout:
         try:
-            (position, reference, all_alts, info_str, genotypes, samples) = line.split('\t')
-            if len(all_sample_names) == 0:
-                all_sample_names = [sample for sample in samples.strip().strip(',').split(',')]
+            if include_samples:
+                (position, reference, all_alts, info_str, genotypes, samples) = line.split('\t')
+                if len(all_sample_names) == 0:
+                    all_sample_names = [sample for sample in samples.strip().strip(',').split(',')]
+            else:
+                (position, reference, all_alts, info_str, genotypes) = line.split('\t')
         except ValueError as e:
             print(repr(line.split('\t')))
             raise e
