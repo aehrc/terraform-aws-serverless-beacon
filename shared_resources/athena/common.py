@@ -178,11 +178,11 @@ def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', 
         
         if group_filters:
             expanded_terms = expand_terms(group_filters)
-            conditions += [f''' {id_modifier} IN (SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms})) ''']
+            conditions += [f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
         
     if conditions:
         if with_where:
-            return 'WHERE ' + ' AND '.join(conditions)
+            return f'WHERE {id_modifier} IN (' + ' INTERSECT '.join(conditions) + ')'
         else:
-            return ' AND '.join(conditions)
+            return f'{id_modifier} IN (' + ' INTERSECT '.join(conditions) + ')'
     return ''
