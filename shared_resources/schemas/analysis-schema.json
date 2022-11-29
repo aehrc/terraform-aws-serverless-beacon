@@ -79,6 +79,7 @@
     },
     "required": [
         "id",
+        "runId",
         "analysisDate",
         "pipelineName",
         "vcfSampleId"
