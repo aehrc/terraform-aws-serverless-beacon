@@ -99,7 +99,7 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
                         "label": "population origins or ancestry research only",
                         "version": "17-07-2016"
                     }
-                ], random.randint(0,2))
+                ], random.randint(0, 2))
         },
         {
             "duoDataUse": [
@@ -248,6 +248,44 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
                     "label": "Senile dementia of the Lewy body type (disorder)"
                 }
             },
+            #  neuroblastoma
+            {
+                "diseaseCode":  {
+                    "id": "SNOMED:281560004",
+                    "label": "Neuroblastoma of brain"
+                }
+            },
+            {
+                "diseaseCode":  {
+                    "id": "SNOMED:734099007",
+                    "label": "Neuroblastoma of central nervous system"
+                }
+            },
+            {
+                "diseaseCode":  {
+                    "id": "SNOMED:254955001",
+                    "label": "Pituitary carcinoma"
+                }
+            },
+            # malignant epithelial neoplasm
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:722688002",
+                    "label": "Malignant epithelial neoplasm (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:399981008",
+                    "label": "Neoplasm and/or hamartoma (disorder)"
+                }
+            },
+            {
+                "diseaseCode": {
+                    "id": "SNOMED:369483006",
+                    "label": "Malignant tumor involving vasa deferentia by direct extension from prostate (disorder)"
+                }
+            },
             # coronary heart disease
             {
                 "diseaseCode": {
@@ -287,7 +325,8 @@ def get_random_individual(id, datasetId, cohortId, seed=0):
                 }
             }
         ], random.randint(0, 3))
-    item.ethnicity = random.choice(json.load(open('./data/individual-ethnicity.json')))
+    item.ethnicity = random.choice(
+        json.load(open('./data/individual-ethnicity.json')))
     item.exposures = random.sample([
         {
             "exposureCode": {
