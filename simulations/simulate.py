@@ -762,7 +762,7 @@ def clean():
         for dynamo_item in tqdm(VariantResponse.scan(), desc='Cleaning VariantResponse'):
             batch.delete(dynamo_item)
 
-    clean_files(METADATA_BUCKET, '/')
+    clean_files(METADATA_BUCKET, '')
     clean_files(VARIANTS_BUCKET, 'variant-queries/')
 
 
