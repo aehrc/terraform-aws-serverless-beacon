@@ -126,6 +126,7 @@
     },
     "required": [
         "id",
+        "individualId",
         "biosampleId",
         "runDate"
     ],

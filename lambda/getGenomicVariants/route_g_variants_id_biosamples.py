@@ -91,7 +91,7 @@ def get_bool_query(dataset_id, sample_names):
 
 # TODO break into many queries (ATHENA SQL LIMIT)
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
-def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
+def get_record_query(dataset_id, sample_names):
     query = f'''
     SELECT "{{database}}"."{BIOSAMPLES_TABLE}".* 
     FROM 
@@ -108,9 +108,6 @@ def get_record_query(dataset_id, sample_names, skip, limit, conditions=[]):
             "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
-    ORDER BY "{{database}}"."{BIOSAMPLES_TABLE}".id
-    OFFSET {skip}
-    LIMIT {limit};
     '''
     return query
 
@@ -147,7 +144,7 @@ def route(event, query_id):
         filters = query.get("filters", [])
         requestParameters = query.get("requestParameters", dict())
 
-    variant_id = 'R1JDSDM4CTUJMTAwMDAwMTAJQQlU' # event["pathParameters"].get("id", None)
+    variant_id = event["pathParameters"].get("id", None)
     
     dataset_hash = base64.b64decode(variant_id.encode()).decode()
     assemblyId, referenceName, pos, referenceBases, alternateBases = dataset_hash.split('\t')
@@ -194,45 +191,34 @@ def route(event, query_id):
             if query_response.exists:
                 if requestedGranularity == 'boolean':
                     break
-                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+                dataset_samples[query_response.dataset_id].update(sorted(query_response.sample_names))
 
-        query_results = queue.Queue()
-        threads = []
+        queries = []
+        iterated_biosamples = 0
+        chosen_biosamples = 0
 
         for dataset_id, sample_names in dataset_samples.items():
             if (len(sample_names)) > 0:
-                if requestedGranularity == 'boolean':
-                    query = get_bool_query(dataset_id, sample_names)
-                    thread = threading.Thread(
-                        target=Biosample.get_existence_by_query,
-                        kwargs={ 
-                            'query': query,
-                            'queue': query_results
-                        }
-                    )
-                elif requestedGranularity == 'count':
-                    query = get_count_query(dataset_id, sample_names)
-                    thread = threading.Thread(
-                        target=Biosample.get_count_by_query,
-                        kwargs={ 
-                            'query': query,
-                            'queue': query_results
-                        }
-                    )
+                if requestedGranularity == 'count':
+                    # query = get_count_query(dataset_id, sample_names)
+                    # queries.append(query)
+                    # TODO optimise for duplicate individuals
+                    iterated_biosamples += len(sample_names)
                 elif requestedGranularity in ('record', 'aggregated'):
-                    query = get_record_query(dataset_id, sample_names, skip, limit)
-                    thread = threading.Thread(
-                        target=Biosample.get_by_query,
-                        kwargs={ 
-                            'query': query,
-                            'queue': query_results
-                        }
-                    )
-                thread.start()
-                threads.append(thread)
-
-        [thread.join() for thread in threads]
-        query_results = list(query_results.queue)
+                    # TODO optimise for duplicate individuals
+                    chosen_samples = []
+                    
+                    for sample_name in sample_names:
+                        iterated_biosamples += 1
+                        if iterated_biosamples > skip and chosen_biosamples < limit:
+                            chosen_samples.append(sample_name)
+                            chosen_biosamples += 1
+                            
+                        if chosen_biosamples == limit:
+                            break
+                    if len(chosen_samples) > 0:
+                        query = get_record_query(dataset_id, chosen_samples)
+                        queries.append(query)
 
         # query = VariantQuery.get(query_id)
         # query.update(actions=[
@@ -241,19 +227,19 @@ def route(event, query_id):
         # ])
 
         if requestedGranularity == 'boolean':
-            exists = any(query_results)
             response = responses.get_boolean_response(exists=exists)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
         if requestedGranularity == 'count':
-            count = sum(query_results)
+            count = iterated_biosamples
             response = responses.get_counts_response(exists=count > 0, count=count)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
         if requestedGranularity in ('record', 'aggregated'):
-            biosamples = [biosample for biosamples in query_results for biosample in biosamples]
+            query = ' UNION '.join(queries)
+            biosamples = Biosample.get_by_query(query)
 
             response = responses.get_result_sets_response(
                 setType='biosamples', 

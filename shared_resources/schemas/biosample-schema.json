@@ -1929,6 +1929,7 @@
     },
     "required": [
         "id",
+        "individualId",
         "biosampleStatus",
         "sampleOriginType"
     ],

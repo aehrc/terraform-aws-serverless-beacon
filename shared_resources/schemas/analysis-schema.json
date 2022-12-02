@@ -79,6 +79,9 @@
     },
     "required": [
         "id",
+        "individualId",
+        "biosampleId",
+        "runId",
         "analysisDate",
         "pipelineName",
         "vcfSampleId"
