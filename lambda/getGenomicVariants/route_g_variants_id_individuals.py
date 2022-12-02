@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import json
 import queue
 import threading
@@ -47,16 +47,10 @@ def datasets_query_fast(assembly_id):
 
 def get_count_query(dataset_id, sample_names):
     query = f'''
-    SELECT COUNT(id)
+    SELECT count("{{database}}"."{ANALYSES_TABLE}".id) as cnt
     FROM 
-        "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{ANALYSES_TABLE}"
-    ON 
-        "{{database}}"."{ANALYSES_TABLE}".individualid
-        =
-        "{{database}}"."{INDIVIDUALS_TABLE}".id
-    WHERE 
-            "{{database}}"."{INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
-        AND 
+        "{{database}}"."{ANALYSES_TABLE}"
+    WHERE
             "{{database}}"."{ANALYSES_TABLE}"._datasetid='{dataset_id}' 
         AND
             "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid 
@@ -66,29 +60,7 @@ def get_count_query(dataset_id, sample_names):
     return query
 
 
-def get_bool_query(dataset_id, sample_names):
-    query = f'''
-    SELECT 1
-    FROM 
-        "{{database}}"."{INDIVIDUALS_TABLE}" JOIN "{{database}}"."{ANALYSES_TABLE}"
-    ON 
-        "{{database}}"."{ANALYSES_TABLE}".individualid
-        =
-        "{{database}}"."{INDIVIDUALS_TABLE}".id
-    WHERE 
-            "{{database}}"."{INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
-        AND 
-            "{{database}}"."{ANALYSES_TABLE}"._datasetid='{dataset_id}' 
-        AND
-            "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid 
-        IN 
-            ({','.join([f"'{sn}'" for sn in sample_names])})
-    LIMIT 1
-    '''
-    return query
-
-
-def get_record_query(dataset_id, sample_names, skip, limit):
+def get_record_query(dataset_id, sample_names):
     query = f'''
     SELECT "{{database}}"."{INDIVIDUALS_TABLE}".* 
     FROM 
@@ -105,10 +77,8 @@ def get_record_query(dataset_id, sample_names, skip, limit):
             "{{database}}"."{ANALYSES_TABLE}"._vcfsampleid 
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
-    ORDER BY "{{database}}"."{INDIVIDUALS_TABLE}".id
-    OFFSET {skip}
-    LIMIT {limit};
     '''
+
     return query
 
 
@@ -191,47 +161,37 @@ def route(event, query_id):
             if query_response.exists:
                 if requestedGranularity == 'boolean':
                     break
-                dataset_samples[query_response.dataset_id].update(query_response.sample_names)
+                dataset_samples[query_response.dataset_id].update(sorted(query_response.sample_names))
 
-        query_results = queue.Queue()
-        threads = []
-        print(dataset_samples )
+        queries = []
         
-        for dataset_id, sample_names in dataset_samples.items():
+        dataset_samples_sorted = OrderedDict(sorted(dataset_samples.items()))
+        iterated_individuals = 0
+        chosen_individuals = 0
+        
+        for dataset_id, sample_names in dataset_samples_sorted.items():
 
             if (len(sample_names)) > 0:
-                if requestedGranularity == 'boolean':
-                    query = get_bool_query(dataset_id, sample_names)
-                    thread = threading.Thread(
-                        target=Individual.get_existence_by_query,
-                        kwargs={ 
-                            'query': query,
-                            'queue': query_results
-                        }
-                    )
-                elif requestedGranularity == 'count':
-                    query = get_count_query(dataset_id, sample_names)
-                    thread = threading.Thread(
-                        target=Individual.get_count_by_query,
-                        kwargs={ 
-                            'query': query,
-                            'queue': query_results
-                        }
-                    )
+                if requestedGranularity == 'count':
+                    # query = get_count_query(dataset_id, sample_names)
+                    # queries.append(query)
+                    # TODO optimise for duplicate individuals
+                    iterated_individuals += len(sample_names)
                 elif requestedGranularity in ('record', 'aggregated'):
-                    query = get_record_query(dataset_id, sample_names, skip, limit)
-                    thread = threading.Thread(
-                        target=Individual.get_by_query,
-                        kwargs={ 
-                            'query': query,
-                            'queue': query_results
-                        }
-                    )
-                thread.start()
-                threads.append(thread)
-
-        [thread.join() for thread in threads]
-        query_results = list(query_results.queue)
+                    # TODO optimise for duplicate individuals
+                    chosen_samples = []
+                    
+                    for sample_name in sample_names:
+                        iterated_individuals += 1
+                        if iterated_individuals > skip and chosen_individuals < limit:
+                            chosen_samples.append(sample_name)
+                            chosen_individuals += 1
+                            
+                        if chosen_individuals == limit:
+                            break
+                    if len(chosen_samples) > 0:
+                        query = get_record_query(dataset_id, chosen_samples)
+                        queries.append(query)
 
         # query = VariantQuery.get(query_id)
         # query.update(actions=[
@@ -240,19 +200,19 @@ def route(event, query_id):
         # ])
 
         if requestedGranularity == 'boolean':
-            exists = any(query_results)
             response = responses.get_boolean_response(exists=exists)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
         if requestedGranularity == 'count':
-            count = sum(query_results)
+            count = iterated_individuals
             response = responses.get_counts_response(exists=count > 0, count=count)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
         
         if requestedGranularity in ('record', 'aggregated'):
-            individuals = [individual for individuals in query_results for individual in individuals]
+            query = ' UNION '.join(queries)
+            individuals = Individual.get_by_query(query)
             response = responses.get_result_sets_response(
                 setType='individuals',
                 reqPagination=responses.get_pagination_object(skip=skip, limit=limit),

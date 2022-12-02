@@ -177,8 +177,9 @@ def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', 
         group_filters = list(filter(lambda x: x.get('scope', default_scope) == group, filters))
         
         if group_filters:
-            expanded_terms = expand_terms(group_filters)
-            conditions += [f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
+            for base_filter in group_filters:
+                expanded_terms = expand_terms(base_filter)
+                conditions += [f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
         
     if conditions:
         if with_where:

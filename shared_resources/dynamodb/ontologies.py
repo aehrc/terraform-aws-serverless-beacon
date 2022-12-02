@@ -45,6 +45,8 @@ class Anscestors(Model):
 # TODO further partition these terms under different entity kinds
 def expand_terms(filters):
     terms = set()
+    if not type(filters) == list:
+        filters = [filters]
     for filter in filters:
         term = filter.get('id')
         if filter.get('includeDescendantTerms', True):

@@ -13,11 +13,14 @@ from dynamodb.variant_queries import VariantQuery, VariantResponse
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
 
-REQUEST_TIMEOUT = 600  # seconds
-THREADS = 32
+client_config = botocore.config.Config(
+    max_pool_connections=100,
+)
 
-dynamodb = boto3.client('dynamodb')
-aws_lambda = boto3.client('lambda')
+REQUEST_TIMEOUT = 600  # seconds
+THREADS = 500
+
+aws_lambda = boto3.client('lambda', config=client_config)
 s3 = boto3.client('s3')
 
 
