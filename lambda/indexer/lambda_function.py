@@ -75,19 +75,26 @@ def index_terms_tree():
     # subroutine for ontoserver
     def threaded_request_ontoserver(term, url, queue=None):
         snomed = 'SNOMED' in term.upper()
-        response = requests.post(url, json={
-            "resourceType": "Parameters",
-            "parameter": [{"name": "valueSet", "resource": {"resourceType": "ValueSet", "compose": {"include": [{"system": data['baseUri'], "filter": [{"property": "concept", "op": "generalizes", "value": f"{term.replace('SNOMED:', '')}"}]}]}}}]
-        })
-        if response:
-            response_json = response.json()
-            anscestors = set()
-            for response_term in response_json['expansion']['contains']:
-                anscestors.add(
-                    'SNOMED:' + response_term['code'] if snomed else response_term['code'])
-            if len(anscestors) > 0:
-
-                queue.put((term, anscestors))
+        retries = 1
+        response = None
+        while (not response or response.status_code != 200) and retries < 10:
+            retries += 1
+            response = requests.post(url, json={
+                "resourceType": "Parameters",
+                "parameter": [{"name": "valueSet", "resource": {"resourceType": "ValueSet", "compose": {"include": [{"system": data['baseUri'], "filter": [{"property": "concept", "op": "generalizes", "value": f"{term.replace('SNOMED:', '')}"}]}]}}}]
+            })
+            if response.status_code == 200:
+                response_json = response.json()
+                anscestors = set()
+                for response_term in response_json['expansion']['contains']:
+                    anscestors.add(
+                        'SNOMED:' + response_term['code'] if snomed else response_term['code'])
+                if len(anscestors) > 0:
+                    queue.put((term, anscestors))
+            else:
+                time.sleep(1)
+        if response.status_code != 200:
+            print(f'Fetching SNOMED failed for term = {term}')
 
     query = f'SELECT DISTINCT term FROM "{TERMS_TABLE}"'
 
@@ -100,7 +107,7 @@ def index_terms_tree():
     )
 
     execution_id = response['QueryExecutionId']
-    get_result(execution_id)
+    get_result(execution_id, sleep=2)
 
     ontologies = set()
     ontology_clusters = defaultdict(set)
@@ -167,6 +174,7 @@ def index_terms_tree():
                         data = json.loads(details.data)
                         thread = threading.Thread(target=threaded_request_ontoserver, args=(term, ONTOSERVER, response_queue))
                         thread.start()
+                        threads.append(thread)
             else:
                 terms = ontology_clusters[ontology]
 
@@ -267,12 +275,17 @@ def drop_tables(table):
 
 def clean_files(bucket, prefix):
     has_more = True
-
     while has_more:
         response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        files_to_delete = []
         for object in response.get('Contents', []):
-            s3.delete_object(Bucket=bucket, Key=object['Key'])
+            files_to_delete.append({"Key": object["Key"]})
+        if files_to_delete:
+            s3.delete_objects(
+                Bucket=bucket,
+                Delete={"Objects": files_to_delete})
         has_more = response['IsTruncated']
+    time.sleep(1)
 
 
 def index_terms():
@@ -369,4 +382,5 @@ def lambda_handler(event, context):
 
 
 if __name__ == '__main__':
+    lambda_handler({}, {})
     pass
