@@ -71,19 +71,25 @@
         "biosamples": {
             "required": [
                 "datasetId",
-                "cohortId"
+                "cohortId",
+                "individuals"
             ]
         },
         "runs": {
             "required": [
                 "datasetId",
-                "cohortId"
+                "cohortId",
+                "individuals",
+                "biosamples"
             ]
         },
         "analyses": {
             "required": [
                 "datasetId",
-                "cohortId"
+                "cohortId",
+                "individuals",
+                "biosamples",
+                "runs"
             ]
         }
     }

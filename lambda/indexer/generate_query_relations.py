@@ -17,10 +17,10 @@ SELECT
     A.id AS analysisid
 FROM 
         "{individuals_table}" I
-    JOIN "{biosamples_table}" B
+    LEFT OUTER JOIN "{biosamples_table}" B
         ON I.id = B."individualid"
-    JOIN "{runs_table}" R
+    LEFT OUTER JOIN "{runs_table}" R
         ON B.id = R."biosampleid"
-    JOIN "{analyses_table}" A
+    LEFT OUTER JOIN "{analyses_table}" A
         ON R.id = A."runid"
 '''
