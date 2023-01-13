@@ -11,6 +11,7 @@ from athena.common import entity_search_conditions, run_custom_query
 from athena.dataset import parse_datasets_with_samples
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
 
+from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 METADATA_DATABASE = os.environ['METADATA_DATABASE']
@@ -86,9 +87,9 @@ def route(event, query_id):
     status = get_job_status(query_id)
 
     if status == JobStatus.NEW:
-        conditions = entity_search_conditions(filters, 'analyses', 'biosamples', id_modifier='A.id', with_where=False)
+        conditions, execution_parameters = new_entity_search_conditions(filters, 'analyses', 'biosamples', id_modifier='A.id', with_where=False)
         query = datasets_query(conditions, assemblyId, biosample_id)
-        exec_id = run_custom_query(query, return_id=True)
+        exec_id = run_custom_query(query, return_id=True, execution_parameters=execution_parameters)
         datasets, samples = parse_datasets_with_samples(exec_id)
         check_all = includeResultsetResponses in ('HIT', 'ALL')
 

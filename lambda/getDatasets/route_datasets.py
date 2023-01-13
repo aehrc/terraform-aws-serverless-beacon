@@ -7,6 +7,7 @@ import apiutils.responses as responses
 from athena.dataset import Dataset
 from athena.common import entity_search_conditions
 
+from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
@@ -77,25 +78,25 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = entity_search_conditions(filters, 'datasets', 'datasets')
+    conditions, execution_parameters = new_entity_search_conditions(filters, 'datasets', 'datasets')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)
-        exists = Dataset.get_existence_by_query(query)
+        exists = Dataset.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
         query = get_count_query(conditions)
-        count = Dataset.get_count_by_query(query)
+        count = Dataset.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
         query = get_record_query(skip, limit, conditions)
-        datasets = Dataset.get_by_query(query)
+        datasets = Dataset.get_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_result_sets_response(
             setType='datasets', 
             exists=len(datasets)>0,

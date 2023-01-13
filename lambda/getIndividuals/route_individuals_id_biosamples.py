@@ -7,6 +7,7 @@ import apiutils.responses as responses
 from athena.biosample import Biosample
 from athena.common import entity_search_conditions
 
+from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
@@ -84,25 +85,25 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     individual_id = event["pathParameters"].get("id", None)
-    conditions = entity_search_conditions(filters, 'biosamples', 'individuals', with_where=False)
+    conditions, execution_parameters = new_entity_search_conditions(filters, 'biosamples', 'individuals', with_where=False)
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(individual_id, conditions=conditions)
-        exists = Biosample.get_existence_by_query(query)
+        exists = Biosample.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
         query = get_count_query(individual_id, conditions=conditions)
-        count = Biosample.get_count_by_query(query)
+        count = Biosample.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
         query = get_record_query(individual_id, skip, limit, conditions=conditions)
-        biosamples = Biosample.get_by_query(query)
+        biosamples = Biosample.get_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_result_sets_response(
             setType='individuals', 
             exists=len(biosamples)>0,

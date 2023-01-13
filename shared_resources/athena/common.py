@@ -34,9 +34,9 @@ class AthenaModel:
     repeated everywhere.
     '''
     @classmethod
-    def get_by_query(cls, query, queue=None):
+    def get_by_query(cls, query, queue=None, execution_parameters=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        exec_id = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True)
+        exec_id = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True, execution_parameters=execution_parameters)
 
         if exec_id:
             if queue is None:
@@ -47,9 +47,9 @@ class AthenaModel:
 
     
     @classmethod
-    def get_existence_by_query(cls, query, queue=None):
+    def get_existence_by_query(cls, query, queue=None, execution_parameters=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
+        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -87,9 +87,9 @@ class AthenaModel:
 
 
     @classmethod
-    def get_count_by_query(cls, query, queue=None):
+    def get_count_by_query(cls, query, queue=None, execution_parameters=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
-        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None)
+        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -118,14 +118,19 @@ def extract_terms(array):
             yield from extract_terms(item)
 
 
-def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False):
+def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
+    print("QUERY: {}".format(query))
+    print("EXECUTION_PARAMETERS: {}".format(execution_parameters))
+    if execution_parameters is None:
+        execution_parameters = []
     response = athena.start_query_execution(
         QueryString=query,
         # ClientRequestToken='string',
         QueryExecutionContext={
             'Database': database
         },
-        WorkGroup=workgroup
+        WorkGroup=workgroup,
+        ExecutionParameters=execution_parameters
     )
 
     retries = 0
