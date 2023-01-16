@@ -119,19 +119,25 @@ def extract_terms(array):
 
 
 def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
-    print("QUERY: {}".format(query))
-    print("EXECUTION_PARAMETERS: {}".format(execution_parameters))
     if execution_parameters is None:
-        execution_parameters = []
-    response = athena.start_query_execution(
-        QueryString=query,
-        # ClientRequestToken='string',
-        QueryExecutionContext={
-            'Database': database
-        },
-        WorkGroup=workgroup,
-        ExecutionParameters=execution_parameters
-    )
+        response = athena.start_query_execution(
+            QueryString=query,
+            # ClientRequestToken='string',
+            QueryExecutionContext={
+                'Database': database
+            },
+            WorkGroup=workgroup
+        )
+    else:
+        response = athena.start_query_execution(
+            QueryString=query,
+            # ClientRequestToken='string',
+            QueryExecutionContext={
+                'Database': database
+            },
+            WorkGroup=workgroup,
+            ExecutionParameters=execution_parameters
+        )
 
     retries = 0
     while True:

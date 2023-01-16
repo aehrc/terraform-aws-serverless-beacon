@@ -121,5 +121,9 @@ def new_entity_search_conditions(filters, id_type, default_scope, id_modifier='i
     join_constraints = f'{id_modifier} IN ({join_constraints}) ' if join_constraints else ''
     total_constraints = [join_constraints] + outer_constraints
     total_constraints = " AND ".join(total_constraints)
-    return ("WHERE " if with_where else "") + total_constraints, join_execution_parameters+outer_execution_parameters
+    execution_parameters = join_execution_parameters+outer_execution_parameters
+    if total_constraints:
+        return ("WHERE " if with_where else "") + total_constraints, execution_parameters if execution_parameters else None
+    else:
+        return "",None
 
