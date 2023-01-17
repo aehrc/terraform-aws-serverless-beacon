@@ -1160,7 +1160,7 @@ if __name__ == "__main__":
         os.mkdir(prefix)
         simulate(template)
 
-    if sys.argv[1] == 'upload':
+    elif sys.argv[1] == 'upload':
         if len(sys.argv) != 3:
             print(
                 f'A prefix must be stated\n\tUsage: $ python simulate.py {sys.argv[1]} DIR_NAME')
