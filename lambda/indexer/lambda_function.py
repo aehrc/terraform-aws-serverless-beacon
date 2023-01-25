@@ -107,7 +107,7 @@ def index_terms_tree():
     )
 
     execution_id = response['QueryExecutionId']
-    get_result(execution_id, sleep=2)
+    get_result(execution_id)
 
     ontologies = set()
     ontology_clusters = defaultdict(set)
@@ -233,7 +233,7 @@ def update_athena_partitions(table):
     )
 
 
-def get_result(execution_id, sleep=10):
+def get_result(execution_id, sleep=2):
     retries = 0
     while True:
         exec = athena.get_query_execution(
@@ -270,7 +270,7 @@ def drop_tables(table):
         },
         WorkGroup=ATHENA_WORKGROUP
     )
-    get_result(response['QueryExecutionId'], sleep=1)
+    get_result(response['QueryExecutionId'])
 
 
 def clean_files(bucket, prefix):
