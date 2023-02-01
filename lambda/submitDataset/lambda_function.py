@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 from typing import List
+from threading import Thread
 
 from jsonschema import Draft202012Validator, RefResolver
 import jsons
@@ -79,6 +80,7 @@ def create_dataset(attributes):
     cohortId = attributes.get('cohortId', None)
     index = attributes.get('index', False)
     global pending, completed
+    threads = []
 
     if datasetId:
         json_dataset = attributes.get('dataset', None)
@@ -88,6 +90,7 @@ def create_dataset(attributes):
             item.assemblyId = attributes.get('assemblyId', 'UNKNOWN')
             item.vcfLocations = attributes.get('vcfLocations', [])
             item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
+            # TODO this can run in threads
             for vcf in set(item.vcfLocations):
                 chroms = get_vcf_chromosomes(vcf)
                 vcfm = VcfChromosomeMap()
@@ -97,6 +100,7 @@ def create_dataset(attributes):
 
             print(f"Putting item in table: {item.to_json()}")
             item.save()
+            print(f"Putting complete")
             completed.append("Added dataset info")
 
             # dataset metadata entry information
@@ -107,14 +111,18 @@ def create_dataset(attributes):
             dataset._vcfChromosomeMap = [vcfm.attribute_values for vcfm in item.vcfChromosomeMap]
             dataset.createDateTime = str(item.createDateTime)
             dataset.updateDateTime = str(item.updateDateTime)
-            Dataset.upload_array([dataset])
+            # Dataset.upload_array([dataset])
+            threads.append(Thread(target=Dataset.upload_array, args=([dataset],)))
+            threads[-1].start()
             completed.append("Added dataset metadata")
 
     if datasetId and cohortId:
+        print('De-serialising started')
         individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
         biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
         runs = jsons.default_list_deserializer(attributes.get('runs', []), List[Run])
         analyses = jsons.default_list_deserializer(attributes.get('analyses', []), List[Analysis])
+        print('De-serialising complete')
         
         # setting dataset id
         # private attributes inside entities are parsed properly
@@ -135,16 +143,24 @@ def create_dataset(attributes):
 
         # upload to s3
         if len(individuals) > 0:
-            Individual.upload_array(individuals)
+            # Individual.upload_array(individuals)
+            threads.append(Thread(target=Individual.upload_array, args=(individuals,)))
+            threads[-1].start()
             completed.append("Added individuals")
         if len(biosamples) > 0: 
-            Biosample.upload_array(biosamples)
+            # Biosample.upload_array(biosamples)
+            threads.append(Thread(target=Biosample.upload_array, args=(biosamples,)))
+            threads[-1].start()
             completed.append("Added biosamples")
         if len(runs) > 0:
-            Run.upload_array(runs)
+            # Run.upload_array(runs)
+            threads.append(Thread(target=Run.upload_array, args=(runs,)))
+            threads[-1].start()
             completed.append("Added runs")
         if len(analyses) > 0: 
-            Analysis.upload_array(analyses)
+            # Analysis.upload_array(analyses)
+            threads.append(Thread(target=Analysis.upload_array, args=(analyses,)))
+            threads[-1].start()
             completed.append("Added analyses")
     
     if cohortId:
@@ -153,8 +169,14 @@ def create_dataset(attributes):
         if json_cohort:
             cohort = jsons.load(json_cohort, Cohort)
             cohort.id = cohortId
-            Cohort.upload_array([cohort])
+            # Cohort.upload_array([cohort])
+            threads.append(Thread(target=Cohort.upload_array, args=([cohort],)))
+            threads[-1].start()
             completed.append("Added cohorts")
+
+    print('Awaiting uploads')
+    [thread.join() for thread in threads]
+    print('Upload finished')
 
     if index:
         aws_lambda.invoke(
@@ -239,7 +261,7 @@ def validate_request(parameters, new):
 
 
 def lambda_handler(event, context):
-    print('Event Received: {}'.format(json.dumps(event)))
+    # print('Event Received: {}'.format(json.dumps(event)))
     global completed, pending
 
     completed = []

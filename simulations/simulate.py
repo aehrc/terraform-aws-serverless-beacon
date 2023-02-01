@@ -538,13 +538,13 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
     item.obtentionProcedure = random.choice([
         {},
         {
-            "code": {
+            "procedureCode": {
                 "id": "NCIT:C15189",
                 "label": "biopsy"
             }
         },
         {
-            "code": {
+            "procedureCode": {
                 "id": "NCIT:C157179",
                 "label": "FGFR1 Mutation Analysis"
             }
@@ -557,20 +557,23 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
             "label": "Stage IIIA"
         }
     ])
-    item.pathologicalTnmFinding = random.choice([
-        {},
-        {
-            "id": "NCIT:C48725",
-            "label": "T2a Stage Finding"
-        },
-        {
-            "id": "NCIT:C48709",
-            "label": "N1c Stage Finding"
-        },
-        {
-            "id": "NCIT:C48699",
-            "label": "M0 Stage Finding"
-        }])
+    item.pathologicalTnmFinding = [
+            random.choice([
+                {},
+                {
+                    "id": "NCIT:C48725",
+                    "label": "T2a Stage Finding"
+                },
+                {
+                    "id": "NCIT:C48709",
+                    "label": "N1c Stage Finding"
+                },
+                {
+                    "id": "NCIT:C48699",
+                    "label": "M0 Stage Finding"
+                }
+            ])
+        ]
     item.phenotypicFeatures = []
     item.sampleOriginDetail = random.choice([
         {},
@@ -604,7 +607,6 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
         }
     ])
     item.sampleOriginType = random.choice([
-        {},
         {
             "id": "SNOMED:31675002",
             "label": "Capillary blood"
@@ -660,8 +662,8 @@ def get_random_biosample(id, datasetId, cohortId, individualId, seed=0):
             "label": "Recurrent Malignant Neoplasm"
         }
     ])
-    item.info = []
-    item.notes = []
+    item.info = {}
+    item.notes = ''
 
     return item
 
