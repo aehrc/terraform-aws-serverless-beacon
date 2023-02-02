@@ -7,6 +7,7 @@ from threading import Thread
 from jsonschema import Draft202012Validator, RefResolver
 import jsons
 import boto3
+from smart_open import open as sopen
 
 from apiutils.api_response import bad_request, bundle_response
 from utils.chrom_matching import get_vcf_chromosomes
@@ -273,6 +274,12 @@ def lambda_handler(event, context):
         return bad_request(errorMessage='No body sent with request.')
     try:
         body_dict = json.loads(event_body)
+        
+        if body_dict.get('s3Payload'):
+            print('Using s3 payload instead of POST body')
+            
+            with sopen(body_dict.get('s3Payload'), 'r') as payload:
+                body_dict = json.loads(payload.read())
     except ValueError:
         return bad_request(errorMessage='Error parsing request body, Expected JSON.')
 
