@@ -55,8 +55,8 @@ def route(event, query_id):
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
         includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        start = params.get("start", [])
-        end = params.get("end", [])
+        start = [int(a) for a in params["start"].split(",")]
+        end = [int(a) for a in params["end"].split(",")]
         assemblyId = params.get("assemblyId", None)
         referenceName = params.get("referenceName", None)
         referenceBases = params.get("referenceBases", None)
@@ -67,7 +67,11 @@ def route(event, query_id):
         allele = params.get("allele", None)
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
-        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
@@ -90,8 +94,8 @@ def route(event, query_id):
         nextPage = pagination.get("nextPage", None)
         # query request params
         requestParameters = query.get("requestParameters", dict())
-        start = requestParameters.get("start", None)
-        end = requestParameters.get("end", None)
+        start = [int(a) for a in requestParameters["start"].split(',')]
+        end = [int(a) for a in requestParameters["end"].split(',')]
         assemblyId = requestParameters.get("assemblyId", None)
         referenceName = requestParameters.get("referenceName", None)
         referenceBases = requestParameters.get("referenceBases", None)

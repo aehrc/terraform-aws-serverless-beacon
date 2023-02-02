@@ -98,18 +98,23 @@ def new_entity_search_conditions(filters, id_type, default_scope, id_modifier='i
                 join_constraints.append(f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.{comparrison} ''')
             # if none of these two cases match, assume it is an ontology term
             else:
-                # process inclusion of term descendants dependant on 'similarity'
-                similarity = f.get("similarity","high")
-                if similarity=="high":
-                    expanded_terms = _get_term_descendants(f['id'])
+                includeDescendantTerms = f.get("includeDescendantTerms",True)
+                # if descendantTerms is false, then similarity measures dont really make sense...
+                if includeDescendantTerms:
+                    # process inclusion of term descendants dependant on 'similarity'
+                    similarity = f.get("similarity","high")
+                    if similarity=="high":
+                        expanded_terms = _get_term_descendants(f['id'])
+                    else:
+                        # NOTE: this simplistic similarity method not nessisarily efficient or nessisarily desirable
+                        ancestors = _get_term_ancestors(f['id'])
+                        ancestor_descendants = sorted([_get_term_descendants(a) for a in ancestors],key=len)
+                        if similarity=="medium":
+                            expanded_terms = ancestor_descendants[len(ancestor_descendants)//2] # all terms which have an ancestor half way up
+                        elif similarity=="low":
+                            expanded_terms = ancestor_descendants[-1] # all terms which have any ancestor in common
                 else:
-                    # NOTE: this simplistic similarity method not nessisarily efficient or nessisarily desirable
-                    ancestors = _get_term_ancestors(f['id'])
-                    ancestor_descendants = sorted([_get_term_descendants(a) for a in ancestors],key=len)
-                    if similarity=="medium":
-                        expanded_terms = ancestor_descendants[len(ancestor_descendants)//2] # all terms which have an ancestor half way up
-                    elif similarity=="low":
-                        expanded_terms = ancestor_descendants[-1] # all terms which have any ancestor in common
+                    expanded_terms = set([f['id']])
                 join_execution_parameters += [str(a) for a in expanded_terms]
                 expanded_terms = " , ".join(["?" for a in expanded_terms])
                 # process scope clarification if specified different

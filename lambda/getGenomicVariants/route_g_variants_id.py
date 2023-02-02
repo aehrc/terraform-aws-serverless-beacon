@@ -49,7 +49,11 @@ def route(event, query_id):
         apiVersion = params.get("apiVersion", BEACON_API_VERSION)
         requestedSchemas = params.get("requestedSchemas", [])
         requestedGranularity = params.get("requestedGranularity", "boolean")
-        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
 
     if event['httpMethod'] == 'POST':
         params = json.loads(event.get('body', "{}")) or dict()

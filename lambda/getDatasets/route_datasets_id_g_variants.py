@@ -67,7 +67,11 @@ def route(event, query_id):
         allele = params.get("allele", None)
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
-        filters = params.get("filters", [])
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':

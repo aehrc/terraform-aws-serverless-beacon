@@ -81,7 +81,6 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
         filters = query.get("filters", [])
-
     conditions, execution_parameters = new_entity_search_conditions(filters, 'individuals', 'individuals')
 
     if requestedGranularity == 'boolean':

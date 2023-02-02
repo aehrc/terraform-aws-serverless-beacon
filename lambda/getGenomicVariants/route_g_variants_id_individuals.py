@@ -92,7 +92,11 @@ def route(event, query_id):
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
         # currentPage = params.get("currentPage", None)
-        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
