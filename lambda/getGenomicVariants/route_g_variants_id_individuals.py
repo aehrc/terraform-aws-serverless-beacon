@@ -192,7 +192,6 @@ def route(event, query_id):
                     if len(chosen_samples) > 0:
                         query = get_record_query(dataset_id, chosen_samples)
                         queries.append(query)
-
         # query = VariantQuery.get(query_id)
         # query.update(actions=[
         #     VariantQuery.complete.set(True), 
@@ -212,7 +211,7 @@ def route(event, query_id):
         
         if requestedGranularity in ('record', 'aggregated'):
             query = ' UNION '.join(queries)
-            individuals = Individual.get_by_query(query)
+            individuals = Individual.get_by_query(query) if len(queries) > 0 else []
             response = responses.get_result_sets_response(
                 setType='individuals',
                 reqPagination=responses.get_pagination_object(skip=skip, limit=limit),
