@@ -239,8 +239,7 @@ def route(event, query_id):
 
         if requestedGranularity in ('record', 'aggregated'):
             query = ' UNION '.join(queries)
-            biosamples = Biosample.get_by_query(query)
-
+            biosamples = Biosample.get_by_query(query) if len(queries) > 0 else []
             response = responses.get_result_sets_response(
                 setType='biosamples', 
                 reqPagination=responses.get_pagination_object(skip=skip, limit=limit),
