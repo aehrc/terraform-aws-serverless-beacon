@@ -94,8 +94,8 @@ def route(event, query_id):
         nextPage = pagination.get("nextPage", None)
         # query request params
         requestParameters = query.get("requestParameters", dict())
-        start = [int(a) for a in requestParameters["start"].split(',')]
-        end = [int(a) for a in requestParameters["end"].split(',')]
+        start = requestParameters.get("start", [])
+        end = requestParameters.get("end", [])
         assemblyId = requestParameters.get("assemblyId", None)
         referenceName = requestParameters.get("referenceName", None)
         referenceBases = requestParameters.get("referenceBases", None)
