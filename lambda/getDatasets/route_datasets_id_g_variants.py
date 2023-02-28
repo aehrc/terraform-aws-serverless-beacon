@@ -14,6 +14,7 @@ from athena.dataset import Dataset, parse_datasets_with_samples
 from dynamodb.variant_queries import get_job_status, JobStatus, VariantQuery, get_current_time_utc
 from athena.common import entity_search_conditions, run_custom_query
 
+from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
@@ -66,7 +67,11 @@ def route(event, query_id):
         allele = params.get("allele", None)
         geneid = params.get("geneid", None)
         aminoacidchange = params.get("aminoacidchange", None)
-        filters = params.get("filters", [])
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
@@ -100,15 +105,15 @@ def route(event, query_id):
     status = get_job_status(query_id)
     
     if status == JobStatus.NEW:
-        conditions = entity_search_conditions(filters, 'analyses', 'datasets', id_modifier='A.id')
+        conditions, execution_parameters = new_entity_search_conditions(filters, 'analyses', 'datasets', id_modifier='A.id')
         
         if conditions:
             query = datasets_query(conditions, assemblyId, dataset_id)
-            exec_id = run_custom_query(query, return_id=True)
+            exec_id = run_custom_query(query, return_id=True, execution_parameters=execution_parameters)
             datasets, samples = parse_datasets_with_samples(exec_id)
         else:
             query = datasets_query_fast(assemblyId, dataset_id)
-            datasets = Dataset.get_by_query(query)
+            datasets = Dataset.get_by_query(query, execution_parameters=execution_parameters)
             samples = []
 
         query_responses = perform_variant_search_sync(

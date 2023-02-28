@@ -7,6 +7,7 @@ import apiutils.responses as responses
 from athena.cohort import Cohort
 from athena.common import entity_search_conditions
 
+from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
@@ -62,7 +63,11 @@ def route(event):
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
         includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
@@ -87,25 +92,25 @@ def route(event):
         requestParameters = query.get("requestParameters", dict())
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
 
-    conditions = entity_search_conditions(filters, 'cohorts', 'cohorts')
+    conditions, execution_parameters = new_entity_search_conditions(filters, 'cohorts', 'cohorts')
 
     if requestedGranularity == 'boolean':
         query = get_bool_query(conditions)
-        exists = Cohort.get_existence_by_query(query)
+        exists = Cohort.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
         query = get_count_query(conditions)
-        count = Cohort.get_count_by_query(query)
+        count = Cohort.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity in ('record', 'aggregated'):
         query = get_record_query(skip, limit, conditions)
-        cohorts = Cohort.get_by_query(query)
+        cohorts = Cohort.get_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_result_sets_response(
             setType='cohorts', 
             exists=len(cohorts)>0,

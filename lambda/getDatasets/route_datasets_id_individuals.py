@@ -9,6 +9,7 @@ import apiutils.responses as responses
 from athena.individual import Individual
 from athena.common import entity_search_conditions
 
+from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
@@ -61,7 +62,11 @@ def route(event):
         skip = params.get("skip", 0)
         limit = params.get("limit", 100)
         includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        filters = [{'id':fil_id} for fil_id in params.get("filters", [])]
+        filters_list = []
+        filters_str = params.get("filters", filters_list)
+        if isinstance(filters_str, str):
+            filters_list = filters_str.split(',')
+        filters = [{'id': fil_id} for fil_id in filters_list]
         requestedGranularity = params.get("requestedGranularity", "boolean")
 
     if event['httpMethod'] == 'POST':
@@ -88,18 +93,18 @@ def route(event):
         includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
     
     dataset_id = event["pathParameters"].get("id", None)
-    conditions = entity_search_conditions(filters, 'individuals', 'individuals', with_where=False)
+    conditions, execution_parameters = new_entity_search_conditions(filters, 'individuals', 'individuals', with_where=False)
     
     if requestedGranularity == 'boolean':
         query = get_bool_query(dataset_id, conditions)
-        exists = Individual.get_existence_by_query(query)
+        exists = Individual.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if requestedGranularity == 'count':
         query = get_count_query(dataset_id, conditions)
-        count = Individual.get_count_by_query(query)
+        count = Individual.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
@@ -107,7 +112,7 @@ def route(event):
     if requestedGranularity in ('record', 'aggregated'):
         query = get_record_query(dataset_id, skip, limit, conditions)
         print(query)
-        individuals = Individual.get_by_query(query)
+        individuals = Individual.get_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_result_sets_response(
             setType='individuals', 
             exists=len(individuals)>0,
