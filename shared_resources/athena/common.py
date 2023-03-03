@@ -36,6 +36,8 @@ class AthenaModel:
     @classmethod
     def get_by_query(cls, query, queue=None, execution_parameters=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        print(query.replace('\n', ' '))
+        print(execution_parameters)
         exec_id = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True, execution_parameters=execution_parameters)
 
         if exec_id:
@@ -49,6 +51,8 @@ class AthenaModel:
     @classmethod
     def get_existence_by_query(cls, query, queue=None, execution_parameters=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        print(query.replace('\n', ' '))
+        print(execution_parameters)
         result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
@@ -89,6 +93,8 @@ class AthenaModel:
     @classmethod
     def get_count_by_query(cls, query, queue=None, execution_parameters=None):
         query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        print(query.replace('\n', ' '))
+        print(execution_parameters)
         result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
@@ -119,6 +125,9 @@ def extract_terms(array):
 
 
 def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
+    print(query.replace('\n', ' '))
+    print(execution_parameters)
+
     if execution_parameters is None:
         response = athena.start_query_execution(
             QueryString=query,

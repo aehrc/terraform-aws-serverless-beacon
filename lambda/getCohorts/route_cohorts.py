@@ -39,7 +39,7 @@ def get_record_query(skip, limit, conditions=[]):
     SELECT id, cohortdatatypes, cohortdesign, B.csize as cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
     FROM 
         "{{database}}"."{{table}}" as A 
-    JOIN 
+    LEFT JOIN 
         (
             SELECT _cohortid, count(*) as csize 
             FROM "{{database}}"."{INDIVIDUALS_TABLE}"
