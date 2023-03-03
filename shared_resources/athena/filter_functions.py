@@ -124,7 +124,7 @@ def new_entity_search_conditions(filters, id_type, default_scope, id_modifier='i
     # format fragments together to form coherent SQL expression
     join_constraints = " INTERSECT ".join(join_constraints)
     join_constraints = f'{id_modifier} IN ({join_constraints}) ' if join_constraints else ''
-    total_constraints = [join_constraints] + outer_constraints
+    total_constraints = ([join_constraints] if join_constraints else []) + outer_constraints
     total_constraints = " AND ".join(total_constraints)
     execution_parameters = join_execution_parameters+outer_execution_parameters
     if total_constraints:
