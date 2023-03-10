@@ -1,20 +1,20 @@
 #
 # datasets API Function /datasets
 #
-resource aws_api_gateway_resource datasets {
+resource "aws_api_gateway_resource" "datasets" {
   path_part   = "datasets"
   parent_id   = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets {
+resource "aws_api_gateway_method" "datasets" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response datasets {
+resource "aws_api_gateway_method_response" "datasets" {
   rest_api_id = aws_api_gateway_method.datasets.rest_api_id
   resource_id = aws_api_gateway_method.datasets.resource_id
   http_method = aws_api_gateway_method.datasets.http_method
@@ -29,14 +29,14 @@ resource aws_api_gateway_method_response datasets {
   }
 }
 
-resource aws_api_gateway_method datasets_post {
+resource "aws_api_gateway_method" "datasets_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response datasets_post {
+resource "aws_api_gateway_method_response" "datasets_post" {
   rest_api_id = aws_api_gateway_method.datasets_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets_post.resource_id
   http_method = aws_api_gateway_method.datasets_post.http_method
@@ -54,20 +54,20 @@ resource aws_api_gateway_method_response datasets_post {
 #
 # datasets API Function /datasets/filtering_terms
 #
-resource aws_api_gateway_resource datasets-filtering_terms {
+resource "aws_api_gateway_resource" "datasets-filtering_terms" {
   path_part   = "filtering_terms"
   parent_id   = aws_api_gateway_resource.datasets.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets-filtering_terms {
+resource "aws_api_gateway_method" "datasets-filtering_terms" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-filtering_terms.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response datasets-filtering_terms {
+resource "aws_api_gateway_method_response" "datasets-filtering_terms" {
   rest_api_id = aws_api_gateway_method.datasets-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.datasets-filtering_terms.resource_id
   http_method = aws_api_gateway_method.datasets-filtering_terms.http_method
@@ -82,14 +82,14 @@ resource aws_api_gateway_method_response datasets-filtering_terms {
   }
 }
 
-resource aws_api_gateway_method datasets-filtering_terms_post {
+resource "aws_api_gateway_method" "datasets-filtering_terms_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-filtering_terms.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response datasets-filtering_terms_post {
+resource "aws_api_gateway_method_response" "datasets-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.datasets-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.datasets-filtering_terms_post.http_method
@@ -107,13 +107,13 @@ resource aws_api_gateway_method_response datasets-filtering_terms_post {
 # 
 # /datasets/{id}
 # 
-resource aws_api_gateway_resource datasets-id {
+resource "aws_api_gateway_resource" "datasets-id" {
   path_part   = "{id}"
   parent_id   = aws_api_gateway_resource.datasets.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets-id {
+resource "aws_api_gateway_method" "datasets-id" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id.id
   http_method   = "GET"
@@ -124,7 +124,7 @@ resource aws_api_gateway_method datasets-id {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id {
+resource "aws_api_gateway_method_response" "datasets-id" {
   rest_api_id = aws_api_gateway_method.datasets-id.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id.resource_id
   http_method = aws_api_gateway_method.datasets-id.http_method
@@ -139,7 +139,7 @@ resource aws_api_gateway_method_response datasets-id {
   }
 }
 
-resource aws_api_gateway_method datasets-id_post {
+resource "aws_api_gateway_method" "datasets-id_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id.id
   http_method   = "POST"
@@ -150,7 +150,7 @@ resource aws_api_gateway_method datasets-id_post {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id_post {
+resource "aws_api_gateway_method_response" "datasets-id_post" {
   rest_api_id = aws_api_gateway_method.datasets-id_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id_post.resource_id
   http_method = aws_api_gateway_method.datasets-id_post.http_method
@@ -168,13 +168,13 @@ resource aws_api_gateway_method_response datasets-id_post {
 # 
 # /datasets/{id}/filtering_terms
 # 
-resource aws_api_gateway_resource datasets-id-filtering_terms {
+resource "aws_api_gateway_resource" "datasets-id-filtering_terms" {
   path_part   = "filtering_terms"
   parent_id   = aws_api_gateway_resource.datasets-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets-id-filtering_terms {
+resource "aws_api_gateway_method" "datasets-id-filtering_terms" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-filtering_terms.id
   http_method   = "GET"
@@ -185,7 +185,7 @@ resource aws_api_gateway_method datasets-id-filtering_terms {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-filtering_terms {
+resource "aws_api_gateway_method_response" "datasets-id-filtering_terms" {
   rest_api_id = aws_api_gateway_method.datasets-id-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-filtering_terms.resource_id
   http_method = aws_api_gateway_method.datasets-id-filtering_terms.http_method
@@ -200,7 +200,7 @@ resource aws_api_gateway_method_response datasets-id-filtering_terms {
   }
 }
 
-resource aws_api_gateway_method datasets-id-filtering_terms_post {
+resource "aws_api_gateway_method" "datasets-id-filtering_terms_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-filtering_terms.id
   http_method   = "POST"
@@ -211,7 +211,7 @@ resource aws_api_gateway_method datasets-id-filtering_terms_post {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-filtering_terms_post {
+resource "aws_api_gateway_method_response" "datasets-id-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-filtering_terms_post.http_method
@@ -229,13 +229,13 @@ resource aws_api_gateway_method_response datasets-id-filtering_terms_post {
 # 
 # /datasets/{id}/biosamples
 # 
-resource aws_api_gateway_resource datasets-id-biosamples {
+resource "aws_api_gateway_resource" "datasets-id-biosamples" {
   path_part   = "biosamples"
   parent_id   = aws_api_gateway_resource.datasets-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets-id-biosamples {
+resource "aws_api_gateway_method" "datasets-id-biosamples" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-biosamples.id
   http_method   = "GET"
@@ -246,7 +246,7 @@ resource aws_api_gateway_method datasets-id-biosamples {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-biosamples {
+resource "aws_api_gateway_method_response" "datasets-id-biosamples" {
   rest_api_id = aws_api_gateway_method.datasets-id-biosamples.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-biosamples.resource_id
   http_method = aws_api_gateway_method.datasets-id-biosamples.http_method
@@ -261,7 +261,7 @@ resource aws_api_gateway_method_response datasets-id-biosamples {
   }
 }
 
-resource aws_api_gateway_method datasets-id-biosamples_post {
+resource "aws_api_gateway_method" "datasets-id-biosamples_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-biosamples.id
   http_method   = "POST"
@@ -272,7 +272,7 @@ resource aws_api_gateway_method datasets-id-biosamples_post {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-biosamples_post {
+resource "aws_api_gateway_method_response" "datasets-id-biosamples_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-biosamples_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-biosamples_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-biosamples_post.http_method
@@ -290,13 +290,13 @@ resource aws_api_gateway_method_response datasets-id-biosamples_post {
 # 
 # /datasets/{id}/g_variants
 # 
-resource aws_api_gateway_resource datasets-id-g_variants {
+resource "aws_api_gateway_resource" "datasets-id-g_variants" {
   path_part   = "g_variants"
   parent_id   = aws_api_gateway_resource.datasets-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets-id-g_variants {
+resource "aws_api_gateway_method" "datasets-id-g_variants" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-g_variants.id
   http_method   = "GET"
@@ -307,7 +307,7 @@ resource aws_api_gateway_method datasets-id-g_variants {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-g_variants {
+resource "aws_api_gateway_method_response" "datasets-id-g_variants" {
   rest_api_id = aws_api_gateway_method.datasets-id-g_variants.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-g_variants.resource_id
   http_method = aws_api_gateway_method.datasets-id-g_variants.http_method
@@ -322,7 +322,7 @@ resource aws_api_gateway_method_response datasets-id-g_variants {
   }
 }
 
-resource aws_api_gateway_method datasets-id-g_variants_post {
+resource "aws_api_gateway_method" "datasets-id-g_variants_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-g_variants.id
   http_method   = "POST"
@@ -333,7 +333,7 @@ resource aws_api_gateway_method datasets-id-g_variants_post {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-g_variants_post {
+resource "aws_api_gateway_method_response" "datasets-id-g_variants_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-g_variants_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-g_variants_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-g_variants_post.http_method
@@ -351,13 +351,13 @@ resource aws_api_gateway_method_response datasets-id-g_variants_post {
 # 
 # /datasets/{id}/individuals
 # 
-resource aws_api_gateway_resource datasets-id-individuals {
+resource "aws_api_gateway_resource" "datasets-id-individuals" {
   path_part   = "individuals"
   parent_id   = aws_api_gateway_resource.datasets-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method datasets-id-individuals {
+resource "aws_api_gateway_method" "datasets-id-individuals" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-individuals.id
   http_method   = "GET"
@@ -368,7 +368,7 @@ resource aws_api_gateway_method datasets-id-individuals {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-individuals {
+resource "aws_api_gateway_method_response" "datasets-id-individuals" {
   rest_api_id = aws_api_gateway_method.datasets-id-individuals.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-individuals.resource_id
   http_method = aws_api_gateway_method.datasets-id-individuals.http_method
@@ -383,7 +383,7 @@ resource aws_api_gateway_method_response datasets-id-individuals {
   }
 }
 
-resource aws_api_gateway_method datasets-id-individuals_post {
+resource "aws_api_gateway_method" "datasets-id-individuals_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.datasets-id-individuals.id
   http_method   = "POST"
@@ -394,7 +394,7 @@ resource aws_api_gateway_method datasets-id-individuals_post {
   }
 }
 
-resource aws_api_gateway_method_response datasets-id-individuals_post {
+resource "aws_api_gateway_method_response" "datasets-id-individuals_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-individuals_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-individuals_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-individuals_post.http_method
@@ -410,56 +410,56 @@ resource aws_api_gateway_method_response datasets-id-individuals_post {
 }
 
 # enable CORS
-module cors-datasets {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.datasets.id
 }
 
-module cors-datasets-filtering_terms {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets-filtering_terms" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.datasets-filtering_terms.id
 }
 
-module cors-datasets-id {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets-id" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.datasets-id.id
 }
 
-module cors-datasets-id-filtering_terms {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets-id-filtering_terms" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.datasets-id-filtering_terms.id
 }
 
-module cors-datasets-id-biosamples {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets-id-biosamples" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.datasets-id-biosamples.id
 }
 
-module cors-datasets-id-g_variants {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets-id-g_variants" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.datasets-id-g_variants.id
 }
 
-module cors-datasets-id-individuals {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-datasets-id-individuals" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
@@ -467,7 +467,7 @@ module cors-datasets-id-individuals {
 }
 
 # wire up lambda datasets
-resource aws_api_gateway_integration datasets {
+resource "aws_api_gateway_integration" "datasets" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets.id
   http_method             = aws_api_gateway_method.datasets.http_method
@@ -476,7 +476,7 @@ resource aws_api_gateway_integration datasets {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response datasets {
+resource "aws_api_gateway_integration_response" "datasets" {
   rest_api_id = aws_api_gateway_method.datasets.rest_api_id
   resource_id = aws_api_gateway_method.datasets.resource_id
   http_method = aws_api_gateway_method.datasets.http_method
@@ -489,7 +489,7 @@ resource aws_api_gateway_integration_response datasets {
   depends_on = [aws_api_gateway_integration.datasets]
 }
 
-resource aws_api_gateway_integration datasets_post {
+resource "aws_api_gateway_integration" "datasets_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets.id
   http_method             = aws_api_gateway_method.datasets_post.http_method
@@ -498,7 +498,7 @@ resource aws_api_gateway_integration datasets_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response datasets_post {
+resource "aws_api_gateway_integration_response" "datasets_post" {
   rest_api_id = aws_api_gateway_method.datasets_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets_post.resource_id
   http_method = aws_api_gateway_method.datasets_post.http_method
@@ -512,7 +512,7 @@ resource aws_api_gateway_integration_response datasets_post {
 }
 
 # wire up lambda datasets/filtering_terms
-resource aws_api_gateway_integration datasets-filtering_terms {
+resource "aws_api_gateway_integration" "datasets-filtering_terms" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-filtering_terms.id
   http_method             = aws_api_gateway_method.datasets-filtering_terms.http_method
@@ -521,7 +521,7 @@ resource aws_api_gateway_integration datasets-filtering_terms {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response datasets-filtering_terms {
+resource "aws_api_gateway_integration_response" "datasets-filtering_terms" {
   rest_api_id = aws_api_gateway_method.datasets-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.datasets-filtering_terms.resource_id
   http_method = aws_api_gateway_method.datasets-filtering_terms.http_method
@@ -534,7 +534,7 @@ resource aws_api_gateway_integration_response datasets-filtering_terms {
   depends_on = [aws_api_gateway_integration.datasets-filtering_terms]
 }
 
-resource aws_api_gateway_integration datasets-filtering_terms_post {
+resource "aws_api_gateway_integration" "datasets-filtering_terms_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-filtering_terms.id
   http_method             = aws_api_gateway_method.datasets-filtering_terms_post.http_method
@@ -543,7 +543,7 @@ resource aws_api_gateway_integration datasets-filtering_terms_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response datasets-filtering_terms_post {
+resource "aws_api_gateway_integration_response" "datasets-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.datasets-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.datasets-filtering_terms_post.http_method
@@ -557,7 +557,7 @@ resource aws_api_gateway_integration_response datasets-filtering_terms_post {
 }
 
 # wire up lambda datasets/{id}
-resource aws_api_gateway_integration datasets-id {
+resource "aws_api_gateway_integration" "datasets-id" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id.id
   http_method             = aws_api_gateway_method.datasets-id.http_method
@@ -566,7 +566,7 @@ resource aws_api_gateway_integration datasets-id {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id {
+resource "aws_api_gateway_integration_response" "datasets-id" {
   rest_api_id = aws_api_gateway_method.datasets-id.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id.resource_id
   http_method = aws_api_gateway_method.datasets-id.http_method
@@ -579,7 +579,7 @@ resource aws_api_gateway_integration_response  datasets-id {
   depends_on = [aws_api_gateway_integration.datasets-id]
 }
 
-resource aws_api_gateway_integration datasets-id_post {
+resource "aws_api_gateway_integration" "datasets-id_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id.id
   http_method             = aws_api_gateway_method.datasets-id_post.http_method
@@ -588,7 +588,7 @@ resource aws_api_gateway_integration datasets-id_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id_post {
+resource "aws_api_gateway_integration_response" "datasets-id_post" {
   rest_api_id = aws_api_gateway_method.datasets-id_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id_post.resource_id
   http_method = aws_api_gateway_method.datasets-id_post.http_method
@@ -602,7 +602,7 @@ resource aws_api_gateway_integration_response  datasets-id_post {
 }
 
 # wire up lambda datasets/{id}/filtering_terms
-resource aws_api_gateway_integration datasets-id-filtering_terms {
+resource "aws_api_gateway_integration" "datasets-id-filtering_terms" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-filtering_terms.id
   http_method             = aws_api_gateway_method.datasets-id-filtering_terms.http_method
@@ -611,7 +611,7 @@ resource aws_api_gateway_integration datasets-id-filtering_terms {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-filtering_terms {
+resource "aws_api_gateway_integration_response" "datasets-id-filtering_terms" {
   rest_api_id = aws_api_gateway_method.datasets-id-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-filtering_terms.resource_id
   http_method = aws_api_gateway_method.datasets-id-filtering_terms.http_method
@@ -624,7 +624,7 @@ resource aws_api_gateway_integration_response  datasets-id-filtering_terms {
   depends_on = [aws_api_gateway_integration.datasets-id-filtering_terms]
 }
 
-resource aws_api_gateway_integration datasets-id-filtering_terms_post {
+resource "aws_api_gateway_integration" "datasets-id-filtering_terms_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-filtering_terms.id
   http_method             = aws_api_gateway_method.datasets-id-filtering_terms_post.http_method
@@ -633,7 +633,7 @@ resource aws_api_gateway_integration datasets-id-filtering_terms_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-filtering_terms_post {
+resource "aws_api_gateway_integration_response" "datasets-id-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-filtering_terms_post.http_method
@@ -647,7 +647,7 @@ resource aws_api_gateway_integration_response  datasets-id-filtering_terms_post 
 }
 
 # wire up lambda datasets/{id}/biosamples
-resource aws_api_gateway_integration datasets-id-biosamples {
+resource "aws_api_gateway_integration" "datasets-id-biosamples" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-biosamples.id
   http_method             = aws_api_gateway_method.datasets-id-biosamples.http_method
@@ -656,7 +656,7 @@ resource aws_api_gateway_integration datasets-id-biosamples {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-biosamples {
+resource "aws_api_gateway_integration_response" "datasets-id-biosamples" {
   rest_api_id = aws_api_gateway_method.datasets-id-biosamples.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-biosamples.resource_id
   http_method = aws_api_gateway_method.datasets-id-biosamples.http_method
@@ -669,7 +669,7 @@ resource aws_api_gateway_integration_response  datasets-id-biosamples {
   depends_on = [aws_api_gateway_integration.datasets-id-biosamples]
 }
 
-resource aws_api_gateway_integration datasets-id-biosamples_post {
+resource "aws_api_gateway_integration" "datasets-id-biosamples_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-biosamples.id
   http_method             = aws_api_gateway_method.datasets-id-biosamples_post.http_method
@@ -678,7 +678,7 @@ resource aws_api_gateway_integration datasets-id-biosamples_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-biosamples_post {
+resource "aws_api_gateway_integration_response" "datasets-id-biosamples_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-biosamples_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-biosamples_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-biosamples_post.http_method
@@ -692,7 +692,7 @@ resource aws_api_gateway_integration_response  datasets-id-biosamples_post {
 }
 
 # wire up lambda datasets/{id}/g_variants
-resource aws_api_gateway_integration datasets-id-g_variants {
+resource "aws_api_gateway_integration" "datasets-id-g_variants" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-g_variants.id
   http_method             = aws_api_gateway_method.datasets-id-g_variants.http_method
@@ -701,7 +701,7 @@ resource aws_api_gateway_integration datasets-id-g_variants {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-g_variants {
+resource "aws_api_gateway_integration_response" "datasets-id-g_variants" {
   rest_api_id = aws_api_gateway_method.datasets-id-g_variants.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-g_variants.resource_id
   http_method = aws_api_gateway_method.datasets-id-g_variants.http_method
@@ -714,7 +714,7 @@ resource aws_api_gateway_integration_response  datasets-id-g_variants {
   depends_on = [aws_api_gateway_integration.datasets-id-g_variants]
 }
 
-resource aws_api_gateway_integration datasets-id-g_variants_post {
+resource "aws_api_gateway_integration" "datasets-id-g_variants_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-g_variants.id
   http_method             = aws_api_gateway_method.datasets-id-g_variants_post.http_method
@@ -723,7 +723,7 @@ resource aws_api_gateway_integration datasets-id-g_variants_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-g_variants_post {
+resource "aws_api_gateway_integration_response" "datasets-id-g_variants_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-g_variants_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-g_variants_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-g_variants_post.http_method
@@ -737,7 +737,7 @@ resource aws_api_gateway_integration_response  datasets-id-g_variants_post {
 }
 
 # wire up lambda datasets/{id}/individuals
-resource aws_api_gateway_integration datasets-id-individuals {
+resource "aws_api_gateway_integration" "datasets-id-individuals" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-individuals.id
   http_method             = aws_api_gateway_method.datasets-id-individuals.http_method
@@ -746,7 +746,7 @@ resource aws_api_gateway_integration datasets-id-individuals {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-individuals {
+resource "aws_api_gateway_integration_response" "datasets-id-individuals" {
   rest_api_id = aws_api_gateway_method.datasets-id-individuals.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-individuals.resource_id
   http_method = aws_api_gateway_method.datasets-id-individuals.http_method
@@ -759,7 +759,7 @@ resource aws_api_gateway_integration_response  datasets-id-individuals {
   depends_on = [aws_api_gateway_integration.datasets-id-individuals]
 }
 
-resource aws_api_gateway_integration datasets-id-individuals_post {
+resource "aws_api_gateway_integration" "datasets-id-individuals_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.datasets-id-individuals.id
   http_method             = aws_api_gateway_method.datasets-id-individuals_post.http_method
@@ -768,7 +768,7 @@ resource aws_api_gateway_integration datasets-id-individuals_post {
   uri                     = module.lambda-getDatasets.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  datasets-id-individuals_post {
+resource "aws_api_gateway_integration_response" "datasets-id-individuals_post" {
   rest_api_id = aws_api_gateway_method.datasets-id-individuals_post.rest_api_id
   resource_id = aws_api_gateway_method.datasets-id-individuals_post.resource_id
   http_method = aws_api_gateway_method.datasets-id-individuals_post.http_method
@@ -782,58 +782,58 @@ resource aws_api_gateway_integration_response  datasets-id-individuals_post {
 }
 
 # permit lambda invokation
-resource aws_lambda_permission APIdatasets {
-  statement_id = "AllowAPIdatasetsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasets" {
+  statement_id  = "AllowAPIdatasetsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}"
 }
 
-resource aws_lambda_permission APIdatasetsFilteringTerms {
-  statement_id = "AllowAPIdatasetsFilteringTermsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasetsFilteringTerms" {
+  statement_id  = "AllowAPIdatasetsFilteringTermsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/${aws_api_gateway_resource.datasets-filtering_terms.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/${aws_api_gateway_resource.datasets-filtering_terms.path_part}"
 }
 
-resource aws_lambda_permission APIdatasetsId {
-  statement_id = "AllowAPIdatasetsIdInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasetsId" {
+  statement_id  = "AllowAPIdatasetsIdInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*"
 }
 
-resource aws_lambda_permission APIdatasetsIdfiltering_terms {
-  statement_id = "AllowAPIdatasetsIdfiltering_termsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasetsIdfiltering_terms" {
+  statement_id  = "AllowAPIdatasetsIdfiltering_termsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-filtering_terms.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-filtering_terms.path_part}"
 }
 
-resource aws_lambda_permission APIdatasetsIdbiosamples {
-  statement_id = "AllowAPIdatasetsIdbiosamplesInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasetsIdbiosamples" {
+  statement_id  = "AllowAPIdatasetsIdbiosamplesInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-biosamples.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-biosamples.path_part}"
 }
 
-resource aws_lambda_permission APIdatasetsIdg_variants {
-  statement_id = "AllowAPIdatasetsIdg_variantsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasetsIdg_variants" {
+  statement_id  = "AllowAPIdatasetsIdg_variantsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-g_variants.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-g_variants.path_part}"
 }
 
-resource aws_lambda_permission APIdatasetsIdindividuals {
-  statement_id = "AllowAPIdatasetsIdindividualsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIdatasetsIdindividuals" {
+  statement_id  = "AllowAPIdatasetsIdindividualsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getDatasets.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-individuals.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.datasets.path_part}/*/${aws_api_gateway_resource.datasets-id-individuals.path_part}"
 }

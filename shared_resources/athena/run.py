@@ -9,15 +9,15 @@ from smart_open import open as sopen
 from .common import AthenaModel, extract_terms
 
 
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
-RUNS_TABLE = os.environ['RUNS_TABLE']
+ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
+ATHENA_RUNS_TABLE = os.environ['ATHENA_RUNS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
 class Run(jsons.JsonSerializable, AthenaModel):
-    _table_name = RUNS_TABLE
+    _table_name = ATHENA_RUNS_TABLE
     # for saving to database order matter
     _table_columns = [
         'id',
@@ -80,7 +80,7 @@ class Run(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = [c.lower() for c in cls._table_columns]
         key = f'{array[0]._datasetId}-runs'
         
-        with sopen(f's3://{METADATA_BUCKET}/runs/{key}', 'wb') as s3file:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/runs/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
@@ -97,7 +97,7 @@ class Run(jsons.JsonSerializable, AthenaModel):
                     writer.write(row)
 
         header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{METADATA_BUCKET}/terms-cache/runs-{key}', 'wb') as s3file:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/runs-{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
