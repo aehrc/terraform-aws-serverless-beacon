@@ -26,7 +26,7 @@ class AthenaModel:
     '''
     This is a higher level abstraction class
     user is only required to write queries in the following form
-    
+
     SELECT * FROM "{{database}}"."{{table}}" WHERE <CONDITIONS>;
 
     table name is fetched from the child class, database is injected
@@ -35,10 +35,12 @@ class AthenaModel:
     '''
     @classmethod
     def get_by_query(cls, query, queue=None, execution_parameters=None):
-        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
+        query = query.format(
+            database=ATHENA_METADATA_DATABASE, table=cls._table_name)
         print(query.replace('\n', ' '))
         print(execution_parameters)
-        exec_id = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True, execution_parameters=execution_parameters)
+        exec_id = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP,
+                                   queue=None, return_id=True, execution_parameters=execution_parameters)
 
         if exec_id:
             if queue is None:
@@ -47,13 +49,14 @@ class AthenaModel:
                 queue.put(cls.parse_array(exec_id))
         return []
 
-    
     @classmethod
     def get_existence_by_query(cls, query, queue=None, execution_parameters=None):
-        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
+        query = query.format(
+            database=ATHENA_METADATA_DATABASE, table=cls._table_name)
         print(query.replace('\n', ' '))
         print(execution_parameters)
-        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
+        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP,
+                                  queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -62,18 +65,17 @@ class AthenaModel:
         else:
             queue.put(len(result) > 1)
 
-    
     @classmethod
     def parse_array(cls, exec_id):
         instances = []
         var_list = list()
-        case_map = { k.lower(): k for k in cls().__dict__.keys() }
+        case_map = {k.lower(): k for k in cls().__dict__.keys()}
 
         with sopen(f's3://{ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
             reader = csv.reader(s3f)
 
             for n, row in enumerate(reader):
-                if n==0:
+                if n == 0:
                     var_list = row
                 else:
                     instance = cls()
@@ -89,13 +91,14 @@ class AthenaModel:
 
         return instances
 
-
     @classmethod
     def get_count_by_query(cls, query, queue=None, execution_parameters=None):
-        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
+        query = query.format(
+            database=ATHENA_METADATA_DATABASE, table=cls._table_name)
         print(query.replace('\n', ' '))
         print(execution_parameters)
-        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
+        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP,
+                                  queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -154,7 +157,7 @@ def run_custom_query(query, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_
             QueryExecutionId=response['QueryExecutionId']
         )
         status = exec['QueryExecution']['Status']['State']
-        
+
         if status in ('QUEUED', 'RUNNING'):
             time.sleep(0.1)
             retries += 1
@@ -181,7 +184,8 @@ def run_custom_query(query, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_
 
 
 def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', with_where=True):
-    types = {'individuals', 'biosamples', 'runs', 'analyses', 'datasets', 'cohorts'}
+    types = {'individuals', 'biosamples', 'runs',
+             'analyses', 'datasets', 'cohorts'}
     type_relations_table_id = {
         'individuals': 'individualid',
         'biosamples': 'biosampleid',
@@ -194,13 +198,15 @@ def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', 
     conditions = []
 
     for group in types:
-        group_filters = list(filter(lambda x: x.get('scope', default_scope) == group, filters))
-        
+        group_filters = list(filter(lambda x: x.get(
+            'scope', default_scope) == group, filters))
+
         if group_filters:
             for base_filter in group_filters:
                 expanded_terms = expand_terms(base_filter)
-                conditions += [f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{ATHENA_RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
-        
+                conditions += [
+                    f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{ATHENA_RELATIONS_TABLE}" RI JOIN "{ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
+
     if conditions:
         if with_where:
             return f'WHERE {id_modifier} IN (' + ' INTERSECT '.join(conditions) + ')'
