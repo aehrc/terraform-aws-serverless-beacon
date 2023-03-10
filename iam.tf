@@ -1,7 +1,7 @@
 #
 # Generic policy documents
 #
-data aws_iam_policy_document main-apigateway {
+data "aws_iam_policy_document" "main-apigateway" {
   statement {
     actions = [
       "sts:AssumeRole",
@@ -16,7 +16,7 @@ data aws_iam_policy_document main-apigateway {
 #
 # submitDataset Lambda Function
 #
-data aws_iam_policy_document lambda-submitDataset {
+data "aws_iam_policy_document" "lambda-submitDataset" {
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -62,7 +62,7 @@ data aws_iam_policy_document lambda-submitDataset {
 #
 # summariseDataset Lambda Function
 #
-data aws_iam_policy_document lambda-summariseDataset {
+data "aws_iam_policy_document" "lambda-summariseDataset" {
   statement {
     actions = [
       "dynamodb:UpdateItem",
@@ -105,7 +105,7 @@ data aws_iam_policy_document lambda-summariseDataset {
 #
 # summariseVcf Lambda Function
 #
-data aws_iam_policy_document lambda-summariseVcf {
+data "aws_iam_policy_document" "lambda-summariseVcf" {
   statement {
     actions = [
       "dynamodb:UpdateItem",
@@ -145,7 +145,7 @@ data aws_iam_policy_document lambda-summariseVcf {
 #
 # summariseSlice Lambda Function
 #
-data aws_iam_policy_document lambda-summariseSlice {
+data "aws_iam_policy_document" "lambda-summariseSlice" {
   statement {
     actions = [
       "dynamodb:UpdateItem",
@@ -190,7 +190,7 @@ data aws_iam_policy_document lambda-summariseSlice {
 #
 # duplicateVariantSearch Lambda Function
 #
-data aws_iam_policy_document lambda-duplicateVariantSearch {
+data "aws_iam_policy_document" "lambda-duplicateVariantSearch" {
   statement {
     actions = [
       "dynamodb:UpdateItem",
@@ -233,7 +233,7 @@ data aws_iam_policy_document lambda-duplicateVariantSearch {
 #
 # getInfo Lambda Function
 #
-data aws_iam_policy_document lambda-getInfo {
+data "aws_iam_policy_document" "lambda-getInfo" {
   statement {
     actions = [
       "dynamodb:Scan",
@@ -247,7 +247,7 @@ data aws_iam_policy_document lambda-getInfo {
 #
 # getConfiguration Lambda Function
 #
-data aws_iam_policy_document lambda-getConfiguration {
+data "aws_iam_policy_document" "lambda-getConfiguration" {
   statement {
     actions = [
       "dynamodb:Scan",
@@ -261,7 +261,7 @@ data aws_iam_policy_document lambda-getConfiguration {
 #
 # getMap Lambda Function
 #
-data aws_iam_policy_document lambda-getMap {
+data "aws_iam_policy_document" "lambda-getMap" {
   statement {
     actions = [
       "dynamodb:Scan",
@@ -275,7 +275,7 @@ data aws_iam_policy_document lambda-getMap {
 #
 # getEntryTypes Lambda Function
 #
-data aws_iam_policy_document lambda-getEntryTypes {
+data "aws_iam_policy_document" "lambda-getEntryTypes" {
   statement {
     actions = [
       "dynamodb:Scan",
@@ -289,9 +289,9 @@ data aws_iam_policy_document lambda-getEntryTypes {
 #
 # getFilteringTerms Lambda Function
 #
-data aws_iam_policy_document lambda-getFilteringTerms {
+data "aws_iam_policy_document" "lambda-getFilteringTerms" {
   statement {
-    actions = []
+    actions   = []
     resources = []
   }
 }
@@ -299,7 +299,7 @@ data aws_iam_policy_document lambda-getFilteringTerms {
 #
 # getAnalyses Lambda Function
 #
-data aws_iam_policy_document lambda-getAnalyses {
+data "aws_iam_policy_document" "lambda-getAnalyses" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -319,7 +319,7 @@ data aws_iam_policy_document lambda-getAnalyses {
       aws_dynamodb_table.variant_queries.arn,
     ]
   }
-  
+
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -361,7 +361,7 @@ data aws_iam_policy_document lambda-getAnalyses {
 #
 # getGenomicVariants Lambda Function
 #
-data aws_iam_policy_document lambda-getGenomicVariants {
+data "aws_iam_policy_document" "lambda-getGenomicVariants" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -388,7 +388,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
       "dynamodb:GetItem",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
-      "dynamodb:BatchGetItem" 
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.datasets.arn,
@@ -425,7 +425,7 @@ data aws_iam_policy_document lambda-getGenomicVariants {
 #
 # getIndividuals Lambda Function
 #
-data aws_iam_policy_document lambda-getIndividuals {
+data "aws_iam_policy_document" "lambda-getIndividuals" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -445,7 +445,7 @@ data aws_iam_policy_document lambda-getIndividuals {
       aws_dynamodb_table.variant_queries.arn,
     ]
   }
-  
+
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -487,7 +487,7 @@ data aws_iam_policy_document lambda-getIndividuals {
 #
 # getBiosamples Lambda Function
 #
-data aws_iam_policy_document lambda-getBiosamples {
+data "aws_iam_policy_document" "lambda-getBiosamples" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -507,7 +507,7 @@ data aws_iam_policy_document lambda-getBiosamples {
       aws_dynamodb_table.variant_queries.arn,
     ]
   }
-  
+
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -549,7 +549,7 @@ data aws_iam_policy_document lambda-getBiosamples {
 #
 # getDatasets Lambda Function
 #
-data aws_iam_policy_document lambda-getDatasets {
+data "aws_iam_policy_document" "lambda-getDatasets" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -569,7 +569,7 @@ data aws_iam_policy_document lambda-getDatasets {
       aws_dynamodb_table.variant_queries.arn,
     ]
   }
-  
+
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -611,7 +611,7 @@ data aws_iam_policy_document lambda-getDatasets {
 #
 # getCohorts Lambda Function
 #
-data aws_iam_policy_document lambda-getCohorts {
+data "aws_iam_policy_document" "lambda-getCohorts" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -631,7 +631,7 @@ data aws_iam_policy_document lambda-getCohorts {
       aws_dynamodb_table.variant_queries.arn,
     ]
   }
-  
+
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -657,7 +657,7 @@ data aws_iam_policy_document lambda-getCohorts {
 #
 # getRuns Lambda Function
 #
-data aws_iam_policy_document lambda-getRuns {
+data "aws_iam_policy_document" "lambda-getRuns" {
   statement {
     actions = [
       "dynamodb:Query",
@@ -677,7 +677,7 @@ data aws_iam_policy_document lambda-getRuns {
       aws_dynamodb_table.variant_queries.arn,
     ]
   }
-  
+
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -719,9 +719,9 @@ data aws_iam_policy_document lambda-getRuns {
 #
 # indexer Lambda Function
 #
-data aws_iam_policy_document lambda-indexer {
+data "aws_iam_policy_document" "lambda-indexer" {
   statement {
-    actions = []
+    actions   = []
     resources = []
   }
 }
@@ -729,7 +729,7 @@ data aws_iam_policy_document lambda-indexer {
 #
 # splitQuery Lambda Function
 #
-data aws_iam_policy_document lambda-splitQuery {
+data "aws_iam_policy_document" "lambda-splitQuery" {
   statement {
     actions = [
       "lambda:InvokeFunction",
@@ -750,7 +750,7 @@ data aws_iam_policy_document lambda-splitQuery {
 #
 # performQuery Lambda Function
 #
-data aws_iam_policy_document lambda-performQuery {
+data "aws_iam_policy_document" "lambda-performQuery" {
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -782,7 +782,7 @@ data aws_iam_policy_document lambda-performQuery {
 # Athena Full Access
 # Grants access to perform queries and write to s3
 # Also enables access to read query results from s3
-data aws_iam_policy_document athena-full-access {
+data "aws_iam_policy_document" "athena-full-access" {
   statement {
     actions = [
       "athena:GetQueryExecution",
@@ -815,7 +815,7 @@ data aws_iam_policy_document athena-full-access {
 }
 
 # DynamoDB Ontology Related Access
-data aws_iam_policy_document dynamodb-onto-access {
+data "aws_iam_policy_document" "dynamodb-onto-access" {
   statement {
     actions = [
       "dynamodb:DescribeTable",
@@ -850,7 +850,7 @@ data aws_iam_policy_document dynamodb-onto-access {
 }
 
 # DynamoDB Ontology Related Write Access
-data aws_iam_policy_document dynamodb-onto-write-access {
+data "aws_iam_policy_document" "dynamodb-onto-write-access" {
   statement {
     actions = [
       "dynamodb:DescribeTable",

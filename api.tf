@@ -3,25 +3,25 @@
 #
 
 # TODO update submission pipeline
-resource aws_api_gateway_rest_api BeaconApi {
-  name = "BeaconApi"
+resource "aws_api_gateway_rest_api" "BeaconApi" {
+  name        = "BeaconApi"
   description = "API That implements the Beacon specification"
 }
 
-resource aws_api_gateway_resource submit {
+resource "aws_api_gateway_resource" "submit" {
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  parent_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
-  path_part = "submit"
+  parent_id   = aws_api_gateway_rest_api.BeaconApi.root_resource_id
+  path_part   = "submit"
 }
 
-resource aws_api_gateway_method submit-options {
-  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  resource_id = aws_api_gateway_resource.submit.id
-  http_method = "OPTIONS"
+resource "aws_api_gateway_method" "submit-options" {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_resource.submit.id
+  http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response submit-options {
+resource "aws_api_gateway_method_response" "submit-options" {
   rest_api_id = aws_api_gateway_method.submit-options.rest_api_id
   resource_id = aws_api_gateway_method.submit-options.resource_id
   http_method = aws_api_gateway_method.submit-options.http_method
@@ -30,7 +30,7 @@ resource aws_api_gateway_method_response submit-options {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
     "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
   }
 
   response_models = {
@@ -38,11 +38,11 @@ resource aws_api_gateway_method_response submit-options {
   }
 }
 
-resource aws_api_gateway_integration submit-options {
+resource "aws_api_gateway_integration" "submit-options" {
   rest_api_id = aws_api_gateway_method.submit-options.rest_api_id
   resource_id = aws_api_gateway_method.submit-options.resource_id
   http_method = aws_api_gateway_method.submit-options.http_method
-  type = "MOCK"
+  type        = "MOCK"
 
   request_templates = {
     "application/json" = <<TEMPLATE
@@ -53,7 +53,7 @@ resource aws_api_gateway_integration submit-options {
   }
 }
 
-resource aws_api_gateway_integration_response submit-options {
+resource "aws_api_gateway_integration_response" "submit-options" {
   rest_api_id = aws_api_gateway_method.submit-options.rest_api_id
   resource_id = aws_api_gateway_method.submit-options.resource_id
   http_method = aws_api_gateway_method.submit-options.http_method
@@ -62,7 +62,7 @@ resource aws_api_gateway_integration_response submit-options {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,PATCH,POST'"
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 
   response_templates = {
@@ -72,15 +72,15 @@ resource aws_api_gateway_integration_response submit-options {
   depends_on = [aws_api_gateway_integration.submit-options]
 }
 
-resource aws_api_gateway_method submit-patch {
-  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  resource_id = aws_api_gateway_resource.submit.id
-  http_method = "PATCH"
+resource "aws_api_gateway_method" "submit-patch" {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_resource.submit.id
+  http_method   = "PATCH"
   authorization = "AWS_IAM"
 
 }
 
-resource aws_api_gateway_method_response submit-patch {
+resource "aws_api_gateway_method_response" "submit-patch" {
   rest_api_id = aws_api_gateway_method.submit-patch.rest_api_id
   resource_id = aws_api_gateway_method.submit-patch.resource_id
   http_method = aws_api_gateway_method.submit-patch.http_method
@@ -95,16 +95,16 @@ resource aws_api_gateway_method_response submit-patch {
   }
 }
 
-resource aws_api_gateway_integration submit-patch {
-  rest_api_id = aws_api_gateway_method.submit-patch.rest_api_id
-  resource_id = aws_api_gateway_method.submit-patch.resource_id
-  http_method = aws_api_gateway_method.submit-patch.http_method
-  type = "AWS_PROXY"
-  uri = module.lambda-submitDataset.lambda_function_invoke_arn
+resource "aws_api_gateway_integration" "submit-patch" {
+  rest_api_id             = aws_api_gateway_method.submit-patch.rest_api_id
+  resource_id             = aws_api_gateway_method.submit-patch.resource_id
+  http_method             = aws_api_gateway_method.submit-patch.http_method
+  type                    = "AWS_PROXY"
+  uri                     = module.lambda-submitDataset.lambda_function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource aws_api_gateway_integration_response submit-patch {
+resource "aws_api_gateway_integration_response" "submit-patch" {
   rest_api_id = aws_api_gateway_method.submit-patch.rest_api_id
   resource_id = aws_api_gateway_method.submit-patch.resource_id
   http_method = aws_api_gateway_method.submit-patch.http_method
@@ -117,14 +117,14 @@ resource aws_api_gateway_integration_response submit-patch {
   depends_on = [aws_api_gateway_integration.submit-patch]
 }
 
-resource aws_api_gateway_method submit-post {
-  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  resource_id = aws_api_gateway_resource.submit.id
-  http_method = "POST"
+resource "aws_api_gateway_method" "submit-post" {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_resource.submit.id
+  http_method   = "POST"
   authorization = "AWS_IAM"
 }
 
-resource aws_api_gateway_method_response submit-post {
+resource "aws_api_gateway_method_response" "submit-post" {
   rest_api_id = aws_api_gateway_method.submit-post.rest_api_id
   resource_id = aws_api_gateway_method.submit-post.resource_id
   http_method = aws_api_gateway_method.submit-post.http_method
@@ -139,16 +139,16 @@ resource aws_api_gateway_method_response submit-post {
   }
 }
 
-resource aws_api_gateway_integration submit-post {
-  rest_api_id = aws_api_gateway_method.submit-post.rest_api_id
-  resource_id = aws_api_gateway_method.submit-post.resource_id
-  http_method = aws_api_gateway_method.submit-post.http_method
-  type = "AWS_PROXY"
-  uri = module.lambda-submitDataset.lambda_function_invoke_arn
+resource "aws_api_gateway_integration" "submit-post" {
+  rest_api_id             = aws_api_gateway_method.submit-post.rest_api_id
+  resource_id             = aws_api_gateway_method.submit-post.resource_id
+  http_method             = aws_api_gateway_method.submit-post.http_method
+  type                    = "AWS_PROXY"
+  uri                     = module.lambda-submitDataset.lambda_function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource aws_api_gateway_integration_response submit-post {
+resource "aws_api_gateway_integration_response" "submit-post" {
   rest_api_id = aws_api_gateway_method.submit-post.rest_api_id
   resource_id = aws_api_gateway_method.submit-post.resource_id
   http_method = aws_api_gateway_method.submit-post.http_method
@@ -164,7 +164,7 @@ resource aws_api_gateway_integration_response submit-post {
 #
 # Deployment
 #
-resource aws_api_gateway_deployment BeaconApi {
+resource "aws_api_gateway_deployment" "BeaconApi" {
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
   # Without enabling create_before_destroy, 
   # API Gateway can return errors such as BadRequestException: 
@@ -537,8 +537,8 @@ resource aws_api_gateway_deployment BeaconApi {
   ]))
 }
 
-resource aws_api_gateway_stage BeaconApi {
+resource "aws_api_gateway_stage" "BeaconApi" {
   deployment_id = aws_api_gateway_deployment.BeaconApi.id
-  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  stage_name = "prod"
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  stage_name    = "prod"
 }

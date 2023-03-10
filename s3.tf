@@ -4,7 +4,7 @@
 resource "aws_s3_bucket" "variants-bucket" {
   bucket_prefix = var.variants-bucket-prefix
   force_destroy = true
-  tags = var.common-tags
+  tags          = var.common-tags
 }
 
 resource "aws_s3_bucket_acl" "variants_bucket_acl" {
@@ -16,9 +16,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "variants_bucket_lifecycle" {
   bucket = aws_s3_bucket.variants-bucket.id
 
   rule {
-    id = "clean-old-queries"
+    id     = "clean-old-queries"
     status = "Enabled"
-    
+
     filter {
       prefix = "variant-queries/"
     }
@@ -35,7 +35,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "variants_bucket_lifecycle" {
 resource "aws_s3_bucket" "metadata-bucket" {
   bucket_prefix = var.metadata-bucket-prefix
   force_destroy = true
-  tags = var.common-tags
+  tags          = var.common-tags
 }
 
 resource "aws_s3_bucket_acl" "metadata" {
@@ -47,9 +47,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "metadata_bucket_lifecycle" {
   bucket = aws_s3_bucket.metadata-bucket.id
 
   rule {
-    id = "clean-old-query-results"
+    id     = "clean-old-query-results"
     status = "Enabled"
-    
+
     filter {
       prefix = "query-results/"
     }
@@ -60,9 +60,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "metadata_bucket_lifecycle" {
   }
 
   rule {
-    id = "clean-old-cached-results"
+    id     = "clean-old-cached-results"
     status = "Enabled"
-    
+
     filter {
       prefix = "query-responses/"
     }
@@ -79,7 +79,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "metadata_bucket_lifecycle" {
 resource "aws_s3_bucket" "lambda-layers-bucket" {
   bucket_prefix = var.lambda-layers-bucket-prefix
   force_destroy = true
-  tags = var.common-tags
+  tags          = var.common-tags
 }
 
 resource "aws_s3_bucket_acl" "lambda-layers" {

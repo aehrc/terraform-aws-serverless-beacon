@@ -9,15 +9,15 @@ from smart_open import open as sopen
 from .common import AthenaModel, extract_terms
 
 
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
-COHORTS_TABLE = os.environ['COHORTS_TABLE']
+ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
+ATHENA_COHORTS_TABLE = os.environ['ATHENA_COHORTS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
 
 
 class Cohort(jsons.JsonSerializable, AthenaModel):
-    _table_name = COHORTS_TABLE
+    _table_name = ATHENA_COHORTS_TABLE
     # for saving to database order matter
     _table_columns = [
         'id',
@@ -69,7 +69,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f'{array[0].id}-cohorts'
         
-        with sopen(f's3://{METADATA_BUCKET}/cohorts/{key}', 'wb') as s3file:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/cohorts/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
@@ -86,7 +86,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
                     writer.write(row)
 
         header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{METADATA_BUCKET}/terms-cache/cohorts-{key}', 'wb') as s3file:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/cohorts-{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 

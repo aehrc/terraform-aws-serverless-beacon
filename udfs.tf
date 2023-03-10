@@ -26,17 +26,17 @@ module "lambda-udf" {
   source = "terraform-aws-modules/lambda/aws"
 
   function_name = "udf-test-tf"
-  description = ""
-  handler = "com.amazonaws.athena.connectors.udfs.AthenaUDFHandler"
-  runtime = "java11"
+  description   = ""
+  handler       = "com.amazonaws.athena.connectors.udfs.AthenaUDFHandler"
+  runtime       = "java11"
   architectures = ["x86_64"]
-  memory_size = 3008
-  timeout = 900
+  memory_size   = 3008
+  timeout       = 900
 
-  create_package = false
+  create_package         = false
   local_existing_package = "${path.module}/lambda/udfs/target/athena-udfs-2022.39.1.jar"
-  hash_extra = local.udf_overall_hash
-  depends_on = [null_resource.udf_compile]
+  hash_extra             = local.udf_overall_hash
+  depends_on             = [null_resource.udf_compile]
 
   tags = var.common-tags
 }

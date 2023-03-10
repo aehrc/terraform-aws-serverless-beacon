@@ -10,11 +10,11 @@ from smart_open import open as sopen
 from dynamodb.ontologies import expand_terms
 
 
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
+ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
 ATHENA_WORKGROUP = os.environ['ATHENA_WORKGROUP']
-METADATA_DATABASE = os.environ['METADATA_DATABASE']
-TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
-RELATIONS_TABLE = os.environ['RELATIONS_TABLE']
+ATHENA_METADATA_DATABASE = os.environ['ATHENA_METADATA_DATABASE']
+ATHENA_TERMS_INDEX_TABLE = os.environ['ATHENA_TERMS_INDEX_TABLE']
+ATHENA_RELATIONS_TABLE = os.environ['ATHENA_RELATIONS_TABLE']
 
 athena = boto3.client('athena')
 pattern = re.compile(f'^\\w[^:]+:.+$')
@@ -35,10 +35,10 @@ class AthenaModel:
     '''
     @classmethod
     def get_by_query(cls, query, queue=None, execution_parameters=None):
-        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
         print(query.replace('\n', ' '))
         print(execution_parameters)
-        exec_id = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True, execution_parameters=execution_parameters)
+        exec_id = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, return_id=True, execution_parameters=execution_parameters)
 
         if exec_id:
             if queue is None:
@@ -50,10 +50,10 @@ class AthenaModel:
     
     @classmethod
     def get_existence_by_query(cls, query, queue=None, execution_parameters=None):
-        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
         print(query.replace('\n', ' '))
         print(execution_parameters)
-        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
+        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -69,7 +69,7 @@ class AthenaModel:
         var_list = list()
         case_map = { k.lower(): k for k in cls().__dict__.keys() }
 
-        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
             reader = csv.reader(s3f)
 
             for n, row in enumerate(reader):
@@ -92,10 +92,10 @@ class AthenaModel:
 
     @classmethod
     def get_count_by_query(cls, query, queue=None, execution_parameters=None):
-        query = query.format(database=METADATA_DATABASE, table=cls._table_name)
+        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
         print(query.replace('\n', ' '))
         print(execution_parameters)
-        result = run_custom_query(query, METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
+        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -124,7 +124,7 @@ def extract_terms(array):
             yield from extract_terms(item)
 
 
-def run_custom_query(query, database=METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
+def run_custom_query(query, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
     print(query.replace('\n', ' '))
     print(execution_parameters)
 
@@ -199,7 +199,7 @@ def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', 
         if group_filters:
             for base_filter in group_filters:
                 expanded_terms = expand_terms(base_filter)
-                conditions += [f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
+                conditions += [f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{ATHENA_RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) ''']
         
     if conditions:
         if with_where:

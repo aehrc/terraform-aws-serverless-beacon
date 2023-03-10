@@ -11,8 +11,8 @@ from smart_open import open as sopen
 from .common import AthenaModel, extract_terms
 
 
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
-DATASETS_TABLE = os.environ['DATASETS_TABLE']
+ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
+ATHENA_DATASETS_TABLE = os.environ['ATHENA_DATASETS_TABLE']
 
 s3 = boto3.client('s3')
 athena = boto3.client('athena')
@@ -20,7 +20,7 @@ csv.field_size_limit(sys.maxsize)
 
 
 class Dataset(jsons.JsonSerializable, AthenaModel):
-    _table_name = DATASETS_TABLE
+    _table_name = ATHENA_DATASETS_TABLE
     # for saving to database order matter
     _table_columns = [
         'id',
@@ -80,7 +80,7 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f'{array[0].id}-datasets'
         
-        with sopen(f's3://{METADATA_BUCKET}/datasets/{key}', 'wb') as s3file:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/datasets/{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
@@ -97,7 +97,7 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
                     writer.write(row)
         
         header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{METADATA_BUCKET}/terms-cache/datasets-{key}', 'wb') as s3file:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/datasets-{key}', 'wb') as s3file:
             with pyorc.Writer(
                 s3file, 
                 header, 
@@ -148,7 +148,7 @@ def parse_datasets_with_samples(exec_id):
         var_list = list()
         case_map = { k.lower(): k for k in Dataset().__dict__.keys() }
 
-        with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+        with sopen(f's3://{ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
             reader = csv.reader(s3f)
 
             for n, row in enumerate(reader):

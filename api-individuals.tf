@@ -1,20 +1,20 @@
 #
 # individuals API Function /individuals
 #
-resource aws_api_gateway_resource individuals {
+resource "aws_api_gateway_resource" "individuals" {
   path_part   = "individuals"
   parent_id   = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method individuals {
+resource "aws_api_gateway_method" "individuals" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response individuals {
+resource "aws_api_gateway_method_response" "individuals" {
   rest_api_id = aws_api_gateway_method.individuals.rest_api_id
   resource_id = aws_api_gateway_method.individuals.resource_id
   http_method = aws_api_gateway_method.individuals.http_method
@@ -29,14 +29,14 @@ resource aws_api_gateway_method_response individuals {
   }
 }
 
-resource aws_api_gateway_method individuals_post {
+resource "aws_api_gateway_method" "individuals_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response individuals_post {
+resource "aws_api_gateway_method_response" "individuals_post" {
   rest_api_id = aws_api_gateway_method.individuals_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals_post.resource_id
   http_method = aws_api_gateway_method.individuals_post.http_method
@@ -54,20 +54,20 @@ resource aws_api_gateway_method_response individuals_post {
 #
 # individuals API Function /individuals/filtering_terms
 #
-resource aws_api_gateway_resource individuals-filtering_terms {
+resource "aws_api_gateway_resource" "individuals-filtering_terms" {
   path_part   = "filtering_terms"
   parent_id   = aws_api_gateway_resource.individuals.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method individuals-filtering_terms {
+resource "aws_api_gateway_method" "individuals-filtering_terms" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-filtering_terms.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response individuals-filtering_terms {
+resource "aws_api_gateway_method_response" "individuals-filtering_terms" {
   rest_api_id = aws_api_gateway_method.individuals-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.individuals-filtering_terms.resource_id
   http_method = aws_api_gateway_method.individuals-filtering_terms.http_method
@@ -82,14 +82,14 @@ resource aws_api_gateway_method_response individuals-filtering_terms {
   }
 }
 
-resource aws_api_gateway_method individuals-filtering_terms_post {
+resource "aws_api_gateway_method" "individuals-filtering_terms_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-filtering_terms.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response individuals-filtering_terms_post {
+resource "aws_api_gateway_method_response" "individuals-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.individuals-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.individuals-filtering_terms_post.http_method
@@ -107,13 +107,13 @@ resource aws_api_gateway_method_response individuals-filtering_terms_post {
 # 
 # /individuals/{id}
 # 
-resource aws_api_gateway_resource individuals-id {
+resource "aws_api_gateway_resource" "individuals-id" {
   path_part   = "{id}"
   parent_id   = aws_api_gateway_resource.individuals.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method individuals-id {
+resource "aws_api_gateway_method" "individuals-id" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-id.id
   http_method   = "GET"
@@ -124,7 +124,7 @@ resource aws_api_gateway_method individuals-id {
   }
 }
 
-resource aws_api_gateway_method_response individuals-id {
+resource "aws_api_gateway_method_response" "individuals-id" {
   rest_api_id = aws_api_gateway_method.individuals-id.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id.resource_id
   http_method = aws_api_gateway_method.individuals-id.http_method
@@ -139,7 +139,7 @@ resource aws_api_gateway_method_response individuals-id {
   }
 }
 
-resource aws_api_gateway_method individuals-id_post {
+resource "aws_api_gateway_method" "individuals-id_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-id.id
   http_method   = "POST"
@@ -150,7 +150,7 @@ resource aws_api_gateway_method individuals-id_post {
   }
 }
 
-resource aws_api_gateway_method_response individuals-id_post {
+resource "aws_api_gateway_method_response" "individuals-id_post" {
   rest_api_id = aws_api_gateway_method.individuals-id_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id_post.resource_id
   http_method = aws_api_gateway_method.individuals-id_post.http_method
@@ -168,13 +168,13 @@ resource aws_api_gateway_method_response individuals-id_post {
 # 
 # /individuals/{id}/biosamples
 # 
-resource aws_api_gateway_resource individuals-id-biosamples {
+resource "aws_api_gateway_resource" "individuals-id-biosamples" {
   path_part   = "biosamples"
   parent_id   = aws_api_gateway_resource.individuals-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method individuals-id-biosamples {
+resource "aws_api_gateway_method" "individuals-id-biosamples" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-id-biosamples.id
   http_method   = "GET"
@@ -185,7 +185,7 @@ resource aws_api_gateway_method individuals-id-biosamples {
   }
 }
 
-resource aws_api_gateway_method_response individuals-id-biosamples {
+resource "aws_api_gateway_method_response" "individuals-id-biosamples" {
   rest_api_id = aws_api_gateway_method.individuals-id-biosamples.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-biosamples.resource_id
   http_method = aws_api_gateway_method.individuals-id-biosamples.http_method
@@ -200,7 +200,7 @@ resource aws_api_gateway_method_response individuals-id-biosamples {
   }
 }
 
-resource aws_api_gateway_method individuals-id-biosamples_post {
+resource "aws_api_gateway_method" "individuals-id-biosamples_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-id-biosamples.id
   http_method   = "POST"
@@ -211,7 +211,7 @@ resource aws_api_gateway_method individuals-id-biosamples_post {
   }
 }
 
-resource aws_api_gateway_method_response individuals-id-biosamples_post {
+resource "aws_api_gateway_method_response" "individuals-id-biosamples_post" {
   rest_api_id = aws_api_gateway_method.individuals-id-biosamples_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-biosamples_post.resource_id
   http_method = aws_api_gateway_method.individuals-id-biosamples_post.http_method
@@ -229,13 +229,13 @@ resource aws_api_gateway_method_response individuals-id-biosamples_post {
 # 
 # /individuals/{id}/g_variants
 # 
-resource aws_api_gateway_resource individuals-id-g_variants {
+resource "aws_api_gateway_resource" "individuals-id-g_variants" {
   path_part   = "g_variants"
   parent_id   = aws_api_gateway_resource.individuals-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method individuals-id-g_variants {
+resource "aws_api_gateway_method" "individuals-id-g_variants" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-id-g_variants.id
   http_method   = "GET"
@@ -246,7 +246,7 @@ resource aws_api_gateway_method individuals-id-g_variants {
   }
 }
 
-resource aws_api_gateway_method_response individuals-id-g_variants {
+resource "aws_api_gateway_method_response" "individuals-id-g_variants" {
   rest_api_id = aws_api_gateway_method.individuals-id-g_variants.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-g_variants.resource_id
   http_method = aws_api_gateway_method.individuals-id-g_variants.http_method
@@ -261,7 +261,7 @@ resource aws_api_gateway_method_response individuals-id-g_variants {
   }
 }
 
-resource aws_api_gateway_method individuals-id-g_variants_post {
+resource "aws_api_gateway_method" "individuals-id-g_variants_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.individuals-id-g_variants.id
   http_method   = "POST"
@@ -272,7 +272,7 @@ resource aws_api_gateway_method individuals-id-g_variants_post {
   }
 }
 
-resource aws_api_gateway_method_response individuals-id-g_variants_post {
+resource "aws_api_gateway_method_response" "individuals-id-g_variants_post" {
   rest_api_id = aws_api_gateway_method.individuals-id-g_variants_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-g_variants_post.resource_id
   http_method = aws_api_gateway_method.individuals-id-g_variants_post.http_method
@@ -288,40 +288,40 @@ resource aws_api_gateway_method_response individuals-id-g_variants_post {
 }
 
 # enable CORS
-module cors-individuals {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-individuals" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.individuals.id
 }
 
-module cors-individuals-filtering_terms {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-individuals-filtering_terms" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.individuals-filtering_terms.id
 }
 
-module cors-individuals-id {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-individuals-id" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.individuals-id.id
 }
 
-module cors-individuals-id-biosamples {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-individuals-id-biosamples" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.individuals-id-biosamples.id
 }
 
-module cors-individuals-id-g_variants {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-individuals-id-g_variants" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
@@ -329,7 +329,7 @@ module cors-individuals-id-g_variants {
 }
 
 # wire up lambda individuals
-resource aws_api_gateway_integration individuals {
+resource "aws_api_gateway_integration" "individuals" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals.id
   http_method             = aws_api_gateway_method.individuals.http_method
@@ -338,7 +338,7 @@ resource aws_api_gateway_integration individuals {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response individuals {
+resource "aws_api_gateway_integration_response" "individuals" {
   rest_api_id = aws_api_gateway_method.individuals.rest_api_id
   resource_id = aws_api_gateway_method.individuals.resource_id
   http_method = aws_api_gateway_method.individuals.http_method
@@ -351,7 +351,7 @@ resource aws_api_gateway_integration_response individuals {
   depends_on = [aws_api_gateway_integration.individuals]
 }
 
-resource aws_api_gateway_integration individuals_post {
+resource "aws_api_gateway_integration" "individuals_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals.id
   http_method             = aws_api_gateway_method.individuals_post.http_method
@@ -360,7 +360,7 @@ resource aws_api_gateway_integration individuals_post {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response individuals_post {
+resource "aws_api_gateway_integration_response" "individuals_post" {
   rest_api_id = aws_api_gateway_method.individuals_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals_post.resource_id
   http_method = aws_api_gateway_method.individuals_post.http_method
@@ -374,7 +374,7 @@ resource aws_api_gateway_integration_response individuals_post {
 }
 
 # wire up lambda individuals/filtering_terms
-resource aws_api_gateway_integration individuals-filtering_terms {
+resource "aws_api_gateway_integration" "individuals-filtering_terms" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-filtering_terms.id
   http_method             = aws_api_gateway_method.individuals-filtering_terms.http_method
@@ -383,7 +383,7 @@ resource aws_api_gateway_integration individuals-filtering_terms {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response individuals-filtering_terms {
+resource "aws_api_gateway_integration_response" "individuals-filtering_terms" {
   rest_api_id = aws_api_gateway_method.individuals-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.individuals-filtering_terms.resource_id
   http_method = aws_api_gateway_method.individuals-filtering_terms.http_method
@@ -396,7 +396,7 @@ resource aws_api_gateway_integration_response individuals-filtering_terms {
   depends_on = [aws_api_gateway_integration.individuals-filtering_terms]
 }
 
-resource aws_api_gateway_integration individuals-filtering_terms_post {
+resource "aws_api_gateway_integration" "individuals-filtering_terms_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-filtering_terms.id
   http_method             = aws_api_gateway_method.individuals-filtering_terms_post.http_method
@@ -405,7 +405,7 @@ resource aws_api_gateway_integration individuals-filtering_terms_post {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response individuals-filtering_terms_post {
+resource "aws_api_gateway_integration_response" "individuals-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.individuals-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.individuals-filtering_terms_post.http_method
@@ -419,7 +419,7 @@ resource aws_api_gateway_integration_response individuals-filtering_terms_post {
 }
 
 # wire up lambda individuals/{id}
-resource aws_api_gateway_integration individuals-id {
+resource "aws_api_gateway_integration" "individuals-id" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-id.id
   http_method             = aws_api_gateway_method.individuals-id.http_method
@@ -428,7 +428,7 @@ resource aws_api_gateway_integration individuals-id {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  individuals-id {
+resource "aws_api_gateway_integration_response" "individuals-id" {
   rest_api_id = aws_api_gateway_method.individuals-id.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id.resource_id
   http_method = aws_api_gateway_method.individuals-id.http_method
@@ -441,7 +441,7 @@ resource aws_api_gateway_integration_response  individuals-id {
   depends_on = [aws_api_gateway_integration.individuals-id]
 }
 
-resource aws_api_gateway_integration individuals-id_post {
+resource "aws_api_gateway_integration" "individuals-id_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-id.id
   http_method             = aws_api_gateway_method.individuals-id_post.http_method
@@ -450,7 +450,7 @@ resource aws_api_gateway_integration individuals-id_post {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  individuals-id_post {
+resource "aws_api_gateway_integration_response" "individuals-id_post" {
   rest_api_id = aws_api_gateway_method.individuals-id_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id_post.resource_id
   http_method = aws_api_gateway_method.individuals-id_post.http_method
@@ -464,7 +464,7 @@ resource aws_api_gateway_integration_response  individuals-id_post {
 }
 
 # wire up lambda individuals/{id}/biosamples
-resource aws_api_gateway_integration individuals-id-biosamples {
+resource "aws_api_gateway_integration" "individuals-id-biosamples" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-id-biosamples.id
   http_method             = aws_api_gateway_method.individuals-id-biosamples.http_method
@@ -473,7 +473,7 @@ resource aws_api_gateway_integration individuals-id-biosamples {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  individuals-id-biosamples {
+resource "aws_api_gateway_integration_response" "individuals-id-biosamples" {
   rest_api_id = aws_api_gateway_method.individuals-id-biosamples.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-biosamples.resource_id
   http_method = aws_api_gateway_method.individuals-id-biosamples.http_method
@@ -486,7 +486,7 @@ resource aws_api_gateway_integration_response  individuals-id-biosamples {
   depends_on = [aws_api_gateway_integration.individuals-id-biosamples]
 }
 
-resource aws_api_gateway_integration individuals-id-biosamples_post {
+resource "aws_api_gateway_integration" "individuals-id-biosamples_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-id-biosamples.id
   http_method             = aws_api_gateway_method.individuals-id-biosamples_post.http_method
@@ -495,7 +495,7 @@ resource aws_api_gateway_integration individuals-id-biosamples_post {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  individuals-id-biosamples_post {
+resource "aws_api_gateway_integration_response" "individuals-id-biosamples_post" {
   rest_api_id = aws_api_gateway_method.individuals-id-biosamples_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-biosamples_post.resource_id
   http_method = aws_api_gateway_method.individuals-id-biosamples_post.http_method
@@ -509,7 +509,7 @@ resource aws_api_gateway_integration_response  individuals-id-biosamples_post {
 }
 
 # wire up lambda individuals/{id}/g_variants
-resource aws_api_gateway_integration individuals-id-g_variants {
+resource "aws_api_gateway_integration" "individuals-id-g_variants" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-id-g_variants.id
   http_method             = aws_api_gateway_method.individuals-id-g_variants.http_method
@@ -518,7 +518,7 @@ resource aws_api_gateway_integration individuals-id-g_variants {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  individuals-id-g_variants {
+resource "aws_api_gateway_integration_response" "individuals-id-g_variants" {
   rest_api_id = aws_api_gateway_method.individuals-id-g_variants.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-g_variants.resource_id
   http_method = aws_api_gateway_method.individuals-id-g_variants.http_method
@@ -531,7 +531,7 @@ resource aws_api_gateway_integration_response  individuals-id-g_variants {
   depends_on = [aws_api_gateway_integration.individuals-id-g_variants]
 }
 
-resource aws_api_gateway_integration individuals-id-g_variants_post {
+resource "aws_api_gateway_integration" "individuals-id-g_variants_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.individuals-id-g_variants.id
   http_method             = aws_api_gateway_method.individuals-id-g_variants_post.http_method
@@ -540,7 +540,7 @@ resource aws_api_gateway_integration individuals-id-g_variants_post {
   uri                     = module.lambda-getIndividuals.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  individuals-id-g_variants_post {
+resource "aws_api_gateway_integration_response" "individuals-id-g_variants_post" {
   rest_api_id = aws_api_gateway_method.individuals-id-g_variants_post.rest_api_id
   resource_id = aws_api_gateway_method.individuals-id-g_variants_post.resource_id
   http_method = aws_api_gateway_method.individuals-id-g_variants_post.http_method
@@ -554,42 +554,42 @@ resource aws_api_gateway_integration_response  individuals-id-g_variants_post {
 }
 
 # permit lambda invokation
-resource aws_lambda_permission APIindividuals {
-  statement_id = "AllowAPIindividualsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIindividuals" {
+  statement_id  = "AllowAPIindividualsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getIndividuals.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}"
 }
 
-resource aws_lambda_permission APIindividualsFilteringTerms {
-  statement_id = "AllowAPIindividualsFilteringTermsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIindividualsFilteringTerms" {
+  statement_id  = "AllowAPIindividualsFilteringTermsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getIndividuals.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/${aws_api_gateway_resource.individuals-filtering_terms.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/${aws_api_gateway_resource.individuals-filtering_terms.path_part}"
 }
 
-resource aws_lambda_permission APIindividualsId {
-  statement_id = "AllowAPIindividualsIdInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIindividualsId" {
+  statement_id  = "AllowAPIindividualsIdInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getIndividuals.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/*"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/*"
 }
 
-resource aws_lambda_permission APIindividualsIdbiosamples {
-  statement_id = "AllowAPIindividualsIdbiosamplesInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIindividualsIdbiosamples" {
+  statement_id  = "AllowAPIindividualsIdbiosamplesInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getIndividuals.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/*/${aws_api_gateway_resource.individuals-id-biosamples.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/*/${aws_api_gateway_resource.individuals-id-biosamples.path_part}"
 }
 
-resource aws_lambda_permission APIindividualsIdg_variants {
-  statement_id = "AllowAPIindividualsIdg_variantsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIindividualsIdg_variants" {
+  statement_id  = "AllowAPIindividualsIdg_variantsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getIndividuals.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/*/${aws_api_gateway_resource.individuals-id-g_variants.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.individuals.path_part}/*/${aws_api_gateway_resource.individuals-id-g_variants.path_part}"
 }

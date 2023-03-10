@@ -98,3 +98,6 @@ pip install jsonschema --target layers/python_libraries/python --upgrade
 pip install pynamodb --target layers/python_libraries/python --upgrade
 pip install pyorc --target layers/python_libraries/python --upgrade
 pip install requests --target layers/python_libraries/python --upgrade
+pip install pyhumps --target layers/python_libraries/python --upgrade
+pip install strenum --target layers/python_libraries/python --upgrade
+pip install pydantic --target layers/python_libraries/python --upgrade
