@@ -10,8 +10,6 @@ from athena.common import run_custom_query
 from apiutils.requests import RequestParams
 
 
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
 ATHENA_TERMS_TABLE = os.environ['ATHENA_TERMS_TABLE']
 ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
 
