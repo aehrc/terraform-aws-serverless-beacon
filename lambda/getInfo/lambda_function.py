@@ -13,5 +13,4 @@ def lambda_handler(event, context):
                                           lambda x, y, z: x,
                                           [])
     print('Returning Response: {}'.format(json.dumps(response)))
-
     return bundle_response(200, response)
