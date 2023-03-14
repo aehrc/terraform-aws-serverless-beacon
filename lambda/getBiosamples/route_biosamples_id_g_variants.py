@@ -36,10 +36,12 @@ def datasets_query(conditions, assembly_id, biosample_id):
 
 
 def route(request: RequestParams, biosample_id):
-    conditions, execution_parameters = new_entity_search_conditions(request.query.filters, 'analyses', 'biosamples', id_modifier='A.id', with_where=False)
+    conditions, execution_parameters = new_entity_search_conditions(
+        request.query.filters, 'analyses', 'biosamples', id_modifier='A.id', with_where=False)
     query_params = parse_request_params(request)
     query = datasets_query(conditions, query_params.assembly_id, biosample_id)
-    exec_id = run_custom_query(query, return_id=True, execution_parameters=execution_parameters)
+    exec_id = run_custom_query(
+        query, return_id=True, execution_parameters=execution_parameters)
     datasets, samples = parse_datasets_with_samples(exec_id)
     check_all = request.query.include_resultset_responses in ('HIT', 'ALL')
 
@@ -79,20 +81,24 @@ def route(request: RequestParams, biosample_id):
                     variant_call_counts[idx] += query_response.call_count
                     variant_allele_counts[idx] += query_response.all_alleles_count
                     internal_id = f'{query_params.assembly_id}\t{chrom}\t{pos}\t{ref}\t{alt}'
-                    results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), query_params.assembly_id, ref, alt, int(pos), int(pos) + len(alt), typ))
+                    results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode(
+                    )).decode(), query_params.assembly_id, ref, alt, int(pos), int(pos) + len(alt), typ))
 
     if request.query.requested_granularity == Granularity.BOOLEAN:
-        response = responses.build_beacon_boolean_response({}, 1 if exists else 0, request, {}, DefaultSchemas.GENOMICVARIATIONS)
+        response = responses.build_beacon_boolean_response(
+            {}, 1 if exists else 0, request, {}, DefaultSchemas.GENOMICVARIATIONS)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
-        response = responses.build_beacon_count_response({}, len(variants), request, {}, DefaultSchemas.GENOMICVARIATIONS)
+        response = responses.build_beacon_count_response(
+            {}, len(variants), request, {}, DefaultSchemas.GENOMICVARIATIONS)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
-        response = responses.build_beacon_resultset_response(results, len(variants), request, {}, DefaultSchemas.GENOMICVARIATIONS)
+        response = responses.build_beacon_resultset_response(
+            results, len(variants), request, {}, DefaultSchemas.GENOMICVARIATIONS)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 

@@ -144,7 +144,7 @@ def route(event, query_id):
             exists = exists or query_response.exists
 
             if exists:
-                if requestedGranularity == 'boolean':
+                if request.query.requested_granularity =='boolean':
                     break
                 if check_all:
                     variants.update(query_response.variants)
@@ -157,17 +157,17 @@ def route(event, query_id):
                         internal_id = f'{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}'
                         results.append(entries.get_variant_entry(base64.b64encode(f'{internal_id}'.encode()).decode(), assemblyId, ref, alt, int(pos), int(pos) + len(alt), typ))
 
-        if requestedGranularity == 'boolean':
+        if request.query.requested_granularity =='boolean':
             response = responses.get_boolean_response(exists=exists)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
-        if requestedGranularity == 'count':
+        if request.query.requested_granularity =='count':
             response = responses.get_counts_response(exists=exists, count=len(variants))
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
-        if requestedGranularity in ('record', 'aggregated'):
+        if request.query.requested_granularity == Granularity.RECORD:
             response = responses.get_result_sets_response(
                 setType='genomicVariant', 
                 exists=exists,

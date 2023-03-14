@@ -95,21 +95,21 @@ def route(event):
     dataset_id = event["pathParameters"].get("id", None)
     conditions, execution_parameters = new_entity_search_conditions(filters, 'individuals', 'individuals', with_where=False)
     
-    if requestedGranularity == 'boolean':
+    if request.query.requested_granularity =='boolean':
         query = get_bool_query(dataset_id, conditions)
         exists = Individual.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity == 'count':
+    if request.query.requested_granularity =='count':
         query = get_count_query(dataset_id, conditions)
         count = Individual.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(dataset_id, skip, limit, conditions)
         print(query)
         individuals = Individual.get_by_query(query, execution_parameters=execution_parameters)

@@ -91,21 +91,21 @@ def route(event):
     dataset = event["pathParameters"].get("id", None)
     conditions, execution_parameters = new_entity_search_conditions(filters, 'biosamples', 'biosamples', with_where=False)
     
-    if requestedGranularity == 'boolean':
+    if request.query.requested_granularity =='boolean':
         query = get_bool_query(dataset, conditions)
         exists = Biosample.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity == 'count':
+    if request.query.requested_granularity =='count':
         query = get_count_query(dataset, conditions)
         count = Biosample.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(dataset, skip, limit, conditions)
         biosamples = Biosample.get_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_result_sets_response(

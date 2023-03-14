@@ -164,7 +164,7 @@ def route(event, query_id):
             exists = exists or query_response.exists
             
             if query_response.exists:
-                if requestedGranularity == 'boolean':
+                if request.query.requested_granularity =='boolean':
                     break
                 dataset_samples[query_response.dataset_id].update(sorted(query_response.sample_names))
 
@@ -177,12 +177,12 @@ def route(event, query_id):
         for dataset_id, sample_names in dataset_samples_sorted.items():
 
             if (len(sample_names)) > 0:
-                if requestedGranularity == 'count':
+                if request.query.requested_granularity =='count':
                     # query = get_count_query(dataset_id, sample_names)
                     # queries.append(query)
                     # TODO optimise for duplicate individuals
                     iterated_individuals += len(sample_names)
-                elif requestedGranularity in ('record', 'aggregated'):
+                elif request.query.requested_granularity == Granularity.RECORD:
                     # TODO optimise for duplicate individuals
                     chosen_samples = []
                     
@@ -203,18 +203,18 @@ def route(event, query_id):
         #     VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
         # ])
 
-        if requestedGranularity == 'boolean':
+        if request.query.requested_granularity =='boolean':
             response = responses.get_boolean_response(exists=exists)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
-        if requestedGranularity == 'count':
+        if request.query.requested_granularity =='count':
             count = iterated_individuals
             response = responses.get_counts_response(exists=count > 0, count=count)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
         
-        if requestedGranularity in ('record', 'aggregated'):
+        if request.query.requested_granularity == Granularity.RECORD:
             query = ' UNION '.join(queries)
             individuals = Individual.get_by_query(query) if len(queries) > 0 else []
             response = responses.get_result_sets_response(

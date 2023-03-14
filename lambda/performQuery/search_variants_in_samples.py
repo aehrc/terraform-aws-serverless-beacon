@@ -49,7 +49,7 @@ def perform_query(payload: PerformQueryPayload, is_async):
 
     query_process = subprocess.Popen(args, stdout=subprocess.PIPE, cwd='/tmp', encoding='ascii')
     v_prefix = '<{}'.format(payload.variant_type)
-    # region is of form: "chrom:start-end"
+    ## region is of form: "chrom:start-end"
     first_bp = int(payload.region[payload.region.find(':') + 1: payload.region.find('-')])
     last_bp = int(payload.region[payload.region.find('-') + 1:])
     chrom = payload.region[:payload.region.find(':')]
