@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+import json
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -24,257 +25,6 @@ BEACON_DOCUMENTATION_URL = os.environ['BEACON_DOCUMENTATION_URL']
 BEACON_SERVICE_TYPE_GROUP = os.environ['BEACON_SERVICE_TYPE_GROUP']
 BEACON_SERVICE_TYPE_ARTIFACT = os.environ['BEACON_SERVICE_TYPE_ARTIFACT']
 BEACON_SERVICE_TYPE_VERSION = os.environ['BEACON_SERVICE_TYPE_VERSION']
-
-'''
-This document contains sample responses needed by this API endpoint
-'''
-
-# returning multiple analyses
-result_sets_response = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "info": {
-
-    },
-    "meta": {
-        "beaconId": BEACON_ID,
-        "apiVersion": BEACON_API_VERSION,
-        "returnedSchemas": [
-            {
-                "entityType": "info",
-                "schema": "beacon-map-v2.0.0"
-            }
-        ],
-        "returnedGranularity": "record",
-        "receivedRequestSummary": {
-            "apiVersion": "",  # TODO
-            "requestedSchemas": [],  # TODO
-            "pagination": {
-                "currentPage": "",
-                "limit": "",
-                "nextPage": "",
-                "previousPage": "",
-                "skip": ""
-            },
-            "requestedGranularity": "record"  # TODO
-        }
-    },
-    "response": { # OUTPUT TARGET
-        "resultSets": [
-            {
-                "exists": False,
-                "id": "datasetB",
-                "results": [
-
-                ],
-                "resultsCount": 2,
-                "resultsHandovers": [
-                    {
-                        "handoverType": {
-                            "id": "EFO:0004157",
-                            "label": "BAM format"
-                        },
-                        "note": "This handover link provides access to a summarized VCF.",
-                        "url": "https://api.mygenomeservice.org/Handover/9dcc48d7-fc88-11e8-9110-b0c592dbf8c0"
-                    }
-                ],
-                "setType": "dataset"
-            }
-        ]
-    },
-    "responseSummary": {
-        "exists": True,
-        "numTotalResults": 100
-    }
-}
-
-# returning counts
-counts_response = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "info": {
-
-    },
-    "meta": {
-        "beaconId": BEACON_ID,
-        "apiVersion": BEACON_API_VERSION,
-        "returnedSchemas": [
-            {
-                "entityType": "info",
-                "schema": "beacon-map-v2.0.0"
-            }
-        ],
-        "returnedGranularity": "count",
-        "receivedRequestSummary": {
-            "apiVersion": "",  # TODO
-            "requestedSchemas": [],  # TODO
-            "pagination": {},  # TODO
-            "requestedGranularity": "record"  # TODO
-        }
-    },
-    "responseSummary": {
-        "exists": True,
-        "numTotalResults": 100 # OUTPUT TARGET
-    }
-}
-
-# returning boolean
-boolean_response = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "info": {
-
-    },
-    "meta": {
-        "beaconId": BEACON_ID,
-        "apiVersion": BEACON_API_VERSION,
-        "returnedSchemas": [
-            {
-                "entityType": "info",
-                "schema": "beacon-map-v2.0.0"
-            }
-        ],
-        "returnedGranularity": "boolean",
-        "receivedRequestSummary": {
-            "apiVersion": "",  # TODO
-            "requestedSchemas": [],  # TODO
-            "pagination": {},  # TODO
-            "requestedGranularity": "boolean"  # TODO
-        }
-    },
-    "responseSummary": {
-        "exists": True # OUTPUT TARGET
-    }
-}
-
-
-# Helpers start
-
-
-def get_pagination_object(skip, limit):
-    return {
-        "limit": limit,
-        "skip": skip
-    }
-
-
-def get_cursor_object(currentPage, nextPage, previousPage):
-    return {
-        "currentPage": currentPage,
-        "nextPage": nextPage,
-        "previousPage": previousPage,
-    }
-
-
-def get_result_sets_response(*, 
-        reqAPI=BEACON_API_VERSION, 
-        reqPagination={}, 
-        results=[], 
-        setType=None, 
-        info={},
-        exists=False,
-        total=0):
-
-    return { 
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": info,
-        "meta": {
-            "beaconId": BEACON_ID,
-            "apiVersion": BEACON_API_VERSION,
-            "returnedSchemas": [
-                {
-                    "entityType": "info",
-                    "schema": "beacon-map-v2.0.0"
-                }
-            ],
-            "returnedGranularity": 'record',
-            "receivedRequestSummary": {
-                "apiVersion": reqAPI,
-                "requestedSchemas": [], # TODO define this
-                "pagination": reqPagination,
-                "requestedGranularity": 'record'
-            }
-        },
-        "response": { # OUTPUT TARGET
-            "resultSets": [
-                {
-                    "exists": len(results) > 0,
-                    "id": "redacted",
-                    "results": results,
-                    "resultsCount": len(results),
-                    "resultsHandovers": [], # TODO update when available
-                    "setType": setType
-                }
-            ]
-        },
-        "responseSummary": {
-            "exists": exists,
-            "numTotalResults": total
-        }
-    }
-
-
-def get_counts_response(*, 
-        reqAPI=BEACON_API_VERSION, 
-        reqGranularity='count',
-        exists=False,
-        count=0,
-        info={}):
-    return {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": info,
-        "meta": {
-            "beaconId": BEACON_ID,
-            "apiVersion": BEACON_API_VERSION,
-            "returnedSchemas": [
-                {
-                    "entityType": "info",
-                    "schema": "beacon-map-v2.0.0"
-                }
-            ],
-            "returnedGranularity": "count",
-            "receivedRequestSummary": {
-                "apiVersion": reqAPI,  # TODO
-                "requestedSchemas": [],  # TODO
-                "pagination":{},
-                "requestedGranularity": reqGranularity
-            }
-        },
-        "responseSummary": {
-            "exists": exists,
-            "numTotalResults": count
-        }
-    }
-
-
-def get_boolean_response(*, 
-        reqAPI=BEACON_API_VERSION, 
-        reqGranularity='boolean',
-        exists=False,
-        info={}):
-    return {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": info,
-        "meta": {
-            "beaconId": BEACON_ID,
-            "apiVersion": BEACON_API_VERSION,
-            "returnedSchemas": [
-                {
-                    "entityType": "info",
-                    "schema": "beacon-map-v2.0.0"
-                }
-            ],
-            "returnedGranularity": "boolean",
-            "receivedRequestSummary": {
-                "apiVersion": reqAPI,  # TODO
-                "requestedSchemas": [],  # TODO
-                "pagination": {},  # TODO
-                "requestedGranularity": reqGranularity
-            }
-        },
-        "responseSummary": {
-            "exists": exists
-        }
-    }
-
-# Helpers end
 
 # 
 # Start Thirdparty Code
@@ -351,7 +101,7 @@ def build_beacon_resultset_response(data,
             'resultSets': [build_response(data, num_total_results, qparams, func_response_type)]
         },
         # CHANGE: variables taken from terraform
-        'beaconHandovers': BEACON_HANDOVERS,
+        'beaconHandovers': json.loads(BEACON_HANDOVERS),
     }
     return beacon_response
 
@@ -373,7 +123,7 @@ def build_beacon_count_response(data,
         'responseSummary': build_response_summary(num_total_results > 0, num_total_results),
         # TODO: 'extendedInfo': build_extended_info(),
         # CHANGE: variables taken from terraform
-        'beaconHandovers': BEACON_HANDOVERS,
+        'beaconHandovers': json.loads(BEACON_HANDOVERS),
     }
     return beacon_response
 
@@ -395,7 +145,7 @@ def build_beacon_boolean_response(data,
         'responseSummary': build_response_summary(num_total_results > 0, None),
         # TODO: 'extendedInfo': build_extended_info(),
         # CHANGE: variables taken from terraform
-        'beaconHandovers': BEACON_HANDOVERS,
+        'beaconHandovers': json.loads(BEACON_HANDOVERS),
     }
     return beacon_response
 
@@ -408,7 +158,7 @@ def build_beacon_collection_response(data, num_total_results, qparams: RequestPa
         'meta': build_meta(qparams, entity_schema, Granularity.RECORD),
         'responseSummary': build_response_summary(num_total_results > 0, num_total_results),
         # TODO: 'info': build_extended_info(),
-        'beaconHandovers': BEACON_HANDOVERS,
+        'beaconHandovers': json.loads(BEACON_HANDOVERS),
         'response': {
             'collections': func_response_type(data, qparams)
         }

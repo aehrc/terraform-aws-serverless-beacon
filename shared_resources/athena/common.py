@@ -128,8 +128,9 @@ def extract_terms(array):
 
 
 def run_custom_query(query, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
-    print(query.replace('\n', ' '))
-    print(execution_parameters)
+    query = query.replace("\n", " ")
+    print(f'{query=}')
+    print(f'{execution_parameters=}')
 
     if execution_parameters is None:
         response = athena.start_query_execution(
