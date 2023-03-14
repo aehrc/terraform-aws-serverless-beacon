@@ -1,7 +1,4 @@
 import json
-import os
-from time import time
-from datetime import datetime
 
 from apiutils.responses import build_beacon_info_response
 from apiutils.requests import RequestParams, parse_response
