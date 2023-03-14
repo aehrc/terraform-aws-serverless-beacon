@@ -2,11 +2,11 @@ import json
 import jsons
 
 from apiutils.api_response import bundle_response
+from athena.filter_functions import new_entity_search_conditions
 from apiutils.requests import RequestParams, Granularity
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
 from athena.biosample import Biosample
-from athena.filter_functions import new_entity_search_conditions
 
 
 def get_count_query(conditions=''):

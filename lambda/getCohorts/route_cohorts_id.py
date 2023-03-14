@@ -61,21 +61,21 @@ def route(event):
     
     cohort_id = event["pathParameters"].get("id", None)
     
-    if requestedGranularity == 'boolean':
+    if request.query.requested_granularity =='boolean':
         query = get_record_query(cohort_id)
         exists = Cohort.get_existence_by_query(query)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity == 'count':
+    if request.query.requested_granularity =='count':
         query = get_record_query(cohort_id)
         count = Cohort.get_count_by_query(query)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(cohort_id)
         cohorts = Cohort.get_by_query(query)
         response = responses.get_result_sets_response(

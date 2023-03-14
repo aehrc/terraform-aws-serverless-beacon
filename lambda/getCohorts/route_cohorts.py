@@ -94,21 +94,21 @@ def route(event):
 
     conditions, execution_parameters = new_entity_search_conditions(filters, 'cohorts', 'cohorts')
 
-    if requestedGranularity == 'boolean':
+    if request.query.requested_granularity =='boolean':
         query = get_bool_query(conditions)
         exists = Cohort.get_existence_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_boolean_response(exists=exists)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity == 'count':
+    if request.query.requested_granularity =='count':
         query = get_count_query(conditions)
         count = Cohort.get_count_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_counts_response(exists=count>0, count=count)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(skip, limit, conditions)
         cohorts = Cohort.get_by_query(query, execution_parameters=execution_parameters)
         response = responses.get_result_sets_response(

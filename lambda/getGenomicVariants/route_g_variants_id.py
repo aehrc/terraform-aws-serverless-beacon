@@ -119,7 +119,7 @@ def route(event, query_id):
             exists = exists or query_response.exists
 
             if exists:
-                if requestedGranularity == 'boolean':
+                if request.query.requested_granularity =='boolean':
                     break
                 variants.update(query_response.variants)
 
@@ -140,17 +140,17 @@ def route(event, query_id):
         #     VariantQuery.elapsedTime.set((get_current_time_utc() - query.startTime).total_seconds())
         # ])
 
-        if requestedGranularity == 'boolean':
+        if request.query.requested_granularity =='boolean':
             response = responses.get_boolean_response(exists=exists)
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
-        if requestedGranularity == 'count':
+        if request.query.requested_granularity =='count':
             response = responses.get_counts_response(exists=exists, count=len(variants))
             print('Returning Response: {}'.format(json.dumps(response)))
             return bundle_response(200, response, query_id)
 
-        if requestedGranularity in ('record', 'aggregated'):
+        if request.query.requested_granularity == Granularity.RECORD:
             response = responses.get_result_sets_response(
                 setType='genomicVariant', 
                 exists=exists,
