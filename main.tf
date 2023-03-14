@@ -30,7 +30,7 @@ locals {
     BEACON_ALTERNATIVE_URL     = ""
     BEACON_CREATE_DATETIME     = ""
     BEACON_UPDATE_DATETIME     = ""
-    BEACON_HANDOVERS           = ""
+    BEACON_HANDOVERS           = "[]"
     BEACON_DOCUMENTATION_URL   = ""
     BEACON_DEFAULT_GRANULARITY = "boolean"
     BEACON_URI = "https://beacon.csiro.au"
