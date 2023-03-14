@@ -19,26 +19,20 @@ locals {
   # this makes the code simpler
   # sbeacon info variables
   sbeacon_variables = {
-    # TODO remove these
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID          = var.beacon-id
-    VERSION            = local.version
-    BEACON_NAME        = var.beacon-name
-    ORGANISATION_ID    = var.organisation-id
-    ORGANISATION_NAME  = var.organisation-name
     # Beacon variables
-    BEACON_API_VERSION       = local.api_version
-    BEACON_ID                = var.beacon-id
-    BEACON_NAME              = var.beacon-name
-    BEACON_ENVIRONMENT       = ""
-    BEACON_DESCRIPTION       = ""
-    BEACON_VERSION           = local.version
-    BEACON_WELCOME_URL       = ""
-    BEACON_ALTERNATIVE_URL   = ""
-    BEACON_CREATE_DATETIME   = ""
-    BEACON_UPDATE_DATETIME   = ""
-    BEACON_HANDOVERS         = ""
-    BEACON_DOCUMENTATION_URL = ""
+    BEACON_API_VERSION         = local.api_version
+    BEACON_ID                  = var.beacon-id
+    BEACON_NAME                = var.beacon-name
+    BEACON_ENVIRONMENT         = "dev"
+    BEACON_DESCRIPTION         = ""
+    BEACON_VERSION             = local.version
+    BEACON_WELCOME_URL         = ""
+    BEACON_ALTERNATIVE_URL     = ""
+    BEACON_CREATE_DATETIME     = ""
+    BEACON_UPDATE_DATETIME     = ""
+    BEACON_HANDOVERS           = ""
+    BEACON_DOCUMENTATION_URL   = ""
+    BEACON_DEFAULT_GRANULARITY = "boolean"
     # Organisation variables
     BEACON_ORG_ID          = var.organisation-id
     BEACON_ORG_NAME        = var.organisation-name
