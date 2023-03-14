@@ -3,12 +3,12 @@ import jsons
 import os
 
 from apiutils.api_response import bundle_response
+from athena.filter_functions import new_entity_search_conditions
 from apiutils.requests import RequestParams, Granularity
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
 from athena.analysis import Analysis
 
-from athena.filter_functions import new_entity_search_conditions
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
@@ -64,7 +64,7 @@ def route(request: RequestParams):
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if request.query.requested_granularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(
             request.query.pagination.skip, request.query.pagination.limit, conditions)
         analyses = Analysis.get_by_query(

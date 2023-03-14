@@ -1,5 +1,4 @@
 import json
-import os
 import jsons
 
 from apiutils.api_response import bundle_response
@@ -7,10 +6,6 @@ import apiutils.responses as responses
 from athena.analysis import Analysis
 from apiutils.schemas import DefaultSchemas
 from apiutils.requests import RequestParams, Granularity
-
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
 
 
 def get_record_query(id):
@@ -39,7 +34,7 @@ def route(request: RequestParams, analysis_id):
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if request.query.requested_granularity in Granularity.RECORD:
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(analysis_id)
         analyses = Analysis.get_by_query(query)
         response = responses.build_beacon_resultset_response(

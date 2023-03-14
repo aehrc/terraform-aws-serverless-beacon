@@ -4,18 +4,16 @@ import os
 import base64
 
 from apiutils.api_response import bundle_response
+from athena.common import run_custom_query
+from variantutils.search_variants import perform_variant_search_sync
+from athena.dataset import parse_datasets_with_samples
+from athena.filter_functions import new_entity_search_conditions
 from apiutils.requests import RequestParams, Granularity, parse_request_params
 from apiutils.schemas import DefaultSchemas
-from variantutils.search_variants import perform_variant_search_sync
 import apiutils.responses as responses
 import apiutils.entries as entries
-from athena.common import run_custom_query
-from athena.dataset import parse_datasets_with_samples
-
-from athena.filter_functions import new_entity_search_conditions
 
 
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 ATHENA_METADATA_DATABASE = os.environ['ATHENA_METADATA_DATABASE']
 ATHENA_DATASETS_TABLE = os.environ['ATHENA_DATASETS_TABLE']
 ATHENA_ANALYSES_TABLE = os.environ['ATHENA_ANALYSES_TABLE']
