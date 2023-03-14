@@ -33,7 +33,7 @@ locals {
     BEACON_HANDOVERS           = ""
     BEACON_DOCUMENTATION_URL   = ""
     BEACON_DEFAULT_GRANULARITY = "boolean"
-    BEACON_URI = "beacon.csiro.au"
+    BEACON_URI = "https://beacon.csiro.au"
     # Organisation variables
     BEACON_ORG_ID          = var.organisation-id
     BEACON_ORG_NAME        = var.organisation-name

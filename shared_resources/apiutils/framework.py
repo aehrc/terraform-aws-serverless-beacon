@@ -143,7 +143,7 @@ def get_entry_types():
     }
 
 
-def configuration(request):
+def configuration():
     meta = {
         '$schema': 'https://raw.githubusercontent.com/ga4gh-beacon/beacon-framework-v2/main/responses/sections/beaconInformationalResponseMeta.json',
         'beaconId': BEACON_ID,
@@ -172,7 +172,7 @@ def configuration(request):
     return configuration_json
 
 
-def entry_types(request):
+def entry_types():
     meta = {
         'beaconId': BEACON_ID,
         'apiVersion': BEACON_API_VERSION,
@@ -191,7 +191,7 @@ def entry_types(request):
     return entry_types_json
 
 
-def beacon_map(request):
+def beacon_map():
     meta = {
         '$schema': 'https://raw.githubusercontent.com/ga4gh-beacon/beacon-framework-v2/main/responses/sections/beaconInformationalResponseMeta.json',
         'beaconId': BEACON_ID,
