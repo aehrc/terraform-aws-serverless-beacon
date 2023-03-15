@@ -9,7 +9,7 @@ import jsons
 import boto3
 from smart_open import open as sopen
 
-from apiutils.api_response import bad_request, bundle_response
+from apiutils.responses import build_bad_request, bundle_response
 from utils.chrom_matching import get_vcf_chromosomes
 from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
 from athena.dataset import Dataset
@@ -196,14 +196,14 @@ def submit_dataset(body_dict, method):
     if validation_errors:
         print()
         print(', '.join(validation_errors))
-        return bad_request(errorMessage=', '.join(validation_errors))
+        return bundle_response(400, build_bad_request(code=400, message=', '.join(validation_errors)))
 
     if 'vcfLocations' in body_dict:
         # validate vcf files if skipCheck is not specified 
         if 'skipCheck' not in body_dict:
             errors = check_vcf_locations(body_dict['vcfLocations'])
             if errors:
-                return bad_request(errorMessage=errors)
+                return bundle_response(400, build_bad_request(code=400, message=errors))
         summarise = True
     else:
         summarise = False
@@ -217,7 +217,7 @@ def submit_dataset(body_dict, method):
     #     summarise_dataset(body_dict['datasetId'])
     #     pending.append('Summarising')
 
-    return responses.bundle_response(200, { 'Completed': completed, 'Running': pending })
+    return bundle_response(200, { 'Completed': completed, 'Running': pending })
 
 
 def summarise_dataset(dataset):
@@ -271,7 +271,7 @@ def lambda_handler(event, context):
     event_body = event.get('body')
 
     if not event_body:
-        return bad_request(errorMessage='No body sent with request.')
+        return bundle_response(400, build_bad_request(code=400, message='No body sent with request.'))
     try:
         body_dict = json.loads(event_body)
         
@@ -281,7 +281,7 @@ def lambda_handler(event, context):
             with sopen(body_dict.get('s3Payload'), 'r') as payload:
                 body_dict = json.loads(payload.read())
     except ValueError:
-        return bad_request(errorMessage='Error parsing request body, Expected JSON.')
+        return bundle_response(400, build_bad_request(code=400, message='Error parsing request body, Expected JSON.'))
 
     method = event['httpMethod']
     return submit_dataset(body_dict, method)

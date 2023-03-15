@@ -2,10 +2,10 @@ import json
 import os
 import csv
 
-
-from athena.common import run_custom_query
-from apiutils.responses import build_filtering_terms_response
 from smart_open import open as sopen
+
+from apiutils.responses import build_filtering_terms_response, bundle_response
+from athena.common import run_custom_query
 from apiutils.requests import RequestParams
 
 
@@ -69,8 +69,6 @@ def route(request: RequestParams, cohort_id):
         LIMIT {request.query.pagination.limit};
     '''
 
-    print('Performing query \n', query)
-
     exec_id = run_custom_query(query, return_id=True)
     filteringTerms = []
 
@@ -94,4 +92,4 @@ def route(request: RequestParams, cohort_id):
     )
 
     print('Returning Response: {}'.format(json.dumps(response)))
-    return responses.bundle_response(200, response)
+    return bundle_response(200, response)

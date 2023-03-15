@@ -5,7 +5,7 @@ import csv
 from smart_open import open as sopen
 
 
-from apiutils.responses import build_filtering_terms_response
+from apiutils.responses import build_filtering_terms_response, bundle_response
 from athena.common import run_custom_query
 from apiutils.requests import RequestParams
 
@@ -47,4 +47,4 @@ def route(request: RequestParams):
     )
 
     print('Returning Response: {}'.format(json.dumps(response)))
-    return responses.bundle_response(200, response)
+    return bundle_response(200, response)
