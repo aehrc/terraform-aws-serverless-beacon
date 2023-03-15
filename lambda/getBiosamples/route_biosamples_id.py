@@ -23,7 +23,7 @@ def get_record_query(id):
     return query
 
 
-def route(request: RequestParams, biosample_id):    
+def route(request: RequestParams, biosample_id):
     if request.query.requested_granularity == Granularity.BOOLEAN:
         query = get_record_query(biosample_id)
         count = 1 if Biosample.get_existence_by_query(query) else 0
@@ -34,7 +34,7 @@ def route(request: RequestParams, biosample_id):
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_record_query(biosample_id)
-        count = Biosample.get_count_by_query(query)
+        count = 1 if Biosample.get_existence_by_query(query) else 0
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.BIOSAMPLES)
         print('Returning Response: {}'.format(json.dumps(response)))

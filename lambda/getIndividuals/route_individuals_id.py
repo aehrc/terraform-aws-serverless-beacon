@@ -29,7 +29,7 @@ def route(request: RequestParams, individual_id):
 
     if request.query.requested_granularity == 'count':
         query = get_record_query(individual_id)
-        count = Individual.get_count_by_query(query)
+        count = 1 if Individual.get_existence_by_query(query) else 0
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.INDIVIDUALS)
         print('Returning Response: {}'.format(json.dumps(response)))

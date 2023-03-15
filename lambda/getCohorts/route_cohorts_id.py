@@ -49,7 +49,7 @@ def route(request: RequestParams, cohort_id):
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_record_query(cohort_id)
-        count = Cohort.get_count_by_query(query)
+        count = 1 if Cohort.get_existence_by_query(query) else 0
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.COHORTS)
         print('Returning Response: {}'.format(json.dumps(response)))
