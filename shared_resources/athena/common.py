@@ -34,13 +34,11 @@ class AthenaModel:
     repeated everywhere.
     '''
     @classmethod
-    def get_by_query(cls, query, queue=None, execution_parameters=None):
+    def get_by_query(cls, query, /, *, queue=None, execution_parameters=None):
         query = query.format(
             database=ATHENA_METADATA_DATABASE, table=cls._table_name)
-        print(query.replace('\n', ' '))
-        print(execution_parameters)
-        exec_id = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP,
-                                   queue=None, return_id=True, execution_parameters=execution_parameters)
+        exec_id = run_custom_query(
+            query, queue=None, return_id=True, execution_parameters=execution_parameters)
 
         if exec_id:
             if queue is None:
@@ -50,13 +48,11 @@ class AthenaModel:
         return []
 
     @classmethod
-    def get_existence_by_query(cls, query, queue=None, execution_parameters=None):
+    def get_existence_by_query(cls, query, /, *, queue=None, execution_parameters=None):
         query = query.format(
             database=ATHENA_METADATA_DATABASE, table=cls._table_name)
-        print(query.replace('\n', ' '))
-        print(execution_parameters)
-        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP,
-                                  queue=None, execution_parameters=execution_parameters)
+        result = run_custom_query(
+            query, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -92,13 +88,11 @@ class AthenaModel:
         return instances
 
     @classmethod
-    def get_count_by_query(cls, query, queue=None, execution_parameters=None):
+    def get_count_by_query(cls, query, /, *, queue=None, execution_parameters=None):
         query = query.format(
             database=ATHENA_METADATA_DATABASE, table=cls._table_name)
-        print(query.replace('\n', ' '))
-        print(execution_parameters)
-        result = run_custom_query(query, ATHENA_METADATA_DATABASE, ATHENA_WORKGROUP,
-                                  queue=None, execution_parameters=execution_parameters)
+        result = run_custom_query(
+            query, queue=None, execution_parameters=execution_parameters)
 
         if not len(result) > 0:
             return []
@@ -127,7 +121,7 @@ def extract_terms(array):
             yield from extract_terms(item)
 
 
-def run_custom_query(query, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
+def run_custom_query(query, /, *, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_WORKGROUP, queue=None, return_id=False, execution_parameters=None):
     query = query.replace("\n", " ")
     print(f'{query=}')
     print(f'{execution_parameters=}')
@@ -184,7 +178,7 @@ def run_custom_query(query, database=ATHENA_METADATA_DATABASE, workgroup=ATHENA_
                     return data['ResultSet']['Rows']
 
 
-def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', with_where=True):
+def entity_search_conditions(filters, id_type, default_scope, /, *, id_modifier='id', with_where=True):
     types = {'individuals', 'biosamples', 'runs',
              'analyses', 'datasets', 'cohorts'}
     type_relations_table_id = {

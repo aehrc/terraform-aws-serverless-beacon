@@ -10,9 +10,7 @@ from apiutils.api_response import bundle_response
 from variantutils.search_variants import perform_variant_search_sync
 from apiutils.requests import RequestParams, Granularity, parse_request_params
 import apiutils.responses as responses
-import apiutils.entries as entries
 from apiutils.schemas import DefaultSchemas
-import apiutils.responses as responses
 import apiutils.entries as entries
 
 
