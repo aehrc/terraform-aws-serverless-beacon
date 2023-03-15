@@ -1,16 +1,12 @@
 import json
-import jsons
 
-import boto3
+import jsons
 
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
 from athena.biosample import Biosample
 from apiutils.schemas import DefaultSchemas
 from apiutils.requests import RequestParams, Granularity
-
-
-s3 = boto3.client('s3')
 
 
 def get_record_query(id):

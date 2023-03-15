@@ -8,7 +8,7 @@ from athena.common import run_custom_query
 from variantutils.search_variants import perform_variant_search_sync
 from athena.dataset import parse_datasets_with_samples
 from athena.filter_functions import new_entity_search_conditions
-from apiutils.requests import RequestParams, Granularity, parse_request_params
+from apiutils.requests import RequestParams, Granularity, IncludeResultsetResponses, parse_request_params
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
 import apiutils.entries as entries
@@ -42,7 +42,8 @@ def route(request: RequestParams, analysis_id):
     exec_id = run_custom_query(
         query, return_id=True, execution_parameters=execution_parameters)
     datasets, samples = parse_datasets_with_samples(exec_id)
-    check_all = request.query.include_resultset_responses in ('HIT', 'ALL')
+    check_all = check_all = request.query.include_resultset_responses in (
+        IncludeResultsetResponses.HIT, IncludeResultsetResponses.ALL)
 
     variants = set()
     results = list()

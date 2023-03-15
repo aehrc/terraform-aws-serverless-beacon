@@ -2,7 +2,6 @@ import json
 import os
 
 import jsons
-import boto3
 
 from apiutils.api_response import bundle_response
 import apiutils.responses as responses
@@ -12,8 +11,6 @@ from apiutils.requests import RequestParams, Granularity
 
 
 ATHENA_INDIVIDUALS_TABLE = os.environ['ATHENA_INDIVIDUALS_TABLE']
-
-s3 = boto3.client('s3')
 
 
 def get_record_query(id):
@@ -58,7 +55,7 @@ def route(request: RequestParams, cohort_id):
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(cohort_id)
         cohorts = Cohort.get_by_query(query)
-        response = responses.build_beacon_resultset_response(
-            jsons.dump(cohorts, strip_privates=True), len(cohorts), request, {}, DefaultSchemas.COHORTS)
+        response = responses.build_beacon_collection_response(
+            jsons.dump(cohorts, strip_privates=True), len(cohorts), request, lambda x, y: x, DefaultSchemas.COHORTS)
         print('Returning Response: {}'.format(json.dumps(response)))
         return bundle_response(200, response)
