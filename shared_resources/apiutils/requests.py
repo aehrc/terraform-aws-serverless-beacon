@@ -1,3 +1,5 @@
+import json
+
 # 
 # Start Thirdparty Code
 # Code from https://github.com/EGA-archive/beacon2-ri-api
@@ -13,6 +15,7 @@ from humps import camelize
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
+BEACON_DEFAULT_GRANULARITY = os.environ['BEACON_DEFAULT_GRANULARITY']
 
 
 class CamelModel(BaseModel):
@@ -85,7 +88,7 @@ class RequestQuery(CamelModel):
     request_parameters: dict = {}
     test_mode: bool = False
     # CHANGE: read constant from Terraform
-    requested_granularity: Granularity = Granularity(conf.default_beacon_granularity)
+    requested_granularity: Granularity = Granularity(BEACON_DEFAULT_GRANULARITY)
 
 
 class RequestParams(CamelModel):
@@ -94,19 +97,18 @@ class RequestParams(CamelModel):
 
     # TODO update to parse body of API gateway POST and GET requests
     # CHANGE: parse API gateway request
-    def from_request(self, request: Request) -> Self:
-        if request.method != "POST" or not request.has_body or not request.can_read_body:
-            for k, v in request.query.items():
-                if k == "requestedSchema":
-                    self.meta.requested_schemas = [v]
-                elif k == "skip":
-                    self.query.pagination.skip = int(v)
-                elif k == "limit":
-                    self.query.pagination.limit = int(v)
-                elif k == "includeResultsetResponses":
-                    self.query.include_resultset_responses = IncludeResultsetResponses(v)
-                else:
-                    self.query.request_parameters[k] = v
+    def from_request(self, query_params) -> Self:
+        for k, v in query_params.items():
+            if k == "requestedSchema":
+                self.meta.requested_schemas = [v]
+            elif k == "skip":
+                self.query.pagination.skip = int(v)
+            elif k == "limit":
+                self.query.pagination.limit = int(v)
+            elif k == "includeResultsetResponses":
+                self.query.include_resultset_responses = IncludeResultsetResponses(v)
+            else:
+                self.query.request_parameters[k] = v
         return self
 
     def summary(self):
@@ -124,3 +126,17 @@ class RequestParams(CamelModel):
 # 
 # End Thirdparty Code
 # 
+
+
+def parse_response(event):
+    body_dict = dict()
+    if event['httpMethod'] == 'POST':
+        try:
+            body_dict = json.loads(event.get('body') or '{}')
+        except ValueError:
+            pass
+            # return bad_request(errorMessage='Error parsing request body, Expected JSON.')
+    params = event.get('queryStringParameters', None) or dict()
+    request_params = RequestParams(**body_dict).from_request(params)
+    
+    return request_params

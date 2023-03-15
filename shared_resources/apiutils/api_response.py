@@ -7,7 +7,6 @@ from smart_open import open as sopen
 HEADERS = {"Access-Control-Allow-Origin": "*"}
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
 BEACON_ID = os.environ['BEACON_ID']
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
 
 
 def bad_request(*, apiVersion=None, errorMessage=None, filters=[], pagination={}, requestParameters=None, requestedSchemas=None):
@@ -55,6 +54,6 @@ def missing_parameter(*parameters):
     return "{} must be specified".format(required)
 
 
-def fetch_from_cache(query_id):
-    with sopen(f's3://{METADATA_BUCKET}/query-responses/{query_id}.json') as s3f:
-        return json.load(s3f)
+# def fetch_from_cache(query_id):
+#     with sopen(f's3://{METADATA_BUCKET}/query-responses/{query_id}.json') as s3f:
+#         return json.load(s3f)
