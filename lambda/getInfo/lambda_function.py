@@ -19,8 +19,8 @@ def get_info():
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "info": {},
         "meta": {
-            "apiVersion": "string",
-            "beaconId": "string",
+            "apiVersion": BEACON_API_VERSION,
+            "beaconId": BEACON_ID,
             "returnedSchemas": [
                 {
                     "entityType": "info",
