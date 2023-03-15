@@ -43,7 +43,7 @@ def get_terms(terms, skip, limit):
         }
     }
 
-    return bundle_response(200, response)
+    return responses.bundle_response(200, response)
 
 
 def lambda_handler(event, context):

@@ -1,7 +1,7 @@
 import json
 import jsons
 
-from apiutils.api_response import bundle_response
+
 import apiutils.responses as responses
 from athena.analysis import Analysis
 from apiutils.schemas import DefaultSchemas
@@ -24,7 +24,7 @@ def route(request: RequestParams, analysis_id):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.ANALYSES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_record_query(analysis_id)
@@ -32,7 +32,7 @@ def route(request: RequestParams, analysis_id):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.ANALYSES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(analysis_id)
@@ -40,4 +40,4 @@ def route(request: RequestParams, analysis_id):
         response = responses.build_beacon_resultset_response(
             jsons.dump(analyses, strip_privates=True), len(analyses), request, {}, DefaultSchemas.ANALYSES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)

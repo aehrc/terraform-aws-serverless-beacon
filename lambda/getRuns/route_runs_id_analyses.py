@@ -3,8 +3,8 @@ import jsons
 
 import boto3
 
-from apiutils.api_response import bundle_response
-from athena.filter_functions import new_entity_search_conditions
+
+from athena.filter_functions import entity_search_conditions
 import apiutils.responses as responses
 from athena.analysis import Analysis
 from apiutils.schemas import DefaultSchemas
@@ -49,7 +49,7 @@ def get_record_query(id, skip, limit, conditions=''):
 
 
 def route(request: RequestParams, run_id):
-    conditions, execution_parameters = new_entity_search_conditions(
+    conditions, execution_parameters = entity_search_conditions(
         request.query.filters, 'runs', 'analyses', with_where=False)
 
     if request.query.requested_granularity == Granularity.BOOLEAN:
@@ -59,7 +59,7 @@ def route(request: RequestParams, run_id):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.ANALYSES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_count_query(run_id, conditions)
@@ -68,7 +68,7 @@ def route(request: RequestParams, run_id):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.ANALYSES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(
@@ -78,4 +78,4 @@ def route(request: RequestParams, run_id):
         response = responses.build_beacon_resultset_response(
             jsons.dump(analyses, strip_privates=True), len(analyses), request, {}, DefaultSchemas.ANALYSES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)

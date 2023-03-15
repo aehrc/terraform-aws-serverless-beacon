@@ -2,7 +2,7 @@ import json
 
 from apiutils.responses import build_beacon_info_response
 from apiutils.requests import RequestParams, parse_request
-from apiutils.api_response import bundle_response
+
 
 
 def lambda_handler(event, context):
@@ -13,4 +13,4 @@ def lambda_handler(event, context):
                                           lambda x, y, z: x,
                                           [])
     print('Returning Response: {}'.format(json.dumps(response)))
-    return bundle_response(200, response)
+    return responses.bundle_response(200, response)

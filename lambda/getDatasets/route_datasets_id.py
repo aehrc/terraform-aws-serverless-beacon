@@ -3,7 +3,7 @@ import os
 
 import jsons
 
-from apiutils.api_response import bundle_response
+
 import apiutils.responses as responses
 from athena.dataset import Dataset
 from apiutils.schemas import DefaultSchemas
@@ -31,7 +31,7 @@ def route(request: RequestParams, dataset_id):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.DATASETS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_record_query(dataset_id)
@@ -39,7 +39,7 @@ def route(request: RequestParams, dataset_id):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.DATASETS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(dataset_id)
@@ -47,4 +47,4 @@ def route(request: RequestParams, dataset_id):
         response = responses.build_beacon_collection_response(
             jsons.dump(datasets, strip_privates=True), len(datasets), request, lambda x, y: x, DefaultSchemas.DATASETS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)

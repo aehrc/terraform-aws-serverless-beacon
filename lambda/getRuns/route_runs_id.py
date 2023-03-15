@@ -3,7 +3,7 @@ import jsons
 
 import boto3
 
-from apiutils.api_response import bundle_response
+
 import apiutils.responses as responses
 from athena.run import Run
 from apiutils.schemas import DefaultSchemas
@@ -30,7 +30,7 @@ def route(request: RequestParams, run_id):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.RUNS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == 'count':
         query = get_record_query(run_id)
@@ -38,7 +38,7 @@ def route(request: RequestParams, run_id):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.RUNS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(run_id)
@@ -46,4 +46,4 @@ def route(request: RequestParams, run_id):
         response = responses.build_beacon_resultset_response(
             jsons.dump(runs, strip_privates=True), len(runs), request, {}, DefaultSchemas.RUNS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)

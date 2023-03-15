@@ -2,8 +2,8 @@ import json
 
 import jsons
 
-from apiutils.api_response import bundle_response
-from athena.filter_functions import new_entity_search_conditions
+
+from athena.filter_functions import entity_search_conditions
 import apiutils.responses as responses
 from athena.dataset import Dataset
 from apiutils.requests import RequestParams, Granularity
@@ -40,7 +40,7 @@ def get_record_query(skip, limit, conditions=[]):
 
 
 def route(request: RequestParams):
-    conditions, execution_parameters = new_entity_search_conditions(
+    conditions, execution_parameters = entity_search_conditions(
         request.query.filters, 'datasets', 'datasets')
 
     if request.query.requested_granularity == 'boolean':
@@ -50,7 +50,7 @@ def route(request: RequestParams):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.DATASETS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == 'count':
         query = get_count_query(conditions)
@@ -59,7 +59,7 @@ def route(request: RequestParams):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.DATASETS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(
@@ -69,7 +69,7 @@ def route(request: RequestParams):
         response = responses.build_beacon_collection_response(
             jsons.dump(datasets, strip_privates=True), len(datasets), request, lambda x, y: x, DefaultSchemas.DATASETS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
 
 if __name__ == '__main__':

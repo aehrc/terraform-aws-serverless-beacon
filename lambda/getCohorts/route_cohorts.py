@@ -3,8 +3,8 @@ import json
 
 import jsons
 
-from apiutils.api_response import bundle_response
-from athena.filter_functions import new_entity_search_conditions
+
+from athena.filter_functions import entity_search_conditions
 from apiutils.requests import RequestParams, Granularity
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
@@ -53,7 +53,7 @@ def get_record_query(skip, limit, conditions=[]):
 
 
 def route(request: RequestParams):
-    conditions, execution_parameters = new_entity_search_conditions(
+    conditions, execution_parameters = entity_search_conditions(
         request.query.filters, 'cohorts', 'cohorts')
 
     if request.query.requested_granularity == Granularity.BOOLEAN:
@@ -63,7 +63,7 @@ def route(request: RequestParams):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.COHORTS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_count_query(conditions)
@@ -72,7 +72,7 @@ def route(request: RequestParams):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.COHORTS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(
@@ -82,7 +82,7 @@ def route(request: RequestParams):
         response = responses.build_beacon_collection_response(
             jsons.dump(cohorts, strip_privates=True), len(cohorts), request, lambda x, y: x, DefaultSchemas.COHORTS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
 
 if __name__ == '__main__':

@@ -70,7 +70,7 @@ def _get_term_descendants(term):
     return terms
 
 
-def new_entity_search_conditions(filters, id_type, default_scope, id_modifier='id', with_where=True):
+def entity_search_conditions(filters, id_type, default_scope, id_modifier='id', with_where=True):
     assert id_type in id_type_string_to_class.keys(), "id_type must be recognised"
     id_class = id_type_string_to_class[id_type]
 

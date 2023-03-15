@@ -217,7 +217,7 @@ def submit_dataset(body_dict, method):
     #     summarise_dataset(body_dict['datasetId'])
     #     pending.append('Summarising')
 
-    return bundle_response(200, { 'Completed': completed, 'Running': pending })
+    return responses.bundle_response(200, { 'Completed': completed, 'Running': pending })
 
 
 def summarise_dataset(dataset):

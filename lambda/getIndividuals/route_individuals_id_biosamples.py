@@ -1,8 +1,8 @@
 import json
 import jsons
 
-from apiutils.api_response import bundle_response
-from athena.filter_functions import new_entity_search_conditions
+
+from athena.filter_functions import entity_search_conditions
 import apiutils.responses as responses
 from athena.biosample import Biosample
 from apiutils.schemas import DefaultSchemas
@@ -44,7 +44,7 @@ def get_record_query(id, skip, limit, conditions=''):
 
 
 def route(request: RequestParams, individual_id):
-    conditions, execution_parameters = new_entity_search_conditions(
+    conditions, execution_parameters = entity_search_conditions(
         request.query.filters, 'biosamples', 'individuals', with_where=False)
 
     if request.query.requested_granularity == 'boolean':
@@ -54,7 +54,7 @@ def route(request: RequestParams, individual_id):
         response = responses.build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.BIOSAMPLES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == 'count':
         query = get_count_query(individual_id, conditions=conditions)
@@ -63,7 +63,7 @@ def route(request: RequestParams, individual_id):
         response = responses.build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.BIOSAMPLES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(individual_id, request.query.pagination.skip,
@@ -73,4 +73,4 @@ def route(request: RequestParams, individual_id):
         response = responses.build_beacon_resultset_response(
             jsons.dump(biosamples, strip_privates=True), len(biosamples), request, {}, DefaultSchemas.BIOSAMPLES)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)

@@ -1,6 +1,9 @@
 import os
-from typing import Optional
 import json
+from typing import Optional
+
+from .requests import RequestParams, Granularity
+from .schemas import DefaultSchemas
 
 
 BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
@@ -25,23 +28,22 @@ BEACON_DOCUMENTATION_URL = os.environ['BEACON_DOCUMENTATION_URL']
 BEACON_SERVICE_TYPE_GROUP = os.environ['BEACON_SERVICE_TYPE_GROUP']
 BEACON_SERVICE_TYPE_ARTIFACT = os.environ['BEACON_SERVICE_TYPE_ARTIFACT']
 BEACON_SERVICE_TYPE_VERSION = os.environ['BEACON_SERVICE_TYPE_VERSION']
+HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 # 
-# Start Thirdparty Code
+# Start Thirdparty Code as annotated
 # Code from https://github.com/EGA-archive/beacon2-ri-api
 # Apache License 2.0
+# CHANGE: variables taken from terraform
 # 
 
-from .requests import RequestParams, Granularity
-from .schemas import DefaultSchemas
 
-
+# Thirdparty code
 def build_meta(qparams: RequestParams, entity_schema: Optional[DefaultSchemas], returned_granularity: Granularity):
     """"Builds the `meta` part of the response
 
     We assume that receivedRequest is the evaluated request (qparams) sent by the user.
     """
-    # CHANGE: variables taken from terraform
     meta = {
         'beaconId': BEACON_ID,
         'apiVersion': BEACON_API_VERSION,
@@ -52,6 +54,7 @@ def build_meta(qparams: RequestParams, entity_schema: Optional[DefaultSchemas], 
     return meta
 
 
+# Thirdparty code
 def build_response_summary(exists, num_total_results):
     if num_total_results is None:
         return {
@@ -64,6 +67,7 @@ def build_response_summary(exists, num_total_results):
         }
 
 
+# Thirdparty code
 def build_response(data, num_total_results, qparams, func):
     """"Fills the `response` part with the correct format in `results`"""
 
@@ -83,7 +87,7 @@ def build_response(data, num_total_results, qparams, func):
 ########################################
 # Resultset Response
 ########################################
-
+# Thirdparty code
 def build_beacon_resultset_response(data,
                                     num_total_results,
                                     qparams: RequestParams,
@@ -105,10 +109,11 @@ def build_beacon_resultset_response(data,
     }
     return beacon_response
 
+
 ########################################
 # Count Response
 ########################################
-
+# Thirdparty code
 def build_beacon_count_response(data,
                                     num_total_results,
                                     qparams: RequestParams,
@@ -127,10 +132,11 @@ def build_beacon_count_response(data,
     }
     return beacon_response
 
+
 ########################################
 # Boolean Response
 ########################################
-
+# Thirdparty code
 def build_beacon_boolean_response(data,
                                     num_total_results,
                                     qparams: RequestParams,
@@ -149,10 +155,11 @@ def build_beacon_boolean_response(data,
     }
     return beacon_response
 
+
 ########################################
 # Collection Response
 ########################################
-
+# Thirdparty code
 def build_beacon_collection_response(data, num_total_results, qparams: RequestParams, func_response_type, entity_schema: DefaultSchemas):
     beacon_response = {
         'meta': build_meta(qparams, entity_schema, Granularity.RECORD),
@@ -165,10 +172,11 @@ def build_beacon_collection_response(data, num_total_results, qparams: RequestPa
     }
     return beacon_response
 
+
 ########################################
 # Info Response
 ########################################
-
+# Thirdparty code
 def build_beacon_info_response(data, qparams, func_response_type, authorized_datasets=None):
     if authorized_datasets is None:
         authorized_datasets = []
@@ -202,10 +210,11 @@ def build_beacon_info_response(data, qparams, func_response_type, authorized_dat
 
     return beacon_response
 
+
 ########################################
 # Service Info Response
 ########################################
-
+# Thirdparty code
 def build_beacon_service_info_response():
     # CHANGE: variables taken from terraform
     beacon_response = {
@@ -231,10 +240,11 @@ def build_beacon_service_info_response():
 
     return beacon_response
 
+
 ########################################
 # Filtering terms Response
 ########################################
-
+# Thirdparty code
 def build_filtering_terms_response(filtering_terms, resources, qparams: RequestParams):
     return {
         "meta": build_meta(qparams, None, Granularity.RECORD),
@@ -244,6 +254,20 @@ def build_filtering_terms_response(filtering_terms, resources, qparams: RequestP
         }
     }
 
-# 
-# End Thirdparty Code
-#
+
+def build_bad_request(*, code=None, message=None, qparams):
+    return {
+        "error": {
+            "errorCode": code,
+            "errorMessage": f"{message}"
+        },
+        "meta": build_meta(qparams, None, [])
+    }
+
+
+def bundle_response(status_code, body):
+    return {
+        'statusCode': status_code,
+        'headers': HEADERS,
+        'body': json.dumps(body),
+    }

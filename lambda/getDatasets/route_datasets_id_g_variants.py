@@ -3,11 +3,11 @@ import json
 import os
 import base64
 
-from apiutils.api_response import bundle_response
+
 from variantutils.search_variants import perform_variant_search_sync
-from athena.filter_functions import new_entity_search_conditions
+from athena.filter_functions import entity_search_conditions
 from athena.dataset import Dataset, parse_datasets_with_samples
-from apiutils.requests import RequestParams, IncludeResultsetResponses, Granularity, parse_request_params
+from apiutils.requests import RequestParams, IncludeResultsetResponses, Granularity
 from athena.common import run_custom_query
 import apiutils.responses as responses
 import apiutils.entries as entries
@@ -45,9 +45,9 @@ def datasets_query_fast(assembly_id, dataset_id):
 
 
 def route(request: RequestParams, dataset_id):
-    conditions, execution_parameters = new_entity_search_conditions(
+    conditions, execution_parameters = entity_search_conditions(
         request.query.filters, 'analyses', 'datasets', id_modifier='A.id')
-    query_params = parse_request_params(request)
+    query_params = request.query.request_parameters
     check_all = request.query.include_resultset_responses in (
         IncludeResultsetResponses.HIT, IncludeResultsetResponses.ALL)
 
@@ -108,19 +108,19 @@ def route(request: RequestParams, dataset_id):
         response = responses.build_beacon_boolean_response(
             {}, 1 if exists else 0, request, {}, DefaultSchemas.GENOMICVARIATIONS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
         response = responses.build_beacon_count_response(
             {}, len(variants), request, {}, DefaultSchemas.GENOMICVARIATIONS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         response = responses.build_beacon_resultset_response(
             results, len(variants), request, {}, DefaultSchemas.GENOMICVARIATIONS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
 
 if __name__ == '__main__':
