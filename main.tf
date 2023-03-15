@@ -7,8 +7,6 @@ provider "aws" {
 #                 https://stackoverflow.com/questions/66522916/aws-lambda-memory-vs-cpu-configuration
 #
 locals {
-  api_version        = "v2.0.0"
-  version            = "v0.0.1"
   build_cpp_path     = abspath("${path.module}/build_cpp.sh")
   shared_source_path = abspath("${path.module}/lambda/shared/source")
   gzip_source_path   = abspath("${path.module}/lambda/shared/gzip")
@@ -20,32 +18,32 @@ locals {
   # sbeacon info variables
   sbeacon_variables = {
     # Beacon variables
-    BEACON_API_VERSION         = local.api_version
+    BEACON_API_VERSION         = var.beacon-api-version
     BEACON_ID                  = var.beacon-id
     BEACON_NAME                = var.beacon-name
-    BEACON_ENVIRONMENT         = "dev"
-    BEACON_DESCRIPTION         = ""
-    BEACON_VERSION             = local.version
-    BEACON_WELCOME_URL         = ""
-    BEACON_ALTERNATIVE_URL     = ""
-    BEACON_CREATE_DATETIME     = ""
-    BEACON_UPDATE_DATETIME     = ""
-    BEACON_HANDOVERS           = "[]"
-    BEACON_DOCUMENTATION_URL   = ""
-    BEACON_DEFAULT_GRANULARITY = "boolean"
-    BEACON_URI = "https://beacon.csiro.au"
+    BEACON_ENVIRONMENT         = var.beacon-environment
+    BEACON_DESCRIPTION         = var.beacon-description
+    BEACON_VERSION             = var.beacon-version
+    BEACON_WELCOME_URL         = var.beacon-welcome-url
+    BEACON_ALTERNATIVE_URL     = var.beacon-alternative-url
+    BEACON_CREATE_DATETIME     = var.beacon-create-datetime
+    BEACON_UPDATE_DATETIME     = var.beacon-update-datetime
+    BEACON_HANDOVERS           = var.beacon-handovers
+    BEACON_DOCUMENTATION_URL   = var.beacon-documentation-url
+    BEACON_DEFAULT_GRANULARITY = var.beacon-default-granularity
+    BEACON_URI                 = var.beacon-uri
     # Organisation variables
     BEACON_ORG_ID          = var.organisation-id
     BEACON_ORG_NAME        = var.organisation-name
-    BEACON_ORG_DESCRIPTION = ""
-    BEACON_ORG_ADRESS      = ""
-    BEACON_ORG_WELCOME_URL = ""
-    BEACON_ORG_CONTACT_URL = ""
-    BEACON_ORG_LOGO_URL    = ""
+    BEACON_ORG_DESCRIPTION = var.beacon-org-description
+    BEACON_ORG_ADDRESS     = var.beacon-org-address
+    BEACON_ORG_WELCOME_URL = var.beacon-org-welcome-url
+    BEACON_ORG_CONTACT_URL = var.beacon-org-contact-url
+    BEACON_ORG_LOGO_URL    = var.beacon-org-logo-url
     # beacon service variables
-    BEACON_SERVICE_TYPE_GROUP    = ""
-    BEACON_SERVICE_TYPE_ARTIFACT = ""
-    BEACON_SERVICE_TYPE_VERSION  = ""
+    BEACON_SERVICE_TYPE_GROUP    = var.beacon-service-type-group
+    BEACON_SERVICE_TYPE_ARTIFACT = var.beacon-service-type-artifact
+    BEACON_SERVICE_TYPE_VERSION  = var.beacon-service-type-version
   }
   # athena related variables
   athena_variables = {
@@ -749,8 +747,7 @@ module "lambda-performQuery" {
   ]
 
   environment_variables = merge({
-    BEACON_API_VERSION = local.api_version
-    VARIANTS_BUCKET    = aws_s3_bucket.variants-bucket.bucket
+    VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     },
     local.sbeacon_variables,
   local.dynamodb_variables)

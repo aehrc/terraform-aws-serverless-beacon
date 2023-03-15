@@ -13,7 +13,7 @@ BEACON_ENVIRONMENT = os.environ['BEACON_ENVIRONMENT']
 BEACON_ORG_ID = os.environ['BEACON_ORG_ID']
 BEACON_ORG_NAME = os.environ['BEACON_ORG_NAME']
 BEACON_ORG_DESCRIPTION = os.environ['BEACON_ORG_DESCRIPTION']
-BEACON_ORG_ADRESS = os.environ['BEACON_ORG_ADRESS']
+BEACON_ORG_ADDRESS = os.environ['BEACON_ORG_ADDRESS']
 BEACON_ORG_WELCOME_URL = os.environ['BEACON_ORG_WELCOME_URL']
 BEACON_ORG_CONTACT_URL = os.environ['BEACON_ORG_CONTACT_URL']
 BEACON_ORG_LOGO_URL = os.environ['BEACON_ORG_LOGO_URL']
@@ -193,7 +193,7 @@ def build_beacon_info_response(data, qparams, func_response_type, authorized_dat
                 'id': BEACON_ORG_ID,
                 'name': BEACON_ORG_NAME,
                 'description': BEACON_ORG_DESCRIPTION,
-                'address': BEACON_ORG_ADRESS,
+                'address': BEACON_ORG_ADDRESS,
                 'welcomeUrl': BEACON_ORG_WELCOME_URL,
                 'contactUrl': BEACON_ORG_CONTACT_URL,
                 'logoUrl': BEACON_ORG_LOGO_URL,
