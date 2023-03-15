@@ -1,20 +1,20 @@
 #
 # getInfo API Function /info
 #
-resource aws_api_gateway_resource info {
+resource "aws_api_gateway_resource" "info" {
   path_part   = "info"
   parent_id   = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method info {
+resource "aws_api_gateway_method" "info" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.info.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response info {
+resource "aws_api_gateway_method_response" "info" {
   rest_api_id = aws_api_gateway_method.info.rest_api_id
   resource_id = aws_api_gateway_method.info.resource_id
   http_method = aws_api_gateway_method.info.http_method
@@ -32,14 +32,14 @@ resource aws_api_gateway_method_response info {
 # 
 # getInfo API Function /
 # 
-resource aws_api_gateway_method root-get {
-  rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
-  resource_id = aws_api_gateway_rest_api.BeaconApi.root_resource_id
-  http_method = "GET"
+resource "aws_api_gateway_method" "root-get" {
+  rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
+  resource_id   = aws_api_gateway_rest_api.BeaconApi.root_resource_id
+  http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response root-get {
+resource "aws_api_gateway_method_response" "root-get" {
   rest_api_id = aws_api_gateway_method.root-get.rest_api_id
   resource_id = aws_api_gateway_method.root-get.resource_id
   http_method = aws_api_gateway_method.root-get.http_method
@@ -55,16 +55,16 @@ resource aws_api_gateway_method_response root-get {
 }
 
 # enable CORS
-module cors-info {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-info" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.info.id
 }
 
-module cors-info-root {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-info-root" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
@@ -72,7 +72,7 @@ module cors-info-root {
 }
 
 # wire up lambda
-resource aws_api_gateway_integration info {
+resource "aws_api_gateway_integration" "info" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.info.id
   http_method             = aws_api_gateway_method.info.http_method
@@ -81,7 +81,7 @@ resource aws_api_gateway_integration info {
   uri                     = module.lambda-getInfo.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response info {
+resource "aws_api_gateway_integration_response" "info" {
   rest_api_id = aws_api_gateway_method.info.rest_api_id
   resource_id = aws_api_gateway_method.info.resource_id
   http_method = aws_api_gateway_method.info.http_method
@@ -94,16 +94,16 @@ resource aws_api_gateway_integration_response info {
   depends_on = [aws_api_gateway_integration.info]
 }
 
-resource aws_api_gateway_integration root-get {
-  rest_api_id = aws_api_gateway_method.root-get.rest_api_id
-  resource_id = aws_api_gateway_method.root-get.resource_id
-  http_method = aws_api_gateway_method.root-get.http_method
-  type = "AWS_PROXY"
-  uri = module.lambda-getInfo.lambda_function_invoke_arn
+resource "aws_api_gateway_integration" "root-get" {
+  rest_api_id             = aws_api_gateway_method.root-get.rest_api_id
+  resource_id             = aws_api_gateway_method.root-get.resource_id
+  http_method             = aws_api_gateway_method.root-get.http_method
+  type                    = "AWS_PROXY"
+  uri                     = module.lambda-getInfo.lambda_function_invoke_arn
   integration_http_method = "POST"
 }
 
-resource aws_api_gateway_integration_response root-get {
+resource "aws_api_gateway_integration_response" "root-get" {
   rest_api_id = aws_api_gateway_method.root-get.rest_api_id
   resource_id = aws_api_gateway_method.root-get.resource_id
   http_method = aws_api_gateway_method.root-get.http_method
@@ -117,19 +117,19 @@ resource aws_api_gateway_integration_response root-get {
 }
 
 # permit lambda invokation
-resource aws_lambda_permission APIGetInfo {
-  statement_id = "AllowAPIGetInfoInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIGetInfo" {
+  statement_id  = "AllowAPIGetInfoInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getInfo.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.info.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.info.path_part}"
 }
 
-resource aws_lambda_permission APIGetinfo-root {
-  statement_id = "AllowAPIGetinfoRootInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIGetinfo-root" {
+  statement_id  = "AllowAPIGetinfoRootInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getInfo.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/"
 }
 

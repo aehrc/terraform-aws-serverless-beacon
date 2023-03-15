@@ -1,8 +1,8 @@
-resource aws_dynamodb_table datasets {
+resource "aws_dynamodb_table" "datasets" {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "id"
-  name = "Datasets"
-  tags = var.common-tags
+  hash_key     = "id"
+  name         = "Datasets"
+  tags         = var.common-tags
 
   attribute {
     name = "id"
@@ -16,7 +16,7 @@ resource aws_dynamodb_table datasets {
 
   global_secondary_index {
     hash_key = "assemblyId"
-    name = "assembly_index"
+    name     = "assembly_index"
     non_key_attributes = [
       "id",
       "vcfLocations",
@@ -27,11 +27,11 @@ resource aws_dynamodb_table datasets {
   }
 }
 
-resource aws_dynamodb_table ontologies {
+resource "aws_dynamodb_table" "ontologies" {
   billing_mode = "PAY_PER_REQUEST"
-  name = "Ontologies"
-  hash_key = "prefix"
-  tags = var.common-tags
+  name         = "Ontologies"
+  hash_key     = "prefix"
+  tags         = var.common-tags
 
   attribute {
     name = "prefix"
@@ -39,11 +39,11 @@ resource aws_dynamodb_table ontologies {
   }
 }
 
-resource aws_dynamodb_table descendant_terms {
+resource "aws_dynamodb_table" "descendant_terms" {
   billing_mode = "PAY_PER_REQUEST"
-  name = "Descendants"
-  hash_key = "term"
-  tags = var.common-tags
+  name         = "Descendants"
+  hash_key     = "term"
+  tags         = var.common-tags
 
   attribute {
     name = "term"
@@ -51,11 +51,11 @@ resource aws_dynamodb_table descendant_terms {
   }
 }
 
-resource aws_dynamodb_table anscestor_terms {
+resource "aws_dynamodb_table" "anscestor_terms" {
   billing_mode = "PAY_PER_REQUEST"
-  name = "Anscestors"
-  hash_key = "term"
-  tags = var.common-tags
+  name         = "Anscestors"
+  hash_key     = "term"
+  tags         = var.common-tags
 
   attribute {
     name = "term"
@@ -63,11 +63,11 @@ resource aws_dynamodb_table anscestor_terms {
   }
 }
 
-resource aws_dynamodb_table vcf_summaries {
+resource "aws_dynamodb_table" "vcf_summaries" {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "vcfLocation"
-  name = "VcfSummaries"
-  tags = var.common-tags
+  hash_key     = "vcfLocation"
+  name         = "VcfSummaries"
+  tags         = var.common-tags
 
   attribute {
     name = "vcfLocation"
@@ -75,12 +75,12 @@ resource aws_dynamodb_table vcf_summaries {
   }
 }
 
-resource aws_dynamodb_table variant_duplicates {
+resource "aws_dynamodb_table" "variant_duplicates" {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "contig"
-  range_key = "datasetKey"
-  name = "VariantDuplicates"
-  tags = var.common-tags
+  hash_key     = "contig"
+  range_key    = "datasetKey"
+  name         = "VariantDuplicates"
+  tags         = var.common-tags
 
   attribute {
     name = "contig"
@@ -97,11 +97,11 @@ resource aws_dynamodb_table variant_duplicates {
 # this is used to control the lambdas that
 # execute a given query
 # resonses counts the completed lambdas
-resource aws_dynamodb_table variant_queries {
+resource "aws_dynamodb_table" "variant_queries" {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "id"
-  name = "VariantQueries"
-  tags = var.common-tags
+  hash_key     = "id"
+  name         = "VariantQueries"
+  tags         = var.common-tags
 
   attribute {
     name = "id"
@@ -118,12 +118,12 @@ resource aws_dynamodb_table variant_queries {
 # this table holds responses by perform query operation
 # responseIndex is used to order and paginate
 # this points to a JSON files with results
-resource aws_dynamodb_table variant_query_responses {
+resource "aws_dynamodb_table" "variant_query_responses" {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "id"
-  range_key = "responseNumber"
-  name = "VariantQueryResponses"
-  tags = var.common-tags
+  hash_key     = "id"
+  range_key    = "responseNumber"
+  name         = "VariantQueryResponses"
+  tags         = var.common-tags
 
   attribute {
     name = "id"
@@ -136,8 +136,8 @@ resource aws_dynamodb_table variant_query_responses {
   }
 
   local_secondary_index {
-    range_key = "responseNumber"
-    name = "responseNumber_index"
+    range_key       = "responseNumber"
+    name            = "responseNumber_index"
     projection_type = "ALL"
   }
 
@@ -149,11 +149,11 @@ resource aws_dynamodb_table variant_query_responses {
 }
 
 # ontology term index
-resource aws_dynamodb_table ontology_terms {
+resource "aws_dynamodb_table" "ontology_terms" {
   billing_mode = "PAY_PER_REQUEST"
-  hash_key = "id"
-  name = "OntoIndex"
-  tags = var.common-tags
+  hash_key     = "id"
+  name         = "OntoIndex"
+  tags         = var.common-tags
 
   # this is the tab concatenated value of
   # tableName, columnName, term
@@ -180,23 +180,23 @@ resource aws_dynamodb_table ontology_terms {
 
   # be able to query a term
   global_secondary_index {
-    hash_key = "term"
-    name = "term_index"
+    hash_key        = "term"
+    name            = "term_index"
     projection_type = "ALL"
   }
 
   # be able to query a tableName
   global_secondary_index {
-    hash_key = "tableName"
-    name = "table_index"
+    hash_key        = "tableName"
+    name            = "table_index"
     projection_type = "ALL"
   }
 
   # be able to query a terms in a table
   # tab concatenated value of table and term
   global_secondary_index {
-    hash_key = "tableTerms"
-    name = "tableterms_index"
+    hash_key        = "tableTerms"
+    name            = "tableterms_index"
     projection_type = "ALL"
   }
 }

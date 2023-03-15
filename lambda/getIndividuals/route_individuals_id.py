@@ -1,14 +1,11 @@
 import json
-import os
 import jsons
 
-from apiutils.api_response import bundle_response
+
 import apiutils.responses as responses
 from athena.individual import Individual
-
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
+from apiutils.schemas import DefaultSchemas
+from apiutils.requests import RequestParams, Granularity
 
 
 def get_record_query(id):
@@ -21,51 +18,27 @@ def get_record_query(id):
     return query
 
 
-def route(event):
-    if event['httpMethod'] == 'GET':
-        params = event.get('queryStringParameters', None) or dict()
-        print(f"Query params {params}")
-        apiVersion = params.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = params.get("requestedSchemas", [])
-        requestedGranularity = params.get("requestedGranularity", "boolean")
-
-    if event['httpMethod'] == 'POST':
-        params = json.loads(event.get('body') or "{}")
-        print(f"POST params {params}")
-        meta = params.get("meta", dict())
-        query = params.get("query", dict())
-        # meta data
-        apiVersion = meta.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = meta.get("requestedSchemas", [])
-        # query data
-        requestedGranularity = query.get("requestedGranularity", "boolean")
-        # query request params
-        requestParameters = query.get("requestParameters", dict())
-    
-    individual_id = event["pathParameters"].get("id", None)
-    
-    if requestedGranularity == 'boolean':
+def route(request: RequestParams, individual_id):
+    if request.query.requested_granularity == 'boolean':
         query = get_record_query(individual_id)
-        exists = Individual.get_existence_by_query(query)
-        response = responses.get_boolean_response(exists=exists)
+        count = 1 if Individual.get_existence_by_query(query) else 0
+        response = responses.build_beacon_boolean_response(
+            {}, count, request, {}, DefaultSchemas.INDIVIDUALS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
-    if requestedGranularity == 'count':
+    if request.query.requested_granularity == 'count':
         query = get_record_query(individual_id)
-        count = Individual.get_count_by_query(query)
-        response = responses.get_counts_response(exists=count>0, count=count)
+        count = 1 if Individual.get_existence_by_query(query) else 0
+        response = responses.build_beacon_count_response(
+            {}, count, request, {}, DefaultSchemas.INDIVIDUALS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)
 
-    if requestedGranularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(individual_id)
         individuals = Individual.get_by_query(query)
-        response = responses.get_result_sets_response(
-            setType='individuals', 
-            exists=len(individuals)>0,
-            total=len(individuals),
-            results=jsons.dump(individuals, strip_privates=True)
-        )
+        response = responses.build_beacon_resultset_response(
+            jsons.dump(individuals, strip_privates=True), len(individuals), request, {}, DefaultSchemas.INDIVIDUALS)
         print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
+        return responses.bundle_response(200, response)

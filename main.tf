@@ -1,64 +1,80 @@
 provider "aws" {
-  region =  var.region
+  region = var.region
 }
 
 # DOCS
 # Lambda memory - https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
 #                 https://stackoverflow.com/questions/66522916/aws-lambda-memory-vs-cpu-configuration
-
+#
 locals {
-  api_version = "v2.0.0"
-  version = "v0.0.1"
-  build_cpp_path = abspath("${path.module}/build_cpp.sh")
+  build_cpp_path     = abspath("${path.module}/build_cpp.sh")
   shared_source_path = abspath("${path.module}/lambda/shared/source")
-  gzip_source_path = abspath("${path.module}/lambda/shared/gzip")
+  gzip_source_path   = abspath("${path.module}/lambda/shared/gzip")
 
   maximum_load_file_size  = 750000000
   vcf_processed_file_size = 50000000
-
-  # lambda ARNs for invokation
-  INDEXER_LAMBDA = module.lambda-indexer.lambda_function_name
   # TODO use the following organisation to refactor the IAM policy assignment
   # this makes the code simpler
   # sbeacon info variables
   sbeacon_variables = {
-    BEACON_API_VERSION = local.api_version
-    BEACON_ID = var.beacon-id
-    VERSION = local.version
-    BEACON_NAME = var.beacon-name
-    ORGANISATION_ID = var.organisation-id
-    ORGANISATION_NAME = var.organisation-name
+    # Beacon variables
+    BEACON_API_VERSION         = var.beacon-api-version
+    BEACON_ID                  = var.beacon-id
+    BEACON_NAME                = var.beacon-name
+    BEACON_ENVIRONMENT         = var.beacon-environment
+    BEACON_DESCRIPTION         = var.beacon-description
+    BEACON_VERSION             = var.beacon-version
+    BEACON_WELCOME_URL         = var.beacon-welcome-url
+    BEACON_ALTERNATIVE_URL     = var.beacon-alternative-url
+    BEACON_CREATE_DATETIME     = var.beacon-create-datetime
+    BEACON_UPDATE_DATETIME     = var.beacon-update-datetime
+    BEACON_HANDOVERS           = var.beacon-handovers
+    BEACON_DOCUMENTATION_URL   = var.beacon-documentation-url
+    BEACON_DEFAULT_GRANULARITY = var.beacon-default-granularity
+    BEACON_URI                 = var.beacon-uri
+    # Organisation variables
+    BEACON_ORG_ID          = var.organisation-id
+    BEACON_ORG_NAME        = var.organisation-name
+    BEACON_ORG_DESCRIPTION = var.beacon-org-description
+    BEACON_ORG_ADDRESS     = var.beacon-org-address
+    BEACON_ORG_WELCOME_URL = var.beacon-org-welcome-url
+    BEACON_ORG_CONTACT_URL = var.beacon-org-contact-url
+    BEACON_ORG_LOGO_URL    = var.beacon-org-logo-url
+    # beacon service variables
+    BEACON_SERVICE_TYPE_GROUP    = var.beacon-service-type-group
+    BEACON_SERVICE_TYPE_ARTIFACT = var.beacon-service-type-artifact
+    BEACON_SERVICE_TYPE_VERSION  = var.beacon-service-type-version
   }
   # athena related variables
   athena_variables = {
-    ATHENA_WORKGROUP = aws_athena_workgroup.sbeacon-workgroup.name
-    METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
-    METADATA_BUCKET = aws_s3_bucket.metadata-bucket.bucket
-    DATASETS_TABLE = aws_glue_catalog_table.sbeacon-datasets.name
-    COHORTS_TABLE = aws_glue_catalog_table.sbeacon-cohorts.name
-    INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
-    BIOSAMPLES_TABLE = aws_glue_catalog_table.sbeacon-biosamples.name
-    RUNS_TABLE = aws_glue_catalog_table.sbeacon-runs.name
-    ANALYSES_TABLE = aws_glue_catalog_table.sbeacon-analyses.name
-    TERMS_TABLE = aws_glue_catalog_table.sbeacon-terms.name
-    TERMS_INDEX_TABLE = aws_glue_catalog_table.sbeacon-terms-index.name
-    TERMS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-terms-cache.name
-    RELATIONS_TABLE = aws_glue_catalog_table.sbeacon-relations.name
+    ATHENA_WORKGROUP         = aws_athena_workgroup.sbeacon-workgroup.name
+    ATHENA_METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
+    ATHENA_METADATA_BUCKET   = aws_s3_bucket.metadata-bucket.bucket
+    ATHENA_DATASETS_TABLE    = aws_glue_catalog_table.sbeacon-datasets.name
+    ATHENA_COHORTS_TABLE     = aws_glue_catalog_table.sbeacon-cohorts.name
+    ATHENA_INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
+    ATHENA_BIOSAMPLES_TABLE  = aws_glue_catalog_table.sbeacon-biosamples.name
+    ATHENA_RUNS_TABLE        = aws_glue_catalog_table.sbeacon-runs.name
+    ATHENA_ANALYSES_TABLE    = aws_glue_catalog_table.sbeacon-analyses.name
+    ATHENA_TERMS_TABLE       = aws_glue_catalog_table.sbeacon-terms.name
+    ATHENA_TERMS_INDEX_TABLE = aws_glue_catalog_table.sbeacon-terms-index.name
+    ATHENA_TERMS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-terms-cache.name
+    ATHENA_RELATIONS_TABLE   = aws_glue_catalog_table.sbeacon-relations.name
   }
   # dynamodb variables
   dynamodb_variables = {
-    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-    DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
-    DYNAMO_VARIANT_QUERIES_TABLE = aws_dynamodb_table.variant_queries.name
+    DYNAMO_DATASETS_TABLE                = aws_dynamodb_table.datasets.name
+    DYNAMO_VCF_SUMMARIES_TABLE           = aws_dynamodb_table.vcf_summaries.name
+    DYNAMO_VARIANT_DUPLICATES_TABLE      = aws_dynamodb_table.variant_duplicates.name
+    DYNAMO_VARIANT_QUERIES_TABLE         = aws_dynamodb_table.variant_queries.name
     DYNAMO_VARIANT_QUERY_RESPONSES_TABLE = aws_dynamodb_table.variant_query_responses.name
-    DYNAMO_ONTOLOGIES_TABLE = aws_dynamodb_table.ontologies.name
-    DYNAMO_ANSCESTORS_TABLE = aws_dynamodb_table.anscestor_terms.name
-    DYNAMO_DESCENDANTS_TABLE = aws_dynamodb_table.descendant_terms.name
-    DYNAMO_ONTO_INDEX_TABLE = aws_dynamodb_table.ontology_terms.name
+    DYNAMO_ONTOLOGIES_TABLE              = aws_dynamodb_table.ontologies.name
+    DYNAMO_ANSCESTORS_TABLE              = aws_dynamodb_table.anscestor_terms.name
+    DYNAMO_DESCENDANTS_TABLE             = aws_dynamodb_table.descendant_terms.name
+    DYNAMO_ONTO_INDEX_TABLE              = aws_dynamodb_table.ontology_terms.name
   }
   # layers
-  binaries_layer = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
+  binaries_layer         = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
   python_libraries_layer = module.python_libraries_layer.lambda_layer_arn
 }
 
@@ -68,33 +84,33 @@ locals {
 module "lambda-submitDataset" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "submitDataset"
-  description = "Creates or updates a dataset and triggers summariseVcf."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  architectures = ["x86_64"]
-  memory_size = 1769
-  timeout = 60
+  function_name       = "submitDataset"
+  description         = "Creates or updates a dataset and triggers summariseVcf."
+  handler             = "lambda_function.lambda_handler"
+  runtime             = "python3.9"
+  architectures       = ["x86_64"]
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-submitDataset.json,
     data.aws_iam_policy_document.athena-full-access.json
   ]
   number_of_policy_jsons = 2
-  source_path = "${path.module}/lambda/submitDataset"
-  tags = var.common-tags
+  source_path            = "${path.module}/lambda/submitDataset"
+  tags                   = var.common-tags
 
   environment_variables = merge(
     {
-      DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
       SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-      INDEXER_LAMBDA = local.INDEXER_LAMBDA
-    }, 
-    local.sbeacon_variables, 
+      INDEXER_LAMBDA                  = module.lambda-indexer.lambda_function_name
+    },
+    local.sbeacon_variables,
     local.athena_variables,
     local.dynamodb_variables
   )
-  
+
   layers = [
     local.python_libraries_layer,
     local.binaries_layer
@@ -107,25 +123,25 @@ module "lambda-submitDataset" {
 module "lambda-summariseDataset" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "summariseDataset"
-  description = "Calculates summary counts for a dataset."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 1769
-  timeout = 60
+  function_name      = "summariseDataset"
+  description        = "Calculates summary counts for a dataset."
+  handler            = "lambda_function.lambda_handler"
+  runtime            = "python3.9"
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-summariseDataset.json
-  source_path = "${path.module}/lambda/summariseDataset"
-  tags = var.common-tags
+  policy_json        = data.aws_iam_policy_document.lambda-summariseDataset.json
+  source_path        = "${path.module}/lambda/summariseDataset"
+  tags               = var.common-tags
 
   environment_variables = {
-    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
-    SUMMARISE_VCF_SNS_TOPIC_ARN = aws_sns_topic.summariseVcf.arn
-    DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-    DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
+    DYNAMO_DATASETS_TABLE                  = aws_dynamodb_table.datasets.name
+    SUMMARISE_VCF_SNS_TOPIC_ARN            = aws_sns_topic.summariseVcf.arn
+    DYNAMO_VCF_SUMMARIES_TABLE             = aws_dynamodb_table.vcf_summaries.name
+    DYNAMO_VARIANT_DUPLICATES_TABLE        = aws_dynamodb_table.variant_duplicates.name
     DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
-    VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
-    ABS_MAX_DATA_SPLIT = local.maximum_load_file_size
+    VARIANTS_BUCKET                        = aws_s3_bucket.variants-bucket.bucket
+    ABS_MAX_DATA_SPLIT                     = local.maximum_load_file_size
   }
 
   layers = [
@@ -139,21 +155,21 @@ module "lambda-summariseDataset" {
 module "lambda-summariseVcf" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "summariseVcf"
-  description = "Calculates information in a vcf and saves it in datasets dynamoDB."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 1769
-  timeout = 60
+  function_name      = "summariseVcf"
+  description        = "Calculates information in a vcf and saves it in datasets dynamoDB."
+  handler            = "lambda_function.lambda_handler"
+  runtime            = "python3.9"
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-summariseVcf.json
-  source_path = "${path.module}/lambda/summariseVcf"
-  tags = var.common-tags
+  policy_json        = data.aws_iam_policy_document.lambda-summariseVcf.json
+  source_path        = "${path.module}/lambda/summariseVcf"
+  tags               = var.common-tags
 
   environment_variables = {
     SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
-    VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
-    DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
+    VARIANTS_BUCKET               = aws_s3_bucket.variants-bucket.bucket
+    DYNAMO_VCF_SUMMARIES_TABLE    = aws_dynamodb_table.vcf_summaries.name
   }
 
   layers = [
@@ -167,16 +183,16 @@ module "lambda-summariseVcf" {
 module "lambda-summariseSlice" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "summariseSlice"
-  description = "Counts calls and variants in region of a vcf."
-  handler = "function"
-  runtime = "provided"
-  architectures = ["x86_64"]
-  memory_size = 1769
-  timeout = 60
+  function_name      = "summariseSlice"
+  description        = "Counts calls and variants in region of a vcf."
+  handler            = "function"
+  runtime            = "provided"
+  architectures      = ["x86_64"]
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-summariseSlice.json
-  
+  policy_json        = data.aws_iam_policy_document.lambda-summariseSlice.json
+
   source_path = [
     {
       path = local.shared_source_path,
@@ -191,7 +207,7 @@ module "lambda-summariseSlice" {
       ]
     },
     {
-      path     = "${path.module}/lambda/summariseSlice/",
+      path = "${path.module}/lambda/summariseSlice/",
       commands = [
         "bash ${local.build_cpp_path} ./",
         "cd build/function_binaries",
@@ -206,14 +222,14 @@ module "lambda-summariseSlice" {
   tags = var.common-tags
 
   environment_variables = {
-      ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-      DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
-      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-      SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
-      DYNAMO_VCF_SUMMARIES_TABLE = aws_dynamodb_table.vcf_summaries.name
-      VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
-      MAX_SLICE_GAP = 100000
-      VCF_S3_OUTPUT_SIZE_LIMIT = local.vcf_processed_file_size
+    ASSEMBLY_GSI                    = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+    DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
+    SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
+    SUMMARISE_SLICE_SNS_TOPIC_ARN   = aws_sns_topic.summariseSlice.arn
+    DYNAMO_VCF_SUMMARIES_TABLE      = aws_dynamodb_table.vcf_summaries.name
+    VARIANTS_BUCKET                 = aws_s3_bucket.variants-bucket.bucket
+    MAX_SLICE_GAP                   = 100000
+    VCF_S3_OUTPUT_SIZE_LIMIT        = local.vcf_processed_file_size
   }
 }
 
@@ -223,15 +239,15 @@ module "lambda-summariseSlice" {
 module "lambda-duplicateVariantSearch" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "duplicateVariantSearch"
-  description = "Searches for duplicate variants across vcfs."
-  handler = "function"
-  runtime = "provided"
-  architectures = ["x86_64"]
-  memory_size = 8192
-  timeout = 60
+  function_name      = "duplicateVariantSearch"
+  description        = "Searches for duplicate variants across vcfs."
+  handler            = "function"
+  runtime            = "provided"
+  architectures      = ["x86_64"]
+  memory_size        = 8192
+  timeout            = 60
   attach_policy_json = true
-  policy_json =  data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
+  policy_json        = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
 
   source_path = [
     {
@@ -247,7 +263,7 @@ module "lambda-duplicateVariantSearch" {
       ]
     },
     {
-      path     = "${path.module}/lambda/duplicateVariantSearch/",
+      path = "${path.module}/lambda/duplicateVariantSearch/",
       commands = [
         "bash ${local.build_cpp_path} ./",
         "cd build/function_binaries",
@@ -262,9 +278,9 @@ module "lambda-duplicateVariantSearch" {
   tags = var.common-tags
 
   environment_variables = {
-    ASSEMBLY_GSI = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
+    ASSEMBLY_GSI                    = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
     DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
-    DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
+    DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
   }
 }
 
@@ -274,23 +290,23 @@ module "lambda-duplicateVariantSearch" {
 module "lambda-getInfo" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getInfo"
-  description = "Returns basic information about the beacon and the datasets."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 1769
-  timeout = 60
+  function_name      = "getInfo"
+  description        = "Returns basic information about the beacon and the datasets."
+  handler            = "lambda_function.lambda_handler"
+  runtime            = "python3.9"
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getInfo.json
-  source_path = "${path.module}/lambda/getInfo"
-  tags = var.common-tags
+  policy_json        = data.aws_iam_policy_document.lambda-getInfo.json
+  source_path        = "${path.module}/lambda/getInfo"
+  tags               = var.common-tags
 
   environment_variables = merge(
     local.sbeacon_variables,
     local.athena_variables,
     local.dynamodb_variables
   )
-  
+
   layers = [
     local.python_libraries_layer
   ]
@@ -302,15 +318,15 @@ module "lambda-getInfo" {
 module "lambda-getConfiguration" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getConfiguration"
-  description = "Get the beacon configuration."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name      = "getConfiguration"
+  description        = "Get the beacon configuration."
+  runtime            = "python3.9"
+  handler            = "lambda_function.lambda_handler"
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getConfiguration.json
-  source_path = "${path.module}/lambda/getConfiguration"
+  policy_json        = data.aws_iam_policy_document.lambda-getConfiguration.json
+  source_path        = "${path.module}/lambda/getConfiguration"
 
   tags = var.common-tags
 
@@ -331,15 +347,15 @@ module "lambda-getConfiguration" {
 module "lambda-getMap" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getMap"
-  description = "Get the beacon map."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name      = "getMap"
+  description        = "Get the beacon map."
+  runtime            = "python3.9"
+  handler            = "lambda_function.lambda_handler"
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getMap.json
-  source_path = "${path.module}/lambda/getMap"
+  policy_json        = data.aws_iam_policy_document.lambda-getMap.json
+  source_path        = "${path.module}/lambda/getMap"
 
   tags = var.common-tags
 
@@ -360,15 +376,15 @@ module "lambda-getMap" {
 module "lambda-getEntryTypes" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getEntryTypes"
-  description = "Get the beacon map."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name      = "getEntryTypes"
+  description        = "Get the beacon map."
+  runtime            = "python3.9"
+  handler            = "lambda_function.lambda_handler"
+  memory_size        = 1769
+  timeout            = 60
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-getEntryTypes.json
-  source_path = "${path.module}/lambda/getEntryTypes"
+  policy_json        = data.aws_iam_policy_document.lambda-getEntryTypes.json
+  source_path        = "${path.module}/lambda/getEntryTypes"
 
   tags = var.common-tags
 
@@ -389,18 +405,18 @@ module "lambda-getEntryTypes" {
 module "lambda-getFilteringTerms" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getFilteringTerms"
-  description = "Get the beacon map."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getFilteringTerms"
+  description         = "Get the beacon map."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json
   ]
   number_of_policy_jsons = 1
-  source_path = "${path.module}/lambda/getFilteringTerms"
+  source_path            = "${path.module}/lambda/getFilteringTerms"
 
   tags = var.common-tags
 
@@ -421,12 +437,12 @@ module "lambda-getFilteringTerms" {
 module "lambda-getAnalyses" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getAnalyses"
-  description = "Get the beacon map."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getAnalyses"
+  description         = "Get the beacon map."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getAnalyses.json,
@@ -434,13 +450,13 @@ module "lambda-getAnalyses" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getAnalyses"
+  source_path            = "${path.module}/lambda/getAnalyses"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
       SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
@@ -459,12 +475,12 @@ module "lambda-getAnalyses" {
 module "lambda-getGenomicVariants" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getGenomicVariants"
-  description = "Get the variants."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getGenomicVariants"
+  description         = "Get the variants."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getGenomicVariants.json,
@@ -472,13 +488,13 @@ module "lambda-getGenomicVariants" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getGenomicVariants"
+  source_path            = "${path.module}/lambda/getGenomicVariants"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
       SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
@@ -497,12 +513,12 @@ module "lambda-getGenomicVariants" {
 module "lambda-getIndividuals" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getIndividuals"
-  description = "Get the individuals."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getIndividuals"
+  description         = "Get the individuals."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getIndividuals.json,
@@ -510,13 +526,13 @@ module "lambda-getIndividuals" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getIndividuals"
+  source_path            = "${path.module}/lambda/getIndividuals"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
       SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
@@ -535,12 +551,12 @@ module "lambda-getIndividuals" {
 module "lambda-getBiosamples" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getBiosamples"
-  description = "Get the biosamples."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getBiosamples"
+  description         = "Get the biosamples."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getBiosamples.json,
@@ -548,13 +564,13 @@ module "lambda-getBiosamples" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getBiosamples"
+  source_path            = "${path.module}/lambda/getBiosamples"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
       SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
@@ -573,12 +589,12 @@ module "lambda-getBiosamples" {
 module "lambda-getDatasets" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getDatasets"
-  description = "Get the datasets."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getDatasets"
+  description         = "Get the datasets."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getDatasets.json,
@@ -586,13 +602,13 @@ module "lambda-getDatasets" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getDatasets"
+  source_path            = "${path.module}/lambda/getDatasets"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
       SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
@@ -611,12 +627,12 @@ module "lambda-getDatasets" {
 module "lambda-getCohorts" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getCohorts"
-  description = "Get the cohorts."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getCohorts"
+  description         = "Get the cohorts."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getCohorts.json,
@@ -624,7 +640,7 @@ module "lambda-getCohorts" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getCohorts"
+  source_path            = "${path.module}/lambda/getCohorts"
 
   tags = var.common-tags
 
@@ -648,12 +664,12 @@ module "lambda-getCohorts" {
 module "lambda-getRuns" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "getRuns"
-  description = "Get the runs."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 60
+  function_name       = "getRuns"
+  description         = "Get the runs."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.lambda-getRuns.json,
@@ -661,13 +677,13 @@ module "lambda-getRuns" {
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/getRuns"
+  source_path            = "${path.module}/lambda/getRuns"
 
   tags = var.common-tags
 
   environment_variables = merge(
     {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
       SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
     },
     local.athena_variables,
@@ -686,19 +702,19 @@ module "lambda-getRuns" {
 module "lambda-splitQuery" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "splitQuery"
-  description = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 1769
-  timeout = 300
+  function_name      = "splitQuery"
+  description        = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
+  handler            = "lambda_function.lambda_handler"
+  runtime            = "python3.9"
+  memory_size        = 1769
+  timeout            = 300
   attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-splitQuery.json
-  source_path = "${path.module}/lambda/splitQuery"
-  tags = var.common-tags
+  policy_json        = data.aws_iam_policy_document.lambda-splitQuery.json
+  source_path        = "${path.module}/lambda/splitQuery"
+  tags               = var.common-tags
 
   environment_variables = {
-    PERFORM_QUERY_LAMBDA = module.lambda-performQuery.lambda_function_name,
+    PERFORM_QUERY_LAMBDA    = module.lambda-performQuery.lambda_function_name,
     PERFORM_QUERY_TOPIC_ARN = aws_sns_topic.performQuery.arn
   }
 
@@ -713,17 +729,17 @@ module "lambda-splitQuery" {
 module "lambda-performQuery" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "performQuery"
-  description = "Queries a slice of a vcf for a specified variant."
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.9"
-  memory_size = 1769
-  timeout = 300
+  function_name          = "performQuery"
+  description            = "Queries a slice of a vcf for a specified variant."
+  handler                = "lambda_function.lambda_handler"
+  runtime                = "python3.9"
+  memory_size            = 1769
+  timeout                = 300
   ephemeral_storage_size = 1024
-  attach_policy_json = true
-  policy_json = data.aws_iam_policy_document.lambda-performQuery.json
-  source_path = "${path.module}/lambda/performQuery"
-  tags = var.common-tags
+  attach_policy_json     = true
+  policy_json            = data.aws_iam_policy_document.lambda-performQuery.json
+  source_path            = "${path.module}/lambda/performQuery"
+  tags                   = var.common-tags
 
   layers = [
     local.binaries_layer,
@@ -731,11 +747,10 @@ module "lambda-performQuery" {
   ]
 
   environment_variables = merge({
-      BEACON_API_VERSION = local.api_version
-      VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
+    VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     },
     local.sbeacon_variables,
-    local.dynamodb_variables)
+  local.dynamodb_variables)
 }
 
 #
@@ -744,12 +759,12 @@ module "lambda-performQuery" {
 module "lambda-indexer" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name = "indexer"
-  description = "Run the indexing tasks."
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
-  memory_size = 1769
-  timeout = 600
+  function_name       = "indexer"
+  description         = "Run the indexing tasks."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 1769
+  timeout             = 600
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json,
@@ -757,7 +772,7 @@ module "lambda-indexer" {
     data.aws_iam_policy_document.dynamodb-onto-write-access.json
   ]
   number_of_policy_jsons = 3
-  source_path = "${path.module}/lambda/indexer"
+  source_path            = "${path.module}/lambda/indexer"
 
   tags = var.common-tags
 

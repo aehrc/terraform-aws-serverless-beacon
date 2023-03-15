@@ -2,14 +2,14 @@
 # data for the binaries_layer layer
 data "archive_file" "binaries_layer" {
   type        = "zip"
-  source_dir = "${path.module}/layers/binaries/"
+  source_dir  = "${path.module}/layers/binaries/"
   output_path = "${path.module}/binaries.zip"
 }
 
 # binaries layer definition
 resource "aws_lambda_layer_version" "binaries_layer" {
-  filename   = data.archive_file.binaries_layer.output_path
-  layer_name = "binaries_layer"
+  filename         = data.archive_file.binaries_layer.output_path
+  layer_name       = "binaries_layer"
   source_code_hash = filebase64sha256("${data.archive_file.binaries_layer.output_path}")
 
   compatible_runtimes = ["python3.7", "python3.8", "python3.9"]
