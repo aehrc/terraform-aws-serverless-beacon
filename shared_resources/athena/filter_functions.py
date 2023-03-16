@@ -110,10 +110,12 @@ def entity_search_conditions(filters: List[Union[OntologyFilter, AlphanumericFil
                 f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.{comparrison} ''')
 
         if isinstance(f, OntologyFilter):
+            # by default expanded terms is just the term itself
+            expanded_terms = {f.id}
             # if descendantTerms is false, then similarity measures dont really make sense...
             if f.include_descendant_terms:
                 # process inclusion of term descendants dependant on 'similarity'
-                if f.similarity == Similarity.HIGH:
+                if f.similarity in (Similarity.HIGH or Similarity.EXACT):
                     expanded_terms = _get_term_descendants(f.id)
                 else:
                     # NOTE: this simplistic similarity method not nessisarily efficient or nessisarily desirable
@@ -127,8 +129,6 @@ def entity_search_conditions(filters: List[Union[OntologyFilter, AlphanumericFil
                     elif f.similarity == Similarity.LOW:
                         # all terms which have any ancestor in common
                         expanded_terms = ancestor_descendants[-1]
-            else:
-                expanded_terms = {f.id}
 
             join_execution_parameters += [str(a) for a in expanded_terms]
             expanded_terms = " , ".join(["?" for a in expanded_terms])
