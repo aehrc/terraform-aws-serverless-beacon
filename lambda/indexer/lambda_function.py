@@ -1,5 +1,4 @@
 from collections import defaultdict
-import os
 from queue import Queue
 import time
 import threading
