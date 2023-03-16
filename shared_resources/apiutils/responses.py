@@ -1,6 +1,7 @@
 import os
 import json
 from typing import Optional
+import functools
 
 from .requests import RequestParams, Granularity
 from .schemas import DefaultSchemas
@@ -194,12 +195,8 @@ def build_beacon_collection_response(
 # Info Response
 ########################################
 # Thirdparty code
-def build_beacon_info_response(
-    data, qparams, func_response_type, authorized_datasets=None
-):
-    if authorized_datasets is None:
-        authorized_datasets = []
 
+def build_beacon_info_response(authorised_datasets, qparams):
     # CHANGE: variables taken from terraform
     beacon_response = {
         "meta": build_meta(qparams, None, Granularity.RECORD),
@@ -223,7 +220,7 @@ def build_beacon_info_response(
             "alternativeUrl": BEACON_ALTERNATIVE_URL,
             "createDateTime": BEACON_CREATE_DATETIME,
             "updateDateTime": BEACON_UPDATE_DATETIME,
-            "datasets": func_response_type(data, qparams, authorized_datasets),
+            "datasets": authorised_datasets,
         },
     }
 
@@ -234,6 +231,7 @@ def build_beacon_info_response(
 # Service Info Response
 ########################################
 # Thirdparty code
+@functools.lru_cache()
 def build_beacon_service_info_response():
     # CHANGE: variables taken from terraform
     beacon_response = {

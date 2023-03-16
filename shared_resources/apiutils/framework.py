@@ -7,6 +7,7 @@
 # CHANGE: change to terraform environment variables
 
 import os
+import functools
 
 from .schemas import DefaultSchemas
 
@@ -16,7 +17,7 @@ BEACON_ID = os.environ["BEACON_ID"]
 BEACON_API_VERSION = os.environ["BEACON_API_VERSION"]
 
 
-def get_entry_types():
+def _get_entry_types():
     return {
         "analysis": {
             "id": "analysis",
@@ -130,6 +131,7 @@ def get_entry_types():
     }
 
 
+@functools.lru_cache()
 def configuration():
     meta = {
         "$schema": "https://raw.githubusercontent.com/ga4gh-beacon/beacon-framework-v2/main/responses/sections/beaconInformationalResponseMeta.json",
@@ -145,7 +147,7 @@ def configuration():
             "defaultGranularity": "record",
             "securityLevels": ["PUBLIC", "REGISTERED", "CONTROLLED"],
         },
-        "entryTypes": get_entry_types(),
+        "entryTypes": _get_entry_types(),
     }
 
     configuration_json = {
@@ -157,6 +159,7 @@ def configuration():
     return configuration_json
 
 
+@functools.lru_cache()
 def entry_types():
     meta = {
         "beaconId": BEACON_ID,
@@ -164,13 +167,14 @@ def entry_types():
         "returnedSchemas": [],
     }
 
-    response = {"entryTypes": get_entry_types()}
+    response = {"entryTypes": _get_entry_types()}
 
     entry_types_json = {"meta": meta, "response": response}
 
     return entry_types_json
 
 
+@functools.lru_cache()
 def beacon_map():
     meta = {
         "$schema": "https://raw.githubusercontent.com/ga4gh-beacon/beacon-framework-v2/main/responses/sections/beaconInformationalResponseMeta.json",
