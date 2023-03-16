@@ -10,7 +10,7 @@ from apiutils.requests import RequestParams, parse_request
 
 
 def lambda_handler(event, context):
-    print('Event Received: {}'.format(json.dumps(event)))
+    print("Event Received: {}".format(json.dumps(event)))
     request_params: RequestParams = parse_request(event)
 
     # if event['httpMethod'] == 'POST':
@@ -21,7 +21,7 @@ def lambda_handler(event, context):
 
     #     validator = Draft202012Validator(schemaRequestBody)
     #     errors = []
-        
+
     #     for error in sorted(validator.iter_errors(body_dict), key=lambda e: e.path):
     #         error_message = f'{error.message} '
     #         for part in list(error.path):
@@ -36,15 +36,21 @@ def lambda_handler(event, context):
     if event["resource"] == "/g_variants":
         return route_g_variants(request_params)
 
-    elif event['resource'] == '/g_variants/{id}':
-        return route_g_variants_id(request_params, event["pathParameters"].get("id", None))
+    elif event["resource"] == "/g_variants/{id}":
+        return route_g_variants_id(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
-    elif event['resource'] == '/g_variants/{id}/individuals':
-        return route_g_variants_id_individuals(request_params, event["pathParameters"].get("id", None))
+    elif event["resource"] == "/g_variants/{id}/individuals":
+        return route_g_variants_id_individuals(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
-    elif event['resource'] == '/g_variants/{id}/biosamples':
-        return route_g_variants_id_biosamples(request_params, event["pathParameters"].get("id", None))
+    elif event["resource"] == "/g_variants/{id}/biosamples":
+        return route_g_variants_id_biosamples(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

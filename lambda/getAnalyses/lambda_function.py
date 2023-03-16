@@ -45,10 +45,14 @@ def lambda_handler(event, context):
         return route_analyses_filtering_terms(request_params)
 
     elif event["resource"] == "/analyses/{id}":
-        return route_analyses_id(request_params, event["pathParameters"].get("id", None))
+        return route_analyses_id(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
     elif event["resource"] == "/analyses/{id}/g_variants":
-        return route_analyses_id_g_variants(request_params, event["pathParameters"].get("id", None))
+        return route_analyses_id_g_variants(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
 
 if __name__ == "__main__":

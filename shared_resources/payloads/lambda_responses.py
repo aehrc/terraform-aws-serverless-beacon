@@ -4,6 +4,7 @@ import jsons
 # TODO
 # Add comments explaining the variables
 
+
 # response sent by SplitQuery lambda
 @dataclass
 class SplitQueryResponse:
@@ -21,4 +22,3 @@ class PerformQueryResponse(jsons.JsonSerializable):
     call_count: int
     sample_indices: list
     sample_names: list
-    

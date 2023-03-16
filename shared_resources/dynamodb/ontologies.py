@@ -5,9 +5,9 @@ from pynamodb.models import Model
 from pynamodb.attributes import UnicodeAttribute, UnicodeSetAttribute
 
 
-DYNAMO_ONTOLOGIES_TABLE = os.environ['DYNAMO_ONTOLOGIES_TABLE']
-DYNAMO_DESCENDANTS_TABLE = os.environ['DYNAMO_DESCENDANTS_TABLE']
-DYNAMO_ANSCESTORS_TABLE = os.environ['DYNAMO_ANSCESTORS_TABLE']
+DYNAMO_ONTOLOGIES_TABLE = os.environ["DYNAMO_ONTOLOGIES_TABLE"]
+DYNAMO_DESCENDANTS_TABLE = os.environ["DYNAMO_DESCENDANTS_TABLE"]
+DYNAMO_ANSCESTORS_TABLE = os.environ["DYNAMO_ANSCESTORS_TABLE"]
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
@@ -48,8 +48,8 @@ def expand_terms(filters):
     if not type(filters) == list:
         filters = [filters]
     for filter in filters:
-        term = filter.get('id')
-        if filter.get('includeDescendantTerms', True):
+        term = filter.get("id")
+        if filter.get("includeDescendantTerms", True):
             try:
                 item = Descendants.get(term)
                 terms.update(item.descendants)
@@ -57,8 +57,8 @@ def expand_terms(filters):
                 terms.add(term)
         else:
             terms.add(term)
-    return ','.join([f"'{term}'" for term in terms])
+    return ",".join([f"'{term}'" for term in terms])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

@@ -6,26 +6,28 @@ import jsons
 
 # payload accepted by SplitQuery lambda
 class SplitQueryPayload(jsons.JsonSerializable):
-    def __init__(self, *, 
-            # passthrough variable holds arbitrary data
-            # can be used to pass params to splitquery
-            passthrough={},
-            dataset_id,
-            query_id,
-            reference_bases,
-            start_min,
-            start_max,
-            end_min,
-            end_max,
-            alternate_bases,
-            variant_type,
-            include_datasets,
-            vcf_locations,
-            vcf_groups,
-            requested_granularity,
-            variant_min_length,
-            variant_max_length,
-        ):
+    def __init__(
+        self,
+        *,
+        # passthrough variable holds arbitrary data
+        # can be used to pass params to splitquery
+        passthrough={},
+        dataset_id,
+        query_id,
+        reference_bases,
+        start_min,
+        start_max,
+        end_min,
+        end_max,
+        alternate_bases,
+        variant_type,
+        include_datasets,
+        vcf_locations,
+        vcf_groups,
+        requested_granularity,
+        variant_min_length,
+        variant_max_length,
+    ):
         self.passthrough = passthrough
         self.dataset_id = dataset_id
         self.query_id = query_id
@@ -43,24 +45,27 @@ class SplitQueryPayload(jsons.JsonSerializable):
         self.variant_min_length = variant_min_length
         self.variant_max_length = variant_max_length
 
+
 class PerformQueryPayload(jsons.JsonSerializable):
-    def __init__(self, *,
-            # passthrough variable holds arbitrary data
-            passthrough={},
-            dataset_id=None,
-            query_id='test',
-            region=None,
-            reference_bases=None,
-            end_min=None,
-            end_max=None,
-            alternate_bases=None,
-            variant_type=None,
-            include_details=None,
-            requested_granularity=None,
-            variant_min_length=None,
-            variant_max_length=None,
-            vcf_location=None
-        ):
+    def __init__(
+        self,
+        *,
+        # passthrough variable holds arbitrary data
+        passthrough={},
+        dataset_id=None,
+        query_id="test",
+        region=None,
+        reference_bases=None,
+        end_min=None,
+        end_max=None,
+        alternate_bases=None,
+        variant_type=None,
+        include_details=None,
+        requested_granularity=None,
+        variant_min_length=None,
+        variant_max_length=None,
+        vcf_location=None,
+    ):
         self.passthrough = passthrough
         self.dataset_id = dataset_id
         self.query_id = query_id
@@ -74,4 +79,4 @@ class PerformQueryPayload(jsons.JsonSerializable):
         self.requested_granularity = requested_granularity
         self.variant_min_length = variant_min_length
         self.variant_max_length = variant_max_length
-        self.vcf_location = vcf_location    
+        self.vcf_location = vcf_location

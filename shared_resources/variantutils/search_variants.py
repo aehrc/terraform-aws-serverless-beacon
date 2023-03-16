@@ -1,10 +1,10 @@
 import concurrent.futures
-import jsons
 import time
 import copy
 import queue
-import botocore
 
+import jsons
+import botocore
 import boto3
 
 from .local_utils import split_query, split_query_sync, get_split_query_fan_out
@@ -13,43 +13,47 @@ from dynamodb.variant_queries import VariantQuery, VariantResponse
 from payloads.lambda_payloads import SplitQueryPayload
 from payloads.lambda_responses import PerformQueryResponse
 
-client_config = botocore.config.Config(
-    max_pool_connections=100,
-)
 
 REQUEST_TIMEOUT = 600  # seconds
 THREADS = 500
 
-aws_lambda = boto3.client('lambda', config=client_config)
-s3 = boto3.client('s3')
+client_config = botocore.config.Config(
+    max_pool_connections=100,
+)
+aws_lambda = boto3.client("lambda", config=client_config)
+s3 = boto3.client("s3")
 
 
-def perform_variant_search(*,
-        datasets,
-        referenceName,
-        referenceBases,
-        alternateBases,
-        start,
-        end,
-        variantType,
-        variantMinLength,
-        variantMaxLength,
-        requestedGranularity,
-        includeResultsetResponses,
-        query_id='TEST',
-        passthrough=dict(),
-        dataset_samples=[]
+def perform_variant_search(
+    *,
+    datasets,
+    referenceName,
+    referenceBases,
+    alternateBases,
+    start,
+    end,
+    variantType,
+    variantMinLength,
+    variantMaxLength,
+    requestedGranularity,
+    includeResultsetResponses,
+    query_id="TEST",
+    passthrough=dict(),
+    dataset_samples=[],
 ):
     try:
         # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
-        vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
-            vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
+        vcf_chromosomes = {
+            vcfm["vcf"]: get_matching_chromosome(vcfm["chromosomes"], referenceName)
+            for dataset in datasets
+            for vcfm in dataset._vcfChromosomeMap
+        }
 
         if len(start) == 2:
             start_min, start_max = start
         else:
             start_min = start[0]
-        
+
         if len(end) == 2:
             end_min, end_max = end
         else:
@@ -59,7 +63,7 @@ def perform_variant_search(*,
         if len(start) != 2:
             start_max = end_max
     except Exception as e:
-        print('Error occured ', e)
+        print("Error occured ", e)
         return False, []
 
     start_min += 1
@@ -73,7 +77,7 @@ def perform_variant_search(*,
     split_query_fan_out = get_split_query_fan_out(start_min, start_max)
     perform_query_fan_out = 0
 
-    print('Start event publishing')
+    print("Start event publishing")
     pool = concurrent.futures.ThreadPoolExecutor(THREADS)
 
     # parallelism across datasets
@@ -85,11 +89,11 @@ def perform_variant_search(*,
         }
 
         event_passthrough = copy.deepcopy(passthrough)
-        
+
         # adjust event passthrough if needed
         if len(dataset_samples) == len(datasets) and len(dataset_samples[n]) > 0:
-            event_passthrough['sampleNames'] = dataset_samples[n]
-            event_passthrough['selectedSamplesOnly'] = True
+            event_passthrough["sampleNames"] = dataset_samples[n]
+            event_passthrough["selectedSamplesOnly"] = True
 
         # record perform query fan out size
         perform_query_fan_out += split_query_fan_out * len(vcf_locations)
@@ -111,19 +115,18 @@ def perform_variant_search(*,
             include_datasets=includeResultsetResponses,
             requested_granularity=requestedGranularity,
             variant_min_length=variantMinLength,
-            variant_max_length=variantMaxLength
+            variant_max_length=variantMaxLength,
         )
         pool.submit(split_query, payload)
 
     pool.shutdown()
 
-    query_record.update(actions=[
-        VariantQuery.fanOut.set(
-            VariantQuery.fanOut + perform_query_fan_out)
-    ])
+    query_record.update(
+        actions=[VariantQuery.fanOut.set(VariantQuery.fanOut + perform_query_fan_out)]
+    )
 
-    print('End event publishing')
-    
+    print("End event publishing")
+
     start_time = time.time()
     query_results = dict()
 
@@ -132,7 +135,12 @@ def perform_variant_search(*,
             query_record.refresh()
             time.sleep(0.5)
             if query_record.fanOut == 0:
-                for item in  VariantResponse.batch_get([(query_id, resp_no) for resp_no in range(1, query_record.responses + 1)]):
+                for item in VariantResponse.batch_get(
+                    [
+                        (query_id, resp_no)
+                        for resp_no in range(1, query_record.responses + 1)
+                    ]
+                ):
                     query_results[item.responseNumber] = item
                 print(f"Query fan in completed with {len(query_results)} items")
                 break
@@ -140,7 +148,7 @@ def perform_variant_search(*,
             print("Errored", e)
             break
 
-    print('Start results generator')
+    print("Start results generator")
     for _, var_response in query_results.items():
         if var_response.checkS3:
             loc = var_response.responseLocation
@@ -148,39 +156,43 @@ def perform_variant_search(*,
                 Bucket=loc.bucket,
                 Key=loc.key,
             )
-            query_response = jsons.loads(obj['Body'].read(), PerformQueryResponse)
+            query_response = jsons.loads(obj["Body"].read(), PerformQueryResponse)
         else:
             query_response = jsons.loads(var_response.result, PerformQueryResponse)
-        
+
         yield query_response
 
 
-def perform_variant_search_sync(*,
-        datasets,
-        referenceName,
-        referenceBases,
-        alternateBases,
-        start,
-        end,
-        variantType,
-        variantMinLength,
-        variantMaxLength,
-        requestedGranularity,
-        includeResultsetResponses,
-        query_id='TEST',
-        passthrough=dict(),
-        dataset_samples=[]
+def perform_variant_search_sync(
+    *,
+    datasets,
+    referenceName,
+    referenceBases,
+    alternateBases,
+    start,
+    end,
+    variantType,
+    variantMinLength,
+    variantMaxLength,
+    requestedGranularity,
+    includeResultsetResponses,
+    query_id="TEST",
+    passthrough=dict(),
+    dataset_samples=[],
 ):
     try:
         # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
-        vcf_chromosomes = {vcfm['vcf']: get_matching_chromosome(
-            vcfm['chromosomes'], referenceName) for dataset in datasets for vcfm in dataset._vcfChromosomeMap}
+        vcf_chromosomes = {
+            vcfm["vcf"]: get_matching_chromosome(vcfm["chromosomes"], referenceName)
+            for dataset in datasets
+            for vcfm in dataset._vcfChromosomeMap
+        }
 
         if len(start) == 2:
             start_min, start_max = start
         else:
             start_min = start[0]
-        
+
         if len(end) == 2:
             end_min, end_max = end
         else:
@@ -190,7 +202,7 @@ def perform_variant_search_sync(*,
         if len(start) != 2:
             start_max = end_max
     except Exception as e:
-        print('Error occured ', e)
+        print("Error occured ", e)
         return False, []
 
     start_min += 1
@@ -198,7 +210,7 @@ def perform_variant_search_sync(*,
     end_min += 1
     end_max += 1
 
-    print('Start event publishing')
+    print("Start event publishing")
     results_queue = queue.Queue()
     pool = concurrent.futures.ThreadPoolExecutor(THREADS)
 
@@ -211,11 +223,11 @@ def perform_variant_search_sync(*,
         }
 
         event_passthrough = copy.deepcopy(passthrough)
-        
+
         # adjust event passthrough if needed
         if len(dataset_samples) == len(datasets) and len(dataset_samples[n]) > 0:
-            event_passthrough['sampleNames'] = dataset_samples[n]
-            event_passthrough['selectedSamplesOnly'] = True
+            event_passthrough["sampleNames"] = dataset_samples[n]
+            event_passthrough["selectedSamplesOnly"] = True
 
         # call split query for each dataset found
         payload = SplitQueryPayload(
@@ -234,12 +246,15 @@ def perform_variant_search_sync(*,
             include_datasets=includeResultsetResponses,
             requested_granularity=requestedGranularity,
             variant_min_length=variantMinLength,
-            variant_max_length=variantMaxLength
+            variant_max_length=variantMaxLength,
         )
         pool.submit(split_query_sync, payload, results_queue)
 
     pool.shutdown()
-    print('End event publishing')
-    
-    return [jsons.load(res, PerformQueryResponse) for res_array in results_queue.queue for res in res_array]
-       
+    print("End event publishing")
+
+    return [
+        jsons.load(res, PerformQueryResponse)
+        for res_array in results_queue.queue
+        for res in res_array
+    ]

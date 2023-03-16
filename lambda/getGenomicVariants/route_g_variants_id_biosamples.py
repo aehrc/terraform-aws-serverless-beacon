@@ -14,15 +14,15 @@ from apiutils.schemas import DefaultSchemas
 from athena.biosample import Biosample
 
 
-ATHENA_BIOSAMPLES_TABLE = os.environ['ATHENA_BIOSAMPLES_TABLE']
-ATHENA_DATASETS_TABLE = os.environ['ATHENA_DATASETS_TABLE']
-ATHENA_ANALYSES_TABLE = os.environ['ATHENA_ANALYSES_TABLE']
-ATHENA_METADATA_DATABASE = os.environ['ATHENA_METADATA_DATABASE']
-ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
+ATHENA_BIOSAMPLES_TABLE = os.environ["ATHENA_BIOSAMPLES_TABLE"]
+ATHENA_DATASETS_TABLE = os.environ["ATHENA_DATASETS_TABLE"]
+ATHENA_ANALYSES_TABLE = os.environ["ATHENA_ANALYSES_TABLE"]
+ATHENA_METADATA_DATABASE = os.environ["ATHENA_METADATA_DATABASE"]
+ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
 
 
 def datasets_query(conditions, assembly_id):
-    query = f'''
+    query = f"""
     SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
     FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_ANALYSES_TABLE}" A
     JOIN "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}" D
@@ -30,21 +30,21 @@ def datasets_query(conditions, assembly_id):
     {conditions} 
     AND D._assemblyid='{assembly_id}' 
     GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
-    '''
+    """
     return query
 
 
 def datasets_query_fast(assembly_id):
-    query = f'''
+    query = f"""
     SELECT id, _vcflocations, _vcfchromosomemap
     FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}"
     WHERE _assemblyid='{assembly_id}' 
-    '''
+    """
     return query
 
 
 def get_count_query(dataset_id, sample_names):
-    query = f'''
+    query = f"""
     SELECT COUNT(id)
     FROM 
         "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
@@ -60,12 +60,12 @@ def get_count_query(dataset_id, sample_names):
             "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
-    '''
+    """
     return query
 
 
 def get_bool_query(dataset_id, sample_names):
-    query = f'''
+    query = f"""
     SELECT 1
     FROM 
         "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
@@ -82,14 +82,14 @@ def get_bool_query(dataset_id, sample_names):
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
     LIMIT 1
-    '''
+    """
     return query
 
 
 # TODO break into many queries (ATHENA SQL LIMIT)
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
 def get_record_query(dataset_id, sample_names):
-    query = f'''
+    query = f"""
     SELECT "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}".* 
     FROM 
         "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
@@ -105,31 +105,35 @@ def get_record_query(dataset_id, sample_names):
             "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
-    '''
+    """
     return query
 
 
 def route(request: RequestParams, variant_id):
     dataset_hash = base64.b64decode(variant_id.encode()).decode()
     assemblyId, referenceName, pos, referenceBases, alternateBases = dataset_hash.split(
-        '\t')
+        "\t"
+    )
     pos = int(pos) - 1
     start = [pos]
     end = [pos + len(alternateBases)]
     dataset_samples = defaultdict(set)
 
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, 'analyses', 'biosamples', id_modifier='A.id')
+        request.query.filters, "analyses", "biosamples", id_modifier="A.id"
+    )
 
     if conditions:
         query = datasets_query(conditions, assemblyId)
         exec_id = run_custom_query(
-            query, return_id=True, execution_parameters=execution_parameters)
+            query, return_id=True, execution_parameters=execution_parameters
+        )
         datasets, samples = parse_datasets_with_samples(exec_id)
     else:
         query = datasets_query_fast(assemblyId)
         datasets = Dataset.get_by_query(
-            query, execution_parameters=execution_parameters)
+            query, execution_parameters=execution_parameters
+        )
         samples = []
 
     query_responses = perform_variant_search_sync(
@@ -142,10 +146,10 @@ def route(request: RequestParams, variant_id):
         variantType=None,
         variantMinLength=0,
         variantMaxLength=-1,
-        requestedGranularity='record',  # we need the records for this task
-        includeResultsetResponses='ALL',
+        requestedGranularity="record",  # we need the records for this task
+        includeResultsetResponses="ALL",
         dataset_samples=samples,
-        passthrough={'includeSamples': True}
+        passthrough={"includeSamples": True},
     )
 
     exists = False
@@ -154,10 +158,11 @@ def route(request: RequestParams, variant_id):
         exists = exists or query_response.exists
 
         if query_response.exists:
-            if request.query.requested_granularity == 'boolean':
+            if request.query.requested_granularity == "boolean":
                 break
             dataset_samples[query_response.dataset_id].update(
-                sorted(query_response.sample_names))
+                sorted(query_response.sample_names)
+            )
 
     queries = []
     iterated_biosamples = 0
@@ -165,7 +170,7 @@ def route(request: RequestParams, variant_id):
 
     for dataset_id, sample_names in dataset_samples.items():
         if (len(sample_names)) > 0:
-            if request.query.requested_granularity == 'count':
+            if request.query.requested_granularity == "count":
                 # query = get_count_query(dataset_id, sample_names)
                 # queries.append(query)
                 # TODO optimise for duplicate individuals
@@ -176,7 +181,10 @@ def route(request: RequestParams, variant_id):
 
                 for sample_name in sample_names:
                     iterated_biosamples += 1
-                    if iterated_biosamples > request.query.pagination.skip and chosen_biosamples < request.query.pagination.limit:
+                    if (
+                        iterated_biosamples > request.query.pagination.skip
+                        and chosen_biosamples < request.query.pagination.limit
+                    ):
                         chosen_samples.append(sample_name)
                         chosen_biosamples += 1
 
@@ -186,27 +194,34 @@ def route(request: RequestParams, variant_id):
                     query = get_record_query(dataset_id, chosen_samples)
                     queries.append(query)
 
-    if request.query.requested_granularity == 'boolean':
+    if request.query.requested_granularity == "boolean":
         response = responses.build_beacon_boolean_response(
-            {}, 1 if exists else 0, request, {}, DefaultSchemas.BIOSAMPLES)
-        print('Returning Response: {}'.format(json.dumps(response)))
+            {}, 1 if exists else 0, request, {}, DefaultSchemas.BIOSAMPLES
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return responses.bundle_response(200, response)
 
-    if request.query.requested_granularity == 'count':
+    if request.query.requested_granularity == "count":
         count = iterated_biosamples
         response = responses.build_beacon_count_response(
-            {}, count, request, {}, DefaultSchemas.BIOSAMPLES)
-        print('Returning Response: {}'.format(json.dumps(response)))
+            {}, count, request, {}, DefaultSchemas.BIOSAMPLES
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
-        query = ' UNION '.join(queries)
+        query = " UNION ".join(queries)
         biosamples = Biosample.get_by_query(query) if len(queries) > 0 else []
         response = responses.build_beacon_resultset_response(
-            jsons.dump(biosamples, strip_privates=True), len(biosamples), request, {}, DefaultSchemas.BIOSAMPLES)
-        print('Returning Response: {}'.format(json.dumps(response)))
+            jsons.dump(biosamples, strip_privates=True),
+            len(biosamples),
+            request,
+            {},
+            DefaultSchemas.BIOSAMPLES,
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return responses.bundle_response(200, response)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

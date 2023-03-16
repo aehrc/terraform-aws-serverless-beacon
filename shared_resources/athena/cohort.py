@@ -9,40 +9,40 @@ from smart_open import open as sopen
 from .common import AthenaModel, extract_terms
 
 
-ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
-ATHENA_COHORTS_TABLE = os.environ['ATHENA_COHORTS_TABLE']
+ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
+ATHENA_COHORTS_TABLE = os.environ["ATHENA_COHORTS_TABLE"]
 
-s3 = boto3.client('s3')
-athena = boto3.client('athena')
+s3 = boto3.client("s3")
+athena = boto3.client("athena")
 
 
 class Cohort(jsons.JsonSerializable, AthenaModel):
     _table_name = ATHENA_COHORTS_TABLE
     # for saving to database order matter
     _table_columns = [
-        'id',
-        'cohortDataTypes',
-        'cohortDesign',
-        'cohortSize',
-        'cohortType',
-        'collectionEvents',
-        'exclusionCriteria',
-        'inclusionCriteria',
-        'name'
+        "id",
+        "cohortDataTypes",
+        "cohortDesign",
+        "cohortSize",
+        "cohortType",
+        "collectionEvents",
+        "exclusionCriteria",
+        "inclusionCriteria",
+        "name",
     ]
 
     def __init__(
         self,
         *,
-        id='',
-        cohortDataTypes='',
-        cohortDesign='',
-        cohortSize='',
-        cohortType='',
-        collectionEvents='',
-        exclusionCriteria='',
-        inclusionCriteria='',
-        name=''
+        id="",
+        cohortDataTypes="",
+        cohortDesign="",
+        cohortSize="",
+        cohortType="",
+        collectionEvents="",
+        exclusionCriteria="",
+        inclusionCriteria="",
+        name="",
     ):
         self.id = id
         self.cohortDataTypes = cohortDataTypes
@@ -61,20 +61,22 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
     def upload_array(cls, array):
         if len(array) == 0:
             return
-        header = 'struct<' + \
-            ','.join(
-                [f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        bloom_filter_columns = list(
-            map(lambda x: x.lower(), cls._table_columns))
-        key = f'{array[0].id}-cohorts'
+        header = (
+            "struct<"
+            + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
+            + ">"
+        )
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+        key = f"{array[0].id}-cohorts"
 
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/cohorts/{key}', 'wb') as s3file:
+        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/cohorts/{key}", "wb") as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                    bloom_filter_columns=bloom_filter_columns) as writer:
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+                bloom_filter_columns=bloom_filter_columns,
+            ) as writer:
                 for cohort in array:
                     row = tuple(
                         cohort.__dict__[k]
@@ -84,19 +86,21 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
                     )
                     writer.write(row)
 
-        header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/cohorts-{key}', 'wb') as s3file:
+        header = "struct<kind:string,id:string,term:string,label:string,type:string>"
+        with sopen(
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/cohorts-{key}", "wb"
+        ) as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION) as writer:
-
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+            ) as writer:
                 for cohort in array:
                     for term, label, typ in extract_terms([jsons.dump(cohort)]):
-                        row = ('cohorts', cohort.id, term, label, typ)
+                        row = ("cohorts", cohort.id, term, label, typ)
                         writer.write(row)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

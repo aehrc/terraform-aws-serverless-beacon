@@ -6,7 +6,7 @@ from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from pynamodb.attributes import UnicodeAttribute
 
 
-DYNAMO_ONTO_INDEX_TABLE = os.environ['DYNAMO_ONTO_INDEX_TABLE']
+DYNAMO_ONTO_INDEX_TABLE = os.environ["DYNAMO_ONTO_INDEX_TABLE"]
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
@@ -14,7 +14,7 @@ REGION = SESSION.region_name
 # Terms index
 class TermIndex(GlobalSecondaryIndex):
     class Meta:
-        index_name = 'term_index'
+        index_name = "term_index"
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
         region = REGION
@@ -25,7 +25,7 @@ class TermIndex(GlobalSecondaryIndex):
 # TableNames
 class TableIndex(GlobalSecondaryIndex):
     class Meta:
-        index_name = 'table_index'
+        index_name = "table_index"
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
         region = REGION
@@ -36,7 +36,7 @@ class TableIndex(GlobalSecondaryIndex):
 # TableNames
 class TableTermsIndex(GlobalSecondaryIndex):
     class Meta:
-        index_name = 'tableterms_index'
+        index_name = "tableterms_index"
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
         region = REGION
@@ -57,16 +57,15 @@ class OntoData(Model):
     term = UnicodeAttribute()
     label = UnicodeAttribute()
     type = UnicodeAttribute()
-    
+
     termIndex = TermIndex()
     tableIndex = TableIndex()
     tableTermsIndex = TableTermsIndex()
 
-
     @classmethod
     def make_index_entry(cls, tableName, columnName, term, label, type):
-        id = f'{tableName}\t{columnName}\t{term}'
-        tableTerms = f'{tableName}\t{term}'
+        id = f"{tableName}\t{columnName}\t{term}"
+        tableTerms = f"{tableName}\t{term}"
         entry = OntoData(hash_key=id)
         entry.tableName = tableName
         entry.tableTerms = tableTerms
@@ -78,5 +77,5 @@ class OntoData(Model):
         return entry
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

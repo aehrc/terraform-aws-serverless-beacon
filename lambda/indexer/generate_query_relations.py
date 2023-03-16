@@ -1,4 +1,4 @@
-QUERY = '''
+QUERY = """
 CREATE TABLE sbeacon_relations
 WITH (
     format = 'ORC',
@@ -29,16 +29,16 @@ FROM
         ON R.id = A."runid"
     FULL OUTER JOIN "sbeacon_cohorts" C
         on C.id = I._cohortid
-'''
-     
-# SELECT 
+"""
+
+# SELECT
 #     I._datasetid as datasetid,
 #     I._cohortid as cohortid,
-#     I.id AS individualid, 
-#     B.id AS biosampleid, 
-#     R.id AS runid,  
+#     I.id AS individualid,
+#     B.id AS biosampleid,
+#     R.id AS runid,
 #     A.id AS analysisid
-# FROM 
+# FROM
 #         "{individuals_table}" I
 #     LEFT OUTER JOIN "{biosamples_table}" B
 #         ON I.id = B."individualid"

@@ -9,48 +9,48 @@ from smart_open import open as sopen
 from .common import AthenaModel, extract_terms
 
 
-ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
-ATHENA_ANALYSES_TABLE = os.environ['ATHENA_ANALYSES_TABLE']
+ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
+ATHENA_ANALYSES_TABLE = os.environ["ATHENA_ANALYSES_TABLE"]
 
-s3 = boto3.client('s3')
-athena = boto3.client('athena')
+s3 = boto3.client("s3")
+athena = boto3.client("athena")
 
 
 class Analysis(jsons.JsonSerializable, AthenaModel):
     _table_name = ATHENA_ANALYSES_TABLE
     # for saving to database order matter
     _table_columns = [
-        'id',
-        '_datasetId',
-        '_cohortId',
-        '_vcfSampleId',
-        'individualId',
-        'biosampleId',
-        'runId',
-        'aligner',
-        'analysisDate',
-        'info',
-        'pipelineName',
-        'pipelineRef',
-        'variantCaller'
+        "id",
+        "_datasetId",
+        "_cohortId",
+        "_vcfSampleId",
+        "individualId",
+        "biosampleId",
+        "runId",
+        "aligner",
+        "analysisDate",
+        "info",
+        "pipelineName",
+        "pipelineRef",
+        "variantCaller",
     ]
 
     def __init__(
         self,
         *,
-        id='',
-        datasetId='',
-        cohortId='',
-        individualId='',
-        biosampleId='',
-        runId='',
-        aligner='',
-        analysisDate='',
+        id="",
+        datasetId="",
+        cohortId="",
+        individualId="",
+        biosampleId="",
+        runId="",
+        aligner="",
+        analysisDate="",
         info={},
-        pipelineName='',
-        pipelineRef='',
-        variantCaller='',
-        vcfSampleId=''
+        pipelineName="",
+        pipelineRef="",
+        variantCaller="",
+        vcfSampleId="",
     ):
         self.id = id
         self._datasetId = datasetId
@@ -73,19 +73,22 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
     def upload_array(cls, array):
         if len(array) == 0:
             return
-        header = 'struct<' + \
-            ','.join(
-                [f'{col.lower()}:string' for col in cls._table_columns]) + '>'
+        header = (
+            "struct<"
+            + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
+            + ">"
+        )
         bloom_filter_columns = [c.lower() for c in cls._table_columns]
-        key = f'{array[0]._datasetId}-analyses'
+        key = f"{array[0]._datasetId}-analyses"
 
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/analyses/{key}', 'wb') as s3file:
+        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/analyses/{key}", "wb") as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                    bloom_filter_columns=bloom_filter_columns) as writer:
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+                bloom_filter_columns=bloom_filter_columns,
+            ) as writer:
                 for analysis in array:
                     row = tuple(
                         analysis.__dict__[k]
@@ -95,19 +98,21 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
                     )
                     writer.write(row)
 
-        header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/analyses-{key}', 'wb') as s3file:
+        header = "struct<kind:string,id:string,term:string,label:string,type:string>"
+        with sopen(
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/analyses-{key}", "wb"
+        ) as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION) as writer:
-
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+            ) as writer:
                 for analysis in array:
                     for term, label, typ in extract_terms([jsons.dump(analysis)]):
-                        row = ('analyses', analysis.id, term, label, typ)
+                        row = ("analyses", analysis.id, term, label, typ)
                         writer.write(row)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

@@ -15,9 +15,9 @@ from humps import camelize
 #
 
 
-CURIE_REGEX = r'^([a-zA-Z0-9]*):\/?[a-zA-Z0-9]*$'
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_DEFAULT_GRANULARITY = os.environ['BEACON_DEFAULT_GRANULARITY']
+CURIE_REGEX = r"^([a-zA-Z0-9]*):\/?[a-zA-Z0-9]*$"
+BEACON_API_VERSION = os.environ["BEACON_API_VERSION"]
+BEACON_DEFAULT_GRANULARITY = os.environ["BEACON_DEFAULT_GRANULARITY"]
 
 
 # Thirdparty Code
@@ -30,10 +30,10 @@ class CamelModel(BaseModel):
 class RequestQueryParams(CamelModel):
     start: List[int] = [0]
     end: List[int] = [0]
-    assembly_id: str = ''
-    reference_name: str = ''
-    reference_bases: str = 'N'
-    alternate_bases: str = 'N'
+    assembly_id: str = ""
+    reference_name: str = ""
+    reference_bases: str = "N"
+    alternate_bases: str = "N"
     variant_min_length: int = 0
     variant_max_length: int = -1
     allele: Optional[str]
@@ -41,7 +41,7 @@ class RequestQueryParams(CamelModel):
     aminoacid_change: Optional[str]
     variant_type: Optional[str]
     _user_params: dict() = PrivateAttr()
-    
+
     def __init__(self, **data):
         super().__init__(**data)
         self._user_params = data
@@ -49,34 +49,34 @@ class RequestQueryParams(CamelModel):
 
 # Thirdparty Code
 class IncludeResultsetResponses(StrEnum):
-    ALL = "ALL",
-    HIT = "HIT",
-    MISS = "MISS",
+    ALL = ("ALL",)
+    HIT = ("HIT",)
+    MISS = ("MISS",)
     NONE = "NONE"
 
 
 # Thirdparty Code
 class Similarity(StrEnum):
-    EXACT = "exact",
-    HIGH = "high",
-    MEDIUM = "medium",
+    EXACT = ("exact",)
+    HIGH = ("high",)
+    MEDIUM = ("medium",)
     LOW = "low"
 
 
 # Thirdparty Code
 class Operator(StrEnum):
-    EQUAL = "=",
-    LESS = "<",
-    GREATER = ">",
-    NOT = "!",
-    LESS_EQUAL = "<=",
+    EQUAL = ("=",)
+    LESS = ("<",)
+    GREATER = (">",)
+    NOT = ("!",)
+    LESS_EQUAL = ("<=",)
     GREATER_EQUAL = ">="
 
 
 # Thirdparty Code
 class Granularity(StrEnum):
-    BOOLEAN = "boolean",
-    COUNT = "count",
+    BOOLEAN = ("boolean",)
+    COUNT = ("count",)
     RECORD = "record"
 
 
@@ -84,7 +84,7 @@ class Granularity(StrEnum):
 class OntologyFilter(CamelModel):
     id: constr(regex=CURIE_REGEX)
     scope: Optional[str] = None
-    include_descendant_terms: bool = False
+    include_descendant_terms: bool = True
     similarity: Similarity = Similarity.EXACT
 
 
@@ -117,19 +117,20 @@ class RequestMeta(CamelModel):
 # Thirdparty Code
 class RequestQuery(CamelModel):
     filters: List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]] = []
-    include_resultset_responses: IncludeResultsetResponses = IncludeResultsetResponses.HIT
+    include_resultset_responses: IncludeResultsetResponses = (
+        IncludeResultsetResponses.HIT
+    )
     pagination: Pagination = Pagination()
     request_parameters: RequestQueryParams = RequestQueryParams()
     test_mode: bool = False
-    requested_granularity: Granularity = Granularity(
-        BEACON_DEFAULT_GRANULARITY)
+    requested_granularity: Granularity = Granularity(BEACON_DEFAULT_GRANULARITY)
     _filters: dict() = PrivateAttr()
-    
+
     def __init__(self, **data):
         super().__init__(**data)
-        self._filters = data.get('filters', [])
+        self._filters = data.get("filters", [])
 
-    @validator('filters', pre=True, each_item=True)
+    @validator("filters", pre=True, each_item=True)
     def check_squares(cls, term):
         if isinstance(term, str):
             term = {"id": term}
@@ -153,8 +154,7 @@ class RequestParams(CamelModel):
             elif k == "limit":
                 self.query.pagination.limit = int(v)
             elif k == "includeResultsetResponses":
-                self.query.include_resultset_responses = IncludeResultsetResponses(
-                    v)
+                self.query.include_resultset_responses = IncludeResultsetResponses(v)
             else:
                 req_params_dict[k] = v
         if len(req_params_dict):
@@ -170,19 +170,19 @@ class RequestParams(CamelModel):
             "includeResultsetResponses": self.query.include_resultset_responses,
             "pagination": self.query.pagination.dict(),
             "requestedGranularity": self.query.requested_granularity,
-            "testMode": self.query.test_mode
+            "testMode": self.query.test_mode,
         }
 
 
 # TODO create a decorator for lambda handlers
 def parse_request(event) -> RequestParams:
     body_dict = dict()
-    if event['httpMethod'] == 'POST':
+    if event["httpMethod"] == "POST":
         try:
-            body_dict = json.loads(event.get('body') or '{}')
+            body_dict = json.loads(event.get("body") or "{}")
         except ValueError:
             pass
-    params = event.get('queryStringParameters', None) or dict()
+    params = event.get("queryStringParameters", None) or dict()
     request_params = RequestParams(**body_dict).from_request(params)
 
     return request_params

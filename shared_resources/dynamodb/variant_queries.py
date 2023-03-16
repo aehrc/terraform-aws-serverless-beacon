@@ -6,18 +6,23 @@ import boto3
 from pynamodb.models import Model
 from pynamodb.indexes import LocalSecondaryIndex, AllProjection
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, MapAttribute, TTLAttribute, BooleanAttribute, UTCDateTimeAttribute
+    UnicodeAttribute,
+    NumberAttribute,
+    MapAttribute,
+    TTLAttribute,
+    BooleanAttribute,
+    UTCDateTimeAttribute,
 )
 
 
-QUERIES_TABLE_NAME = os.environ['DYNAMO_VARIANT_QUERIES_TABLE']
-VARIANT_QUERY_RESPONSES_TABLE_NAME = os.environ['DYNAMO_VARIANT_QUERY_RESPONSES_TABLE']
+QUERIES_TABLE_NAME = os.environ["DYNAMO_VARIANT_QUERIES_TABLE"]
+VARIANT_QUERY_RESPONSES_TABLE_NAME = os.environ["DYNAMO_VARIANT_QUERY_RESPONSES_TABLE"]
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
 
 def get_current_time_utc():
-        return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc)
 
 
 class S3Location(MapAttribute):
@@ -31,7 +36,7 @@ class VariantQuery(Model):
         table_name = QUERIES_TABLE_NAME
         region = REGION
 
-    id = UnicodeAttribute(hash_key=True, default='test')
+    id = UnicodeAttribute(hash_key=True, default="test")
     responsesCounter = NumberAttribute(default=0)
     responses = NumberAttribute(default=0)
     fanOut = NumberAttribute(default=0)
@@ -41,27 +46,29 @@ class VariantQuery(Model):
     timeToExist = TTLAttribute(default_for_new=timedelta(minutes=5))
     complete = BooleanAttribute(default_for_new=False)
 
-
     # atomically increment
     def getResponseNumber(self):
-        self.update(actions=[
-            VariantQuery.responsesCounter.set(VariantQuery.responsesCounter + 1),
-        ])
+        self.update(
+            actions=[
+                VariantQuery.responsesCounter.set(VariantQuery.responsesCounter + 1),
+            ]
+        )
         return self.responsesCounter
-
 
     # atomically increment
     def markFinished(self):
-        self.update(actions=[
-            VariantQuery.responses.set(VariantQuery.responses + 1),
-            VariantQuery.fanOut.set(VariantQuery.fanOut - 1),
-            VariantQuery.endTime.set(get_current_time_utc()),
-        ])
+        self.update(
+            actions=[
+                VariantQuery.responses.set(VariantQuery.responses + 1),
+                VariantQuery.fanOut.set(VariantQuery.fanOut - 1),
+                VariantQuery.endTime.set(get_current_time_utc()),
+            ]
+        )
 
 
 class VariantResponseIndex(LocalSecondaryIndex):
     class Meta:
-        index_name = 'responseNumber_index'
+        index_name = "responseNumber_index"
         projection = AllProjection()
         billing_mode = "PAY_PER_REQUEST"
         region = REGION
@@ -76,7 +83,7 @@ class VariantResponse(Model):
         table_name = VARIANT_QUERY_RESPONSES_TABLE_NAME
         region = REGION
 
-    id = UnicodeAttribute(hash_key=True, default='test')
+    id = UnicodeAttribute(hash_key=True, default="test")
     responseNumber = NumberAttribute(range_key=True, default=0)
     responseLocation = S3Location(null=True)
     variantResponseIndex = VariantResponseIndex()
@@ -103,5 +110,5 @@ def get_job_status(query_id):
     return JobStatus.NEW
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

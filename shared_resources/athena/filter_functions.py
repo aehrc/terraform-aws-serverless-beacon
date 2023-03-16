@@ -15,7 +15,6 @@ from .individual import Individual
 from .cohort import Cohort
 from .dataset import Dataset
 from .run import Run
-from .common import AthenaModel
 
 
 ATHENA_TERMS_INDEX_TABLE = os.environ["ATHENA_TERMS_INDEX_TABLE"]

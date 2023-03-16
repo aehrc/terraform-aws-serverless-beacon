@@ -9,48 +9,48 @@ from smart_open import open as sopen
 from .common import AthenaModel, extract_terms
 
 
-ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
-ATHENA_BIOSAMPLES_TABLE = os.environ['ATHENA_BIOSAMPLES_TABLE']
+ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
+ATHENA_BIOSAMPLES_TABLE = os.environ["ATHENA_BIOSAMPLES_TABLE"]
 
-s3 = boto3.client('s3')
-athena = boto3.client('athena')
+s3 = boto3.client("s3")
+athena = boto3.client("athena")
 
 
 class Biosample(jsons.JsonSerializable, AthenaModel):
     _table_name = ATHENA_BIOSAMPLES_TABLE
     # for saving to database order matter
     _table_columns = [
-        'id',
-        '_datasetId',
-        '_cohortId',
-        'individualId',
-        'biosampleStatus',
-        'collectionDate',
-        'collectionMoment',
-        'diagnosticMarkers',
-        'histologicalDiagnosis',
-        'measurements',
-        'obtentionProcedure',
-        'pathologicalStage',
-        'pathologicalTnmFinding',
-        'phenotypicFeatures',
-        'sampleOriginDetail',
-        'sampleOriginType',
-        'sampleProcessing',
-        'sampleStorage',
-        'tumorGrade',
-        'tumorProgression',
-        'info',
-        'notes'
+        "id",
+        "_datasetId",
+        "_cohortId",
+        "individualId",
+        "biosampleStatus",
+        "collectionDate",
+        "collectionMoment",
+        "diagnosticMarkers",
+        "histologicalDiagnosis",
+        "measurements",
+        "obtentionProcedure",
+        "pathologicalStage",
+        "pathologicalTnmFinding",
+        "phenotypicFeatures",
+        "sampleOriginDetail",
+        "sampleOriginType",
+        "sampleProcessing",
+        "sampleStorage",
+        "tumorGrade",
+        "tumorProgression",
+        "info",
+        "notes",
     ]
 
     def __init__(
         self,
         *,
-        id='',
-        datasetId='',
-        cohortId='',
-        individualId='',
+        id="",
+        datasetId="",
+        cohortId="",
+        individualId="",
         biosampleStatus={},
         collectionDate=[],
         collectionMoment=[],
@@ -68,7 +68,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         tumorGrade=[],
         tumorProgression=[],
         info=[],
-        notes=[]
+        notes=[],
     ):
         self.id = id
         self._datasetId = datasetId
@@ -100,20 +100,22 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
     def upload_array(cls, array):
         if len(array) == 0:
             return
-        header = 'struct<' + \
-            ','.join(
-                [f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        bloom_filter_columns = list(
-            map(lambda x: x.lower(), cls._table_columns))
-        key = f'{array[0]._datasetId}-biosamples'
+        header = (
+            "struct<"
+            + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
+            + ">"
+        )
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+        key = f"{array[0]._datasetId}-biosamples"
 
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/biosamples/{key}', 'wb') as s3file:
+        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/biosamples/{key}", "wb") as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                    bloom_filter_columns=bloom_filter_columns) as writer:
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+                bloom_filter_columns=bloom_filter_columns,
+            ) as writer:
                 for biosample in array:
                     row = tuple(
                         biosample.__dict__[k]
@@ -123,19 +125,21 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                     )
                     writer.write(row)
 
-        header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/biosamples-{key}', 'wb') as s3file:
+        header = "struct<kind:string,id:string,term:string,label:string,type:string>"
+        with sopen(
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/biosamples-{key}", "wb"
+        ) as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION) as writer:
-
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+            ) as writer:
                 for biosample in array:
                     for term, label, typ in extract_terms([jsons.dump(biosample)]):
-                        row = ('biosamples', biosample.id, term, label, typ)
+                        row = ("biosamples", biosample.id, term, label, typ)
                         writer.write(row)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

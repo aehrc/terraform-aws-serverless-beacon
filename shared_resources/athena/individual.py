@@ -1,48 +1,48 @@
-import jsons
-import boto3
 import json
-import pyorc
 import os
 
+import pyorc
+import jsons
+import boto3
 from smart_open import open as sopen
 
 from .common import AthenaModel, extract_terms
 
 
-ATHENA_METADATA_BUCKET = os.environ['ATHENA_METADATA_BUCKET']
-ATHENA_INDIVIDUALS_TABLE = os.environ['ATHENA_INDIVIDUALS_TABLE']
+ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
+ATHENA_INDIVIDUALS_TABLE = os.environ["ATHENA_INDIVIDUALS_TABLE"]
 
-s3 = boto3.client('s3')
-athena = boto3.client('athena')
+s3 = boto3.client("s3")
+athena = boto3.client("athena")
 
 
 class Individual(jsons.JsonSerializable, AthenaModel):
     _table_name = ATHENA_INDIVIDUALS_TABLE
     # for saving to database order matter
     _table_columns = [
-        'id',
-        '_datasetId',
-        '_cohortId',
-        'diseases',
-        'ethnicity',
-        'exposures',
-        'geographicOrigin',
-        'info',
-        'interventionsOrProcedures',
-        'karyotypicSex',
-        'measures',
-        'pedigrees',
-        'phenotypicFeatures',
-        'sex',
-        'treatments'
+        "id",
+        "_datasetId",
+        "_cohortId",
+        "diseases",
+        "ethnicity",
+        "exposures",
+        "geographicOrigin",
+        "info",
+        "interventionsOrProcedures",
+        "karyotypicSex",
+        "measures",
+        "pedigrees",
+        "phenotypicFeatures",
+        "sex",
+        "treatments",
     ]
 
     def __init__(
         self,
         *,
-        id='',
-        datasetId='',
-        cohortId='',
+        id="",
+        datasetId="",
+        cohortId="",
         diseases=[],
         ethnicity={},
         exposures=[],
@@ -54,7 +54,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
         pedigrees=[],
         phenotypicFeatures=[],
         sex={},
-        treatments=[]
+        treatments=[],
     ):
         self.id = id
         self._datasetId = datasetId
@@ -79,20 +79,22 @@ class Individual(jsons.JsonSerializable, AthenaModel):
     def upload_array(cls, array):
         if len(array) == 0:
             return
-        header = 'struct<' + \
-            ','.join(
-                [f'{col.lower()}:string' for col in cls._table_columns]) + '>'
-        bloom_filter_columns = list(
-            map(lambda x: x.lower(), cls._table_columns))
-        key = f'{array[0]._datasetId}-individuals'
+        header = (
+            "struct<"
+            + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
+            + ">"
+        )
+        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+        key = f"{array[0]._datasetId}-individuals"
 
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/individuals/{key}', 'wb') as s3file:
+        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/individuals/{key}", "wb") as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                    bloom_filter_columns=bloom_filter_columns) as writer:
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+                bloom_filter_columns=bloom_filter_columns,
+            ) as writer:
                 for individual in array:
                     row = tuple(
                         individual.__dict__[k]
@@ -102,19 +104,21 @@ class Individual(jsons.JsonSerializable, AthenaModel):
                     )
                     writer.write(row)
 
-        header = 'struct<kind:string,id:string,term:string,label:string,type:string>'
-        with sopen(f's3://{ATHENA_METADATA_BUCKET}/terms-cache/individuals-{key}', 'wb') as s3file:
+        header = "struct<kind:string,id:string,term:string,label:string,type:string>"
+        with sopen(
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/individuals-{key}", "wb"
+        ) as s3file:
             with pyorc.Writer(
-                    s3file,
-                    header,
-                    compression=pyorc.CompressionKind.SNAPPY,
-                    compression_strategy=pyorc.CompressionStrategy.COMPRESSION) as writer:
-
+                s3file,
+                header,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+            ) as writer:
                 for individual in array:
                     for term, label, typ in extract_terms([jsons.dump(individual)]):
-                        row = ('individuals', individual.id, term, label, typ)
+                        row = ("individuals", individual.id, term, label, typ)
                         writer.write(row)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
