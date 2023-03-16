@@ -1,15 +1,11 @@
 import json
-import jsons
 
-import boto3
+import jsons
 
 import apiutils.responses as responses
 from athena.run import Run
 from apiutils.schemas import DefaultSchemas
 from apiutils.requests import RequestParams, Granularity
-
-
-s3 = boto3.client("s3")
 
 
 def get_record_query(id):

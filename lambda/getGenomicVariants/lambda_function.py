@@ -1,7 +1,5 @@
 import json
 
-from jsonschema import Draft202012Validator
-
 from route_g_variants import route as route_g_variants
 from route_g_variants_id import route as route_g_variants_id
 from route_g_variants_id_individuals import route as route_g_variants_id_individuals

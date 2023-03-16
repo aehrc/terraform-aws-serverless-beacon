@@ -8,9 +8,7 @@ from apiutils.requests import RequestParams, Granularity
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
 from athena.cohort import Cohort
-
-
-ATHENA_INDIVIDUALS_TABLE = os.environ["ATHENA_INDIVIDUALS_TABLE"]
+from utils.lambda_utils import ENV_ATHENA
 
 
 def get_count_query(conditions=[]):
@@ -39,7 +37,7 @@ def get_record_query(skip, limit, conditions=[]):
     LEFT JOIN 
         (
             SELECT _cohortid, count(*) as csize 
-            FROM "{{database}}"."{ATHENA_INDIVIDUALS_TABLE}"
+            FROM "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}"
             GROUP BY _cohortid
         ) as B
     ON A.id = B._cohortid

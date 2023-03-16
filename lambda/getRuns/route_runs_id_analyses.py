@@ -1,16 +1,12 @@
 import json
-import jsons
 
-import boto3
+import jsons
 
 from athena.filter_functions import entity_search_conditions
 import apiutils.responses as responses
 from athena.analysis import Analysis
 from apiutils.schemas import DefaultSchemas
 from apiutils.requests import RequestParams, Granularity
-
-
-s3 = boto3.client("s3")
 
 
 def get_bool_query(id, conditions=""):

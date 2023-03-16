@@ -1,6 +1,5 @@
 from collections import defaultdict
 import json
-import os
 import base64
 import jsons
 
@@ -12,20 +11,14 @@ from apiutils.requests import RequestParams, Granularity
 import apiutils.responses as responses
 from apiutils.schemas import DefaultSchemas
 from athena.biosample import Biosample
-
-
-ATHENA_BIOSAMPLES_TABLE = os.environ["ATHENA_BIOSAMPLES_TABLE"]
-ATHENA_DATASETS_TABLE = os.environ["ATHENA_DATASETS_TABLE"]
-ATHENA_ANALYSES_TABLE = os.environ["ATHENA_ANALYSES_TABLE"]
-ATHENA_METADATA_DATABASE = os.environ["ATHENA_METADATA_DATABASE"]
-ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
+from utils.lambda_utils import ENV_ATHENA
 
 
 def datasets_query(conditions, assembly_id):
     query = f"""
     SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
-    FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_ANALYSES_TABLE}" A
-    JOIN "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}" D
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
+    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
     ON A._datasetid = D.id
     {conditions} 
     AND D._assemblyid='{assembly_id}' 
@@ -37,7 +30,7 @@ def datasets_query(conditions, assembly_id):
 def datasets_query_fast(assembly_id):
     query = f"""
     SELECT id, _vcflocations, _vcfchromosomemap
-    FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}"
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}"
     WHERE _assemblyid='{assembly_id}' 
     """
     return query
@@ -47,17 +40,17 @@ def get_count_query(dataset_id, sample_names):
     query = f"""
     SELECT COUNT(id)
     FROM 
-        "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
+        "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"
     ON 
-        "{{database}}"."{ATHENA_ANALYSES_TABLE}".biosampleid
+        "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}".biosampleid
         =
-        "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}".id
+        "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}".id
     WHERE 
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}'
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}'
         AND 
-            "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}"._datasetid='{dataset_id}'
+            "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}"._datasetid='{dataset_id}'
         AND
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
     """
@@ -68,17 +61,17 @@ def get_bool_query(dataset_id, sample_names):
     query = f"""
     SELECT 1
     FROM 
-        "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
+        "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"
     ON 
-        "{{database}}"."{ATHENA_ANALYSES_TABLE}".biosampleid
+        "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}".biosampleid
         =
-        "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}".id
+        "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}".id
     WHERE 
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}'
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}'
         AND 
-            "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}"._datasetid='{dataset_id}'
+            "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}"._datasetid='{dataset_id}'
         AND
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
     LIMIT 1
@@ -90,19 +83,19 @@ def get_bool_query(dataset_id, sample_names):
 # https://docs.aws.amazon.com/athena/latest/ug/service-limits.html
 def get_record_query(dataset_id, sample_names):
     query = f"""
-    SELECT "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}".* 
+    SELECT "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}".* 
     FROM 
-        "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
+        "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}" JOIN "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"
     ON 
-        "{{database}}"."{ATHENA_ANALYSES_TABLE}".biosampleid
+        "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}".biosampleid
         =
-        "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}".id
+        "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}".id
     WHERE 
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}'
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}'
         AND 
-            "{{database}}"."{ATHENA_BIOSAMPLES_TABLE}"._datasetid='{dataset_id}'
+            "{{database}}"."{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}"._datasetid='{dataset_id}'
         AND
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._vcfsampleid
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
     """

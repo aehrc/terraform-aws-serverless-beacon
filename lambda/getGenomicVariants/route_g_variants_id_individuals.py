@@ -1,4 +1,3 @@
-import os
 from collections import defaultdict, OrderedDict
 import json
 import base64
@@ -13,19 +12,14 @@ from athena.individual import Individual
 from apiutils.requests import RequestParams, Granularity
 import apiutils.responses as responses
 from apiutils.schemas import DefaultSchemas
-
-
-ATHENA_DATASETS_TABLE = os.environ["ATHENA_DATASETS_TABLE"]
-ATHENA_INDIVIDUALS_TABLE = os.environ["ATHENA_INDIVIDUALS_TABLE"]
-ATHENA_ANALYSES_TABLE = os.environ["ATHENA_ANALYSES_TABLE"]
-ATHENA_METADATA_DATABASE = os.environ["ATHENA_METADATA_DATABASE"]
+from utils.lambda_utils import ENV_ATHENA
 
 
 def datasets_query(conditions, assembly_id):
     query = f"""
     SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
-    FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_ANALYSES_TABLE}" A
-    JOIN "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}" D
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
+    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
     ON A._datasetid = D.id
     {conditions} 
     AND D._assemblyid='{assembly_id}' 
@@ -37,7 +31,7 @@ def datasets_query(conditions, assembly_id):
 def datasets_query_fast(assembly_id):
     query = f"""
     SELECT id, _vcflocations, _vcfchromosomemap
-    FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}"
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}"
     WHERE _assemblyid='{assembly_id}' 
     """
     return query
@@ -45,13 +39,13 @@ def datasets_query_fast(assembly_id):
 
 def get_count_query(dataset_id, sample_names):
     query = f"""
-    SELECT count("{{database}}"."{ATHENA_ANALYSES_TABLE}".id) as cnt
+    SELECT count("{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}".id) as cnt
     FROM 
-        "{{database}}"."{ATHENA_ANALYSES_TABLE}"
+        "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"
     WHERE
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}' 
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}' 
         AND
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid 
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._vcfsampleid 
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
     """
@@ -60,19 +54,19 @@ def get_count_query(dataset_id, sample_names):
 
 def get_record_query(dataset_id, sample_names):
     query = f"""
-    SELECT "{{database}}"."{ATHENA_INDIVIDUALS_TABLE}".* 
+    SELECT "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}".* 
     FROM 
-        "{{database}}"."{ATHENA_INDIVIDUALS_TABLE}" JOIN "{{database}}"."{ATHENA_ANALYSES_TABLE}"
+        "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}" JOIN "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"
     ON 
-        "{{database}}"."{ATHENA_ANALYSES_TABLE}".individualid
+        "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}".individualid
         =
-        "{{database}}"."{ATHENA_INDIVIDUALS_TABLE}".id
+        "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}".id
     WHERE 
-            "{{database}}"."{ATHENA_INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
+            "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}"._datasetid='{dataset_id}' 
         AND 
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}' 
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._datasetid='{dataset_id}' 
         AND
-            "{{database}}"."{ATHENA_ANALYSES_TABLE}"._vcfsampleid 
+            "{{database}}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}"._vcfsampleid 
         IN 
             ({','.join([f"'{sn}'" for sn in sample_names])})
     """

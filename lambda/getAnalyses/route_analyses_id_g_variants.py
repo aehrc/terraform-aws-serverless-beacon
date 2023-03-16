@@ -1,6 +1,5 @@
 from collections import defaultdict
 import json
-import os
 import base64
 
 from athena.common import run_custom_query
@@ -11,18 +10,14 @@ from apiutils.requests import RequestParams, Granularity, IncludeResultsetRespon
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
 import apiutils.entries as entries
-
-
-ATHENA_METADATA_DATABASE = os.environ["ATHENA_METADATA_DATABASE"]
-ATHENA_DATASETS_TABLE = os.environ["ATHENA_DATASETS_TABLE"]
-ATHENA_ANALYSES_TABLE = os.environ["ATHENA_ANALYSES_TABLE"]
+from utils.lambda_utils import ENV_ATHENA
 
 
 def datasets_query(conditions, assembly_id, analysis_id):
     query = f"""
     SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
-    FROM "{ATHENA_METADATA_DATABASE}"."{ATHENA_ANALYSES_TABLE}" A
-    JOIN "{ATHENA_METADATA_DATABASE}"."{ATHENA_DATASETS_TABLE}" D
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
+    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
     ON A._datasetid = D.id
     WHERE A.id='{analysis_id}'
     AND D._assemblyid='{assembly_id}'

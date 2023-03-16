@@ -1,17 +1,11 @@
 import json
 
-from jsonschema import Draft202012Validator
-
 from route_individuals import route as route_individuals
 from route_individuals_filtering_terms import route as route_individuals_filtering_terms
 from route_individuals_id import route as route_individuals_id
 from route_individuals_id_g_variants import route as route_individuals_id_g_variants
 from route_individuals_id_biosamples import route as route_individuals_id_biosamples
 from apiutils.requests import RequestParams, parse_request
-
-
-schemaRequestBody = json.load(open("./schemas/requestBody.json"))
-schemaVariants = json.load(open("./schemas/gVariantsRequestParameters.json"))
 
 
 def lambda_handler(event, context):

@@ -1,16 +1,11 @@
 import json
 import jsons
-import os
 
 from athena.filter_functions import entity_search_conditions
 from apiutils.requests import RequestParams, Granularity
 from apiutils.schemas import DefaultSchemas
 import apiutils.responses as responses
 from athena.analysis import Analysis
-
-
-BEACON_API_VERSION = os.environ["BEACON_API_VERSION"]
-BEACON_ID = os.environ["BEACON_ID"]
 
 
 def get_count_query(conditions=""):

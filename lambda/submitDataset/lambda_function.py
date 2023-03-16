@@ -4,10 +4,10 @@ import subprocess
 from typing import List
 from threading import Thread
 
+from smart_open import open as sopen
 from jsonschema import Draft202012Validator, RefResolver
 import jsons
 import boto3
-from smart_open import open as sopen
 
 from apiutils.responses import build_bad_request, bundle_response
 from utils.chrom_matching import get_vcf_chromosomes

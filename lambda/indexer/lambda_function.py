@@ -14,6 +14,7 @@ import requests
 
 from dynamodb.ontologies import Ontology, Descendants, Anscestors
 from dynamodb.onto_index import OntoData
+from utils.lambda_utils import ENV_ATHENA
 from generate_query_index import QUERY as INDEX_QUERY
 from generate_query_terms import QUERY as TERMS_QUERY
 from generate_query_relations import QUERY as RELATIONS_QUERY
@@ -22,39 +23,24 @@ from generate_query_relations import QUERY as RELATIONS_QUERY
 athena = boto3.client("athena")
 s3 = boto3.client("s3")
 
-BEACON_API_VERSION = os.environ["BEACON_API_VERSION"]
-BEACON_ID = os.environ["BEACON_ID"]
-METADATA_BUCKET = os.environ["METADATA_BUCKET"]
-ATHENA_WORKGROUP = os.environ["ATHENA_WORKGROUP"]
-METADATA_DATABASE = os.environ["METADATA_DATABASE"]
-DATASETS_TABLE = os.environ["DATASETS_TABLE"]
-COHORTS_TABLE = os.environ["COHORTS_TABLE"]
-INDIVIDUALS_TABLE = os.environ["INDIVIDUALS_TABLE"]
-BIOSAMPLES_TABLE = os.environ["BIOSAMPLES_TABLE"]
-RUNS_TABLE = os.environ["RUNS_TABLE"]
-ANALYSES_TABLE = os.environ["ANALYSES_TABLE"]
-TERMS_INDEX_TABLE = os.environ["TERMS_INDEX_TABLE"]
-TERMS_CACHE_TABLE = os.environ["TERMS_CACHE_TABLE"]
-TERMS_TABLE = os.environ["TERMS_TABLE"]
-RELATIONS_TABLE = os.environ["RELATIONS_TABLE"]
 
 ENSEMBL_OLS = "https://www.ebi.ac.uk/ols/api/ontologies"
 ONTOSERVER = "https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand"
 ONTO_TERMS_QUERY = (
-    f""" SELECT term,tablename,colname,type,label FROM "{TERMS_TABLE}" """
+    f""" SELECT term,tablename,colname,type,label FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}" """
 )
 INDEX_QUERY = INDEX_QUERY.format(
-    table=TERMS_CACHE_TABLE, uri=f"s3://{METADATA_BUCKET}/terms-index/"
+    table=ENV_ATHENA.ATHENA_TERMS_CACHE_TABLE, uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-index/"
 )
 TERMS_QUERY = TERMS_QUERY.format(
-    table=TERMS_CACHE_TABLE, uri=f"s3://{METADATA_BUCKET}/terms/"
+    table=ENV_ATHENA.ATHENA_TERMS_CACHE_TABLE, uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms/"
 )
 RELATIONS_QUERY = RELATIONS_QUERY.format(
-    uri=f"s3://{METADATA_BUCKET}/relations/",
-    individuals_table=INDIVIDUALS_TABLE,
-    biosamples_table=BIOSAMPLES_TABLE,
-    runs_table=RUNS_TABLE,
-    analyses_table=ANALYSES_TABLE,
+    uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/relations/",
+    individuals_table=ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE,
+    biosamples_table=ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE,
+    runs_table=ENV_ATHENA.ATHENA_RUNS_TABLE,
+    analyses_table=ENV_ATHENA.ATHENA_ANALYSES_TABLE,
 )
 
 
@@ -128,12 +114,12 @@ def index_terms_tree():
         if response.status_code != 200:
             print(f"Fetching SNOMED failed for term = {term}")
 
-    query = f'SELECT DISTINCT term FROM "{TERMS_TABLE}"'
+    query = f'SELECT DISTINCT term FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}"'
 
     response = athena.start_query_execution(
         QueryString=query,
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
 
     execution_id = response["QueryExecutionId"]
@@ -145,7 +131,7 @@ def index_terms_tree():
     threads = []
     response_queue = Queue()
 
-    with sopen(f"s3://{METADATA_BUCKET}/query-results/{execution_id}.csv") as s3f:
+    with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv") as s3f:
         for n, line in enumerate(s3f):
             if n == 0:
                 continue
@@ -263,8 +249,8 @@ def update_athena_partitions(table):
     athena.start_query_execution(
         QueryString=f"MSCK REPAIR TABLE `{table}`",
         # ClientRequestToken='string',
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
 
 
@@ -297,8 +283,8 @@ def drop_tables(table):
     query = f"DROP TABLE IF EXISTS {table};"
     response = athena.start_query_execution(
         QueryString=query,
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     get_result(response["QueryExecutionId"])
 
@@ -317,37 +303,37 @@ def clean_files(bucket, prefix):
 
 
 def index_terms():
-    clean_files(METADATA_BUCKET, "terms-index/")
-    drop_tables(TERMS_INDEX_TABLE)
+    clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, "terms-index/")
+    drop_tables(ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE)
 
     response = athena.start_query_execution(
         QueryString=INDEX_QUERY,
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     get_result(response["QueryExecutionId"])
 
 
 def record_terms():
-    clean_files(METADATA_BUCKET, "terms/")
-    drop_tables(TERMS_TABLE)
+    clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, "terms/")
+    drop_tables(ENV_ATHENA.ATHENA_TERMS_TABLE)
 
     response = athena.start_query_execution(
         QueryString=TERMS_QUERY,
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     get_result(response["QueryExecutionId"])
 
 
 def record_relations():
-    clean_files(METADATA_BUCKET, "relations/")
-    drop_tables(RELATIONS_TABLE)
+    clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, "relations/")
+    drop_tables(ENV_ATHENA.ATHENA_RELATIONS_TABLE)
 
     response = athena.start_query_execution(
         QueryString=RELATIONS_QUERY,
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     get_result(response["QueryExecutionId"])
 
@@ -356,13 +342,13 @@ def record_relations():
 def onto_index():
     response = athena.start_query_execution(
         QueryString=ONTO_TERMS_QUERY,
-        QueryExecutionContext={"Database": METADATA_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     execution_id = response["QueryExecutionId"]
     get_result(execution_id)
 
-    with sopen(f"s3://{METADATA_BUCKET}/query-results/{execution_id}.csv") as s3f:
+    with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv") as s3f:
         for n, line in enumerate(s3f):
             if n == 0:
                 continue

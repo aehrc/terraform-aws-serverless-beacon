@@ -1,16 +1,12 @@
 import json
 
 import jsons
-import boto3
 
 from athena.filter_functions import entity_search_conditions
 import apiutils.responses as responses
 from athena.individual import Individual
 from apiutils.schemas import DefaultSchemas
 from apiutils.requests import RequestParams, Granularity
-
-
-s3 = boto3.client("s3")
 
 
 # TODO cohort id must not be in individuals table. It should be in a JOIN table.
