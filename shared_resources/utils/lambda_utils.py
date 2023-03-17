@@ -6,99 +6,99 @@ import tempfile
 
 class BeaconEnvironment:
     @property
-    def BEACON_API_VERSION():
+    def BEACON_API_VERSION(self):
         return os.environ["BEACON_API_VERSION"]
 
     @property
-    def BEACON_ID():
+    def BEACON_ID(self):
         return os.environ["BEACON_ID"]
 
     @property
-    def BEACON_NAME():
+    def BEACON_NAME(self):
         return os.environ["BEACON_NAME"]
 
     @property
-    def BEACON_ENVIRONMENT():
+    def BEACON_ENVIRONMENT(self):
         return os.environ["BEACON_ENVIRONMENT"]
 
     @property
-    def BEACON_DESCRIPTION():
+    def BEACON_DESCRIPTION(self):
         return os.environ["BEACON_DESCRIPTION"]
 
     @property
-    def BEACON_VERSION():
+    def BEACON_VERSION(self):
         return os.environ["BEACON_VERSION"]
 
     @property
-    def BEACON_WELCOME_URL():
+    def BEACON_WELCOME_URL(self):
         return os.environ["BEACON_WELCOME_URL"]
 
     @property
-    def BEACON_ALTERNATIVE_URL():
+    def BEACON_ALTERNATIVE_URL(self):
         return os.environ["BEACON_ALTERNATIVE_URL"]
 
     @property
-    def BEACON_CREATE_DATETIME():
+    def BEACON_CREATE_DATETIME(self):
         return os.environ["BEACON_CREATE_DATETIME"]
 
     @property
-    def BEACON_UPDATE_DATETIME():
+    def BEACON_UPDATE_DATETIME(self):
         return os.environ["BEACON_UPDATE_DATETIME"]
 
     @property
-    def BEACON_HANDOVERS():
+    def BEACON_HANDOVERS(self):
         return os.environ["BEACON_HANDOVERS"]
 
     @property
-    def BEACON_DOCUMENTATION_URL():
+    def BEACON_DOCUMENTATION_URL(self):
         return os.environ["BEACON_DOCUMENTATION_URL"]
 
     @property
-    def BEACON_DEFAULT_GRANULARITY():
+    def BEACON_DEFAULT_GRANULARITY(self):
         return os.environ["BEACON_DEFAULT_GRANULARITY"]
 
     @property
-    def BEACON_URI():
+    def BEACON_URI(self):
         return os.environ["BEACON_URI"]
 
     @property
-    def BEACON_ORG_ID():
+    def BEACON_ORG_ID(self):
         return os.environ["BEACON_ORG_ID"]
 
     @property
-    def BEACON_ORG_NAME():
+    def BEACON_ORG_NAME(self):
         return os.environ["BEACON_ORG_NAME"]
 
     @property
-    def BEACON_ORG_DESCRIPTION():
+    def BEACON_ORG_DESCRIPTION(self):
         return os.environ["BEACON_ORG_DESCRIPTION"]
 
     @property
-    def BEACON_ORG_ADDRESS():
+    def BEACON_ORG_ADDRESS(self):
         return os.environ["BEACON_ORG_ADDRESS"]
 
     @property
-    def BEACON_ORG_WELCOME_URL():
+    def BEACON_ORG_WELCOME_URL(self):
         return os.environ["BEACON_ORG_WELCOME_URL"]
 
     @property
-    def BEACON_ORG_CONTACT_URL():
+    def BEACON_ORG_CONTACT_URL(self):
         return os.environ["BEACON_ORG_CONTACT_URL"]
 
     @property
-    def BEACON_ORG_LOGO_URL():
+    def BEACON_ORG_LOGO_URL(self):
         return os.environ["BEACON_ORG_LOGO_URL"]
 
     @property
-    def BEACON_SERVICE_TYPE_GROUP():
+    def BEACON_SERVICE_TYPE_GROUP(self):
         return os.environ["BEACON_SERVICE_TYPE_GROUP"]
 
     @property
-    def BEACON_SERVICE_TYPE_ARTIFACT():
+    def BEACON_SERVICE_TYPE_ARTIFACT(self):
         return os.environ["BEACON_SERVICE_TYPE_ARTIFACT"]
 
     @property
-    def BEACON_SERVICE_TYPE_VERSION():
+    def BEACON_SERVICE_TYPE_VERSION(self):
         return os.environ["BEACON_SERVICE_TYPE_VERSION"]
 
 
@@ -158,39 +158,39 @@ class AthenaEnvironment:
 
 class DynamoDBEnvironment:
     @property
-    def DYNAMO_DATASETS_TABLE():
+    def DYNAMO_DATASETS_TABLE(self):
         return os.environ["DYNAMO_DATASETS_TABLE"]
 
     @property
-    def DYNAMO_VCF_SUMMARIES_TABLE():
+    def DYNAMO_VCF_SUMMARIES_TABLE(self):
         return os.environ["DYNAMO_VCF_SUMMARIES_TABLE"]
 
     @property
-    def DYNAMO_VARIANT_DUPLICATES_TABLE():
+    def DYNAMO_VARIANT_DUPLICATES_TABLE(self):
         return os.environ["DYNAMO_VARIANT_DUPLICATES_TABLE"]
 
     @property
-    def DYNAMO_VARIANT_QUERIES_TABLE():
+    def DYNAMO_VARIANT_QUERIES_TABLE(self):
         return os.environ["DYNAMO_VARIANT_QUERIES_TABLE"]
 
     @property
-    def DYNAMO_VARIANT_QUERY_RESPONSES_TABLE():
+    def DYNAMO_VARIANT_QUERY_RESPONSES_TABLE(self):
         return os.environ["DYNAMO_VARIANT_QUERY_RESPONSES_TABLE"]
 
     @property
-    def DYNAMO_ONTOLOGIES_TABLE():
+    def DYNAMO_ONTOLOGIES_TABLE(self):
         return os.environ["DYNAMO_ONTOLOGIES_TABLE"]
 
     @property
-    def DYNAMO_ANSCESTORS_TABLE():
+    def DYNAMO_ANSCESTORS_TABLE(self):
         return os.environ["DYNAMO_ANSCESTORS_TABLE"]
 
     @property
-    def DYNAMO_DESCENDANTS_TABLE():
+    def DYNAMO_DESCENDANTS_TABLE(self):
         return os.environ["DYNAMO_DESCENDANTS_TABLE"]
 
     @property
-    def DYNAMO_ONTO_INDEX_TABLE():
+    def DYNAMO_ONTO_INDEX_TABLE(self):
         return os.environ["DYNAMO_ONTO_INDEX_TABLE"]
 
 

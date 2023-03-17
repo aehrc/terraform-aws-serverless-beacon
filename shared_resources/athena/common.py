@@ -1,4 +1,3 @@
-import os
 import time
 import re
 import csv
@@ -7,12 +6,8 @@ import json
 import boto3
 from smart_open import open as sopen
 
+from utils.lambda_utils import ENV_ATHENA
 
-ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
-ATHENA_WORKGROUP = os.environ["ATHENA_WORKGROUP"]
-ATHENA_METADATA_DATABASE = os.environ["ATHENA_METADATA_DATABASE"]
-ATHENA_TERMS_INDEX_TABLE = os.environ["ATHENA_TERMS_INDEX_TABLE"]
-ATHENA_RELATIONS_TABLE = os.environ["ATHENA_RELATIONS_TABLE"]
 
 athena = boto3.client("athena")
 pattern = re.compile(f"^\\w[^:]+:.+$")
@@ -34,7 +29,7 @@ class AthenaModel:
 
     @classmethod
     def get_by_query(cls, query, /, *, queue=None, execution_parameters=None):
-        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
+        query = query.format(database=ENV_ATHENA.ATHENA_METADATA_DATABASE, table=cls._table_name)
         exec_id = run_custom_query(
             query, queue=None, return_id=True, execution_parameters=execution_parameters
         )
@@ -48,7 +43,7 @@ class AthenaModel:
 
     @classmethod
     def get_existence_by_query(cls, query, /, *, queue=None, execution_parameters=None):
-        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
+        query = query.format(database=ENV_ATHENA.ATHENA_METADATA_DATABASE, table=cls._table_name)
         result = run_custom_query(
             query, queue=None, execution_parameters=execution_parameters
         )
@@ -66,7 +61,7 @@ class AthenaModel:
         var_list = list()
         case_map = {k.lower(): k for k in cls().__dict__.keys()}
 
-        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv") as s3f:
+        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv") as s3f:
             reader = csv.reader(s3f)
 
             for n, row in enumerate(reader):
@@ -88,7 +83,7 @@ class AthenaModel:
 
     @classmethod
     def get_count_by_query(cls, query, /, *, queue=None, execution_parameters=None):
-        query = query.format(database=ATHENA_METADATA_DATABASE, table=cls._table_name)
+        query = query.format(database=ENV_ATHENA.ATHENA_METADATA_DATABASE, table=cls._table_name)
         result = run_custom_query(
             query, queue=None, execution_parameters=execution_parameters
         )
@@ -124,8 +119,8 @@ def run_custom_query(
     query,
     /,
     *,
-    database=ATHENA_METADATA_DATABASE,
-    workgroup=ATHENA_WORKGROUP,
+    database=ENV_ATHENA.ATHENA_METADATA_DATABASE,
+    workgroup=ENV_ATHENA.ATHENA_WORKGROUP,
     queue=None,
     return_id=False,
     execution_parameters=None,

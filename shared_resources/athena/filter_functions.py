@@ -1,4 +1,3 @@
-import os
 from typing import List, Union
 
 from dynamodb.ontologies import Descendants, Anscestors
@@ -9,16 +8,13 @@ from apiutils.requests import (
     Similarity,
     Operator,
 )
+from utils.lambda_utils import ENV_ATHENA
 from .analysis import Analysis
 from .biosample import Biosample
 from .individual import Individual
 from .cohort import Cohort
 from .dataset import Dataset
 from .run import Run
-
-
-ATHENA_TERMS_INDEX_TABLE = os.environ["ATHENA_TERMS_INDEX_TABLE"]
-ATHENA_RELATIONS_TABLE = os.environ["ATHENA_RELATIONS_TABLE"]
 
 
 queried_athena_models = {
@@ -109,7 +105,7 @@ def entity_search_conditions(
             join_execution_parameters.append(str(f.value))
             group = class_to_id_type_string[joined_class]
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.{comparrison} """
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.{comparrison} """
             )
 
         if isinstance(f, OntologyFilter):
@@ -140,7 +136,7 @@ def entity_search_conditions(
             # process scope clarification if specified different
             group = f.scope or default_scope
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ATHENA_RELATIONS_TABLE}" RI JOIN "{ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.term IN ({expanded_terms}) """
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.term IN ({expanded_terms}) """
             )
 
     # format fragments together to form coherent SQL expression

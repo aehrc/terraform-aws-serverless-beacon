@@ -5,30 +5,9 @@ import functools
 
 from .requests import RequestParams, Granularity
 from .schemas import DefaultSchemas
+from utils.lambda_utils import ENV_BEACON
 
 
-BEACON_API_VERSION = os.environ["BEACON_API_VERSION"]
-BEACON_ID = os.environ["BEACON_ID"]
-BEACON_NAME = os.environ["BEACON_NAME"]
-BEACON_ENVIRONMENT = os.environ["BEACON_ENVIRONMENT"]
-BEACON_ORG_ID = os.environ["BEACON_ORG_ID"]
-BEACON_ORG_NAME = os.environ["BEACON_ORG_NAME"]
-BEACON_ORG_DESCRIPTION = os.environ["BEACON_ORG_DESCRIPTION"]
-BEACON_ORG_ADDRESS = os.environ["BEACON_ORG_ADDRESS"]
-BEACON_ORG_WELCOME_URL = os.environ["BEACON_ORG_WELCOME_URL"]
-BEACON_ORG_CONTACT_URL = os.environ["BEACON_ORG_CONTACT_URL"]
-BEACON_ORG_LOGO_URL = os.environ["BEACON_ORG_LOGO_URL"]
-BEACON_DESCRIPTION = os.environ["BEACON_DESCRIPTION"]
-BEACON_VERSION = os.environ["BEACON_VERSION"]
-BEACON_WELCOME_URL = os.environ["BEACON_WELCOME_URL"]
-BEACON_ALTERNATIVE_URL = os.environ["BEACON_ALTERNATIVE_URL"]
-BEACON_CREATE_DATETIME = os.environ["BEACON_CREATE_DATETIME"]
-BEACON_UPDATE_DATETIME = os.environ["BEACON_UPDATE_DATETIME"]
-BEACON_HANDOVERS = os.environ["BEACON_HANDOVERS"]
-BEACON_DOCUMENTATION_URL = os.environ["BEACON_DOCUMENTATION_URL"]
-BEACON_SERVICE_TYPE_GROUP = os.environ["BEACON_SERVICE_TYPE_GROUP"]
-BEACON_SERVICE_TYPE_ARTIFACT = os.environ["BEACON_SERVICE_TYPE_ARTIFACT"]
-BEACON_SERVICE_TYPE_VERSION = os.environ["BEACON_SERVICE_TYPE_VERSION"]
 HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 #
@@ -50,8 +29,8 @@ def build_meta(
     We assume that receivedRequest is the evaluated request (qparams) sent by the user.
     """
     meta = {
-        "beaconId": BEACON_ID,
-        "apiVersion": BEACON_API_VERSION,
+        "beaconId": ENV_BEACON.BEACON_ID,
+        "apiVersion": ENV_BEACON.BEACON_API_VERSION,
         "returnedGranularity": returned_granularity,
         "receivedRequestSummary": qparams.summary(),
         "returnedSchemas": [entity_schema.value] if entity_schema is not None else [],
@@ -111,7 +90,7 @@ def build_beacon_resultset_response(
             ]
         },
         # CHANGE: variables taken from terraform
-        "beaconHandovers": json.loads(BEACON_HANDOVERS),
+        "beaconHandovers": json.loads(ENV_BEACON.BEACON_HANDOVERS),
     }
     return beacon_response
 
@@ -138,7 +117,7 @@ def build_beacon_count_response(
         ),
         # TODO: 'extendedInfo': build_extended_info(),
         # CHANGE: variables taken from terraform
-        "beaconHandovers": json.loads(BEACON_HANDOVERS),
+        "beaconHandovers": json.loads(ENV_BEACON.BEACON_HANDOVERS),
     }
     return beacon_response
 
@@ -163,7 +142,7 @@ def build_beacon_boolean_response(
         "responseSummary": build_response_summary(num_total_results > 0, None),
         # TODO: 'extendedInfo': build_extended_info(),
         # CHANGE: variables taken from terraform
-        "beaconHandovers": json.loads(BEACON_HANDOVERS),
+        "beaconHandovers": json.loads(ENV_BEACON.BEACON_HANDOVERS),
     }
     return beacon_response
 
@@ -185,7 +164,7 @@ def build_beacon_collection_response(
             num_total_results > 0, num_total_results
         ),
         # TODO: 'info': build_extended_info(),
-        "beaconHandovers": json.loads(BEACON_HANDOVERS),
+        "beaconHandovers": json.loads(ENV_BEACON.BEACON_HANDOVERS),
         "response": {"collections": func_response_type(data, qparams)},
     }
     return beacon_response
@@ -201,25 +180,25 @@ def build_beacon_info_response(authorised_datasets, qparams):
     beacon_response = {
         "meta": build_meta(qparams, None, Granularity.RECORD),
         "response": {
-            "id": BEACON_ID,
-            "name": BEACON_NAME,
-            "apiVersion": BEACON_API_VERSION,
-            "environment": BEACON_ENVIRONMENT,
+            "id": ENV_BEACON.BEACON_ID,
+            "name": ENV_BEACON.BEACON_NAME,
+            "apiVersion": ENV_BEACON.BEACON_API_VERSION,
+            "environment": ENV_BEACON.BEACON_ENVIRONMENT,
             "organization": {
-                "id": BEACON_ORG_ID,
-                "name": BEACON_ORG_NAME,
-                "description": BEACON_ORG_DESCRIPTION,
-                "address": BEACON_ORG_ADDRESS,
-                "welcomeUrl": BEACON_ORG_WELCOME_URL,
-                "contactUrl": BEACON_ORG_CONTACT_URL,
-                "logoUrl": BEACON_ORG_LOGO_URL,
+                "id": ENV_BEACON.BEACON_ORG_ID,
+                "name": ENV_BEACON.BEACON_ORG_NAME,
+                "description": ENV_BEACON.BEACON_ORG_DESCRIPTION,
+                "address": ENV_BEACON.BEACON_ORG_ADDRESS,
+                "welcomeUrl": ENV_BEACON.BEACON_ORG_WELCOME_URL,
+                "contactUrl": ENV_BEACON.BEACON_ORG_CONTACT_URL,
+                "logoUrl": ENV_BEACON.BEACON_ORG_LOGO_URL,
             },
-            "description": BEACON_DESCRIPTION,
-            "version": BEACON_VERSION,
-            "welcomeUrl": BEACON_WELCOME_URL,
-            "alternativeUrl": BEACON_ALTERNATIVE_URL,
-            "createDateTime": BEACON_CREATE_DATETIME,
-            "updateDateTime": BEACON_UPDATE_DATETIME,
+            "description": ENV_BEACON.BEACON_DESCRIPTION,
+            "version": ENV_BEACON.BEACON_VERSION,
+            "welcomeUrl": ENV_BEACON.BEACON_WELCOME_URL,
+            "alternativeUrl": ENV_BEACON.BEACON_ALTERNATIVE_URL,
+            "createDateTime": ENV_BEACON.BEACON_CREATE_DATETIME,
+            "updateDateTime": ENV_BEACON.BEACON_UPDATE_DATETIME,
             "datasets": authorised_datasets,
         },
     }
@@ -235,21 +214,21 @@ def build_beacon_info_response(authorised_datasets, qparams):
 def build_beacon_service_info_response():
     # CHANGE: variables taken from terraform
     beacon_response = {
-        "id": BEACON_ID,
-        "name": BEACON_NAME,
+        "id": ENV_BEACON.BEACON_ID,
+        "name": ENV_BEACON.BEACON_NAME,
         "type": {
-            "group": BEACON_SERVICE_TYPE_GROUP,
-            "artifact": BEACON_SERVICE_TYPE_ARTIFACT,
-            "version": BEACON_SERVICE_TYPE_VERSION,
+            "group": ENV_BEACON.BEACON_SERVICE_TYPE_GROUP,
+            "artifact": ENV_BEACON.BEACON_SERVICE_TYPE_ARTIFACT,
+            "version": ENV_BEACON.BEACON_SERVICE_TYPE_VERSION,
         },
-        "description": BEACON_DESCRIPTION,
-        "organization": {"name": BEACON_ORG_NAME, "url": BEACON_WELCOME_URL},
-        "contactUrl": BEACON_ORG_CONTACT_URL,
-        "documentationUrl": BEACON_DOCUMENTATION_URL,
-        "createdAt": BEACON_CREATE_DATETIME,
-        "updatedAt": BEACON_UPDATE_DATETIME,
-        "environment": BEACON_ENVIRONMENT,
-        "version": BEACON_VERSION,
+        "description": ENV_BEACON.BEACON_DESCRIPTION,
+        "organization": {"name": ENV_BEACON.BEACON_ORG_NAME, "url": ENV_BEACON.BEACON_WELCOME_URL},
+        "contactUrl": ENV_BEACON.BEACON_ORG_CONTACT_URL,
+        "documentationUrl": ENV_BEACON.BEACON_DOCUMENTATION_URL,
+        "createdAt": ENV_BEACON.BEACON_CREATE_DATETIME,
+        "updatedAt": ENV_BEACON.BEACON_UPDATE_DATETIME,
+        "environment": ENV_BEACON.BEACON_ENVIRONMENT,
+        "version": ENV_BEACON.BEACON_VERSION,
     }
 
     return beacon_response

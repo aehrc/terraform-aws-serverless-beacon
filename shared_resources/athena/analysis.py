@@ -1,23 +1,20 @@
-import jsons
-import boto3
 import json
-import pyorc
-import os
 
+import boto3
+import jsons
+import pyorc
 from smart_open import open as sopen
 
 from .common import AthenaModel, extract_terms
+from utils.lambda_utils import ENV_ATHENA
 
-
-ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
-ATHENA_ANALYSES_TABLE = os.environ["ATHENA_ANALYSES_TABLE"]
 
 s3 = boto3.client("s3")
 athena = boto3.client("athena")
 
 
 class Analysis(jsons.JsonSerializable, AthenaModel):
-    _table_name = ATHENA_ANALYSES_TABLE
+    _table_name = ENV_ATHENA.ATHENA_ANALYSES_TABLE
     # for saving to database order matter
     _table_columns = [
         "id",
@@ -81,7 +78,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = [c.lower() for c in cls._table_columns]
         key = f"{array[0]._datasetId}-analyses"
 
-        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/analyses/{key}", "wb") as s3file:
+        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/analyses/{key}", "wb") as s3file:
             with pyorc.Writer(
                 s3file,
                 header,
@@ -100,7 +97,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
 
         header = "struct<kind:string,id:string,term:string,label:string,type:string>"
         with sopen(
-            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/analyses-{key}", "wb"
+            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-cache/analyses-{key}", "wb"
         ) as s3file:
             with pyorc.Writer(
                 s3file,

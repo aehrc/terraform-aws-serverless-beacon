@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timezone
 
 import boto3
@@ -14,8 +13,9 @@ from pynamodb.attributes import (
     MapAttribute,
 )
 
+from utils.lambda_utils import ENV_DYNAMO
 
-DATASETS_TABLE_NAME = os.environ["DYNAMO_DATASETS_TABLE"]
+
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
@@ -43,7 +43,7 @@ class VcfChromosomeMap(MapAttribute):
 # datasets table
 class Dataset(Model):
     class Meta:
-        table_name = DATASETS_TABLE_NAME
+        table_name = ENV_DYNAMO.DYNAMO_DATASETS_TABLE
         region = REGION
 
     id = UnicodeAttribute(hash_key=True)

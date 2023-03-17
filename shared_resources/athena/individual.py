@@ -1,23 +1,19 @@
 import json
-import os
-
 import pyorc
 import jsons
 import boto3
 from smart_open import open as sopen
 
 from .common import AthenaModel, extract_terms
+from utils.lambda_utils import ENV_ATHENA
 
-
-ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
-ATHENA_INDIVIDUALS_TABLE = os.environ["ATHENA_INDIVIDUALS_TABLE"]
 
 s3 = boto3.client("s3")
 athena = boto3.client("athena")
 
 
 class Individual(jsons.JsonSerializable, AthenaModel):
-    _table_name = ATHENA_INDIVIDUALS_TABLE
+    _table_name = ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE
     # for saving to database order matter
     _table_columns = [
         "id",
@@ -87,7 +83,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f"{array[0]._datasetId}-individuals"
 
-        with sopen(f"s3://{ATHENA_METADATA_BUCKET}/individuals/{key}", "wb") as s3file:
+        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/individuals/{key}", "wb") as s3file:
             with pyorc.Writer(
                 s3file,
                 header,
@@ -106,7 +102,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
 
         header = "struct<kind:string,id:string,term:string,label:string,type:string>"
         with sopen(
-            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/individuals-{key}", "wb"
+            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-cache/individuals-{key}", "wb"
         ) as s3file:
             with pyorc.Writer(
                 s3file,

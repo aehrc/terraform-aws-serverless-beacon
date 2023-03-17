@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 
@@ -14,9 +13,9 @@ from pynamodb.attributes import (
     UTCDateTimeAttribute,
 )
 
+from utils.lambda_utils import ENV_DYNAMO
 
-QUERIES_TABLE_NAME = os.environ["DYNAMO_VARIANT_QUERIES_TABLE"]
-VARIANT_QUERY_RESPONSES_TABLE_NAME = os.environ["DYNAMO_VARIANT_QUERY_RESPONSES_TABLE"]
+
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
@@ -33,7 +32,7 @@ class S3Location(MapAttribute):
 # queries table
 class VariantQuery(Model):
     class Meta:
-        table_name = QUERIES_TABLE_NAME
+        table_name = ENV_DYNAMO.DYNAMO_VARIANT_QUERIES_TABLE
         region = REGION
 
     id = UnicodeAttribute(hash_key=True, default="test")
@@ -80,7 +79,7 @@ class VariantResponseIndex(LocalSecondaryIndex):
 # query responses table
 class VariantResponse(Model):
     class Meta:
-        table_name = VARIANT_QUERY_RESPONSES_TABLE_NAME
+        table_name = ENV_DYNAMO.DYNAMO_VARIANT_QUERY_RESPONSES_TABLE
         region = REGION
 
     id = UnicodeAttribute(hash_key=True, default="test")

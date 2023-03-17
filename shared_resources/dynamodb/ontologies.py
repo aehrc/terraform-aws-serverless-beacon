@@ -1,13 +1,10 @@
-import os
-
 import boto3
 from pynamodb.models import Model
 from pynamodb.attributes import UnicodeAttribute, UnicodeSetAttribute
 
+from utils.lambda_utils import ENV_DYNAMO
 
-DYNAMO_ONTOLOGIES_TABLE = os.environ["DYNAMO_ONTOLOGIES_TABLE"]
-DYNAMO_DESCENDANTS_TABLE = os.environ["DYNAMO_DESCENDANTS_TABLE"]
-DYNAMO_ANSCESTORS_TABLE = os.environ["DYNAMO_ANSCESTORS_TABLE"]
+
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
 
@@ -15,7 +12,7 @@ REGION = SESSION.region_name
 # Ontologies table
 class Ontology(Model):
     class Meta:
-        table_name = DYNAMO_ONTOLOGIES_TABLE
+        table_name = ENV_DYNAMO.DYNAMO_ONTOLOGIES_TABLE
         region = REGION
 
     prefix = UnicodeAttribute(hash_key=True)
@@ -25,7 +22,7 @@ class Ontology(Model):
 # Descendants table
 class Descendants(Model):
     class Meta:
-        table_name = DYNAMO_DESCENDANTS_TABLE
+        table_name = ENV_DYNAMO.DYNAMO_DESCENDANTS_TABLE
         region = REGION
 
     term = UnicodeAttribute(hash_key=True)
@@ -35,7 +32,7 @@ class Descendants(Model):
 # Anscestors table
 class Anscestors(Model):
     class Meta:
-        table_name = DYNAMO_ANSCESTORS_TABLE
+        table_name = ENV_DYNAMO.DYNAMO_ANSCESTORS_TABLE
         region = REGION
 
     term = UnicodeAttribute(hash_key=True)
