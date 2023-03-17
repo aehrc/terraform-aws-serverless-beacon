@@ -1,79 +1,89 @@
 import json
 import jsons
-import os
+
+from shared.athena.filter_functions import entity_search_conditions
+from shared.apiutils.requests import RequestParams, Granularity
+from shared.apiutils.schemas import DefaultSchemas
+import shared.apiutils.responses as responses
+from shared.athena.analysis import Analysis
 
 
-from athena.filter_functions import entity_search_conditions
-from apiutils.requests import RequestParams, Granularity
-from apiutils.schemas import DefaultSchemas
-import apiutils.responses as responses
-from athena.analysis import Analysis
-
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-
-
-def get_count_query(conditions=''):
-    query = f'''
+def get_count_query(conditions=""):
+    query = f"""
     SELECT COUNT(id) FROM "{{database}}"."{{table}}"
     {conditions};
-    '''
+    """
     return query
 
 
-def get_bool_query(conditions=''):
-    query = f'''
+def get_bool_query(conditions=""):
+    query = f"""
     SELECT 1 FROM "{{database}}"."{{table}}" 
     {conditions}
     LIMIT 1;
-    '''
+    """
     return query
 
 
-def get_record_query(skip, limit, conditions=''):
-    query = f'''
+def get_record_query(skip, limit, conditions=""):
+    query = f"""
     SELECT * FROM "{{database}}"."{{table}}"
     {conditions}
     ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
-    '''
+    """
     return query
 
 
 def route(request: RequestParams):
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, 'analyses', 'analyses')
+        request.query.filters, "analyses", "analyses"
+    )
 
     if request.query.requested_granularity == Granularity.BOOLEAN:
         query = get_bool_query(conditions)
-        count = 1 if Analysis.get_existence_by_query(
-            query, execution_parameters=execution_parameters) else 0
+        count = (
+            1
+            if Analysis.get_existence_by_query(
+                query, execution_parameters=execution_parameters
+            )
+            else 0
+        )
         response = responses.build_beacon_boolean_response(
-            {}, count, request, {}, DefaultSchemas.ANALYSES)
-        print('Returning Response: {}'.format(json.dumps(response)))
+            {}, count, request, {}, DefaultSchemas.ANALYSES
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.COUNT:
         query = get_count_query(conditions)
         count = Analysis.get_count_by_query(
-            query, execution_parameters=execution_parameters)
+            query, execution_parameters=execution_parameters
+        )
         response = responses.build_beacon_count_response(
-            {}, count, request, {}, DefaultSchemas.ANALYSES)
-        print('Returning Response: {}'.format(json.dumps(response)))
+            {}, count, request, {}, DefaultSchemas.ANALYSES
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return responses.bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(
-            request.query.pagination.skip, request.query.pagination.limit, conditions)
+            request.query.pagination.skip, request.query.pagination.limit, conditions
+        )
         analyses = Analysis.get_by_query(
-            query, execution_parameters=execution_parameters)
+            query, execution_parameters=execution_parameters
+        )
         response = responses.build_beacon_resultset_response(
-            jsons.dump(analyses, strip_privates=True), len(analyses), request, {}, DefaultSchemas.ANALYSES)
-        print('Returning Response: {}'.format(json.dumps(response)))
+            jsons.dump(analyses, strip_privates=True),
+            len(analyses),
+            request,
+            {},
+            DefaultSchemas.ANALYSES,
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return responses.bundle_response(200, response)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

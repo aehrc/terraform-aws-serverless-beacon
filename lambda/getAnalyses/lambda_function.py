@@ -1,16 +1,10 @@
 import json
 
-from jsonschema import Draft202012Validator
-
 from route_analyses import route as route_analyses
-from apiutils.requests import RequestParams, parse_request
 from route_analyses_filtering_terms import route as route_analyses_filtering_terms
 from route_analyses_id import route as route_analyses_id
 from route_analyses_id_g_variants import route as route_analyses_id_g_variants
-
-
-schemaRequestBody = json.load(open("./schemas/requestBody.json"))
-schemaVariants = json.load(open("./schemas/gVariantsRequestParameters.json"))
+from shared.apiutils.requests import RequestParams, parse_request
 
 
 def lambda_handler(event, context):
@@ -45,10 +39,14 @@ def lambda_handler(event, context):
         return route_analyses_filtering_terms(request_params)
 
     elif event["resource"] == "/analyses/{id}":
-        return route_analyses_id(request_params, event["pathParameters"].get("id", None))
+        return route_analyses_id(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
     elif event["resource"] == "/analyses/{id}/g_variants":
-        return route_analyses_id_g_variants(request_params, event["pathParameters"].get("id", None))
+        return route_analyses_id_g_variants(
+            request_params, event["pathParameters"].get("id", None)
+        )
 
 
 if __name__ == "__main__":

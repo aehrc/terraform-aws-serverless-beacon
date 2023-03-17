@@ -1,4 +1,4 @@
-QUERY = '''
+QUERY = """
 CREATE TABLE sbeacon_terms
 WITH (
     format = 'ORC',
@@ -12,4 +12,4 @@ AS
 SELECT DISTINCT term, label, type, kind FROM "{table}"
 ORDER BY term 
 ASC;
-'''
+"""
