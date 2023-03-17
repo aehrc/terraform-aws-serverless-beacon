@@ -3,15 +3,15 @@ import json
 import os
 import base64
 
-from variantutils.search_variants import perform_variant_search_sync
-from athena.filter_functions import entity_search_conditions
-from athena.dataset import Dataset, parse_datasets_with_samples
-from apiutils.requests import RequestParams, IncludeResultsetResponses, Granularity
-from athena.common import run_custom_query
-import apiutils.responses as responses
-import apiutils.entries as entries
-from apiutils.schemas import DefaultSchemas
-from utils.lambda_utils import ENV_ATHENA
+from shared.variantutils.search_variants import perform_variant_search_sync
+from shared.athena.filter_functions import entity_search_conditions
+from shared.athena.dataset import Dataset, parse_datasets_with_samples
+from shared.apiutils.requests import RequestParams, IncludeResultsetResponses, Granularity
+from shared.athena.common import run_custom_query
+import shared.apiutils.responses as responses
+import shared.apiutils.entries as entries
+from shared.apiutils.schemas import DefaultSchemas
+from shared.utils.lambda_utils import ENV_ATHENA
 
 
 def datasets_query(conditions, assembly_id, dataset_id):

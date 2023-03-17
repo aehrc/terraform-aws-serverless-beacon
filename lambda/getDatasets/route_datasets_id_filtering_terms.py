@@ -3,10 +3,10 @@ import csv
 
 from smart_open import open as sopen
 
-from apiutils.responses import build_filtering_terms_response, bundle_response
-from athena.common import run_custom_query
-from apiutils.requests import RequestParams
-from utils.lambda_utils import ENV_ATHENA
+from shared.apiutils.responses import build_filtering_terms_response, bundle_response
+from shared.athena.common import run_custom_query
+from shared.apiutils.requests import RequestParams
+from shared.utils.lambda_utils import ENV_ATHENA
 
 
 def route(request: RequestParams, dataset_id):

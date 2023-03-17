@@ -5,7 +5,7 @@ from route_individuals_filtering_terms import route as route_individuals_filteri
 from route_individuals_id import route as route_individuals_id
 from route_individuals_id_g_variants import route as route_individuals_id_g_variants
 from route_individuals_id_biosamples import route as route_individuals_id_biosamples
-from apiutils.requests import RequestParams, parse_request
+from shared.apiutils.requests import RequestParams, parse_request
 
 
 def lambda_handler(event, context):

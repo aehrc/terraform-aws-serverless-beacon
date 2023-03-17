@@ -1,10 +1,10 @@
 import json
 
 from route_analyses import route as route_analyses
-from apiutils.requests import RequestParams, parse_request
 from route_analyses_filtering_terms import route as route_analyses_filtering_terms
 from route_analyses_id import route as route_analyses_id
 from route_analyses_id_g_variants import route as route_analyses_id_g_variants
+from shared.apiutils.requests import RequestParams, parse_request
 
 
 def lambda_handler(event, context):

@@ -1,11 +1,11 @@
 import json
 import jsons
 
-from athena.filter_functions import entity_search_conditions
-import apiutils.responses as responses
-from athena.biosample import Biosample
-from apiutils.schemas import DefaultSchemas
-from apiutils.requests import RequestParams, Granularity
+from shared.athena.filter_functions import entity_search_conditions
+import shared.apiutils.responses as responses
+from shared.athena.biosample import Biosample
+from shared.apiutils.schemas import DefaultSchemas
+from shared.apiutils.requests import RequestParams, Granularity
 
 
 def get_bool_query(id, conditions=""):

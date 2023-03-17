@@ -11,9 +11,9 @@ from smart_open import open as sopen
 import boto3
 import requests
 
-from dynamodb.ontologies import Ontology, Descendants, Anscestors
-from dynamodb.onto_index import OntoData
-from utils.lambda_utils import ENV_ATHENA
+from shared.dynamodb.ontologies import Ontology, Descendants, Anscestors
+from shared.dynamodb.onto_index import OntoData
+from shared.utils.lambda_utils import ENV_ATHENA
 from generate_query_index import QUERY as INDEX_QUERY
 from generate_query_terms import QUERY as TERMS_QUERY
 from generate_query_relations import QUERY as RELATIONS_QUERY

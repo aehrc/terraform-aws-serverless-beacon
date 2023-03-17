@@ -1,14 +1,13 @@
-import os
 import json
 
 import jsons
 
-from athena.filter_functions import entity_search_conditions
-from apiutils.requests import RequestParams, Granularity
-from apiutils.schemas import DefaultSchemas
-import apiutils.responses as responses
-from athena.cohort import Cohort
-from utils.lambda_utils import ENV_ATHENA
+from shared.athena.filter_functions import entity_search_conditions
+from shared.apiutils.requests import RequestParams, Granularity
+from shared.apiutils.schemas import DefaultSchemas
+import shared.apiutils.responses as responses
+from shared.athena.cohort import Cohort
+from shared.utils.lambda_utils import ENV_ATHENA
 
 
 def get_count_query(conditions=[]):

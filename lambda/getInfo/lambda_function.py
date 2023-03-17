@@ -1,7 +1,7 @@
 import json
 
-from apiutils.responses import build_beacon_info_response, bundle_response
-from apiutils.requests import RequestParams, parse_request
+from shared.apiutils.responses import build_beacon_info_response, bundle_response
+from shared.apiutils.requests import RequestParams, parse_request
 
 
 def lambda_handler(event, context):

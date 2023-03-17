@@ -3,10 +3,10 @@ import json
 
 from smart_open import open as sopen
 
-from athena.common import run_custom_query
-from apiutils.responses import bundle_response, build_filtering_terms_response
-from apiutils.requests import parse_request, RequestParams
-from utils.lambda_utils import ENV_ATHENA
+from shared.athena.common import run_custom_query
+from shared.apiutils.responses import bundle_response, build_filtering_terms_response
+from shared.apiutils.requests import parse_request, RequestParams
+from shared.utils.lambda_utils import ENV_ATHENA
 
 
 def lambda_handler(event, context):

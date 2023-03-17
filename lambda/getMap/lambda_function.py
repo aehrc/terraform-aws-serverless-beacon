@@ -1,7 +1,7 @@
 import json
 
-from apiutils.framework import beacon_map
-from apiutils.responses import bundle_response
+from shared.apiutils.framework import beacon_map
+from shared.apiutils.responses import bundle_response
 
 
 def lambda_handler(event, context):

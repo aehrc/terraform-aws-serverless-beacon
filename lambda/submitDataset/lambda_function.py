@@ -9,15 +9,15 @@ from jsonschema import Draft202012Validator, RefResolver
 import jsons
 import boto3
 
-from apiutils.responses import build_bad_request, bundle_response
-from utils.chrom_matching import get_vcf_chromosomes
-from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
-from athena.dataset import Dataset
-from athena.cohort import Cohort
-from athena.individual import Individual
-from athena.biosample import Biosample
-from athena.run import Run
-from athena.analysis import Analysis
+from shared.apiutils.responses import build_bad_request, bundle_response
+from shared.utils.chrom_matching import get_vcf_chromosomes
+from shared.dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
+from shared.athena.dataset import Dataset
+from shared.athena.cohort import Cohort
+from shared.athena.individual import Individual
+from shared.athena.biosample import Biosample
+from shared.athena.run import Run
+from shared.athena.analysis import Analysis
 
 
 DATASETS_TABLE_NAME = os.environ["DYNAMO_DATASETS_TABLE"]

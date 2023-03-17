@@ -76,6 +76,7 @@ locals {
   # layers
   binaries_layer         = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
   python_libraries_layer = module.python_libraries_layer.lambda_layer_arn
+  python_modules_layer = module.python_modules_layer.lambda_layer_arn
 }
 
 #
@@ -113,7 +114,8 @@ module "lambda-submitDataset" {
 
   layers = [
     local.python_libraries_layer,
-    local.binaries_layer
+    local.binaries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -308,7 +310,8 @@ module "lambda-getInfo" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -337,7 +340,8 @@ module "lambda-getConfiguration" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -366,7 +370,8 @@ module "lambda-getMap" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -395,7 +400,8 @@ module "lambda-getEntryTypes" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -427,7 +433,8 @@ module "lambda-getFilteringTerms" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -465,7 +472,8 @@ module "lambda-getAnalyses" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -503,7 +511,8 @@ module "lambda-getGenomicVariants" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -541,7 +550,8 @@ module "lambda-getIndividuals" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -579,7 +589,8 @@ module "lambda-getBiosamples" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -617,7 +628,8 @@ module "lambda-getDatasets" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -654,7 +666,8 @@ module "lambda-getCohorts" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -692,7 +705,8 @@ module "lambda-getRuns" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -719,7 +733,8 @@ module "lambda-splitQuery" {
   }
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }
 
@@ -743,7 +758,8 @@ module "lambda-performQuery" {
 
   layers = [
     local.binaries_layer,
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 
   environment_variables = merge({
@@ -783,6 +799,7 @@ module "lambda-indexer" {
   )
 
   layers = [
-    local.python_libraries_layer
+    local.python_libraries_layer,
+    local.python_modules_layer
   ]
 }

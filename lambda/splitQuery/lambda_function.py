@@ -6,7 +6,7 @@ import queue
 import boto3
 import jsons
 
-from payloads.lambda_payloads import SplitQueryPayload, PerformQueryPayload
+from shared.payloads.lambda_payloads import SplitQueryPayload, PerformQueryPayload
 
 
 SPLIT_SIZE = 10000
@@ -56,7 +56,7 @@ def split_query(split_payload: SplitQueryPayload):
                 variant_min_length=split_payload.variant_min_length,
                 variant_max_length=split_payload.variant_max_length,
                 include_details=check_all,
-                # region for bcftools
+                ## region for bcftools
                 region=f"{chrom}:{split_start}-{split_end}",
                 vcf_location=vcf_location,
             )
@@ -93,7 +93,7 @@ def split_query_sync(split_payload: SplitQueryPayload):
                 variant_min_length=split_payload.variant_min_length,
                 variant_max_length=split_payload.variant_max_length,
                 include_details=check_all,
-                # region for bcftools
+                ## region for bcftools
                 region=f"{chrom}:{split_start}-{split_end}",
                 vcf_location=vcf_location,
             )

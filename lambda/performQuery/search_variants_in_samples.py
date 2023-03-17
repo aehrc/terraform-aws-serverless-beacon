@@ -2,12 +2,13 @@ import os
 import re
 import subprocess
 from uuid import uuid4
+
 import boto3
 from botocore.exceptions import ClientError
 
-from payloads.lambda_payloads import PerformQueryPayload
-from payloads.lambda_responses import PerformQueryResponse
-import dynamodb.variant_queries as db
+from shared.payloads.lambda_payloads import PerformQueryPayload
+from shared.payloads.lambda_responses import PerformQueryResponse
+import shared.dynamodb.variant_queries as db
 
 
 # uncomment below for debugging

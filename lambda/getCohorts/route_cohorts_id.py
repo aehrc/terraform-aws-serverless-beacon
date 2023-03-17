@@ -1,13 +1,12 @@
 import json
-import os
 
 import jsons
 
-import apiutils.responses as responses
-from athena.cohort import Cohort
-from apiutils.schemas import DefaultSchemas
-from apiutils.requests import RequestParams, Granularity
-from utils.lambda_utils import ENV_ATHENA
+import shared.apiutils.responses as responses
+from shared.athena.cohort import Cohort
+from shared.apiutils.schemas import DefaultSchemas
+from shared.apiutils.requests import RequestParams, Granularity
+from shared.utils.lambda_utils import ENV_ATHENA
 
 
 def get_record_query(id):

@@ -6,7 +6,7 @@ from route_biosamples_id_g_variants import route as route_biosamples_id_g_varian
 from route_biosamples_id_analyses import route as route_biosamples_id_analyses
 from route_biosamples_id_runs import route as route_biosamples_id_runs
 from route_biosamples_filtering_terms import route as route_biosamples_filtering_terms
-from apiutils.requests import RequestParams, parse_request
+from shared.apiutils.requests import RequestParams, parse_request
 
 
 def lambda_handler(event, context):

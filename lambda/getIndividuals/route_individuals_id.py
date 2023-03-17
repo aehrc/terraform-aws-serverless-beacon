@@ -1,10 +1,10 @@
 import json
 import jsons
 
-import apiutils.responses as responses
-from athena.individual import Individual
-from apiutils.schemas import DefaultSchemas
-from apiutils.requests import RequestParams, Granularity
+import shared.apiutils.responses as responses
+from shared.athena.individual import Individual
+from shared.apiutils.schemas import DefaultSchemas
+from shared.apiutils.requests import RequestParams, Granularity
 
 
 def get_record_query(id):
