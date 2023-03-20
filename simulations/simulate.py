@@ -1,29 +1,30 @@
-import random
-import os
-import sys
-import re
+import concurrent.futures
 import multiprocessing
 from glob import glob
-import concurrent.futures
+import random
 import shutil
 import json
+import sys
+import os
+import re
 
+from tqdm import tqdm
 import pyorc
 import boto3
-from tqdm import tqdm
 import jsons
 
-from athena.dataset import Dataset
-from athena.cohort import Cohort
-from athena.individual import Individual
-from athena.biosample import Biosample
-from athena import Run
-from athena.analysis import Analysis
-from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
-from dynamodb.ontologies import Ontology, Descendants, Anscestors
-from dynamodb.variant_queries import VariantQuery, VariantResponse
-from utils import (
-    get_vcf_chromosomes,
+from shared.athena import Dataset, Cohort, Individual, Biosample, Run, Analysis
+from shared.dynamodb import (
+    Dataset as DynamoDataset,
+    VcfChromosomeMap,
+    Ontology,
+    Descendants,
+    Anscestors,
+    VariantQuery,
+    VariantResponse,
+)
+from shared.utils import get_vcf_chromosomes
+from .utils import (
     get_samples,
     get_writer,
     write_local,
@@ -36,7 +37,6 @@ VARIANTS_BUCKET = os.environ["VARIANTS_BUCKET"]
 
 pattern = re.compile(f"^\\w[^:]+:.+$")
 s3 = boto3.client("s3")
-
 threads_count = 56
 terms_cache_header = (
     "struct<kind:string,id:string,term:string,label:string,type:string>"
