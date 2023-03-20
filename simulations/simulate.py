@@ -1047,7 +1047,7 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{ATHENA_ATHENA_METADATA_BUCKET}/analyses-cache/analyses-{thread}-{idx}",
+                f"s3://{ATHENA_METADATA_BUCKET}/analyses-cache/analyses-{thread}-{idx}",
             )
     pool.shutdown()
 
