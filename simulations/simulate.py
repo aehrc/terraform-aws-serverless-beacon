@@ -24,7 +24,7 @@ from shared.dynamodb import (
     VariantResponse,
 )
 from shared.utils import get_vcf_chromosomes
-from .utils import (
+from utils import (
     get_samples,
     get_writer,
     write_local,
@@ -32,8 +32,7 @@ from .utils import (
 )
 
 
-METADATA_BUCKET = os.environ["METADATA_BUCKET"]
-VARIANTS_BUCKET = os.environ["VARIANTS_BUCKET"]
+ATHENA_METADATA_BUCKET = os.environ["ATHENA_METADATA_BUCKET"]
 
 pattern = re.compile(f"^\\w[^:]+:.+$")
 s3 = boto3.client("s3")
@@ -637,8 +636,7 @@ def clean():
         ):
             batch.delete(dynamo_item)
 
-    clean_files(METADATA_BUCKET, "")
-    clean_files(VARIANTS_BUCKET, "variant-queries/")
+    clean_files(ATHENA_METADATA_BUCKET, "")
 
 
 def extract_terms(array):
@@ -979,24 +977,24 @@ def upload():
     pool.submit(
         upload_local,
         f"{datasets_path}.orc",
-        f"s3://{METADATA_BUCKET}/datasets-cache/combined-datasets.orc",
+        f"s3://{ATHENA_METADATA_BUCKET}/datasets-cache/combined-datasets.orc",
     )
     pool.submit(
         upload_local,
         f"{datasets_path}-terms.orc",
-        f"s3://{METADATA_BUCKET}/terms-cache/datasets.orc",
+        f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/datasets.orc",
     )
 
     # upload cohorts
     pool.submit(
         upload_local,
         f"{cohorts_path}.orc",
-        f"s3://{METADATA_BUCKET}/cohorts-cache/combined-cohorts.orc",
+        f"s3://{ATHENA_METADATA_BUCKET}/cohorts-cache/combined-cohorts.orc",
     )
     pool.submit(
         upload_local,
         f"{cohorts_path}-terms.orc",
-        f"s3://{METADATA_BUCKET}/terms-cache/cohorts.orc",
+        f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/cohorts.orc",
     )
 
     # upload individuals
@@ -1004,22 +1002,22 @@ def upload():
         pool.submit(
             upload_local,
             f"{individuals_path}-terms-{thread}.orc",
-            f"s3://{METADATA_BUCKET}/terms-cache/individuals-{thread}.orc",
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/individuals-{thread}.orc",
         )
         pool.submit(
             upload_local,
             f"{biosamples_path}-terms-{thread}.orc",
-            f"s3://{METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc",
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/biosamples-{thread}.orc",
         )
         pool.submit(
             upload_local,
             f"{runs_path}-terms-{thread}.orc",
-            f"s3://{METADATA_BUCKET}/terms-cache/runs-{thread}.orc",
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/runs-{thread}.orc",
         )
         pool.submit(
             upload_local,
             f"{analyses_path}-terms-{thread}.orc",
-            f"s3://{METADATA_BUCKET}/terms-cache/analyses-{thread}.orc",
+            f"s3://{ATHENA_METADATA_BUCKET}/terms-cache/analyses-{thread}.orc",
         )
 
         for file in glob(f"{individuals_path}-{thread}-*"):
@@ -1027,7 +1025,7 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{METADATA_BUCKET}/individuals-cache/individuals-{thread}-{idx}.orc",
+                f"s3://{ATHENA_METADATA_BUCKET}/individuals-cache/individuals-{thread}-{idx}.orc",
             )
 
         for file in glob(f"{biosamples_path}-{thread}-*"):
@@ -1035,13 +1033,13 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{METADATA_BUCKET}/biosamples-cache/biosamples-{thread}-{idx}",
+                f"s3://{ATHENA_METADATA_BUCKET}/biosamples-cache/biosamples-{thread}-{idx}",
             )
 
         for file in glob(f"{runs_path}-{thread}-*"):
             idx = file.split("/")[-1].replace(".orc", "")
             pool.submit(
-                upload_local, file, f"s3://{METADATA_BUCKET}/runs-cache/runs-{thread}-{idx}"
+                upload_local, file, f"s3://{ATHENA_METADATA_BUCKET}/runs-cache/runs-{thread}-{idx}"
             )
 
         for file in glob(f"{analyses_path}-{thread}-*"):
@@ -1049,7 +1047,7 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{METADATA_BUCKET}/analyses-cache/analyses-{thread}-{idx}",
+                f"s3://{ATHENA_ATHENA_METADATA_BUCKET}/analyses-cache/analyses-{thread}-{idx}",
             )
     pool.shutdown()
 
