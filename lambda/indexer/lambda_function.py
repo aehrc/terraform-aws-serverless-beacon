@@ -1,19 +1,17 @@
 from collections import defaultdict
 from queue import Queue
-import time
 import threading
-import re
-import json
 import urllib
-import threading
+import json
+import time
+import re
 
 from smart_open import open as sopen
-import boto3
 import requests
+import boto3
 
-from shared.dynamodb.ontologies import Ontology, Descendants, Anscestors
-from shared.dynamodb.onto_index import OntoData
-from shared.utils.lambda_utils import ENV_ATHENA
+from shared.dynamodb import OntoData, Ontology, Descendants, Anscestors
+from shared.utils import ENV_ATHENA
 from generate_query_index import QUERY as INDEX_QUERY
 from generate_query_terms import QUERY as TERMS_QUERY
 from generate_query_relations import QUERY as RELATIONS_QUERY
@@ -25,14 +23,14 @@ s3 = boto3.client("s3")
 
 ENSEMBL_OLS = "https://www.ebi.ac.uk/ols/api/ontologies"
 ONTOSERVER = "https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand"
-ONTO_TERMS_QUERY = (
-    f""" SELECT term,tablename,colname,type,label FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}" """
-)
+ONTO_TERMS_QUERY = f""" SELECT term,tablename,colname,type,label FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}" """
 INDEX_QUERY = INDEX_QUERY.format(
-    table=ENV_ATHENA.ATHENA_TERMS_CACHE_TABLE, uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-index/"
+    table=ENV_ATHENA.ATHENA_TERMS_CACHE_TABLE,
+    uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-index/",
 )
 TERMS_QUERY = TERMS_QUERY.format(
-    table=ENV_ATHENA.ATHENA_TERMS_CACHE_TABLE, uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms/"
+    table=ENV_ATHENA.ATHENA_TERMS_CACHE_TABLE,
+    uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms/",
 )
 RELATIONS_QUERY = RELATIONS_QUERY.format(
     uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/relations/",
@@ -130,7 +128,9 @@ def index_terms_tree():
     threads = []
     response_queue = Queue()
 
-    with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv") as s3f:
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
+    ) as s3f:
         for n, line in enumerate(s3f):
             if n == 0:
                 continue
@@ -347,7 +347,9 @@ def onto_index():
     execution_id = response["QueryExecutionId"]
     get_result(execution_id)
 
-    with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv") as s3f:
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
+    ) as s3f:
         for n, line in enumerate(s3f):
             if n == 0:
                 continue

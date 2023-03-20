@@ -1,10 +1,9 @@
 from dataclasses import dataclass
+
 import jsons
 
-# TODO
-# Add comments explaining the variables
 
-
+# TODO Add comments explaining the variables
 # response sent by SplitQuery lambda
 @dataclass
 class SplitQueryResponse:

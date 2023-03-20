@@ -1,17 +1,27 @@
 from collections import defaultdict
 import json
 import base64
+
 import jsons
 
-from shared.variantutils.search_variants import perform_variant_search_sync
-from shared.athena.dataset import Dataset, parse_datasets_with_samples
-from shared.athena.common import run_custom_query
-from shared.athena.filter_functions import entity_search_conditions
-from shared.apiutils.requests import RequestParams, Granularity
-import shared.apiutils.responses as responses
-from shared.apiutils.schemas import DefaultSchemas
-from shared.athena.biosample import Biosample
-from shared.utils.lambda_utils import ENV_ATHENA
+from shared.variantutils import perform_variant_search_sync
+from shared.utils import ENV_ATHENA
+from shared.athena import (
+    Biosample,
+    Dataset,
+    parse_datasets_with_samples,
+    entity_search_conditions,
+    run_custom_query,
+)
+from shared.apiutils import (
+    RequestParams,
+    Granularity,
+    DefaultSchemas,
+    build_beacon_boolean_response,
+    build_beacon_resultset_response,
+    build_beacon_count_response,
+    bundle_response,
+)
 
 
 def datasets_query(conditions, assembly_id):
@@ -188,24 +198,24 @@ def route(request: RequestParams, variant_id):
                     queries.append(query)
 
     if request.query.requested_granularity == "boolean":
-        response = responses.build_beacon_boolean_response(
+        response = build_beacon_boolean_response(
             {}, 1 if exists else 0, request, {}, DefaultSchemas.BIOSAMPLES
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
     if request.query.requested_granularity == "count":
         count = iterated_biosamples
-        response = responses.build_beacon_count_response(
+        response = build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.BIOSAMPLES
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = " UNION ".join(queries)
         biosamples = Biosample.get_by_query(query) if len(queries) > 0 else []
-        response = responses.build_beacon_resultset_response(
+        response = build_beacon_resultset_response(
             jsons.dump(biosamples, strip_privates=True),
             len(biosamples),
             request,
@@ -213,7 +223,7 @@ def route(request: RequestParams, variant_id):
             DefaultSchemas.BIOSAMPLES,
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
 
 if __name__ == "__main__":

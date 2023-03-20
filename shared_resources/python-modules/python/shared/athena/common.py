@@ -6,7 +6,7 @@ import json
 import boto3
 from smart_open import open as sopen
 
-from shared.utils.lambda_utils import ENV_ATHENA
+from shared.utils import ENV_ATHENA
 
 
 athena = boto3.client("athena")

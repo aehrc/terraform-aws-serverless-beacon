@@ -8,16 +8,13 @@ import random
 import boto3
 from botocore.exceptions import ClientError
 
-from shared.payloads.lambda_payloads import PerformQueryPayload
-from shared.payloads.lambda_responses import PerformQueryResponse
-import shared.dynamodb.variant_queries as db
+from shared.payloads import PerformQueryPayload, PerformQueryResponse
+from shared.dynamodb import VariantQuery, VariantResponse, S3Location
 
 
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
 VARIANTS_BUCKET = os.environ["VARIANTS_BUCKET"]
-
-
 BASES = [
     "A",
     "C",
@@ -314,8 +311,8 @@ def perform_query(payload: PerformQueryPayload, is_async):
             uuid = uuid4().hex
             body = response.dumps()
 
-            query = db.VariantQuery(payload.query_id)
-            result = db.VariantResponse(payload.query_id)
+            query = VariantQuery(payload.query_id)
+            result = VariantResponse(payload.query_id)
             result.responseNumber = query.getResponseNumber()
 
             if len(body) < 1024 * 300:
@@ -327,7 +324,7 @@ def perform_query(payload: PerformQueryPayload, is_async):
                 s3.put_object(Body=body.encode(), Bucket=VARIANTS_BUCKET, Key=key)
                 print(f"Uploaded - {VARIANTS_BUCKET}/{key}")
                 # s3 details
-                s3loc = db.S3Location()
+                s3loc = S3Location()
                 s3loc.bucket = VARIANTS_BUCKET
                 s3loc.key = key
                 # response

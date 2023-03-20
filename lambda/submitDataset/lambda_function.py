@@ -1,23 +1,18 @@
+from threading import Thread
+from typing import List
+import subprocess
 import json
 import os
-import subprocess
-from typing import List
-from threading import Thread
 
-from smart_open import open as sopen
 from jsonschema import Draft202012Validator, RefResolver
+from smart_open import open as sopen
 import jsons
 import boto3
 
-from shared.apiutils.responses import build_bad_request, bundle_response
-from shared.utils.chrom_matching import get_vcf_chromosomes
-from shared.dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
-from shared.athena.dataset import Dataset
-from shared.athena.cohort import Cohort
-from shared.athena.individual import Individual
-from shared.athena.biosample import Biosample
-from shared.athena.run import Run
-from shared.athena.analysis import Analysis
+from shared.utils import get_vcf_chromosomes
+from shared.apiutils import build_bad_request, bundle_response
+from shared.dynamodb import Dataset as DynamoDataset, VcfChromosomeMap
+from shared.athena import Dataset, Cohort, Individual, Biosample, Run, Analysis
 
 
 DATASETS_TABLE_NAME = os.environ["DYNAMO_DATASETS_TABLE"]

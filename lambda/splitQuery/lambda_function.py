@@ -1,12 +1,12 @@
-import json
-import os
 import concurrent.futures
 import queue
+import json
+import os
 
 import boto3
 import jsons
 
-from shared.payloads.lambda_payloads import SplitQueryPayload, PerformQueryPayload
+from shared.payloads import SplitQueryPayload, PerformQueryPayload
 
 
 SPLIT_SIZE = 10000

@@ -1,11 +1,16 @@
 import json
 import jsons
 
-from shared.athena.filter_functions import entity_search_conditions
-from shared.apiutils.requests import RequestParams, Granularity
-from shared.apiutils.schemas import DefaultSchemas
-import shared.apiutils.responses as responses
-from shared.athena.biosample import Biosample
+from shared.athena import Biosample, entity_search_conditions
+from shared.apiutils import (
+    RequestParams,
+    Granularity,
+    DefaultSchemas,
+    build_beacon_boolean_response,
+    build_beacon_resultset_response,
+    build_beacon_count_response,
+    bundle_response,
+)
 
 
 def get_bool_query(id, conditions=""):
@@ -56,22 +61,22 @@ def route(request: RequestParams, dataset_id):
             )
             else 0
         )
-        response = responses.build_beacon_boolean_response(
+        response = build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.BIOSAMPLES
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
     if request.query.requested_granularity == "count":
         query = get_count_query(dataset_id, conditions)
         count = Biosample.get_count_by_query(
             query, execution_parameters=execution_parameters
         )
-        response = responses.build_beacon_count_response(
+        response = build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.BIOSAMPLES
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(
@@ -83,7 +88,7 @@ def route(request: RequestParams, dataset_id):
         biosamples = Biosample.get_by_query(
             query, execution_parameters=execution_parameters
         )
-        response = responses.build_beacon_resultset_response(
+        response = build_beacon_resultset_response(
             jsons.dump(biosamples, strip_privates=True),
             len(biosamples),
             request,
@@ -91,4 +96,4 @@ def route(request: RequestParams, dataset_id):
             DefaultSchemas.BIOSAMPLES,
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)

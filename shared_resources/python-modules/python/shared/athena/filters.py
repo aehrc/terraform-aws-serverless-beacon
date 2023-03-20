@@ -1,20 +1,20 @@
 from typing import List, Union
 
-from shared.dynamodb.ontologies import Descendants, Anscestors
-from shared.apiutils.requests import (
+from .individual import Individual
+from .biosample import Biosample
+from .analysis import Analysis
+from .dataset import Dataset
+from .cohort import Cohort
+from .run import Run
+from shared.dynamodb import Descendants, Anscestors
+from shared.utils import ENV_ATHENA
+from shared.apiutils import (
     OntologyFilter,
     AlphanumericFilter,
     CustomFilter,
     Similarity,
     Operator,
 )
-from shared.utils.lambda_utils import ENV_ATHENA
-from .analysis import Analysis
-from .biosample import Biosample
-from .individual import Individual
-from .cohort import Cohort
-from .dataset import Dataset
-from .run import Run
 
 
 queried_athena_models = {

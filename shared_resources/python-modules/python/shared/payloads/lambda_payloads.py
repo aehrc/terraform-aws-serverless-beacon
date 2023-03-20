@@ -1,9 +1,7 @@
 import jsons
 
-# TODO
-# Add comments explaining the variables
 
-
+# TODO Add comments explaining the variables
 # payload accepted by SplitQuery lambda
 class SplitQueryPayload(jsons.JsonSerializable):
     def __init__(

@@ -5,7 +5,7 @@ import boto3
 from smart_open import open as sopen
 
 from .common import AthenaModel, extract_terms
-from shared.utils.lambda_utils import ENV_ATHENA
+from shared.utils import ENV_ATHENA
 
 
 s3 = boto3.client("s3")

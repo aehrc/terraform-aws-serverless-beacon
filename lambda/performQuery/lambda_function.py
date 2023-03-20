@@ -6,7 +6,8 @@ import glob
 
 import search_variants
 import search_variants_in_samples
-from shared.payloads.lambda_payloads import PerformQueryPayload
+from shared.payloads import PerformQueryPayload
+
 
 BASES = [
     "A",

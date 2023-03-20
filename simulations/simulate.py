@@ -17,7 +17,7 @@ from athena.dataset import Dataset
 from athena.cohort import Cohort
 from athena.individual import Individual
 from athena.biosample import Biosample
-from athena.run import Run
+from athena import Run
 from athena.analysis import Analysis
 from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
 from dynamodb.ontologies import Ontology, Descendants, Anscestors

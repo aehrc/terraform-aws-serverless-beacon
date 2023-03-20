@@ -1,17 +1,16 @@
 import concurrent.futures
+import queue
 import time
 import copy
-import queue
 
-import jsons
 import botocore
+import jsons
 import boto3
 
 from .local_utils import split_query, split_query_sync, get_split_query_fan_out
-from shared.utils.chrom_matching import get_matching_chromosome
-from shared.dynamodb.variant_queries import VariantQuery, VariantResponse
-from shared.payloads.lambda_payloads import SplitQueryPayload
-from shared.payloads.lambda_responses import PerformQueryResponse
+from shared.utils import get_matching_chromosome
+from shared.dynamodb import VariantQuery, VariantResponse
+from shared.payloads import SplitQueryPayload, PerformQueryResponse
 
 
 REQUEST_TIMEOUT = 600  # seconds

@@ -8,7 +8,7 @@
 import functools
 
 from .schemas import DefaultSchemas
-from shared.utils.lambda_utils import ENV_BEACON
+from shared.utils import ENV_BEACON
 
 
 def _get_entry_types():

@@ -5,7 +5,7 @@ import queue
 import boto3
 import jsons
 
-from shared.payloads.lambda_payloads import SplitQueryPayload
+from shared.payloads import SplitQueryPayload
 
 
 SPLIT_SIZE = 10000

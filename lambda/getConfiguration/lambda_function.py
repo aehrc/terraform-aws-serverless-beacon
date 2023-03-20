@@ -1,7 +1,6 @@
 import json
 
-from shared.apiutils.framework import configuration
-from shared.apiutils.responses import bundle_response
+from shared.apiutils import configuration, bundle_response
 
 
 def lambda_handler(event, context):

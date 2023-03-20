@@ -1,7 +1,7 @@
 import contextlib
-import os
-import shutil
 import tempfile
+import shutil
+import os
 
 
 class BeaconEnvironment:

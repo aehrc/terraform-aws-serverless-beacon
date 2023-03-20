@@ -2,12 +2,12 @@ import json
 
 import jsons
 
-from shared.athena.filter_functions import entity_search_conditions
+from shared.athena import entity_search_conditions
 from shared.apiutils.requests import RequestParams, Granularity
-from shared.apiutils.schemas import DefaultSchemas
+from shared.apiutils import DefaultSchemas
 import shared.apiutils.responses as responses
 from shared.athena.cohort import Cohort
-from shared.utils.lambda_utils import ENV_ATHENA
+from shared.utils import ENV_ATHENA
 
 
 def get_count_query(conditions=[]):

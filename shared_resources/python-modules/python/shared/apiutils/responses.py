@@ -5,7 +5,7 @@ import functools
 
 from .requests import RequestParams, Granularity
 from .schemas import DefaultSchemas
-from shared.utils.lambda_utils import ENV_BEACON
+from shared.utils import ENV_BEACON
 
 
 HEADERS = {"Access-Control-Allow-Origin": "*"}

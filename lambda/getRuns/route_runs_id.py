@@ -2,10 +2,16 @@ import json
 
 import jsons
 
-import shared.apiutils.responses as responses
-from shared.athena.run import Run
-from shared.apiutils.schemas import DefaultSchemas
-from shared.apiutils.requests import RequestParams, Granularity
+from shared.athena import Run
+from shared.apiutils import (
+    DefaultSchemas,
+    RequestParams,
+    Granularity,
+    build_beacon_boolean_response,
+    build_beacon_resultset_response,
+    build_beacon_count_response,
+    bundle_response,
+)
 
 
 def get_record_query(id):
@@ -22,25 +28,25 @@ def route(request: RequestParams, run_id):
     if request.query.requested_granularity == "boolean":
         query = get_record_query(run_id)
         count = 1 if Run.get_existence_by_query(query) else 0
-        response = responses.build_beacon_boolean_response(
+        response = build_beacon_boolean_response(
             {}, count, request, {}, DefaultSchemas.RUNS
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
     if request.query.requested_granularity == "count":
         query = get_record_query(run_id)
         count = 1 if Run.get_existence_by_query(query) else 0
-        response = responses.build_beacon_count_response(
+        response = build_beacon_count_response(
             {}, count, request, {}, DefaultSchemas.RUNS
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(run_id)
         runs = Run.get_by_query(query)
-        response = responses.build_beacon_resultset_response(
+        response = build_beacon_resultset_response(
             jsons.dump(runs, strip_privates=True),
             len(runs),
             request,
@@ -48,4 +54,4 @@ def route(request: RequestParams, run_id):
             DefaultSchemas.RUNS,
         )
         print("Returning Response: {}".format(json.dumps(response)))
-        return responses.bundle_response(200, response)
+        return bundle_response(200, response)

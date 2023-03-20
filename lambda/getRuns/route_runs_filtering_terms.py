@@ -3,10 +3,13 @@ import csv
 
 from smart_open import open as sopen
 
-from shared.apiutils.responses import build_filtering_terms_response, bundle_response
-from shared.athena.common import run_custom_query
-from shared.apiutils.requests import RequestParams
-from shared.utils.lambda_utils import ENV_ATHENA
+from shared.athena import run_custom_query
+from shared.utils import ENV_ATHENA
+from shared.apiutils import (
+    RequestParams,
+    build_filtering_terms_response,
+    bundle_response,
+)
 
 
 def route(request: RequestParams):
@@ -22,7 +25,9 @@ def route(request: RequestParams):
     exec_id = run_custom_query(query, return_id=True)
     filteringTerms = []
 
-    with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv") as s3f:
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv"
+    ) as s3f:
         reader = csv.reader(s3f)
 
         for n, row in enumerate(reader):

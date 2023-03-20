@@ -3,7 +3,7 @@ from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from pynamodb.attributes import UnicodeAttribute
 
-from shared.utils.lambda_utils import ENV_DYNAMO
+from shared.utils import ENV_DYNAMO
 
 
 SESSION = boto3.session.Session()
