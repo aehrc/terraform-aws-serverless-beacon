@@ -47,19 +47,25 @@ locals {
   }
   # athena related variables
   athena_variables = {
-    ATHENA_WORKGROUP         = aws_athena_workgroup.sbeacon-workgroup.name
-    ATHENA_METADATA_DATABASE = aws_glue_catalog_database.metadata-database.name
-    ATHENA_METADATA_BUCKET   = aws_s3_bucket.metadata-bucket.bucket
-    ATHENA_DATASETS_TABLE    = aws_glue_catalog_table.sbeacon-datasets.name
-    ATHENA_COHORTS_TABLE     = aws_glue_catalog_table.sbeacon-cohorts.name
-    ATHENA_INDIVIDUALS_TABLE = aws_glue_catalog_table.sbeacon-individuals.name
-    ATHENA_BIOSAMPLES_TABLE  = aws_glue_catalog_table.sbeacon-biosamples.name
-    ATHENA_RUNS_TABLE        = aws_glue_catalog_table.sbeacon-runs.name
-    ATHENA_ANALYSES_TABLE    = aws_glue_catalog_table.sbeacon-analyses.name
-    ATHENA_TERMS_TABLE       = aws_glue_catalog_table.sbeacon-terms.name
-    ATHENA_TERMS_INDEX_TABLE = aws_glue_catalog_table.sbeacon-terms-index.name
-    ATHENA_TERMS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-terms-cache.name
-    ATHENA_RELATIONS_TABLE   = aws_glue_catalog_table.sbeacon-relations.name
+    ATHENA_WORKGROUP               = aws_athena_workgroup.sbeacon-workgroup.name
+    ATHENA_METADATA_DATABASE       = aws_glue_catalog_database.metadata-database.name
+    ATHENA_METADATA_BUCKET         = aws_s3_bucket.metadata-bucket.bucket
+    ATHENA_DATASETS_TABLE          = aws_glue_catalog_table.sbeacon-datasets.name
+    ATHENA_DATASETS_CACHE_TABLE    = aws_glue_catalog_table.sbeacon-datasets-cache.name
+    ATHENA_COHORTS_TABLE           = aws_glue_catalog_table.sbeacon-cohorts.name
+    ATHENA_COHORTS_CACHE_TABLE     = aws_glue_catalog_table.sbeacon-cohorts-cache.name
+    ATHENA_INDIVIDUALS_TABLE       = aws_glue_catalog_table.sbeacon-individuals.name
+    ATHENA_INDIVIDUALS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-individuals-cache.name
+    ATHENA_BIOSAMPLES_TABLE        = aws_glue_catalog_table.sbeacon-biosamples.name
+    ATHENA_BIOSAMPLES_CACHE_TABLE  = aws_glue_catalog_table.sbeacon-biosamples-cache.name
+    ATHENA_RUNS_TABLE              = aws_glue_catalog_table.sbeacon-runs.name
+    ATHENA_RUNS_TABLE_CACHE        = aws_glue_catalog_table.sbeacon-runs-cache.name
+    ATHENA_ANALYSES_TABLE          = aws_glue_catalog_table.sbeacon-analyses.name
+    ATHENA_ANALYSES_CACHE_TABLE    = aws_glue_catalog_table.sbeacon-analyses-cache.name
+    ATHENA_TERMS_TABLE             = aws_glue_catalog_table.sbeacon-terms.name
+    ATHENA_TERMS_INDEX_TABLE       = aws_glue_catalog_table.sbeacon-terms-index.name
+    ATHENA_TERMS_CACHE_TABLE       = aws_glue_catalog_table.sbeacon-terms-cache.name
+    ATHENA_RELATIONS_TABLE         = aws_glue_catalog_table.sbeacon-relations.name
   }
   # dynamodb variables
   dynamodb_variables = {
@@ -76,7 +82,7 @@ locals {
   # layers
   binaries_layer         = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
   python_libraries_layer = module.python_libraries_layer.lambda_layer_arn
-  python_modules_layer = module.python_modules_layer.lambda_layer_arn
+  python_modules_layer   = module.python_modules_layer.lambda_layer_arn
 }
 
 #

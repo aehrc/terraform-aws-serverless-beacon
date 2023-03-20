@@ -5,15 +5,12 @@
 # Glue docs; https://docs.aws.amazon.com/glue/latest/dg/glue-dg.pdf
 # Athena does not support - in database names, use _ instead
 #
-resource "aws_glue_catalog_database" "metadata-database" {
-  name = "sbeacon_metadata"
-}
 
 # 
 # Cohorts metadata
 # 
-resource "aws_glue_catalog_table" "sbeacon-cohorts" {
-  name          = "sbeacon_cohorts"
+resource "aws_glue_catalog_table" "sbeacon-cohorts-cache" {
+  name          = "sbeacon_cohorts_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -24,7 +21,7 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/cohorts"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/cohorts-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -90,8 +87,8 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts" {
 # 
 # Datasets metadata
 # 
-resource "aws_glue_catalog_table" "sbeacon-datasets" {
-  name          = "sbeacon_datasets"
+resource "aws_glue_catalog_table" "sbeacon-datasets-cache" {
+  name          = "sbeacon_datasets_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -102,7 +99,7 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/datasets"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/datasets-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -183,8 +180,8 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
 # 
 # Individuals metadata
 # 
-resource "aws_glue_catalog_table" "sbeacon-individuals" {
-  name          = "sbeacon_individuals"
+resource "aws_glue_catalog_table" "sbeacon-individuals-cache" {
+  name          = "sbeacon_individuals_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -195,7 +192,7 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/individuals"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/individuals-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -291,8 +288,8 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
 # 
 # Biosamples metadata
 # 
-resource "aws_glue_catalog_table" "sbeacon-biosamples" {
-  name          = "sbeacon_biosamples"
+resource "aws_glue_catalog_table" "sbeacon-biosamples-cache" {
+  name          = "sbeacon_biosamples_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -303,7 +300,7 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/biosamples"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/biosamples-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -433,8 +430,8 @@ resource "aws_glue_catalog_table" "sbeacon-biosamples" {
 # 
 # Runs metadata
 # 
-resource "aws_glue_catalog_table" "sbeacon-runs" {
-  name          = "sbeacon_runs"
+resource "aws_glue_catalog_table" "sbeacon-runs-cache" {
+  name          = "sbeacon_runs_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -445,7 +442,7 @@ resource "aws_glue_catalog_table" "sbeacon-runs" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/runs"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/runs-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -531,8 +528,8 @@ resource "aws_glue_catalog_table" "sbeacon-runs" {
 # 
 # Analyses metadata
 # 
-resource "aws_glue_catalog_table" "sbeacon-analyses" {
-  name          = "sbeacon_analyses"
+resource "aws_glue_catalog_table" "sbeacon-analyses-cache" {
+  name          = "sbeacon_analyses_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -543,7 +540,7 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/analyses"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/analyses-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -627,10 +624,10 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
 }
 
 # 
-# Ontology terms index
+# Ontology terms cache - used to build proper index later on
 # 
-resource "aws_glue_catalog_table" "sbeacon-terms-index" {
-  name          = "sbeacon_terms_index"
+resource "aws_glue_catalog_table" "sbeacon-terms-cache" {
+  name          = "sbeacon_terms_cache"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -641,7 +638,7 @@ resource "aws_glue_catalog_table" "sbeacon-terms-index" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms-index"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms-cache"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -655,55 +652,16 @@ resource "aws_glue_catalog_table" "sbeacon-terms-index" {
         "orc.column.index.access"   = "FALSE"
         "hive.orc.use-column-names" = "TRUE"
       }
+    }
+
+    columns {
+      name = "kind"
+      type = "string"
     }
 
     columns {
       name = "id"
       type = "string"
-    }
-
-    columns {
-      name = "term"
-      type = "string"
-    }
-  }
-
-  partition_keys {
-    comment = "partition by kind"
-    name    = "kind"
-    type    = "string"
-  }
-}
-
-# 
-# Ontology terms (for pagination and filtering)
-# 
-resource "aws_glue_catalog_table" "sbeacon-terms" {
-  name          = "sbeacon_terms"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
-
-  parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
-  }
-
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
-      }
     }
 
     columns {
@@ -721,174 +679,4 @@ resource "aws_glue_catalog_table" "sbeacon-terms" {
       type = "string"
     }
   }
-
-  partition_keys {
-    comment = "partition by kind"
-    name    = "kind"
-    type    = "string"
-  }
-}
-
-# 
-# Connected entities
-# 
-resource "aws_glue_catalog_table" "sbeacon-relations" {
-  name          = "sbeacon_relations"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
-
-  parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
-  }
-
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/relations"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
-      }
-    }
-
-    columns {
-      name = "datasetid"
-      type = "string"
-    }
-
-    columns {
-      name = "cohortid"
-      type = "string"
-    }
-
-    columns {
-      name = "individualid"
-      type = "string"
-    }
-
-    columns {
-      name = "biosampleid"
-      type = "string"
-    }
-
-    columns {
-      name = "runid"
-      type = "string"
-    }
-
-    columns {
-      name = "analysisid"
-      type = "string"
-    }
-  }
-}
-
-resource "aws_glue_crawler" "sbeacon-crawler" {
-  database_name = aws_glue_catalog_database.metadata-database.name
-  name          = "sbeacon-crawler"
-  role          = aws_iam_role.glue_role.arn
-
-  catalog_target {
-    database_name = aws_glue_catalog_database.metadata-database.name
-    tables = [
-      aws_glue_catalog_table.sbeacon-individuals.name,
-      aws_glue_catalog_table.sbeacon-biosamples.name
-    ]
-  }
-
-  schema_change_policy {
-    delete_behavior = "LOG"
-  }
-
-  configuration = <<EOF
-{
-  "Version":1.0,
-  "Grouping": {
-    "TableGroupingPolicy": "CombineCompatibleSchemas"
-  },
-  "CrawlerOutput": {
-      "Partitions": { "AddOrUpdateBehavior": "InheritFromTable" }
-   }
-}
-EOF
-}
-
-resource "aws_athena_workgroup" "sbeacon-workgroup" {
-  name          = "query_workgroup"
-  force_destroy = true
-
-  configuration {
-    enforce_workgroup_configuration    = false
-    publish_cloudwatch_metrics_enabled = true
-
-    engine_version {
-      selected_engine_version = "Athena engine version 3"
-    }
-
-    result_configuration {
-      output_location = "s3://${aws_s3_bucket.metadata-bucket.bucket}/query-results/"
-    }
-  }
-}
-
-#
-# Glue crawler IAM policies
-# Official docs are not super complete refer to below
-# https://www.xerris.com/insights/building-modern-data-warehouses-with-s3-glue-and-athena-part-3/
-#
-resource "aws_iam_role" "glue_role" {
-  name               = "glue_role"
-  assume_role_policy = data.aws_iam_policy_document.glue.json
-}
-
-data "aws_iam_policy_document" "glue" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["glue.amazonaws.com"]
-    }
-  }
-}
-
-data "aws_iam_policy_document" "extra-glue-policy-document" {
-  statement {
-    actions = [
-    "s3:GetBucketLocation", "s3:ListBucket", "s3:ListAllMyBuckets", "s3:GetBucketAcl", "s3:GetObject"]
-    resources = [
-      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
-      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
-    ]
-  }
-}
-
-resource "aws_iam_policy" "extra-glue-policy" {
-  name        = "extra-glue-policy"
-  description = "Extra permissions"
-  policy      = data.aws_iam_policy_document.extra-glue-policy-document.json
-
-}
-
-resource "aws_iam_role_policy_attachment" "glue-extra-policy-attachment" {
-  role       = aws_iam_role.glue_role.name
-  policy_arn = aws_iam_policy.extra-glue-policy.arn
-}
-
-data "aws_iam_policy" "AWSGlueServiceRole" {
-  arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
-}
-
-resource "aws_iam_role_policy_attachment" "glue-service-role-attachment" {
-  role       = aws_iam_role.glue_role.name
-  policy_arn = data.aws_iam_policy.AWSGlueServiceRole.arn
 }

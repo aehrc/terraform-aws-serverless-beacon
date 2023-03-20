@@ -979,7 +979,7 @@ def upload():
     pool.submit(
         upload_local,
         f"{datasets_path}.orc",
-        f"s3://{METADATA_BUCKET}/datasets/combined-datasets.orc",
+        f"s3://{METADATA_BUCKET}/datasets-cache/combined-datasets.orc",
     )
     pool.submit(
         upload_local,
@@ -991,7 +991,7 @@ def upload():
     pool.submit(
         upload_local,
         f"{cohorts_path}.orc",
-        f"s3://{METADATA_BUCKET}/cohorts/combined-cohorts.orc",
+        f"s3://{METADATA_BUCKET}/cohorts-cache/combined-cohorts.orc",
     )
     pool.submit(
         upload_local,
@@ -1027,7 +1027,7 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{METADATA_BUCKET}/individuals/individuals-{thread}-{idx}.orc",
+                f"s3://{METADATA_BUCKET}/individuals-cache/individuals-{thread}-{idx}.orc",
             )
 
         for file in glob(f"{biosamples_path}-{thread}-*"):
@@ -1035,13 +1035,13 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{METADATA_BUCKET}/biosamples/biosamples-{thread}-{idx}",
+                f"s3://{METADATA_BUCKET}/biosamples-cache/biosamples-{thread}-{idx}",
             )
 
         for file in glob(f"{runs_path}-{thread}-*"):
             idx = file.split("/")[-1].replace(".orc", "")
             pool.submit(
-                upload_local, file, f"s3://{METADATA_BUCKET}/runs/runs-{thread}-{idx}"
+                upload_local, file, f"s3://{METADATA_BUCKET}/runs-cache/runs-{thread}-{idx}"
             )
 
         for file in glob(f"{analyses_path}-{thread}-*"):
@@ -1049,7 +1049,7 @@ def upload():
             pool.submit(
                 upload_local,
                 file,
-                f"s3://{METADATA_BUCKET}/analyses/analyses-{thread}-{idx}",
+                f"s3://{METADATA_BUCKET}/analyses-cache/analyses-{thread}-{idx}",
             )
     pool.shutdown()
 
