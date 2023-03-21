@@ -12,6 +12,7 @@ import boto3
 
 from shared.dynamodb import OntoData, Ontology, Descendants, Anscestors
 from shared.utils import ENV_ATHENA
+from ctas_queries import QUERY as CTAS_TEMPLATE
 from generate_query_index import QUERY as INDEX_QUERY
 from generate_query_terms import QUERY as TERMS_QUERY
 from generate_query_relations import QUERY as RELATIONS_QUERY
@@ -120,7 +121,7 @@ def index_terms_tree():
     )
 
     execution_id = response["QueryExecutionId"]
-    get_result(execution_id)
+    await_result(execution_id)
 
     ontologies = set()
     ontology_clusters = defaultdict(set)
@@ -253,7 +254,7 @@ def update_athena_partitions(table):
     )
 
 
-def get_result(execution_id, sleep=2):
+def await_result(execution_id, sleep=2):
     retries = 0
     while True:
         exec = athena.get_query_execution(QueryExecutionId=execution_id)
@@ -271,11 +272,8 @@ def get_result(execution_id, sleep=2):
         elif status in ("FAILED", "CANCELLED"):
             print("Error: ", exec["QueryExecution"]["Status"])
             raise Exception("Error: " + str(exec["QueryExecution"]["Status"]))
-        else:
-            data = athena.get_query_results(
-                QueryExecutionId=execution_id, MaxResults=1000
-            )
-            return data["ResultSet"]["Rows"]
+        elif status == "SUCCEEDED":
+            return
 
 
 def drop_tables(table):
@@ -285,7 +283,7 @@ def drop_tables(table):
         QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
         WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
-    get_result(response["QueryExecutionId"])
+    await_result(response["QueryExecutionId"])
 
 
 def clean_files(bucket, prefix):
@@ -301,6 +299,27 @@ def clean_files(bucket, prefix):
     time.sleep(1)
 
 
+def ctas_basic_tables(
+    *, source_table, destination_table, destination_prefix, bucket_count
+):
+    clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, destination_prefix)
+    drop_tables(destination_table)
+
+    query = CTAS_TEMPLATE.format(
+        target=destination_table,
+        uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/{destination_prefix}",
+        bucket_by="id",
+        table=source_table,
+        bucket_count=bucket_count,
+    )
+    response = athena.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
+    )
+    await_result(response["QueryExecutionId"])
+
+
 def index_terms():
     clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, "terms-index/")
     drop_tables(ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE)
@@ -310,7 +329,7 @@ def index_terms():
         QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
         WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
-    get_result(response["QueryExecutionId"])
+    await_result(response["QueryExecutionId"])
 
 
 def record_terms():
@@ -322,7 +341,7 @@ def record_terms():
         QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
         WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
-    get_result(response["QueryExecutionId"])
+    await_result(response["QueryExecutionId"])
 
 
 def record_relations():
@@ -334,7 +353,7 @@ def record_relations():
         QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
         WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
-    get_result(response["QueryExecutionId"])
+    await_result(response["QueryExecutionId"])
 
 
 # TODO re-evaluate the following function remove or useful?
@@ -345,7 +364,7 @@ def onto_index():
         WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     execution_id = response["QueryExecutionId"]
-    get_result(execution_id)
+    await_result(execution_id)
 
     with sopen(
         f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
@@ -368,9 +387,60 @@ def onto_index():
 
 
 def lambda_handler(event, context):
-    # TODO decide a better way of partitioning or not partitioning
-    # for table in (DATASETS_TABLE, COHORTS_TABLE, INDIVIDUALS_TABLE, BIOSAMPLES_TABLE, RUNS_TABLE, ANALYSES_TABLE):
-    #     threads.append(threading.Thread(target=update_athena_partitions, kwargs={'table': table}))
+    # CTAS this must finish before all
+    threads = []
+    for src, dest, prefix, bucket_count in (
+        (
+            ENV_ATHENA.ATHENA_DATASETS_CACHE_TABLE,
+            ENV_ATHENA.ATHENA_DATASETS_TABLE,
+            "datasets/",
+            10,
+        ),
+        (
+            ENV_ATHENA.ATHENA_COHORTS_CACHE_TABLE,
+            ENV_ATHENA.ATHENA_COHORTS_TABLE,
+            "cohorts/",
+            10,
+        ),
+        (
+            ENV_ATHENA.ATHENA_INDIVIDUALS_CACHE_TABLE,
+            ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE,
+            "individuals/",
+            20,
+        ),
+        (
+            ENV_ATHENA.ATHENA_BIOSAMPLES_CACHE_TABLE,
+            ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE,
+            "biosamples/",
+            20,
+        ),
+        (
+            ENV_ATHENA.ATHENA_RUNS_CACHE_TABLE,
+            ENV_ATHENA.ATHENA_RUNS_TABLE,
+            "runs/",
+            20,
+        ),
+        (
+            ENV_ATHENA.ATHENA_ANALYSES_CACHE_TABLE,
+            ENV_ATHENA.ATHENA_ANALYSES_TABLE,
+            "analyses/",
+            20,
+        ),
+    ):
+        threads.append(
+            threading.Thread(
+                target=ctas_basic_tables,
+                kwargs={
+                    "source_table": src,
+                    "destination_table": dest,
+                    "destination_prefix": prefix,
+                    "bucket_count": bucket_count,
+                },
+            )
+        )
+        threads[-1].start()
+    [thread.join() for thread in threads]
+
     # this is the longest process
     index_thread = threading.Thread(target=index_terms)
     index_thread.start()

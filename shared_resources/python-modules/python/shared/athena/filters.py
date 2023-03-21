@@ -136,7 +136,7 @@ def entity_search_conditions(
             # process scope clarification if specified different
             group = f.scope or default_scope
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.term IN ({expanded_terms}) """
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) """
             )
 
     # format fragments together to form coherent SQL expression
