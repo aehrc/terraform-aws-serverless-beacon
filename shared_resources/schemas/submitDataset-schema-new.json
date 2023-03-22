@@ -1,0 +1,103 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "datasetId": {
+            "type": "string"
+        },
+        "assemblyId": {
+            "type": "string"
+        },
+        "vcfLocations": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+        },
+        "dataset": {
+            "$ref": "dataset-schema.json"
+        },
+        "cohortId": {
+            "type": "string"
+        },
+        "cohort": {
+            "$ref": "cohort-schema.json"
+        },
+        "individuals": {
+            "items": {
+                "$ref": "individual-schema.json"
+            },
+            "type": "array"
+        },
+        "biosamples": {
+            "items": {
+                "$ref": "biosample-schema.json"
+            },
+            "type": "array"
+        },
+        "runs": {
+            "items": {
+                "$ref": "run-schema.json"
+            },
+            "type": "array"
+        },
+        "analyses": {
+            "items": {
+                "$ref": "analysis-schema.json"
+            },
+            "type": "array"
+        },
+        "index": {
+            "description": "Specifies whether to run the indexer. Only set true when enough data is added to the beacon.",
+            "type": "boolean",
+            "default": false
+        }
+    },
+    "required": [
+    ],
+    "dependentSchemas": {
+        "dataset": {
+            "required": [
+                "assemblyId",
+                "datasetId"
+            ]
+        },
+        "cohort": {
+            "required": [
+                "cohortId"
+            ]
+        },
+        "individuals": {
+            "required": [
+                "datasetId",
+                "cohortId"
+            ]
+        },
+        "biosamples": {
+            "required": [
+                "datasetId",
+                "cohortId",
+                "individuals"
+            ]
+        },
+        "runs": {
+            "required": [
+                "datasetId",
+                "cohortId",
+                "individuals",
+                "biosamples"
+            ]
+        },
+        "analyses": {
+            "required": [
+                "datasetId",
+                "cohortId",
+                "individuals",
+                "biosamples",
+                "runs"
+            ]
+        }
+    }
+}

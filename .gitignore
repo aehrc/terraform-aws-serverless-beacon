@@ -8,3 +8,20 @@ remote_state.tf
 # Build files
 *.zip
 *.pyc
+build
+libraries
+
+# csi/tbi files from tests
+*.csi
+*.tbi
+
+# python lambda layers
+layers/python_libraries/python
+layers/binaries/bin/*
+layers/binaries/lib/*
+
+# simulation files
+vcf.txt
+tmp*
+nohup.out
+tmpterms

@@ -1,21 +1,50 @@
-import datetime
 import json
 import os
 import subprocess
+from typing import List
+from threading import Thread
 
+from jsonschema import Draft202012Validator, RefResolver
+import jsons
 import boto3
+from smart_open import open as sopen
 
-from api_response import bad_request, bundle_response, missing_parameter
+from apiutils.api_response import bad_request, bundle_response
+from utils.chrom_matching import get_vcf_chromosomes
+from dynamodb.datasets import Dataset as DynamoDataset, VcfChromosomeMap
+from athena.dataset import Dataset
+from athena.cohort import Cohort
+from athena.individual import Individual
+from athena.biosample import Biosample
+from athena.run import Run
+from athena.analysis import Analysis
 
-DATASETS_TABLE_NAME = os.environ['DATASETS_TABLE']
+
+DATASETS_TABLE_NAME = os.environ['DYNAMO_DATASETS_TABLE']
 SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ['SUMMARISE_DATASET_SNS_TOPIC_ARN']
+INDEXER_LAMBDA = os.environ['INDEXER_LAMBDA']
 
-os.environ['PATH'] += ':' + os.environ['LAMBDA_TASK_ROOT']
+# uncomment below for debugging
+# os.environ['LD_DEBUG'] = 'all'
 
-dynamodb = boto3.client('dynamodb')
 sns = boto3.client('sns')
+aws_lambda = boto3.client('lambda')
+
+newSchema = "./schemas/submitDataset-schema-new.json"
+updateSchema = "./schemas/submitDataset-schema-update.json"
+# get schema dir
+schema_dir = os.path.dirname(os.path.abspath(newSchema))
+# loading schemas
+newSchema = json.load(open(newSchema))
+updateSchema = json.load(open(updateSchema))
+resolveNew = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = newSchema)
+resolveUpdate = RefResolver(base_uri = 'file://' + schema_dir + '/', referrer = updateSchema)
+completed = []
+pending = []
 
 
+# just checking if the tabix would work as expected on a valid vcf.gz file
+# validate if the index file exists too
 def check_vcf_locations(locations):
     errors = []
     for location in locations:
@@ -48,90 +77,147 @@ def check_vcf_locations(locations):
 
 
 def create_dataset(attributes):
-    current_time = get_current_time()
-    item = {
-        'id': {
-            'S': attributes['id'],
-        },
-        'createDateTime': {
-            'S': current_time,
-        },
-        'updateDateTime': {
-            'S': current_time,
-        },
-        'name': {
-            'S': attributes['name'],
-        },
-        'assemblyId': {
-            'S': attributes['assemblyId'],
-        },
-        'vcfLocations': {
-            'SS': attributes['vcfLocations'],
-        },
-    }
+    datasetId = attributes.get('datasetId', None)
+    cohortId = attributes.get('cohortId', None)
+    index = attributes.get('index', False)
+    global pending, completed
+    threads = []
 
-    description = attributes.get('description')
-    if description:
-        item['description'] = {
-            'S': description,
-        }
+    if datasetId:
+        json_dataset = attributes.get('dataset', None)
+        if json_dataset:
+            # dataset information
+            item = DynamoDataset(datasetId)
+            item.assemblyId = attributes.get('assemblyId', 'UNKNOWN')
+            item.vcfLocations = attributes.get('vcfLocations', [])
+            item.vcfGroups = attributes.get('vcfGroups', [item.vcfLocations])
+            # TODO this can run in threads
+            for vcf in set(item.vcfLocations):
+                chroms = get_vcf_chromosomes(vcf)
+                vcfm = VcfChromosomeMap()
+                vcfm.vcf = vcf
+                vcfm.chromosomes = chroms
+                item.vcfChromosomeMap.append(vcfm)
 
-    version = attributes.get('version')
-    if version:
-        item['version'] = {
-            'S': version,
-        }
+            print(f"Putting item in table: {item.to_json()}")
+            item.save()
+            print(f"Putting complete")
+            completed.append("Added dataset info")
 
-    external_url = attributes.get('externalUrl')
-    if external_url:
-        item['externalUrl'] = {
-            'S': external_url,
-        }
+            # dataset metadata entry information
+            dataset = jsons.load(json_dataset, Dataset)
+            dataset.id = datasetId
+            dataset._assemblyId = item.assemblyId 
+            dataset._vcfLocations = item.vcfLocations 
+            dataset._vcfChromosomeMap = [vcfm.attribute_values for vcfm in item.vcfChromosomeMap]
+            dataset.createDateTime = str(item.createDateTime)
+            dataset.updateDateTime = str(item.updateDateTime)
+            # Dataset.upload_array([dataset])
+            threads.append(Thread(target=Dataset.upload_array, args=([dataset],)))
+            threads[-1].start()
+            completed.append("Added dataset metadata")
 
-    info = attributes.get('info')
-    if info:
-        item['info'] = {
-            'M': info,
-        }
+    if datasetId and cohortId:
+        print('De-serialising started')
+        individuals = jsons.default_list_deserializer(attributes.get('individuals', []), List[Individual])
+        biosamples = jsons.default_list_deserializer(attributes.get('biosamples', []), List[Biosample])
+        runs = jsons.default_list_deserializer(attributes.get('runs', []), List[Run])
+        analyses = jsons.default_list_deserializer(attributes.get('analyses', []), List[Analysis])
+        print('De-serialising complete')
+        
+        # setting dataset id
+        # private attributes inside entities are parsed properly
+        # for example _vcfSampleId is mapped to vcfSampleId
+        for individual in individuals:
+            individual._datasetId = datasetId
+            individual._cohortId = cohortId
+            
+        for biosample in biosamples:
+            biosample._datasetId = datasetId
+            biosample._cohortId = cohortId
+        for run in runs:
+            run._datasetId = datasetId
+            run._cohortId = cohortId
+        for analysis in analyses:
+            analysis._datasetId = datasetId
+            analysis._cohortId = cohortId
 
-    data_use_conditions = attributes.get('dataUseConditions')
-    if data_use_conditions:
-        item['dataUseConditions'] = {
-            'M': data_use_conditions,
-        }
+        # upload to s3
+        if len(individuals) > 0:
+            # Individual.upload_array(individuals)
+            threads.append(Thread(target=Individual.upload_array, args=(individuals,)))
+            threads[-1].start()
+            completed.append("Added individuals")
+        if len(biosamples) > 0: 
+            # Biosample.upload_array(biosamples)
+            threads.append(Thread(target=Biosample.upload_array, args=(biosamples,)))
+            threads[-1].start()
+            completed.append("Added biosamples")
+        if len(runs) > 0:
+            # Run.upload_array(runs)
+            threads.append(Thread(target=Run.upload_array, args=(runs,)))
+            threads[-1].start()
+            completed.append("Added runs")
+        if len(analyses) > 0: 
+            # Analysis.upload_array(analyses)
+            threads.append(Thread(target=Analysis.upload_array, args=(analyses,)))
+            threads[-1].start()
+            completed.append("Added analyses")
+    
+    if cohortId:
+        # cohort information
+        json_cohort = attributes.get('cohort', None)
+        if json_cohort:
+            cohort = jsons.load(json_cohort, Cohort)
+            cohort.id = cohortId
+            # Cohort.upload_array([cohort])
+            threads.append(Thread(target=Cohort.upload_array, args=([cohort],)))
+            threads[-1].start()
+            completed.append("Added cohorts")
 
-    kwargs = {
-        'TableName': DATASETS_TABLE_NAME,
-        'Item': item,
-    }
+    print('Awaiting uploads')
+    [thread.join() for thread in threads]
+    print('Upload finished')
 
-    print("Putting item in table: {}".format(json.dumps(kwargs)))
-    dynamodb.put_item(**kwargs)
-
-
-def get_current_time():
-    return datetime.datetime.now().isoformat(timespec='seconds')
+    if index:
+        aws_lambda.invoke(
+            FunctionName=INDEXER_LAMBDA,
+            InvocationType='Event',
+            Payload=jsons.dumps(dict()),
+        )
+        pending.append("Running indexer")
 
 
 def submit_dataset(body_dict, method):
     new = method == 'POST'
-    validation_error = validate_request(body_dict, new)
-    if validation_error:
-        return bad_request(validation_error)
+    validation_errors = validate_request(body_dict, new)
+    global pending, completed
+
+    if validation_errors:
+        print()
+        print(', '.join(validation_errors))
+        return bad_request(errorMessage=', '.join(validation_errors))
+
     if 'vcfLocations' in body_dict:
-        errors = check_vcf_locations(body_dict['vcfLocations'])
-        if errors:
-            return bad_request(errors)
+        # validate vcf files if skipCheck is not specified 
+        if 'skipCheck' not in body_dict:
+            errors = check_vcf_locations(body_dict['vcfLocations'])
+            if errors:
+                return bad_request(errorMessage=errors)
         summarise = True
     else:
         summarise = False
+    # handle data set submission or update
     if new:
         create_dataset(body_dict)
     else:
         update_dataset(body_dict)
-    if summarise:
-        summarise_dataset(body_dict['id'])
-    return bundle_response(200, {})
+    
+    # if summarise:
+    #     summarise_dataset(body_dict['datasetId'])
+    #     pending.append('Summarising')
+
+    return bundle_response(200, { 'Completed': completed, 'Running': pending })
 
 
 def summarise_dataset(dataset):
@@ -145,164 +231,61 @@ def summarise_dataset(dataset):
 
 
 def update_dataset(attributes):
-    update_set_expressions = [
-        'updateDateTime=:updateDateTime',
-    ]
-    expression_attribute_values = {
-        ':updateDateTime': {
-            'S': get_current_time(),
-        }
-    }
-    expression_attribute_names = {}
+    # TODO see how other entities can be updated or overwritten
+    datasetId = attributes['datasetId']
+    item = DynamoDataset.get(datasetId)
+    actions = []
+    actions += [DynamoDataset.assemblyId.set(attributes['assemblyId'])] if attributes.get('assemblyId', False) else []
+    actions += [DynamoDataset.vcfLocations.set(attributes['vcfLocations'])] if attributes.get('vcfLocations', False) else []
+    actions += [DynamoDataset.vcfGroups.set(attributes['vcfGroups'])] if attributes.get('vcfGroups', False) else []
 
-    if 'name' in attributes:
-        update_set_expressions.append('#name=:name')
-        expression_attribute_names['#name'] = 'name'
-        expression_attribute_values[':name'] = {
-            'S': attributes['name'],
-        }
-
-    if 'assemblyId' in attributes:
-        update_set_expressions.append('assemblyId=:assemblyId')
-        expression_attribute_values[':assemblyId'] = {
-            'S': attributes['assemblyId'],
-        }
-
-    if 'vcfLocations' in attributes:
-        update_set_expressions.append('vcfLocations=:vcfLocations')
-        expression_attribute_values[':vcfLocations'] = {
-            'SS': attributes['vcfLocations'],
-        }
-
-    if 'description' in attributes:
-        update_set_expressions.append('description=:description')
-        expression_attribute_values[':description'] = {
-            'S': attributes['description'],
-        }
-
-    if 'version' in attributes:
-        update_set_expressions.append('version=:version')
-        expression_attribute_values[':version'] = {
-            'S': attributes['version'],
-        }
-
-    if 'externalUrl' in attributes:
-        update_set_expressions.append('externalUrl=:externalUrl')
-        expression_attribute_values[':externalUrl'] = {
-            'S': attributes['externalUrl'],
-        }
-
-    if 'info' in attributes:
-        update_set_expressions.append('info=:info')
-        expression_attribute_values[':info'] = {
-            'L': attributes['info'],
-        }
-
-    if 'dataUseConditions' in attributes:
-        update_set_expressions.append('dataUseConditions=:dataUseConditions')
-        expression_attribute_values[':dataUseConditions'] = {
-            'M': attributes['dataUseConditions'],
-        }
-
-    update_expression = 'SET {}'.format(', '.join(update_set_expressions))
-    kwargs = {
-        'TableName': DATASETS_TABLE_NAME,
-        'Key': {
-            'id': {
-                'S': attributes['id'],
-            },
-        },
-        'UpdateExpression': update_expression,
-        'ExpressionAttributeValues': expression_attribute_values,
-    }
-    if expression_attribute_names:
-        kwargs['ExpressionAttributeNames'] = expression_attribute_names
-    print("Updating table: {kwargs}".format(kwargs=json.dumps(kwargs)))
-
-    dynamodb.update_item(**kwargs)
+    print(f"Updating table: {item.to_json()}")
+    item.update(actions=actions)
 
 
 def validate_request(parameters, new):
-    try:
-        dataset_id = parameters['id']
-    except KeyError:
-        return missing_parameter('id')
-    if not isinstance(dataset_id, str):
-        return 'id must be a string'
+    validator = None
+    # validate request body with schema for a new submission or update
+    if new:
+        validator = Draft202012Validator(newSchema, resolver=resolveNew)
+    else:
+        validator = Draft202012Validator(updateSchema, resolver=resolveUpdate)
 
-    if 'name' in parameters:
-        if not isinstance(parameters['name'], str):
-            return 'name must be a string'
-    elif new:
-        return missing_parameter('name')
-
-    if 'assemblyId' in parameters:
-        if not isinstance(parameters['assemblyId'], str):
-            return 'assemblyId must be a string'
-    elif new:
-        return missing_parameter('assemblyId')
-
-    if 'vcfLocations' in parameters:
-        vcf_locations = parameters['vcfLocations']
-        if not isinstance(vcf_locations, list):
-            return 'vcfLocations must be an array'
-        elif not vcf_locations:
-            return 'A dataset must have at least one vcf location'
-        elif not all(isinstance(loc, str) for loc in vcf_locations):
-            return 'Each element in vcfLocations must be a string'
-    elif new:
-        return missing_parameter('vcfLocations')
-
-    description = parameters.get('description')
-    if not isinstance(description, str) and description is not None:
-        return 'description must be a string or null'
-
-    version = parameters.get('version')
-    if not isinstance(version, str) and version is not None:
-        return 'version must be a string or null'
-
-    external_url = parameters.get('externalUrl')
-    if not isinstance(external_url, str) and external_url is not None:
-        return 'externalUrl must be a string or null'
-
-    info = parameters.get('info')
-    if info is not None:
-        # This a painful part of the spec - it will be fixed in v1.1.0
-        if not isinstance(info, list):
-            return 'info must be an array or null'
-        elif not all(isinstance(data, dict) for data in info):
-            return 'Each element in info must be a key-value object'
-        keys = {'key', 'value'}
-        if not all(set(data.keys()) == keys
-                   and all(isinstance(val, str) for val in data.values())
-                   for data in info):
-            return ('each object in info must consist of'
-                    ' {"key": "key_string", "value": "value_string"}')
-
-    data_use_conditions = parameters.get('dataUseConditions')
-    if data_use_conditions is not None:
-        if not isinstance(data_use_conditions, dict):
-            return 'dataUseConditions must be an object or null'
-        if (set(data_use_conditions.keys()) != {'consentCodeDataUse',
-                                                'adamDataUse'}
-            or not all(isinstance(val, dict)
-                       for val in data_use_conditions.values())):
-            return ('dataUseConditions object must be in the form:'
-                    '{"consentCodeDataUse": {consentCodeDataUse object},'
-                    ' "adamDataUse": {ADA-M object}}')
-        # Leave the validation of the individual data use objects to the client.
-
-    return ''
+    errors = []
+    
+    for error in sorted(validator.iter_errors(parameters), key=lambda e: e.path):
+        error_message = f'{error.message} '
+        for part in list(error.path):
+            error_message += f'/{part}'
+        errors.append(error_message)
+    return errors
 
 
 def lambda_handler(event, context):
-    print('Event Received: {}'.format(json.dumps(event)))
+    # print('Event Received: {}'.format(json.dumps(event)))
+    global completed, pending
+
+    completed = []
+    pending = []
+
     event_body = event.get('body')
+
     if not event_body:
-        return bad_request('No body sent with request.')
+        return bad_request(errorMessage='No body sent with request.')
     try:
         body_dict = json.loads(event_body)
+        
+        if body_dict.get('s3Payload'):
+            print('Using s3 payload instead of POST body')
+            
+            with sopen(body_dict.get('s3Payload'), 'r') as payload:
+                body_dict = json.loads(payload.read())
     except ValueError:
-        return bad_request('Error parsing request body, Expected JSON.')
+        return bad_request(errorMessage='Error parsing request body, Expected JSON.')
+
     method = event['httpMethod']
     return submit_dataset(body_dict, method)
+
+
+if __name__ == '__main__':
+    pass

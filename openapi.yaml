@@ -607,6 +607,15 @@ components:
           minItems: 1
           items:
             type: string
+        vcfGroups:
+          type: array
+          description: Groups of VCF files.
+          minItems: 1
+          items:
+            type: array
+            items: 
+                type: string
+            description: VCF files in the group.
         description:
           type: string
           description: Description of the dataset.
@@ -649,6 +658,15 @@ components:
           minItems: 1
           items:
             type: string
+        vcfGroups:
+          type: array
+          description: Groups of VCF files.
+          minItems: 1
+          items:
+            type: array
+            items: 
+                type: string
+            description: VCF files in the group.
         description:
           type: string
           nullable: true
