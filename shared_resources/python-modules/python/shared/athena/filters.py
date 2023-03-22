@@ -40,11 +40,11 @@ type_relations_table_id = {
 
 
 # given a dict <f>={"operator":X,"value":Y} return appropriate SQL fragment "<operator> <value>"
-def _get_comparrison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
+def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
     if isinstance(filter.value, int) or isinstance(filter.value, float):
-        # infer a numeric comparrison
+        # infer a numeric comparison
         return "!=" if filter.operator == Operator.NOT else filter.operator
-    # infer an alphanumeric comparrison
+    # infer an alphanumeric comparison
     return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
 
 
@@ -90,7 +90,7 @@ def entity_search_conditions(
 
         # check to see if there is any relevent field of the referred id_type
         if len(f_id) == 1 and f_id[0] in id_class._table_columns:
-            operator = _get_comparrison_operator(f)
+            operator = _get_comparison_operator(f)
             outer_constraints.append("{} {} ?".format(f_id[0], operator))
             outer_execution_parameters.append(str(f.value))
 
@@ -100,12 +100,12 @@ def entity_search_conditions(
             and f_id[1] in queried_athena_models[f_id[0]]._table_columns
         ):
             joined_class = queried_athena_models[f_id[0]]
-            operator = _get_comparrison_operator(f)
-            comparrison = "{} {} ?".format(f_id[1], operator)
+            operator = _get_comparison_operator(f)
+            comparison = "{} {} ?".format(f_id[1], operator)
             join_execution_parameters.append(str(f.value))
             group = class_to_id_type_string[joined_class]
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.{comparrison} """
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.{comparison} """
             )
 
         if isinstance(f, OntologyFilter):
@@ -136,7 +136,7 @@ def entity_search_conditions(
             # process scope clarification if specified different
             group = f.scope or default_scope
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id where TI.kind='{group}' and TI.term IN ({expanded_terms}) """
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.term IN ({expanded_terms}) """
             )
 
     # format fragments together to form coherent SQL expression
