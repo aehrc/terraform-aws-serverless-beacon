@@ -95,7 +95,7 @@ def new_entity_search_conditions(filters, id_type, default_scope, id_modifier='i
                 comparrison = "{} {} ?".format(f_id[1],operator)
                 join_execution_parameters.append(str(value))
                 group = class_to_id_type_string[joined_class]
-                join_constraints.append(f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.{comparrison} ''')
+                join_constraints.append(f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' AND TI.{comparrison} ''')
             # if none of these two cases match, assume it is an ontology term
             else:
                 includeDescendantTerms = f.get("includeDescendantTerms",True)
@@ -119,7 +119,7 @@ def new_entity_search_conditions(filters, id_type, default_scope, id_modifier='i
                 expanded_terms = " , ".join(["?" for a in expanded_terms])
                 # process scope clarification if specified different
                 group = f.get("scope",default_scope)
-                join_constraints.append(f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.term IN ({expanded_terms}) ''')
+                join_constraints.append(f''' SELECT RI.{type_relations_table_id[id_type]} FROM "{RELATIONS_TABLE}" RI JOIN "{TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]} = TI.id where TI.kind='{group}' AND TI.term IN ({expanded_terms}) ''')
 
     # format fragments together to form coherent SQL expression
     join_constraints = " INTERSECT ".join(join_constraints)
