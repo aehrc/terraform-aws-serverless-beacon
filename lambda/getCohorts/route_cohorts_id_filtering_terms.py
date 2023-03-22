@@ -1,177 +1,84 @@
 import json
-import os
 import csv
 
-from apiutils.api_response import bundle_response
-from athena.common import run_custom_query
 from smart_open import open as sopen
 
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-BIOSAMPLES_TABLE = os.environ['BIOSAMPLES_TABLE']
-RUNS_TABLE = os.environ['RUNS_TABLE']
-ANALYSES_TABLE = os.environ['ANALYSES_TABLE']
-TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
-TERMS_TABLE = os.environ['TERMS_TABLE']
-COHORTS_TABLE = os.environ['COHORTS_TABLE']
-METADATA_BUCKET = os.environ['METADATA_BUCKET']
+from shared.athena import run_custom_query
+from shared.apiutils import RequestParams
+from shared.utils import ENV_ATHENA
+from shared.apiutils import (
+    RequestParams,
+    bundle_response,
+    build_filtering_terms_response,
+)
 
 
-def get_terms(terms, skip, limit):
-    response =     {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "info": {
-            "message": "Endpoint is not defined in schema!"
-        },
-        "meta": {
-            "apiVersion": BEACON_API_VERSION,
-            "beaconId": BEACON_ID,
-            "returnedSchemas": [],
-            "receivedRequestSummary": {
-                "apiVersion": "",  # TODO
-                "requestedSchemas": [],  # TODO
-                "pagination": {
-                    "skip": skip,
-                    "limit": limit,
-                },
-                "requestedGranularity": "record"  # TODO
-            }
-        },
-        "response": {
-            "filteringTerms": terms,
-            # "resources": [
-            #     {
-            #         "id": "NA",
-            #         "iriPrefix": "NA",
-            #         "name": "NA",
-            #         "namespacePrefix": "NA",
-            #         "url": "NA",
-            #         "version": "TBD"
-            #     }
-            # ]
-        }
-    }
-
-    return bundle_response(200, response)
-
-
-def route(event):
-    if event['httpMethod'] == 'GET':
-        params = event.get('queryStringParameters', None) or dict()
-        print(f"Query params {params}")
-        apiVersion = params.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = params.get("requestedSchemas", [])
-        skip = params.get("skip", 0)
-        limit = params.get("limit", 100)
-        includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        filters_list = []
-        filters_str = params.get("filters", filters_list)
-        if isinstance(filters_str, str):
-            filters_list = filters_str.split(',')
-        filters = [{'id': fil_id} for fil_id in filters_list]
-        requestedGranularity = params.get("requestedGranularity", "boolean")
-
-    if event['httpMethod'] == 'POST':
-        params = json.loads(event.get('body') or "{}")
-        print(f"POST params {params}")
-        meta = params.get("meta", dict())
-        query = params.get("query", dict())
-        # meta data
-        apiVersion = meta.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = meta.get("requestedSchemas", [])
-        # query data
-        requestedGranularity = query.get("requestedGranularity", "boolean")
-        # pagination
-        pagination = query.get("pagination", dict())
-        skip = pagination.get("skip", 0)
-        limit = pagination.get("limit", 100)
-        currentPage = pagination.get("currentPage", None)
-        previousPage = pagination.get("previousPage", None)
-        nextPage = pagination.get("nextPage", None)
-        # query request params
-        requestParameters = query.get("requestParameters", dict())
-        filters = query.get("filters", [])
-        variantType = requestParameters.get("variantType", None)
-        includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
-    
-    cohort_id = event["pathParameters"].get("id", None)
-
-    query = f'''
+def route(request: RequestParams, cohort_id):
+    query = f"""
         SELECT DISTINCT term, label, type 
-        FROM "{TERMS_TABLE}"
+        FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}"
         WHERE term IN
         (
             SELECT DISTINCT TI.term
-            FROM "{TERMS_INDEX_TABLE}" TI
+            FROM "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI
             WHERE TI.id = '{cohort_id}' and TI.kind = 'cohorts'
 
             UNION
 
             SELECT DISTINCT TI.term
-            FROM "{INDIVIDUALS_TABLE}" I
+            FROM "{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}" I
             JOIN 
-            "{TERMS_INDEX_TABLE}" TI
+            "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI
             ON TI.id = I.id and TI.kind = 'individuals'
             WHERE I._cohortid = '{cohort_id}'
 
             UNION
 
             SELECT DISTINCT TI.term
-            FROM "{BIOSAMPLES_TABLE}" B
+            FROM "{ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE}" B
             JOIN 
-            "{TERMS_INDEX_TABLE}" TI
+            "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI
             ON TI.id = B.id and TI.kind = 'biosamples'
             WHERE B._cohortid = '{cohort_id}'
 
             UNION
 
             SELECT DISTINCT TI.term
-            FROM "{RUNS_TABLE}" R
+            FROM "{ENV_ATHENA.ATHENA_RUNS_TABLE}" R
             JOIN 
-            "{TERMS_INDEX_TABLE}" TI
+            "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI
             ON TI.id = R.id and TI.kind = 'runs'
             WHERE R._cohortid = '{cohort_id}'
 
             UNION
 
             SELECT DISTINCT TI.term
-            FROM "{ANALYSES_TABLE}" A
+            FROM "{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
             JOIN 
-            "{TERMS_INDEX_TABLE}" TI
+            "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI
             ON TI.id = A.id and TI.kind = 'analyses'
             WHERE A._cohortid = '{cohort_id}'
         )
         ORDER BY term
-        OFFSET {skip}
-        LIMIT {limit};
-    '''
+        OFFSET {request.query.pagination.skip}
+        LIMIT {request.query.pagination.limit};
+    """
 
-    print('Performing query \n', query)
-        
     exec_id = run_custom_query(query, return_id=True)
     filteringTerms = []
-    
-    with sopen(f's3://{METADATA_BUCKET}/query-results/{exec_id}.csv') as s3f:
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv"
+    ) as s3f:
         reader = csv.reader(s3f)
 
         for n, row in enumerate(reader):
-            if n==0:
+            if n == 0:
                 continue
             term, label, typ = row
-            filteringTerms.append({
-                "id": term,
-                "label": label,
-                "type": typ
-            })
+            filteringTerms.append({"id": term, "label": label, "type": typ})
 
-    response = get_terms(
-        filteringTerms,
-        skip=skip,
-        limit=limit
-    )
+    response = build_filtering_terms_response(filteringTerms, [], request)
 
-    print('Returning Response: {}'.format(json.dumps(response)))
-    return response
-
+    print("Returning Response: {}".format(json.dumps(response)))
+    return bundle_response(200, response)

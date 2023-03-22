@@ -1,123 +1,101 @@
 import json
-import os
+
 import jsons
 
-import boto3
-
-from apiutils.api_response import bundle_response
-import apiutils.responses as responses
-from athena.individual import Individual
-from athena.common import entity_search_conditions
-
-from athena.filter_functions import new_entity_search_conditions
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-TERMS_INDEX_TABLE = os.environ['TERMS_INDEX_TABLE']
-
-s3 = boto3.client('s3')
+from shared.athena import entity_search_conditions, Individual
+from shared.apiutils import (
+    RequestParams,
+    Granularity,
+    DefaultSchemas,
+    build_beacon_boolean_response,
+    build_beacon_resultset_response,
+    build_beacon_count_response,
+    bundle_response,
+)
 
 
-def get_bool_query(id, conditions=''):
-    query = f'''
+# TODO cohort id must not be in individuals table. It should be in a JOIN table.
+def get_bool_query(id, conditions=""):
+    query = f"""
     SELECT 1 FROM "{{database}}"."{{table}}"
     WHERE "_cohortid"='{id}'
     {('AND ' + conditions) if len(conditions) > 0 else ''}
     LIMIT 1;
-    '''
+    """
 
     return query
 
 
-def get_count_query(id, conditions=''):
-    query = f'''
+def get_count_query(id, conditions=""):
+    query = f"""
     SELECT COUNT(*) FROM "{{database}}"."{{table}}"
     WHERE "_cohortid"='{id}'
     {('AND ' + conditions) if len(conditions) > 0 else ''}
-    '''
+    """
 
     return query
 
 
-def get_record_query(id, skip, limit, conditions=''):
-    query = f'''
+def get_record_query(id, skip, limit, conditions=""):
+    query = f"""
     SELECT * FROM "{{database}}"."{{table}}"
     WHERE "_cohortid"='{id}'
     {('AND ' + conditions) if len(conditions) > 0 else ''}
     ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
-    '''
+    """
 
     return query
 
 
-def route(event):
-    if event['httpMethod'] == 'GET':
-        params = event.get('queryStringParameters', None) or dict()
-        print(f"Query params {params}")
-        apiVersion = params.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = params.get("requestedSchemas", [])
-        skip = params.get("skip", 0)
-        limit = params.get("limit", 100)
-        includeResultsetResponses = params.get("includeResultsetResponses", 'NONE')
-        filters_list = []
-        filters_str = params.get("filters", filters_list)
-        if isinstance(filters_str, str):
-            filters_list = filters_str.split(',')
-        filters = [{'id': fil_id} for fil_id in filters_list]
-        requestedGranularity = params.get("requestedGranularity", "boolean")
+def route(request: RequestParams, cohort_id):
+    conditions, execution_parameters = entity_search_conditions(
+        request.query.filters, "individuals", "individuals", with_where=False
+    )
 
-    if event['httpMethod'] == 'POST':
-        params = json.loads(event.get('body') or "{}")
-        print(f"POST params {params}")
-        meta = params.get("meta", dict())
-        query = params.get("query", dict())
-        # meta data
-        apiVersion = meta.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = meta.get("requestedSchemas", [])
-        # query data
-        requestedGranularity = query.get("requestedGranularity", "boolean")
-        # pagination
-        pagination = query.get("pagination", dict())
-        skip = pagination.get("skip", 0)
-        limit = pagination.get("limit", 100)
-        currentPage = pagination.get("currentPage", None)
-        previousPage = pagination.get("previousPage", None)
-        nextPage = pagination.get("nextPage", None)
-        # query request params
-        requestParameters = query.get("requestParameters", dict())
-        filters = query.get("filters", [])
-        variantType = requestParameters.get("variantType", None)
-        includeResultsetResponses = query.get("includeResultsetResponses", 'NONE')
-    
-    cohort_id = event["pathParameters"].get("id", None)
-    conditions, execution_parameters = new_entity_search_conditions(filters, 'individuals', 'individuals', with_where=False)
-    
-    if requestedGranularity == 'boolean':
-        query = get_bool_query(cohort_id)
-        exists = Individual.get_existence_by_query(query, conditions, execution_parameters=execution_parameters)
-        response = responses.get_boolean_response(exists=exists)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-
-    if requestedGranularity == 'count':
-        query = get_count_query(cohort_id)
-        count = Individual.get_count_by_query(query, conditions, execution_parameters=execution_parameters)
-        response = responses.get_counts_response(exists=count>0, count=count)
-        print('Returning Response: {}'.format(json.dumps(response)))
-        return bundle_response(200, response)
-
-    if requestedGranularity in ('record', 'aggregated'):
-        query = get_record_query(cohort_id, skip, limit, conditions)
-        analyses = Individual.get_by_query(query, execution_parameters=execution_parameters)
-        response = responses.get_result_sets_response(
-            setType='analyses', 
-            exists=len(analyses)>0,
-            total=len(analyses),
-            reqPagination=responses.get_pagination_object(skip, limit),
-            results=jsons.dump(analyses, strip_privates=True)
+    if request.query.requested_granularity == "boolean":
+        query = get_bool_query(cohort_id, conditions)
+        count = (
+            1
+            if Individual.get_existence_by_query(
+                query, execution_parameters=execution_parameters
+            )
+            else 0
         )
-        print('Returning Response: {}'.format(json.dumps(response)))
+        response = build_beacon_boolean_response(
+            {}, count, request, {}, DefaultSchemas.INDIVIDUALS
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
+        return bundle_response(200, response)
+
+    if request.query.requested_granularity == "count":
+        query = get_count_query(cohort_id, conditions)
+        count = Individual.get_count_by_query(
+            query, execution_parameters=execution_parameters
+        )
+        response = build_beacon_count_response(
+            {}, count, request, {}, DefaultSchemas.INDIVIDUALS
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
+        return bundle_response(200, response)
+
+    if request.query.requested_granularity == Granularity.RECORD:
+        query = get_record_query(
+            cohort_id,
+            request.query.pagination.skip,
+            request.query.pagination.limit,
+            conditions,
+        )
+        analyses = Individual.get_by_query(
+            query, execution_parameters=execution_parameters
+        )
+        response = build_beacon_resultset_response(
+            jsons.dump(analyses, strip_privates=True),
+            len(analyses),
+            request,
+            {},
+            DefaultSchemas.INDIVIDUALS,
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return bundle_response(200, response)

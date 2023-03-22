@@ -1,4 +1,4 @@
-QUERY = '''
+QUERY = """
 CREATE TABLE sbeacon_terms_index
 WITH (
     format = 'ORC',
@@ -10,4 +10,4 @@ WITH (
 )
 AS
 SELECT id, term, kind FROM "{table}";
-'''
+"""
