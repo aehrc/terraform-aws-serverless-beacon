@@ -1,4 +1,5 @@
 # Serverless Beacon
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Why serverless?
 Serverless means the service does not require any servers to be provisioned. The
@@ -154,8 +155,19 @@ Please make a copy of `backend.tf.template` with suited parameters and rename as
 
 ### Data ingestion API
 
+Use the following schemas for data submission
+
 * Submit dataset - please follow the JSON schema at [./shared_resources/schemas/submitDataset-schema-new.json](./shared_resources/schemas/submitDataset-schema-new.json)
 * Update dataset - please follow the JSON schema at [./shared_resources/schemas/submitDataset-schema-update.json](./shared_resources/schemas/submitDataset-schema-update.json)
+
+Use the following schemas for submitted entities
+
+* Dataset - [./shared_resources/schemas/dataset-schema.json](./shared_resources/schemas/dataset-schema.json)
+* Cohort - [./shared_resources/schemas/cohort-schema.json](./shared_resources/schemas/cohort-schema.json)
+* Individual - [./shared_resources/schemas/individual-schema.json](./shared_resources/schemas/individual-schema.json)
+* Biosample - [./shared_resources/schemas/biosample-schema.json](./shared_resources/schemas/biosample-schema.json)
+* Run - [./shared_resources/schemas/run-schema.json](./shared_resources/schemas/run-schema.json)
+* Analysis - [./shared_resources/schemas/analysis-schema.json](./shared_resources/schemas/analysis-schema.json)
 
 ### Query API
 
@@ -163,4 +175,3 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * All the available endpoints can be retrieved using the deployment url's `/map`. 
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
-

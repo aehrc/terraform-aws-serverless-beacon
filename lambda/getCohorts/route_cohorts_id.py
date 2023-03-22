@@ -1,88 +1,70 @@
 import json
-import os
+
 import jsons
 
-import boto3
-
-from apiutils.api_response import bundle_response
-import apiutils.responses as responses
-from athena.cohort import Cohort
-
-
-BEACON_API_VERSION = os.environ['BEACON_API_VERSION']
-BEACON_ID = os.environ['BEACON_ID']
-INDIVIDUALS_TABLE = os.environ['INDIVIDUALS_TABLE']
-
-s3 = boto3.client('s3')
+from shared.athena import Cohort
+from shared.utils import ENV_ATHENA
+from shared.apiutils import (
+    RequestParams,
+    Granularity,
+    DefaultSchemas,
+    build_beacon_boolean_response,
+    build_beacon_collection_response,
+    build_beacon_count_response,
+    bundle_response,
+)
 
 
 def get_record_query(id):
-    query = f'''
-    SELECT id, cohortdatatypes, cohortdesign, B.csize as cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
+    query = f"""
+    SELECT id, cohortdatatypes, cohortdesign, COALESCE(B.csize, 0) as cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
     FROM 
         (
             SELECT * FROM "{{database}}"."{{table}}"
             WHERE id='{id}'
         ) as A 
-    JOIN 
+    LEFT JOIN 
         (
             SELECT _cohortid, count(*) as csize 
-            FROM "{{database}}"."{INDIVIDUALS_TABLE}"
+            FROM "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}"
             WHERE _cohortid='{id}'
             GROUP BY _cohortid
         ) as B
     ON A.id = B._cohortid
     LIMIT 1;
-    '''
+    """
 
     return query
 
 
-def route(event):
-    if event['httpMethod'] == 'GET':
-        params = event.get('queryStringParameters', None) or dict()
-        print(f"Query params {params}")
-        apiVersion = params.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = params.get("requestedSchemas", [])
-        requestedGranularity = params.get("requestedGranularity", "boolean")
-
-    if event['httpMethod'] == 'POST':
-        params = json.loads(event.get('body') or "{}")
-        print(f"POST params {params}")
-        meta = params.get("meta", dict())
-        query = params.get("query", dict())
-        # meta data
-        apiVersion = meta.get("apiVersion", BEACON_API_VERSION)
-        requestedSchemas = meta.get("requestedSchemas", [])
-        # query data
-        requestedGranularity = query.get("requestedGranularity", "boolean")
-        # query request params
-        requestParameters = query.get("requestParameters", dict())
-    
-    cohort_id = event["pathParameters"].get("id", None)
-    
-    if requestedGranularity == 'boolean':
+def route(request: RequestParams, cohort_id):
+    if request.query.requested_granularity == Granularity.BOOLEAN:
         query = get_record_query(cohort_id)
-        exists = Cohort.get_existence_by_query(query)
-        response = responses.get_boolean_response(exists=exists)
-        print('Returning Response: {}'.format(json.dumps(response)))
+        count = 1 if Cohort.get_existence_by_query(query) else 0
+        response = build_beacon_boolean_response(
+            {}, count, request, {}, DefaultSchemas.COHORTS
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity == 'count':
+    if request.query.requested_granularity == Granularity.COUNT:
         query = get_record_query(cohort_id)
-        count = Cohort.get_count_by_query(query)
-        response = responses.get_counts_response(exists=count>0, count=count)
-        print('Returning Response: {}'.format(json.dumps(response)))
+        count = 1 if Cohort.get_existence_by_query(query) else 0
+        response = build_beacon_count_response(
+            {}, count, request, {}, DefaultSchemas.COHORTS
+        )
+        print("Returning Response: {}".format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if requestedGranularity in ('record', 'aggregated'):
+    if request.query.requested_granularity == Granularity.RECORD:
         query = get_record_query(cohort_id)
         cohorts = Cohort.get_by_query(query)
-        response = responses.get_result_sets_response(
-            setType='cohorts', 
-            exists=len(cohorts)>0,
-            total=len(cohorts),
-            results=jsons.dump(cohorts, strip_privates=True)
+        response = build_beacon_collection_response(
+            jsons.dump(cohorts, strip_privates=True),
+            len(cohorts),
+            request,
+            lambda x, y: x,
+            DefaultSchemas.COHORTS,
         )
-        print('Returning Response: {}'.format(json.dumps(response)))
+        print("Returning Response: {}".format(json.dumps(response)))
         return bundle_response(200, response)
