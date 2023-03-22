@@ -1,4 +1,4 @@
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 import queue
 import json
 import os
@@ -37,7 +37,7 @@ def split_query(split_payload: SplitQueryPayload):
     check_all = split_payload.include_datasets in ("HIT", "ALL")
 
     split_start = split_payload.start_min
-    pool = concurrent.futures.ThreadPoolExecutor(32)
+    pool = ThreadPoolExecutor(32)
 
     while split_start <= split_payload.start_max:
         split_end = min(split_start + SPLIT_SIZE - 1, split_payload.start_max)
@@ -73,7 +73,7 @@ def split_query_sync(split_payload: SplitQueryPayload):
     check_all = split_payload.include_datasets in ("HIT", "ALL")
 
     split_start = split_payload.start_min
-    pool = concurrent.futures.ThreadPoolExecutor(32)
+    pool = ThreadPoolExecutor(32)
     results_queue = queue.Queue()
 
     while split_start <= split_payload.start_max:

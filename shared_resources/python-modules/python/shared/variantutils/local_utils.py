@@ -1,18 +1,22 @@
 import os
 import json
-import queue
+from typing import List
 
 import boto3
+import botocore
 import jsons
 
-from shared.payloads import SplitQueryPayload
+from shared.payloads import SplitQueryPayload, PerformQueryResponse
 
 
 SPLIT_SIZE = 10000
 SPLIT_QUERY = os.environ["SPLIT_QUERY_LAMBDA"]
 SPLIT_QUERY_TOPIC_ARN = os.environ["SPLIT_QUERY_TOPIC_ARN"]
 
-aws_lambda = boto3.client("lambda")
+client_config = botocore.config.Config(
+    max_pool_connections=500,
+)
+aws_lambda = boto3.client("lambda", config=client_config)
 sns = boto3.client("sns")
 
 
@@ -31,11 +35,11 @@ def split_query(payload: SplitQueryPayload):
     sns.publish(**kwargs)
 
 
-def split_query_sync(payload: SplitQueryPayload, results_queue: queue.Queue):
+def split_query_sync(payload: SplitQueryPayload):
     response = aws_lambda.invoke(
         FunctionName=SPLIT_QUERY,
         InvocationType="RequestResponse",
         Payload=jsons.dumps(payload),
     )
-
-    results_queue.put(json.loads(response["Payload"].read()))
+    parsed = json.loads(response["Payload"].read())
+    return jsons.default_list_deserializer(parsed, List[PerformQueryResponse])

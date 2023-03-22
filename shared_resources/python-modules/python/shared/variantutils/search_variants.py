@@ -1,9 +1,7 @@
-import concurrent.futures
-import queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import copy
 
-import botocore
 import jsons
 import boto3
 
@@ -16,10 +14,7 @@ from shared.payloads import SplitQueryPayload, PerformQueryResponse
 REQUEST_TIMEOUT = 600  # seconds
 THREADS = 500
 
-client_config = botocore.config.Config(
-    max_pool_connections=100,
-)
-aws_lambda = boto3.client("lambda", config=client_config)
+
 s3 = boto3.client("s3")
 
 
@@ -77,7 +72,7 @@ def perform_variant_search(
     perform_query_fan_out = 0
 
     print("Start event publishing")
-    pool = concurrent.futures.ThreadPoolExecutor(THREADS)
+    pool = ThreadPoolExecutor(THREADS)
 
     # parallelism across datasets
     for n, dataset in enumerate(datasets):
@@ -209,9 +204,9 @@ def perform_variant_search_sync(
     end_min += 1
     end_max += 1
 
-    print("Start event publishing")
-    results_queue = queue.Queue()
-    pool = concurrent.futures.ThreadPoolExecutor(THREADS)
+    print("Start: event publishing")
+    pool = ThreadPoolExecutor(THREADS)
+    futures = []
 
     # parallelism across datasets
     for n, dataset in enumerate(datasets):
@@ -247,13 +242,10 @@ def perform_variant_search_sync(
             variant_min_length=variantMinLength,
             variant_max_length=variantMaxLength,
         )
-        pool.submit(split_query_sync, payload, results_queue)
 
-    pool.shutdown()
-    print("End event publishing")
+        futures.append(pool.submit(split_query_sync, payload))
 
-    return [
-        jsons.load(res, PerformQueryResponse)
-        for res_array in results_queue.queue
-        for res in res_array
-    ]
+    for future in as_completed(futures):
+        yield from future.result()
+
+    print("End: retrieved results")
