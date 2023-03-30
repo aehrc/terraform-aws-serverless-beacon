@@ -1039,7 +1039,9 @@ def upload():
         for file in glob(f"{runs_path}-{thread}-*"):
             idx = file.split("/")[-1].replace(".orc", "")
             pool.submit(
-                upload_local, file, f"s3://{ATHENA_METADATA_BUCKET}/runs-cache/runs-{thread}-{idx}"
+                upload_local,
+                file,
+                f"s3://{ATHENA_METADATA_BUCKET}/runs-cache/runs-{thread}-{idx}",
             )
 
         for file in glob(f"{analyses_path}-{thread}-*"):
