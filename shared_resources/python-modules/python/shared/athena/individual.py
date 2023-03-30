@@ -83,7 +83,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f"{array[0]._datasetId}-individuals"
 
-        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/individuals/{key}", "wb") as s3file:
+        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/individuals-cache/{key}", "wb") as s3file:
             with pyorc.Writer(
                 s3file,
                 header,

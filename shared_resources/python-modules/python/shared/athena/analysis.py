@@ -78,7 +78,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = [c.lower() for c in cls._table_columns]
         key = f"{array[0]._datasetId}-analyses"
 
-        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/analyses/{key}", "wb") as s3file:
+        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/analyses-cache/{key}", "wb") as s3file:
             with pyorc.Writer(
                 s3file,
                 header,
