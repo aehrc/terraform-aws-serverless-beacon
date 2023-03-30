@@ -66,7 +66,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
         bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
         key = f"{array[0].id}-cohorts"
 
-        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/cohorts/{key}", "wb") as s3file:
+        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/cohorts-cache/{key}", "wb") as s3file:
             with pyorc.Writer(
                 s3file,
                 header,
