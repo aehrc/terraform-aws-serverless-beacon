@@ -190,7 +190,7 @@ def submit_dataset(body_dict, method):
             errors.append(error)
             vcf_chromosome_maps.append(vcf_chromosome_map)
 
-        executor.shutdown()
+        # No need to executor.shutdown() the executor at this point, it'd be an unwatned code line 
         if errored:
             return bundle_response(
                 400, build_bad_request(code=400, message="\n".join(errors))

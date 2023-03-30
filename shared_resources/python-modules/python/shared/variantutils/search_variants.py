@@ -72,7 +72,7 @@ def perform_variant_search(
     perform_query_fan_out = 0
 
     print("Start event publishing")
-    pool = ThreadPoolExecutor(THREADS)
+    executor = ThreadPoolExecutor(THREADS)
 
     # parallelism across datasets
     for n, dataset in enumerate(datasets):
@@ -111,9 +111,9 @@ def perform_variant_search(
             variant_min_length=variantMinLength,
             variant_max_length=variantMaxLength,
         )
-        pool.submit(split_query, payload)
+        executor.submit(split_query, payload)
 
-    pool.shutdown()
+    executor.shutdown()
 
     query_record.update(
         actions=[VariantQuery.fanOut.set(VariantQuery.fanOut + perform_query_fan_out)]
@@ -205,7 +205,7 @@ def perform_variant_search_sync(
     end_max += 1
 
     print("Start: event publishing")
-    pool = ThreadPoolExecutor(THREADS)
+    executor = ThreadPoolExecutor(THREADS)
     futures = []
 
     # parallelism across datasets
@@ -243,9 +243,10 @@ def perform_variant_search_sync(
             variant_max_length=variantMaxLength,
         )
 
-        futures.append(pool.submit(split_query_sync, payload))
+        futures.append(executor.submit(split_query_sync, payload))
 
     for future in as_completed(futures):
         yield from future.result()
 
+    # No need to executor.shutdown() the executor at this point, it'd be an unwatned code line
     print("End: retrieved results")
