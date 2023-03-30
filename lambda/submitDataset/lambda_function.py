@@ -68,10 +68,7 @@ def create_dataset(attributes, vcf_chromosome_maps):
             item.vcfLocations = attributes.get("vcfLocations", [])
             item.vcfGroups = attributes.get("vcfGroups", [item.vcfLocations])
             item.vcfChromosomeMap = vcf_chromosome_maps
-
-            print(f"Putting item in table: {item.to_json()}")
             item.save()
-            print(f"Putting complete")
             completed.append("Added dataset info")
 
             # dataset metadata entry information
@@ -91,34 +88,28 @@ def create_dataset(attributes, vcf_chromosome_maps):
 
     if datasetId and cohortId:
         print("De-serialising started")
-        individuals = jsons.default_list_deserializer(
-            attributes.get("individuals", []), List[Individual]
-        )
-        biosamples = jsons.default_list_deserializer(
-            attributes.get("biosamples", []), List[Biosample]
-        )
-        runs = jsons.default_list_deserializer(attributes.get("runs", []), List[Run])
-        analyses = jsons.default_list_deserializer(
-            attributes.get("analyses", []), List[Analysis]
-        )
+        individuals = attributes.get("individuals", [])
+        biosamples = attributes.get("biosamples", [])
+        runs = attributes.get("runs", [])
+        analyses = attributes.get("analyses", [])
         print("De-serialising complete")
 
         # setting dataset id
         # private attributes inside entities are parsed properly
         # for example _vcfSampleId is mapped to vcfSampleId
         for individual in individuals:
-            individual._datasetId = datasetId
-            individual._cohortId = cohortId
+            individual["_datasetId"] = datasetId
+            individual["_cohortId"] = cohortId
 
         for biosample in biosamples:
-            biosample._datasetId = datasetId
-            biosample._cohortId = cohortId
+            biosample["_datasetId"] = datasetId
+            biosample["_cohortId"] = cohortId
         for run in runs:
-            run._datasetId = datasetId
-            run._cohortId = cohortId
+            run["_datasetId"] = datasetId
+            run["_cohortId"] = cohortId
         for analysis in analyses:
-            analysis._datasetId = datasetId
-            analysis._cohortId = cohortId
+            analysis["_datasetId"] = datasetId
+            analysis["_cohortId"] = cohortId
 
         # upload to s3
         if len(individuals) > 0:
