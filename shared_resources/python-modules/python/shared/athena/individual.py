@@ -75,22 +75,33 @@ class Individual(jsons.JsonSerializable, AthenaModel):
     def upload_array(cls, array):
         if len(array) == 0:
             return
-        header = (
+        header_entity = (
             "struct<"
             + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
             + ">"
         )
-        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
+        header_terms = (
+            "struct<kind:string,id:string,term:string,label:string,type:string>"
+        )
         key = f"{array[0]._datasetId}-individuals"
 
-        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/individuals-cache/{key}", "wb") as s3file:
+        with sopen(
+            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/individuals-cache/{key}", "wb"
+        ) as s3file_entity, sopen(
+            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-cache/individuals-{key}",
+            "wb",
+        ) as s3file_terms:
             with pyorc.Writer(
-                s3file,
-                header,
+                s3file_entity,
+                header_entity,
                 compression=pyorc.CompressionKind.SNAPPY,
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=bloom_filter_columns,
-            ) as writer:
+            ) as writer_entity, pyorc.Writer(
+                s3file_terms,
+                header_terms,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+            ) as writer_terms:
                 for individual in array:
                     row = tuple(
                         individual.__dict__[k]
@@ -98,22 +109,10 @@ class Individual(jsons.JsonSerializable, AthenaModel):
                         else json.dumps(individual.__dict__[k])
                         for k in cls._table_columns
                     )
-                    writer.write(row)
-
-        header = "struct<kind:string,id:string,term:string,label:string,type:string>"
-        with sopen(
-            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-cache/individuals-{key}", "wb"
-        ) as s3file:
-            with pyorc.Writer(
-                s3file,
-                header,
-                compression=pyorc.CompressionKind.SNAPPY,
-                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-            ) as writer:
-                for individual in array:
+                    writer_entity.write(row)
                     for term, label, typ in extract_terms([jsons.dump(individual)]):
                         row = ("individuals", individual.id, term, label, typ)
-                        writer.write(row)
+                        writer_terms.write(row)
 
 
 if __name__ == "__main__":

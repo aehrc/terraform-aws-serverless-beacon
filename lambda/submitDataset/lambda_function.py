@@ -1,4 +1,5 @@
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 import subprocess
 import json
@@ -9,7 +10,7 @@ from smart_open import open as sopen
 import jsons
 import boto3
 
-from shared.utils import get_vcf_chromosomes
+from shared.utils import get_vcf_chromosomes, clear_tmp
 from shared.apiutils import build_bad_request, bundle_response
 from shared.dynamodb import Dataset as DynamoDataset, VcfChromosomeMap
 from shared.athena import Dataset, Cohort, Individual, Biosample, Run, Analysis
@@ -40,41 +41,18 @@ completed = []
 pending = []
 
 
-# just checking if the tabix would work as expected on a valid vcf.gz file
-# validate if the index file exists too
-def check_vcf_locations(locations):
-    errors = []
-    for location in locations:
-        try:
-            subprocess.check_output(
-                args=[
-                    "tabix",
-                    "--list-chroms",
-                    location,
-                ],
-                stderr=subprocess.PIPE,
-                cwd="/tmp",
-                encoding="utf-8",
-            )
-        except subprocess.CalledProcessError as e:
-            error_message = e.stderr
-            print(
-                "cmd {} returned non-zero error code {}. stderr:\n{}".format(
-                    e.cmd, e.returncode, error_message
-                )
-            )
-            if error_message.startswith("[E::hts_open_format] Failed to open"):
-                errors.append("Could not access {}.".format(location))
-            elif error_message.startswith("[E::hts_hopen] Failed to open"):
-                errors.append("{} is not a gzipped vcf file.".format(location))
-            elif error_message.startswith("Could not load .tbi index"):
-                errors.append("Could not open index file for {}.".format(location))
-            else:
-                raise e
-    return "\n".join(errors)
+def get_vcf_chromosome_maps(vcf_location):
+    errored, error, chroms = get_vcf_chromosomes(vcf_location)
+    vcf_chromosome_map = None
+    if not errored:
+        vcf_chromosome_map = VcfChromosomeMap()
+        vcf_chromosome_map.vcf = vcf_location
+        vcf_chromosome_map.chromosomes = chroms
+
+    return errored, error, vcf_chromosome_map
 
 
-def create_dataset(attributes):
+def create_dataset(attributes, vcf_chromosome_maps):
     datasetId = attributes.get("datasetId", None)
     cohortId = attributes.get("cohortId", None)
     index = attributes.get("index", False)
@@ -89,13 +67,7 @@ def create_dataset(attributes):
             item.assemblyId = attributes.get("assemblyId", "UNKNOWN")
             item.vcfLocations = attributes.get("vcfLocations", [])
             item.vcfGroups = attributes.get("vcfGroups", [item.vcfLocations])
-            # TODO this can run in threads
-            for vcf in set(item.vcfLocations):
-                chroms = get_vcf_chromosomes(vcf)
-                vcfm = VcfChromosomeMap()
-                vcfm.vcf = vcf
-                vcfm.chromosomes = chroms
-                item.vcfChromosomeMap.append(vcfm)
+            item.vcfChromosomeMap = vcf_chromosome_maps
 
             print(f"Putting item in table: {item.to_json()}")
             item.save()
@@ -108,7 +80,7 @@ def create_dataset(attributes):
             dataset._assemblyId = item.assemblyId
             dataset._vcfLocations = item.vcfLocations
             dataset._vcfChromosomeMap = [
-                vcfm.attribute_values for vcfm in item.vcfChromosomeMap
+                vcfm.attribute_values for vcfm in vcf_chromosome_maps
             ]
             dataset.createDateTime = str(item.createDateTime)
             dataset.updateDateTime = str(item.updateDateTime)
@@ -205,26 +177,47 @@ def submit_dataset(body_dict, method):
         return bundle_response(
             400, build_bad_request(code=400, message=", ".join(validation_errors))
         )
-
+    print("Validated the payload")
     if "vcfLocations" in body_dict:
-        # validate vcf files if skipCheck is not specified
-        if "skipCheck" not in body_dict:
-            errors = check_vcf_locations(body_dict["vcfLocations"])
-            if errors:
-                return bundle_response(400, build_bad_request(code=400, message=errors))
+        # resolve VCF chromosomes in parallel
+        executor = ThreadPoolExecutor(32)
+        errored = False
+        errors = []
+        vcf_chromosome_maps = []
+        vcf_chromosome_map_futures = [
+            executor.submit(get_vcf_chromosome_maps, vcf_location)
+            for vcf_location in set(body_dict["vcfLocations"])
+        ]
+
+        for vcf_chromosome_map_future in as_completed(vcf_chromosome_map_futures):
+            (
+                task_errored,
+                error,
+                vcf_chromosome_map,
+            ) = vcf_chromosome_map_future.result()
+            errored = errored or task_errored
+            errors.append(error)
+            vcf_chromosome_maps.append(vcf_chromosome_map)
+
+        executor.shutdown()
+        if errored:
+            return bundle_response(
+                400, build_bad_request(code=400, message="\n".join(errors))
+            )
         summarise = True
     else:
         summarise = False
+    print("Validated the VCF files")
     # handle data set submission or update
     if new:
-        create_dataset(body_dict)
+        create_dataset(body_dict, vcf_chromosome_maps)
     else:
-        update_dataset(body_dict)
+        update_dataset(body_dict, vcf_chromosome_maps)
 
     # if summarise:
     #     summarise_dataset(body_dict['datasetId'])
     #     pending.append('Summarising')
-
+    clear_tmp()
     return bundle_response(200, {"Completed": completed, "Running": pending})
 
 
