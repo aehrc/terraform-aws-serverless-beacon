@@ -36,5 +36,4 @@ def split_query(payload: dict):
         Payload=jsons.dumps(payload),
     )
     parsed = json.loads(response["Payload"].read())
-    print(parsed)
     return jsons.default_list_deserializer(parsed, List[PerformQueryResponse])

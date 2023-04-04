@@ -1,15 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
-import time
-import copy
 
-import jsons
 import boto3
 
 from .local_utils import split_query
 from shared.utils import get_matching_chromosome
-from shared.dynamodb import VariantQuery, VariantResponse
-from shared.payloads import SplitQueryPayload, PerformQueryResponse
+
 
 
 REQUEST_TIMEOUT = 600  # seconds
