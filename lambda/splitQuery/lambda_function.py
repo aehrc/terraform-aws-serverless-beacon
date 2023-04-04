@@ -1,12 +1,9 @@
-from concurrent.futures import ThreadPoolExecutor
-import queue
+from concurrent.futures import Future, ThreadPoolExecutor
 import json
 import os
+from typing import List
 
 import boto3
-import jsons
-
-from shared.payloads import SplitQueryPayload, PerformQueryPayload
 
 
 SPLIT_SIZE = 10000
@@ -17,49 +14,45 @@ aws_lambda = boto3.client("lambda")
 sns = boto3.client("sns")
 
 
-def perform_query(payload: PerformQueryPayload):
-    kwargs = {"TopicArn": PERFORM_QUERY_TOPIC_ARN, "Message": jsons.dumps(payload)}
+def perform_query(payload: dict):
+    kwargs = {"TopicArn": PERFORM_QUERY_TOPIC_ARN, "Message": json.dumps(payload)}
     sns.publish(**kwargs)
 
 
-def perform_query_sync(payload: PerformQueryPayload, results_queue: queue.Queue):
+def perform_query_sync(payload: dict):
     response = aws_lambda.invoke(
         FunctionName=PERFORM_QUERY,
         InvocationType="RequestResponse",
-        Payload=jsons.dumps(payload),
+        Payload=json.dumps(payload),
     )
 
-    results_queue.put(json.loads(response["Payload"].read()))
+    return json.loads(response["Payload"].read())
 
 
-def split_query(split_payload: SplitQueryPayload):
+def split_query(split_payload: dict):
     # to find HITs or ALL we must analyse all vcfs
-    check_all = split_payload.include_datasets in ("HIT", "ALL")
-
-    split_start = split_payload.start_min
+    split_start = split_payload.get("start_min")
     pool = ThreadPoolExecutor(32)
 
-    while split_start <= split_payload.start_max:
-        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.start_max)
+    while split_start <= split_payload.get("start_max"):
+        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.get("start_max"))
         # perform query on this split of the vcf
-        for vcf_location, chrom in split_payload.vcf_locations.items():
-            payload = PerformQueryPayload(
-                passthrough=split_payload.passthrough,
-                dataset_id=split_payload.dataset_id,
-                query_id=split_payload.query_id,
-                reference_bases=split_payload.reference_bases,
-                end_min=split_payload.end_min,
-                end_max=split_payload.end_max,
-                alternate_bases=split_payload.alternate_bases,
-                variant_type=split_payload.variant_type,
-                requested_granularity=split_payload.requested_granularity,
-                variant_min_length=split_payload.variant_min_length,
-                variant_max_length=split_payload.variant_max_length,
-                include_details=check_all,
-                ## region for bcftools
-                region=f"{chrom}:{split_start}-{split_end}",
-                vcf_location=vcf_location,
-            )
+        for vcf_location, chrom in split_payload.get("vcf_locations", dict()).items():
+            payload = {
+                "query_id": split_payload.get("query_id"),
+                "reference_bases": split_payload.get("reference_bases"),
+                "alternate_bases": split_payload.get("alternate_bases"),
+                "end_min": split_payload.get("end_min"),
+                "end_max": split_payload.get("end_max"),
+                "variant_type": split_payload.get("variant_type"),
+                "requested_granularity": split_payload.get("requested_granularity"),
+                "variant_min_length": split_payload.get("variant_min_length"),
+                "variant_max_length": split_payload.get("variant_max_length"),
+                "include_details": split_payload.get("include_datasets", "ALL")
+                in ("HIT", "ALL"),
+                "region": f"{chrom}:{split_start}-{split_end}",
+                "vcf_location": vcf_location,
+            }
             pool.submit(perform_query, payload)
 
         # next split
@@ -68,43 +61,40 @@ def split_query(split_payload: SplitQueryPayload):
     pool.shutdown()
 
 
-def split_query_sync(split_payload: SplitQueryPayload):
+def split_query_sync(split_payload: dict):
     # to find HITs or ALL we must analyse all vcfs
-    check_all = split_payload.include_datasets in ("HIT", "ALL")
-
-    split_start = split_payload.start_min
+    split_start = split_payload.get("start_min")
     pool = ThreadPoolExecutor(32)
-    results_queue = queue.Queue()
+    futures: List[Future] = []
 
-    while split_start <= split_payload.start_max:
-        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.start_max)
+    while split_start <= split_payload.get("start_max"):
+        split_end = min(split_start + SPLIT_SIZE - 1, split_payload.get("start_max"))
         # perform query on this split of the vcf
-        for vcf_location, chrom in split_payload.vcf_locations.items():
-            payload = PerformQueryPayload(
-                passthrough=split_payload.passthrough,
-                dataset_id=split_payload.dataset_id,
-                query_id=split_payload.query_id,
-                reference_bases=split_payload.reference_bases,
-                end_min=split_payload.end_min,
-                end_max=split_payload.end_max,
-                alternate_bases=split_payload.alternate_bases,
-                variant_type=split_payload.variant_type,
-                requested_granularity=split_payload.requested_granularity,
-                variant_min_length=split_payload.variant_min_length,
-                variant_max_length=split_payload.variant_max_length,
-                include_details=check_all,
-                ## region for bcftools
-                region=f"{chrom}:{split_start}-{split_end}",
-                vcf_location=vcf_location,
-            )
-            pool.submit(perform_query_sync, payload, results_queue)
+        for vcf_location, chrom in split_payload.get("vcf_locations", dict()).items():
+            payload = {
+                "query_id": split_payload.get("query_id"),
+                "dataset_id": split_payload.get("dataset_id"),
+                "samples": split_payload.get("samples", []),
+                "reference_bases": split_payload.get("reference_bases"),
+                "alternate_bases": split_payload.get("alternate_bases"),
+                "end_min": split_payload.get("end_min"),
+                "end_max": split_payload.get("end_max"),
+                "variant_min_length": split_payload.get("variant_min_length"),
+                "variant_max_length": split_payload.get("variant_max_length"),
+                "include_details": split_payload.get("include_datasets", "ALL")
+                in ("HIT", "ALL"),
+                "include_samples": split_payload.get("include_samples", False),
+                "region": f"{chrom}:{split_start}-{split_end}",
+                "vcf_location": vcf_location,
+                "variant_type": split_payload.get("variant_type"),
+                "requested_granularity": split_payload.get("requested_granularity"),
+            }
+            futures.append(pool.submit(perform_query_sync, payload))
 
         # next split
         split_start += SPLIT_SIZE
 
-    pool.shutdown()
-
-    return list(results_queue.queue)
+    return [future.result() for future in futures]
 
 
 def lambda_handler(event, context):
@@ -113,40 +103,15 @@ def lambda_handler(event, context):
     try:
         event = json.loads(event["Records"][0]["Sns"]["Message"])
         print("using sns event")
-        split_payload = jsons.load(event, SplitQueryPayload)
-        print(split_payload)
-        split_query(split_payload)
+        print(event)
+        split_query(event)
         print("Completed split query")
     except:
         print("using invoke event")
-        split_payload = jsons.load(event, SplitQueryPayload)
-        response = split_query_sync(split_payload)
+        response = split_query_sync(event)
 
         return response
 
 
 if __name__ == "__main__":
-    event = {
-        "Records": [
-            {
-                "EventSource": "aws:sns",
-                "EventVersion": "1.0",
-                "EventSubscriptionArn": "arn:aws:sns:us-east-1:361439923243:splitQuery:abe5cdb5-03bd-4363-9bd3-b3fd9ee2c881",
-                "Sns": {
-                    "Type": "Notification",
-                    "MessageId": "46ba922a-cc5e-50a7-855f-c9f3e5d7c198",
-                    "TopicArn": "arn:aws:sns:us-east-1:361439923243:splitQuery",
-                    "Subject": None,
-                    "Message": '{"payload": {"alternate_bases": "N", "dataset_id": "3-385", "end_max": 10000011, "end_min": 10000001, "include_datasets": "HIT", "passthrough": {}, "query_id": "01b802e52199e6c0143e0e93088d8578", "reference_bases": "A", "requested_granularity": "record", "start_max": 10000011, "start_min": 10000001, "variant_max_length": -1, "variant_min_length": 0, "variant_type": null, "vcf_groups": [], "vcf_locations": {"s3://sample-vcfs/100160.notY.vcf.gz": "5"}}}',
-                    "Timestamp": "2022-10-31T01:39:21.419Z",
-                    "SignatureVersion": "1",
-                    "Signature": "B/KhtR5klnl3O5gMoGYQFIOcRi+RcTgzlDIB8TCA+S7hcmSwDkmUrJXdemrjQnqL7W19amTX4ISKtQ22suCNa2BZvXIyx5WiuRbE6j+/ggXZteibWmEVCIhmrtn2zguijrW/0YSQabX31Ki9FARoSxtrdxvJ3wq4alMaU0hne1uVat7FHgEyiTx98gAgCL6OOpXvSgijTNBNBSIK6iKeUPhZtvPUaOru9zwSJsY9MVBYtW0RPd6OsfkgKM79Fb0f3B7JBItqJzBtAke0KqZ5t41a4io1h61r9kbx4XxluyVjc1KQQQVWDPeKGrh/uAPk5u9e9tnWAR1Oz2ePOoZ7gw==",
-                    "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem",
-                    "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:361439923243:splitQuery:abe5cdb5-03bd-4363-9bd3-b3fd9ee2c881",
-                    "MessageAttributes": {},
-                },
-            }
-        ]
-    }
-
-    lambda_handler(event, dict())
+    pass

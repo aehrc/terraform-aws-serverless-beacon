@@ -2,7 +2,7 @@ from collections import defaultdict
 import json
 import base64
 
-from shared.variantutils import perform_variant_search_sync
+from shared.variantutils import perform_variant_search
 from shared.utils import ENV_ATHENA
 from shared.athena import (
     Dataset,
@@ -68,18 +68,18 @@ def route(request: RequestParams):
         )
         samples = []
 
-    query_responses = perform_variant_search_sync(
+    query_responses = perform_variant_search(
         datasets=datasets,
-        referenceName=query_params.reference_name,
-        referenceBases=query_params.reference_bases,
-        alternateBases=query_params.alternate_bases,
+        reference_name=query_params.reference_name,
+        reference_bases=query_params.reference_bases,
+        alternate_bases=query_params.alternate_bases,
         start=query_params.start,
         end=query_params.end,
-        variantType=query_params.variant_type,
-        variantMinLength=query_params.variant_min_length,
-        variantMaxLength=query_params.variant_max_length,
-        requestedGranularity=request.query.requested_granularity,
-        includeResultsetResponses=request.query.include_resultset_responses,
+        variant_type=query_params.variant_type,
+        variant_min_length=query_params.variant_min_length,
+        variant_max_length=query_params.variant_max_length,
+        requested_granularity=request.query.requested_granularity,
+        include_datasets=request.query.include_resultset_responses,
         dataset_samples=samples,
     )
 

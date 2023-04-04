@@ -2,7 +2,7 @@ from collections import defaultdict
 import json
 import base64
 
-from shared.variantutils import perform_variant_search_sync
+from shared.variantutils import perform_variant_search
 from shared.utils import ENV_ATHENA
 from shared.athena import (
     Dataset,
@@ -46,25 +46,29 @@ def datasets_query_fast(assembly_id):
 
 def route(request: RequestParams, variant_id):
     dataset_hash = base64.b64decode(variant_id.encode()).decode()
-    assemblyId, referenceName, pos, referenceBases, alternateBases = dataset_hash.split(
-        "\t"
-    )
+    (
+        assembly_id,
+        reference_name,
+        pos,
+        reference_bases,
+        alternate_bases,
+    ) = dataset_hash.split("\t")
     pos = int(pos) - 1
     start = [pos]
-    end = [pos + len(alternateBases)]
+    end = [pos + len(alternate_bases)]
 
     conditions, execution_parameters = entity_search_conditions(
         request.query.filters, "analyses", "analyses", id_modifier="A.id"
     )
 
     if conditions:
-        query = datasets_query(conditions, assemblyId)
+        query = datasets_query(conditions, assembly_id)
         exec_id = run_custom_query(
             query, return_id=True, execution_parameters=execution_parameters
         )
         datasets, samples = parse_datasets_with_samples(exec_id)
     else:
-        query = datasets_query_fast(assemblyId)
+        query = datasets_query_fast(assembly_id)
         datasets = Dataset.get_by_query(
             query, execution_parameters=execution_parameters
         )
@@ -78,11 +82,11 @@ def route(request: RequestParams, variant_id):
     variant_call_counts = defaultdict(int)
     variant_allele_counts = defaultdict(int)
 
-    query_responses = perform_variant_search_sync(
+    query_responses = perform_variant_search(
         datasets=datasets,
-        referenceName=referenceName,
-        referenceBases=referenceBases,
-        alternateBases=alternateBases,
+        reference_name=reference_name,
+        reference_bases=reference_bases,
+        alternate_bases=alternate_bases,
         start=start,
         end=end,
         variantType=None,
@@ -99,7 +103,7 @@ def route(request: RequestParams, variant_id):
         exists = exists or query_response.exists
 
         if exists:
-            if request.query.requested_granularity == "boolean":
+            if request.query.requested_granularity == Granularity.BOOLEAN:
                 break
             variants.update(query_response.variants)
 
@@ -108,13 +112,13 @@ def route(request: RequestParams, variant_id):
                 idx = f"{pos}_{ref}_{alt}"
                 variant_call_counts[idx] += query_response.call_count
                 variant_allele_counts[idx] += query_response.all_alleles_count
-                internal_id = f"{assemblyId}\t{chrom}\t{pos}\t{ref}\t{alt}"
+                internal_id = f"{assembly_id}\t{chrom}\t{pos}\t{ref}\t{alt}"
 
                 if internal_id not in found:
                     results.append(
                         get_variant_entry(
                             base64.b64encode(f"{internal_id}".encode()).decode(),
-                            assemblyId,
+                            assembly_id,
                             ref,
                             alt,
                             int(pos),

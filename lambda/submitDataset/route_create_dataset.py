@@ -48,16 +48,15 @@ def create_dataset(attributes, vcf_chromosome_maps):
             completed.append("Added dataset info")
 
             # dataset metadata entry information
-            dataset = jsons.load(json_dataset, Dataset)
-            dataset.id = datasetId
-            dataset._assemblyId = item.assemblyId
-            dataset._vcfLocations = item.vcfLocations
-            dataset._vcfChromosomeMap = [
+            json_dataset["id"] = datasetId
+            json_dataset["assemblyId"] = item.assemblyId
+            json_dataset["vcfLocations"] = item.vcfLocations
+            json_dataset["vcfChromosomeMap"] = [
                 vcfm.attribute_values for vcfm in vcf_chromosome_maps
             ]
-            dataset.createDateTime = str(item.createDateTime)
-            dataset.updateDateTime = str(item.updateDateTime)
-            threads.append(Thread(target=Dataset.upload_array, args=([dataset],)))
+            json_dataset["createDateTime"] = str(item.createDateTime)
+            json_dataset["updateDateTime"] = str(item.updateDateTime)
+            threads.append(Thread(target=Dataset.upload_array, args=([json_dataset],)))
             threads[-1].start()
             completed.append("Added dataset metadata")
 
@@ -70,23 +69,24 @@ def create_dataset(attributes, vcf_chromosome_maps):
         print("De-serialising complete")
 
         # setting dataset id
-        # private attributes inside entities are parsed properly
         # for example _vcfSampleId is mapped to vcfSampleId
+        # skip _ in private variables
+        # they are handled in the upload function
         for individual in individuals:
-            individual["_datasetId"] = datasetId
-            individual["_cohortId"] = cohortId
+            individual["datasetId"] = datasetId
+            individual["cohortId"] = cohortId
 
         for biosample in biosamples:
-            biosample["_datasetId"] = datasetId
-            biosample["_cohortId"] = cohortId
+            biosample["datasetId"] = datasetId
+            biosample["cohortId"] = cohortId
 
         for run in runs:
-            run["_datasetId"] = datasetId
-            run["_cohortId"] = cohortId
+            run["datasetId"] = datasetId
+            run["cohortId"] = cohortId
 
         for analysis in analyses:
-            analysis["_datasetId"] = datasetId
-            analysis["_cohortId"] = cohortId
+            analysis["datasetId"] = datasetId
+            analysis["cohortId"] = cohortId
 
         # upload to s3
         if len(individuals) > 0:
@@ -113,10 +113,9 @@ def create_dataset(attributes, vcf_chromosome_maps):
         # cohort information
         json_cohort = attributes.get("cohort", None)
         if json_cohort:
-            cohort = jsons.load(json_cohort, Cohort)
-            cohort.id = cohortId
+            json_cohort["id"] = cohortId
             # Cohort.upload_array([cohort])
-            threads.append(Thread(target=Cohort.upload_array, args=([cohort],)))
+            threads.append(Thread(target=Cohort.upload_array, args=([json_cohort],)))
             threads[-1].start()
             completed.append("Added cohorts")
 

@@ -13,11 +13,9 @@ class SplitQueryResponse:
 # response sent by PerformQuery lambda
 @dataclass
 class PerformQueryResponse(jsons.JsonSerializable):
-    exists: bool
-    vcf_location: str
     dataset_id: str
+    exists: bool
     all_alleles_count: int
     variants: list
     call_count: int
-    sample_indices: list
     sample_names: list

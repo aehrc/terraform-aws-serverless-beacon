@@ -66,7 +66,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
         header_terms = (
             "struct<kind:string,id:string,term:string,label:string,type:string>"
         )
-        key = f"{array[0].id}-cohorts"
+        key = f"{array[0]['id']}-cohorts"
 
         with sopen(
             f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/cohorts-cache/{key}", "wb"
@@ -86,14 +86,14 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
             ) as writer_terms:
                 for cohort in array:
                     row = tuple(
-                        cohort.__dict__[k]
-                        if type(cohort.__dict__[k]) == str
-                        else json.dumps(cohort.__dict__[k])
-                        for k in cls._table_columns
+                        cohort.get(k, "")
+                        if type(cohort.get(k, "")) == str
+                        else json.dumps(cohort.get(k, ""))
+                        for k in [k.strip("_") for k in cls._table_columns]
                     )
                     writer_entity.write(row)
-                    for term, label, typ in extract_terms([jsons.dump(cohort)]):
-                        row = ("cohorts", cohort.id, term, label, typ)
+                    for term, label, typ in extract_terms([cohort]):
+                        row = ("cohorts", cohort["id"], term, label, typ)
                         writer_terms.write(row)
 
 

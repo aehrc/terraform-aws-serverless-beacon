@@ -78,7 +78,7 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
         header_terms = (
             "struct<kind:string,id:string,term:string,label:string,type:string>"
         )
-        key = f"{array[0].id}-datasets"
+        key = f"{array[0]['id']}-datasets"
 
         with sopen(
             f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/datasets-cache/{key}", "wb"
@@ -98,14 +98,14 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
             ) as writer_terms:
                 for dataset in array:
                     row = tuple(
-                        dataset.__dict__[k]
-                        if type(dataset.__dict__[k]) == str
-                        else json.dumps(dataset.__dict__[k])
-                        for k in cls._table_columns
+                        dataset.get(k, "")
+                        if type(dataset.get(k, "")) == str
+                        else json.dumps(dataset.get(k, ""))
+                        for k in [k.strip("_") for k in cls._table_columns]
                     )
                     writer_entity.write(row)
-                    for term, label, typ in extract_terms([jsons.dump(dataset)]):
-                        row = ("datasets", dataset.id, term, label, typ)
+                    for term, label, typ in extract_terms([dataset]):
+                        row = ("datasets", dataset["id"], term, label, typ)
                         writer_terms.write(row)
 
 

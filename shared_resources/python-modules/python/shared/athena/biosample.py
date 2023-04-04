@@ -105,7 +105,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         header_terms = (
             "struct<kind:string,id:string,term:string,label:string,type:string>"
         )
-        key = f"{array[0]['_datasetId']}-biosamples"
+        key = f"{array[0]['datasetId']}-biosamples"
 
         with sopen(
             f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/biosamples-cache/{key}", "wb"
@@ -129,7 +129,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
                         biosample.get(k, "")
                         if type(biosample.get(k, "")) == str
                         else json.dumps(biosample.get(k, ""))
-                        for k in cls._table_columns
+                        for k in [k.strip("_") for k in cls._table_columns]
                     )
                     writer_entity.write(row)
                     for term, label, typ in extract_terms([biosample]):

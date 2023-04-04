@@ -1,36 +1,11 @@
 import json
-import jsons
-import re
-import os
-import glob
 
-import search_variants
-import search_variants_in_samples
-from shared.payloads import PerformQueryPayload
-
-
-BASES = [
-    "A",
-    "C",
-    "G",
-    "T",
-    "N",
-]
-
-all_count_pattern = re.compile("[0-9]+")
-get_all_calls = all_count_pattern.findall
+from shared.utils import clear_tmp
+from query_engine import perform_query
 
 
 def lambda_handler(event, context):
-    files = glob.glob("/tmp/*")
-    for file in files:
-        try:
-            os.unlink(file)
-        except OSError as e:
-            print(f"Error: {file} - {e.strerror}")
-
     print("Event Received: {}".format(json.dumps(event)))
-    is_async = False
     try:
         event = json.loads(event["Records"][0]["Sns"]["Message"])
         is_async = True
@@ -39,18 +14,30 @@ def lambda_handler(event, context):
         is_async = False
         print("using invoke event")
 
-    performQueryPayload = jsons.load(event, PerformQueryPayload)
-    # switch operations
-    if performQueryPayload.passthrough.get("selectedSamplesOnly", False):
-        response = search_variants_in_samples.perform_query(
-            performQueryPayload, is_async
-        )
-    else:
-        response = search_variants.perform_query(performQueryPayload, is_async)
-
-    print(f"Returning response")
-    return response.dump()
+    response = perform_query(event, is_async)
+    # clear_tmp()
+    return response
 
 
 if __name__ == "__main__":
+    e = {
+        "query_id": "TEST",
+        "dataset_id": "1-0",
+        # "samples": ["HG00099"],
+        "samples": [],
+        "reference_bases": "A",
+        "alternate_bases": "N",
+        "end_min": 10000001,
+        "end_max": 10011011,
+        "variant_min_length": 0,
+        "variant_max_length": -1,
+        "include_details": True,
+        "include_samples": True,
+        "region": "5:10000001-10001011",
+        "vcf_location": "s3://vcf-simulations/fraction-1-vcfs/ALL.chr5.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "variant_type": None,
+        "requested_granularity": "record",
+    }
+    r = lambda_handler(e, 1)
+    print(r)
     pass

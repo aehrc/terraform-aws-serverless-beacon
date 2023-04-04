@@ -6,11 +6,11 @@ import boto3
 import botocore
 import jsons
 
-from shared.payloads import SplitQueryPayload, PerformQueryResponse
+from shared.payloads import PerformQueryResponse
 
 
 SPLIT_SIZE = 10000
-SPLIT_QUERY = os.environ["SPLIT_QUERY_LAMBDA"]
+SPLIT_QUERY_LAMBDA = os.environ["SPLIT_QUERY_LAMBDA"]
 SPLIT_QUERY_TOPIC_ARN = os.environ["SPLIT_QUERY_TOPIC_ARN"]
 
 client_config = botocore.config.Config(
@@ -29,17 +29,12 @@ def get_split_query_fan_out(start_min, start_max):
     return fan_out
 
 
-def split_query(payload: SplitQueryPayload):
-    kwargs = {"TopicArn": SPLIT_QUERY_TOPIC_ARN, "Message": jsons.dumps(payload)}
-
-    sns.publish(**kwargs)
-
-
-def split_query_sync(payload: SplitQueryPayload):
+def split_query(payload: dict):
     response = aws_lambda.invoke(
-        FunctionName=SPLIT_QUERY,
+        FunctionName=SPLIT_QUERY_LAMBDA,
         InvocationType="RequestResponse",
         Payload=jsons.dumps(payload),
     )
     parsed = json.loads(response["Payload"].read())
+    print(parsed)
     return jsons.default_list_deserializer(parsed, List[PerformQueryResponse])
