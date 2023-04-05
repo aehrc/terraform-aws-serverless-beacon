@@ -1,7 +1,5 @@
 import subprocess
 
-from .lambda_utils import clear_tmp
-
 
 CHROMOSOME_ALIASES = {
     "M": "MT",
@@ -42,19 +40,33 @@ CHROMOSOMES = CHROMOSOME_LENGTHS.keys()
 
 def get_vcf_chromosomes(vcf):
     args = ["tabix", "--list-chroms", vcf]
+    errored = False
+    error = ""
+    chromosomes = []
+
     try:
         tabix_output = subprocess.check_output(args=args, cwd="/tmp", encoding="utf-8")
+        chromosomes = tabix_output.strip().split("\n")
+        print(f"vcf - {vcf} has chromosomes - {chromosomes}")
     except subprocess.CalledProcessError as e:
-        print(e)
+        error_message = e.stderr
+        print(
+            "cmd {} returned non-zero error code {}. stderr:\n{}".format(
+                e.cmd, e.returncode, error_message
+            )
+        )
+        if error_message.startswith("[E::hts_open_format] Failed to open"):
+            error = "Could not access {}.".format(vcf)
+        elif error_message.startswith("[E::hts_hopen] Failed to open"):
+            error = "{} is not a gzipped vcf file.".format(vcf)
+        elif error_message.startswith("Could not load .tbi index"):
+            error = "Could not open index file for {}.".format(vcf)
+        else:
+            error = str(e)
+        errored = True
         tabix_output = ""
-    try:
-        clear_tmp()
-    except:
-        pass
-    chromosomes = tabix_output.split("\n")[:-1]
-    print(f"vcf - {vcf} has chromosomes - {chromosomes}")
-
-    return tabix_output.split("\n")[:-1]
+    
+    return errored, error, chromosomes
 
 
 def get_matching_chromosome(vcf_chromosomes, target_chromosome):

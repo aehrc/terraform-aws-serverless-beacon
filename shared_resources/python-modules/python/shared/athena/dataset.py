@@ -70,45 +70,43 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
     def upload_array(cls, array):
         if len(array) == 0:
             return
-        header = (
+        header_entity = (
             "struct<"
             + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
             + ">"
         )
-        bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
-        key = f"{array[0].id}-datasets"
+        header_terms = (
+            "struct<kind:string,id:string,term:string,label:string,type:string>"
+        )
+        key = f"{array[0]['id']}-datasets"
 
-        with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/datasets-cache/{key}", "wb") as s3file:
+        with sopen(
+            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/datasets-cache/{key}", "wb"
+        ) as s3file_entity, sopen(
+            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-cache/datasets-{key}", "wb"
+        ) as s3file_term:
             with pyorc.Writer(
-                s3file,
-                header,
+                s3file_entity,
+                header_entity,
                 compression=pyorc.CompressionKind.SNAPPY,
                 compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-                bloom_filter_columns=bloom_filter_columns,
-            ) as writer:
+            ) as writer_entity, pyorc.Writer(
+                s3file_term,
+                header_terms,
+                compression=pyorc.CompressionKind.SNAPPY,
+                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
+            ) as writer_terms:
                 for dataset in array:
                     row = tuple(
-                        dataset.__dict__[k]
-                        if type(dataset.__dict__[k]) == str
-                        else json.dumps(dataset.__dict__[k])
-                        for k in cls._table_columns
+                        dataset.get(k, "")
+                        if type(dataset.get(k, "")) == str
+                        else json.dumps(dataset.get(k, ""))
+                        for k in [k.strip("_") for k in cls._table_columns]
                     )
-                    writer.write(row)
-
-        header = "struct<kind:string,id:string,term:string,label:string,type:string>"
-        with sopen(
-            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/terms-cache/datasets-{key}", "wb"
-        ) as s3file:
-            with pyorc.Writer(
-                s3file,
-                header,
-                compression=pyorc.CompressionKind.SNAPPY,
-                compression_strategy=pyorc.CompressionStrategy.COMPRESSION,
-            ) as writer:
-                for dataset in array:
-                    for term, label, typ in extract_terms([jsons.dump(dataset)]):
-                        row = ("datasets", dataset.id, term, label, typ)
-                        writer.write(row)
+                    writer_entity.write(row)
+                    for term, label, typ in extract_terms([dataset]):
+                        row = ("datasets", dataset["id"], term, label, typ)
+                        writer_terms.write(row)
 
 
 def get_datasets(
@@ -151,7 +149,9 @@ def parse_datasets_with_samples(exec_id):
     var_list = list()
     case_map = {k.lower(): k for k in Dataset().__dict__.keys()}
 
-    with sopen(f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv") as s3f:
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{exec_id}.csv"
+    ) as s3f:
         reader = csv.reader(s3f)
 
         for n, row in enumerate(reader):

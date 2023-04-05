@@ -4,7 +4,7 @@ import base64
 
 import jsons
 
-from shared.variantutils import perform_variant_search_sync
+from shared.variantutils import perform_variant_search
 from shared.utils import ENV_ATHENA
 from shared.athena import (
     Individual,
@@ -85,12 +85,12 @@ def get_record_query(dataset_id, sample_names):
 
 def route(request: RequestParams, variant_id):
     dataset_hash = base64.b64decode(variant_id.encode()).decode()
-    assemblyId, referenceName, pos, referenceBases, alternateBases = dataset_hash.split(
+    assembly_id, reference_name, pos, reference_bases, alternate_bases = dataset_hash.split(
         "\t"
     )
     pos = int(pos) - 1
     start = [pos]
-    end = [pos + len(alternateBases)]
+    end = [pos + len(alternate_bases)]
     dataset_samples = defaultdict(set)
 
     conditions, execution_parameters = entity_search_conditions(
@@ -98,32 +98,28 @@ def route(request: RequestParams, variant_id):
     )
 
     if conditions:
-        query = datasets_query(conditions, assemblyId)
+        query = datasets_query(conditions, assembly_id)
         exec_id = run_custom_query(
             query, return_id=True, execution_parameters=execution_parameters
         )
         datasets, samples = parse_datasets_with_samples(exec_id)
     else:
-        query = datasets_query_fast(assemblyId)
+        query = datasets_query_fast(assembly_id)
         datasets = Dataset.get_by_query(
             query, execution_parameters=execution_parameters
         )
         samples = []
 
-    query_responses = perform_variant_search_sync(
+    query_responses = perform_variant_search(
         datasets=datasets,
-        referenceName=referenceName,
-        referenceBases=referenceBases,
-        alternateBases=alternateBases,
+        reference_name=reference_name,
+        reference_bases=reference_bases,
+        alternate_bases=alternate_bases,
         start=start,
         end=end,
-        variantType=None,
-        variantMinLength=0,
-        variantMaxLength=-1,
-        requestedGranularity="record",  # we need the records for this task
-        includeResultsetResponses="ALL",
+        requested_granularity="record",  # we need the records for this task
         dataset_samples=samples,
-        passthrough={"includeSamples": True},
+        include_samples=True,
     )
 
     exists = False
