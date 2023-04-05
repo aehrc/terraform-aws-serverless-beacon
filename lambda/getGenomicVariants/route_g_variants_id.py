@@ -89,11 +89,11 @@ def route(request: RequestParams, variant_id):
         alternate_bases=alternate_bases,
         start=start,
         end=end,
-        variantType=None,
-        variantMinLength=0,
-        variantMaxLength=-1,
-        requestedGranularity=request.query.requested_granularity,
-        includeResultsetResponses="ALL",
+        variant_type=None,
+        variant_min_length=0,
+        variant_max_length=-1,
+        requested_granularity=request.query.requested_granularity,
+        include_datasets="ALL",
         dataset_samples=samples,
     )
 
