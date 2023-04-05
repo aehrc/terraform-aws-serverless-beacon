@@ -1,17 +1,56 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import json
+from typing import List
+import math
 
 import boto3
+import jsons
 
-from .local_utils import split_query
 from shared.utils import get_matching_chromosome
+from shared.payloads import PerformQueryResponse
+from shared.utils import LambdaClient
 
 
-
-REQUEST_TIMEOUT = 600  # seconds
-THREADS = 500
+SPLIT_QUERY_LAMBDA = os.environ["SPLIT_QUERY_LAMBDA"]
+SPLIT_SIZE = 10000
+THREADS = 100
 
 
 s3 = boto3.client("s3")
+aws_lambda = LambdaClient()
+
+
+def fan_out(payload: dict):
+    response = aws_lambda.invoke(
+        FunctionName=SPLIT_QUERY_LAMBDA,
+        InvocationType="RequestResponse",
+        Payload=jsons.dumps(payload),
+    )
+    parsed = json.loads(response["Payload"].read())
+    return jsons.default_list_deserializer(parsed, List[PerformQueryResponse])
+
+
+def f_cost(N, P):
+    return 0.05 * N / P + 0.05 * P
+
+
+def df_cost(N, P):
+    return -0.05 * N / (P**2) + 0.05
+
+
+# adding scipy will be a huge overhead on lambda layers
+# this finds P such that cost is nil
+# compared to newton method, this seems a faster alternative
+def best_parallelism(N):
+    chosen = 1
+    best_cost = float("inf")
+    for P in range(1, 1000):
+        if (cost := f_cost(N, P)) < best_cost:
+            best_cost = cost
+            chosen = P
+
+    return chosen
 
 
 def perform_variant_search(
@@ -60,10 +99,7 @@ def perform_variant_search(
     start_max += 1
     end_min += 1
     end_max += 1
-
-    print("Start: event publishing")
-    executor = ThreadPoolExecutor(THREADS)
-    futures = []
+    payloads = []
 
     # parallelism across datasets
     for n, dataset in enumerate(datasets):
@@ -73,30 +109,51 @@ def perform_variant_search(
             if vcf_chromosomes[vcf]
         }
 
-        # call split query for each dataset found
-        payload = {
-            "query_id": query_id,
-            "dataset_id": dataset.id,
-            "vcf_locations": vcf_locations,
-            "samples": dataset_samples[n] if dataset_samples else [],
-            "reference_bases": reference_bases or "N",
-            "alternate_bases": alternate_bases or "N",
-            "start_min": start_min,
-            "start_max": start_max,
-            "end_min": end_min,
-            "end_max": end_max,
-            "variant_min_length": variant_min_length,
-            "variant_max_length": variant_max_length,
-            "variant_type": variant_type,
-            "include_datasets": include_datasets,
-            "include_samples": include_samples,
-            "requested_granularity": requested_granularity,
-        }
+        split_start = start_min
 
-        futures.append(executor.submit(split_query, payload))
+        while split_start <= start_max:
+            split_end = min(split_start + SPLIT_SIZE - 1, start_max)
+            for vcf_location, chrom in vcf_locations.items():
+                payload = {
+                    "query_id": query_id,
+                    "dataset_id": dataset.id,
+                    "vcf_location": vcf_location,
+                    "samples": dataset_samples[n] if dataset_samples else [],
+                    "reference_bases": reference_bases or "N",
+                    "alternate_bases": alternate_bases or "N",
+                    "end_min": end_min,
+                    "end_max": end_max,
+                    "variant_min_length": variant_min_length,
+                    "variant_max_length": variant_max_length,
+                    "include_details": include_datasets in ("HIT", "ALL"),
+                    "include_samples": include_samples,
+                    "region": f"{chrom}:{split_start}-{split_end}",
+                    "variant_type": variant_type,
+                    "requested_granularity": requested_granularity,
+                }
+                payloads.append(payload)
+            # next split
+            split_start += SPLIT_SIZE
+
+    print("Start: event publishing")
+    # TODO further split by sample counts to avoid payload overflow
+    chunk_size = best_parallelism(len(payloads))
+    print(
+        f"PAYLOADS - {len(payloads)} CHUNK SIZE - {chunk_size} NO CHUNKS - {math.ceil(len(payloads)/chunk_size)}"
+    )
+    executor = ThreadPoolExecutor(THREADS)
+    futures = [
+        executor.submit(fan_out, payloads[itr : itr + chunk_size])
+        for itr in range(0, len(payloads), chunk_size)
+    ]
 
     for future in as_completed(futures):
         yield from future.result()
 
     # No need to executor.shutdown() the executor at this point, it'd be an unwatned code line
     print("End: retrieved results")
+
+
+if __name__ == "__main__":
+    r = best_parallelism(2500)
+    print(r)
