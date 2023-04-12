@@ -24,14 +24,17 @@ aws_lambda = LambdaClient()
 
 
 def fan_out(payload: List[dict]):
-    # compress if big
-    if len(payload) > 50:
-        payload = base64.b64encode(gzip.compress(json.dumps(payload).encode())).decode()
+    # stringified payload
+    payload_str = json.dumps(payload)
+
+    # compress if larger than 100 kb
+    if len(payload_str) > 100 * 1024:
+        payload_str = base64.b64encode(gzip.compress(payload_str.encode())).decode()
 
     response = aws_lambda.invoke(
         FunctionName=SPLIT_QUERY_LAMBDA,
         InvocationType="RequestResponse",
-        Payload=json.dumps(payload),
+        Payload=payload_str,
     )
     parsed = None
     try:
@@ -169,5 +172,4 @@ def perform_variant_search(
 
 
 if __name__ == "__main__":
-    r = best_parallelism(2500)
-    print(r)
+    pass
