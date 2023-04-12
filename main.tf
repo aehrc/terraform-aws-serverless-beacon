@@ -727,7 +727,7 @@ module "lambda-splitQuery" {
   handler            = "lambda_function.lambda_handler"
   runtime            = "python3.9"
   memory_size        = 1769
-  timeout            = 300
+  timeout            = 30
   attach_policy_json = true
   policy_json        = data.aws_iam_policy_document.lambda-splitQuery.json
   source_path        = "${path.module}/lambda/splitQuery"
@@ -755,7 +755,7 @@ module "lambda-performQuery" {
   handler                = "lambda_function.lambda_handler"
   runtime                = "python3.9"
   memory_size            = 1769
-  timeout                = 300
+  timeout                = 10
   ephemeral_storage_size = 1024
   attach_policy_json     = true
   policy_json            = data.aws_iam_policy_document.lambda-performQuery.json

@@ -3,13 +3,13 @@ import tempfile
 import shutil
 import os
 import time
-import copy
+import random
 
 import botocore
 import boto3
 
 
-THROTTLE_DELAYS = [0.1 * i for i in range(1, 11)]
+THROTTLE_DELAYS = [0.1 * i for i in range(1, 6)]
 
 
 # from https://bitbucket.csiro.au/users/jai014/repos/covidbeacon/browse
@@ -35,8 +35,6 @@ class LambdaClient:
                 "total_max_attempts": 1,
             },
         )
-        self.delays = copy.deepcopy(THROTTLE_DELAYS)
-        self.delay = self.delays.pop(0)
         self.client = boto3.client("lambda", config=lambda_config)
 
     def invoke(self, **kwargs):
@@ -46,13 +44,14 @@ class LambdaClient:
             except botocore.exceptions.ClientError as error:
                 response = error.response
                 if response["Error"]["Code"] == "TooManyRequestsException":
-                    time.sleep(self.delay)
-                    self.delay = self.delays.pop(0) if self.delays else self.delay
+                    time.sleep(random.choice(THROTTLE_DELAYS))
+                    continue
+                elif response["Error"]["Code"] == "ServiceException":
+                    time.sleep(random.choice(THROTTLE_DELAYS))
                     continue
                 else:
                     raise error
             else:
-                self.delays = copy.deepcopy(THROTTLE_DELAYS)
                 return response
 
 

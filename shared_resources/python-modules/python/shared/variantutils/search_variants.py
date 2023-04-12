@@ -3,6 +3,8 @@ import os
 import json
 from typing import List
 import math
+import gzip
+import base64
 
 import boto3
 import jsons
@@ -13,22 +15,32 @@ from shared.utils import LambdaClient
 
 
 SPLIT_QUERY_LAMBDA = os.environ["SPLIT_QUERY_LAMBDA"]
-SPLIT_SIZE = 10000
-THREADS = 100
+SPLIT_SIZE = 20000
+THREADS = 200
 
 
 s3 = boto3.client("s3")
 aws_lambda = LambdaClient()
 
 
-def fan_out(payload: dict):
+def fan_out(payload: List[dict]):
+    # compress if big
+    if len(payload) > 50:
+        payload = base64.b64encode(gzip.compress(json.dumps(payload).encode())).decode()
+
     response = aws_lambda.invoke(
         FunctionName=SPLIT_QUERY_LAMBDA,
         InvocationType="RequestResponse",
-        Payload=jsons.dumps(payload),
+        Payload=json.dumps(payload),
     )
-    parsed = json.loads(response["Payload"].read())
-    return jsons.default_list_deserializer(parsed, List[PerformQueryResponse])
+    parsed = None
+    try:
+        parsed = json.loads(response["Payload"].read())
+        parsed = jsons.default_list_deserializer(parsed, List[PerformQueryResponse])
+    except Exception as e:
+        print(parsed, e)
+        raise e
+    return parsed
 
 
 def f_cost(N, P):
@@ -45,7 +57,9 @@ def df_cost(N, P):
 def best_parallelism(N):
     chosen = 1
     best_cost = float("inf")
-    for P in range(1, 1000):
+    # This range must be smaller than total available concurrency
+    # otherwise the pipeline will hang without enough lambdas to continue
+    for P in range(1, 800):
         if (cost := f_cost(N, P)) < best_cost:
             best_cost = cost
             chosen = P
