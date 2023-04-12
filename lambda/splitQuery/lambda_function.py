@@ -2,6 +2,8 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from typing import List
+import gzip
+import base64
 
 import boto3
 
@@ -9,7 +11,7 @@ from shared.utils import LambdaClient
 
 
 PERFORM_QUERY = os.environ["PERFORM_QUERY_LAMBDA"]
-THREADS = 100
+THREADS = 50
 
 
 aws_lambda = LambdaClient()
@@ -34,8 +36,6 @@ def split_query(payloads: List[dict], is_async: bool = False):
 
 
 def lambda_handler(event, context):
-    print("Event Received: {}".format(json.dumps(event)))
-
     try:
         event = json.loads(event["Records"][0]["Sns"]["Message"])
         print("using sns event")
@@ -43,7 +43,13 @@ def lambda_handler(event, context):
     except:
         print("using invoke event")
         is_async = False
-
+    
+    # if gzipped
+    if not isinstance(event, list):
+        event = base64.b64decode(event.encode())
+        event = gzip.decompress(event)
+        event = json.loads(event)
+    print("Event Received: {}".format(json.dumps(event)))
     response = split_query(event, is_async)
     return response
 

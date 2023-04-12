@@ -1,17 +1,12 @@
 import os
 import re
 import subprocess
-from uuid import uuid4
-import time
-import random
-import json
 
 import boto3
-from botocore.exceptions import ClientError
 
 from shared.apiutils.requests import Granularity
-from shared.dynamodb import VariantQuery, VariantResponse, S3Location
 from query_builder import QueryBuiler
+
 
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
@@ -310,48 +305,4 @@ def perform_query(payload: dict(), is_async: bool = False):
         "sample_names": [] if not include_samples else sample_names,
     }
 
-    if not is_async:
-        return response
-
-    try:
-        uuid = uuid4().hex
-        body = json.dumps(response)
-        query = VariantQuery(query_id)
-        result = VariantResponse(query_id)
-        result.responseNumber = query.getResponseNumber()
-
-        if len(body) < 1024 * 300:
-            # response
-            result.checkS3 = False
-            result.result = body
-        else:
-            key = f"variant-queries/{uuid}.json"
-            s3.put_object(Body=body.encode(), Bucket=VARIANTS_BUCKET, Key=key)
-            print(f"Uploaded - {VARIANTS_BUCKET}/{key}")
-            # s3 details
-            s3loc = S3Location()
-            s3loc.bucket = VARIANTS_BUCKET
-            s3loc.key = key
-            # response
-            result.responseLocation = s3loc
-            result.checkS3 = True
-        # TODO make more elegant
-        errored = True
-        msg = ""
-        for _ in range(10):
-            try:
-                result.save()
-                errored = False
-                break
-            except Exception as e:
-                print("retrying")
-                msg = e
-                time.sleep(random.random())
-                errored = True
-        if errored:
-            print("ERRORED ", msg)
-        query.markFinished()
-    except ClientError as e:
-        print(f"Error: {e}")
-
-    return
+    return response
