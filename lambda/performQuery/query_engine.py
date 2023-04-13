@@ -25,21 +25,7 @@ s3 = boto3.client("s3")
 
 
 def perform_query(payload: dict(), is_async: bool = False):
-    bcftools_query = QueryBuiler()
-
-    if samples := payload.get("samples", []):
-        bcftools_query = bcftools_query.set_samples(samples)
-
     region = payload["region"]
-    bcftools_query = bcftools_query.set_region(region)
-
-    bcftools_query = bcftools_query.set_vcf(payload["vcf_location"])
-    args = bcftools_query.build()
-    query_process = subprocess.Popen(
-        args, stdout=subprocess.PIPE, cwd="/tmp", encoding="ascii"
-    )
-
-    print("Iterating bcftools result")
     variant_type = payload.get("variant_type", "")
     variant_prefix = f"<{variant_type}"
 
@@ -64,6 +50,7 @@ def perform_query(payload: dict(), is_async: bool = False):
     requested_granularity = payload.get("requested_granularity", Granularity.BOOLEAN)
     # details
     include_details = payload.get("include_details", False)
+    chosen_samples = payload.get("samples", [])
     # samples
     include_samples = payload.get("include_samples", False)
     # query id
@@ -78,7 +65,20 @@ def perform_query(payload: dict(), is_async: bool = False):
     sample_indices = set()
     all_sample_names = []
     sample_names = []
+    
+    bcftools_query = QueryBuiler()
+    bcftools_query = bcftools_query.set_samples(chosen_samples)
+    bcftools_query = bcftools_query.set_region(region)
+    bcftools_query = bcftools_query.set_return_samples(include_samples)
 
+    bcftools_query = bcftools_query.set_vcf(payload["vcf_location"])
+    args = bcftools_query.build()
+    
+    print("Iterating bcftools result")
+    query_process = subprocess.Popen(
+        args, stdout=subprocess.PIPE, cwd="/tmp", encoding="ascii"
+    )
+    
     # iterate through bcftools output
     for line in query_process.stdout:
         try:
@@ -89,9 +89,9 @@ def perform_query(payload: dict(), is_async: bool = False):
                 vcf_info_str,
                 vcf_genotypes,
                 vcf_samples,
-            ) = line.split("\t")
+            ) = bcftools_query.parse_line(line)
 
-            if not all_sample_names:
+            if not all_sample_names and vcf_samples:
                 all_sample_names = [
                     sample for sample in vcf_samples.strip().strip(",").split(",")
                 ]
