@@ -89,11 +89,13 @@ def entity_search_conditions(
         f_id = f.id.split(".")
 
         # check to see if there is any relevent field of the referred id_type
+        # karyotypicSex = "XX" for default scope (Individuals)
         if len(f_id) == 1 and f_id[0] in id_class._table_columns:
             operator = _get_comparison_operator(f)
             outer_constraints.append("{} {} ?".format(f_id[0], operator))
             outer_execution_parameters.append(str(f.value))
 
+        # eg: Cohort.cohortType = "beacon-defined"
         elif (
             len(f_id) == 2
             and f_id[0] in queried_athena_models.keys()
@@ -105,7 +107,7 @@ def entity_search_conditions(
             join_execution_parameters.append(str(f.value))
             group = class_to_id_type_string[joined_class]
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.{comparison} """
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
             )
 
         if isinstance(f, OntologyFilter):

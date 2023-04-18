@@ -5,7 +5,7 @@ WITH (
     write_compression = 'SNAPPY',
     external_location = '{uri}',
     bucketed_by = ARRAY['individualid', 'biosampleid', 'runid', 'analysisid'],
-    bucket_count = 20
+    bucket_count = 50
 ) 
 AS
 SELECT 

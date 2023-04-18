@@ -297,7 +297,7 @@ def clean_files(bucket, prefix):
 
 
 def ctas_basic_tables(
-    *, source_table, destination_table, destination_prefix, bucket_count
+    *, source_table, destination_table, destination_prefix, bucket_count, bucket_by
 ):
     clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, destination_prefix)
     drop_tables(destination_table)
@@ -305,7 +305,7 @@ def ctas_basic_tables(
     query = CTAS_TEMPLATE.format(
         target=destination_table,
         uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/{destination_prefix}",
-        bucket_by="id",
+        bucket_by=bucket_by,
         table=source_table,
         bucket_count=bucket_count,
     )
@@ -386,42 +386,48 @@ def onto_index():
 def lambda_handler(event, context):
     # CTAS this must finish before all
     threads = []
-    for src, dest, prefix, bucket_count in (
+    for src, dest, prefix, bucket_count, bucket_by in (
         (
             ENV_ATHENA.ATHENA_DATASETS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_DATASETS_TABLE,
             "datasets/",
             10,
+            "'id', '_assemblyid'",
         ),
         (
             ENV_ATHENA.ATHENA_COHORTS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_COHORTS_TABLE,
             "cohorts/",
             10,
+            "'id'",
         ),
         (
             ENV_ATHENA.ATHENA_INDIVIDUALS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE,
             "individuals/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
         (
             ENV_ATHENA.ATHENA_BIOSAMPLES_CACHE_TABLE,
             ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE,
             "biosamples/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
         (
             ENV_ATHENA.ATHENA_RUNS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_RUNS_TABLE,
             "runs/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
         (
             ENV_ATHENA.ATHENA_ANALYSES_CACHE_TABLE,
             ENV_ATHENA.ATHENA_ANALYSES_TABLE,
             "analyses/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
     ):
         threads.append(
@@ -432,6 +438,7 @@ def lambda_handler(event, context):
                     "destination_table": dest,
                     "destination_prefix": prefix,
                     "bucket_count": bucket_count,
+                    "bucket_by": bucket_by,
                 },
             )
         )
