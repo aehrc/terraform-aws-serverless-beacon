@@ -1,5 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
-from queue import Queue
 import threading
 import urllib
 import json
@@ -42,27 +42,93 @@ RELATIONS_QUERY = RELATIONS_QUERY.format(
 )
 
 
+def get_ontology_details(ontology):
+    details = None
+    try:
+        details = Ontology.get(ontology)
+    except Ontology.DoesNotExist:
+        if ontology == "SNOMED":
+            # use ontoserver
+            details = Ontology(ontology.upper())
+            details.data = json.dumps(
+                {"id": "SNOMED", "baseUri": "http://snomed.info/sct"}
+            )
+            details.save()
+        else:
+            # use ENSEMBL
+            if response := requests.get(f"{ENSEMBL_OLS}/{ontology}"):
+                response_json = response.json()
+                details = Ontology(ontology.upper())
+                details.data = json.dumps(
+                    {
+                        "id": response_json["ontologyId"].upper(),
+                        "baseUri": response_json["config"]["baseUris"][0],
+                    }
+                )
+                details.save()
+
+    # any other error must be raised
+    return details
+
+
+def get_ontologies_clusters():
+    query = f'SELECT DISTINCT term FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}"'
+
+    response = athena.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
+        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
+    )
+
+    execution_id = response["QueryExecutionId"]
+    await_result(execution_id)
+
+    ontology_clusters = defaultdict(set)
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
+    ) as s3f:
+        for n, line in enumerate(s3f):
+            if n == 0:
+                continue
+            term = line.strip().strip('"')
+
+            # beacon API does not allow non CURIE formatted terms
+            # however, SNOMED appears are non-CURIE prefixed terms
+            # following is to support that, however API will not ingest
+            # always submit in form SNOMED:123212
+            if re.match(r"(?i)(^SNOMED)|([0-9]+)", term):
+                ontology = "SNOMED"
+                ontology_clusters[ontology].add(term)
+            else:
+                ontology = term.split(":")[0]
+                ontology_clusters[ontology].add(term)
+
+    return ontology_clusters
+
+
 # in future, there could be an issue when descendants entries exceed 400KB
 # which means we would have roughtly 20480, 20 byte entries (unlikely?)
 # this would also mean, our SQL queries would reach the 256KB limit
 # we should be able to easily spread terms across multiple dynamodb
 # entries and have multiple queries (as recommended by AWS)
 def index_terms_tree():
+    # START subroutines
     # subroutine for ensemble
-    def threaded_request_ensemble(term, url, queue):
-        response = requests.get(url)
-        if response:
+    def threaded_request_ensemble(term, url):
+        if response := requests.get(url):
             response_json = response.json()
             anscestors = set()
             for response_term in response_json["_embedded"]["terms"]:
                 obo_id = response_term["obo_id"]
                 if obo_id:
                     anscestors.add(obo_id)
-            if len(anscestors) > 0:
-                queue.put((term, anscestors))
+            return (term, anscestors)
+        else:
+            print(f"Error fetching term from Ensembl OLS {term}")
 
     # subroutine for ontoserver
-    def threaded_request_ontoserver(term, url, queue=None):
+    def threaded_request_ontoserver(term, url):
         snomed = "SNOMED" in term.upper()
         retries = 1
         response = None
@@ -105,122 +171,53 @@ def index_terms_tree():
                         if snomed
                         else response_term["code"]
                     )
-                if len(anscestors) > 0:
-                    queue.put((term, anscestors))
+                return (term, anscestors)
             else:
                 time.sleep(1)
+
         if response.status_code != 200:
-            print(f"Fetching SNOMED failed for term = {term}")
+            print(f"Error fetching term from Ontoserver {term}")
 
-    query = f'SELECT DISTINCT term FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}"'
+    # END subroutines
 
-    response = athena.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
-        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
-    )
+    ontology_clusters = get_ontologies_clusters()
+    executor = ThreadPoolExecutor(500)
+    futures = []
 
-    execution_id = response["QueryExecutionId"]
-    await_result(execution_id)
-
-    ontologies = set()
-    ontology_clusters = defaultdict(set)
-    term_anscestors = defaultdict(set)
-    threads = []
-    response_queue = Queue()
-
-    with sopen(
-        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
-    ) as s3f:
-        for n, line in enumerate(s3f):
-            if n == 0:
-                continue
-            term = line.strip().strip('"')
-
-            # beacon API does not allow non CURIE formatted terms
-            # however, SNOMED appears are non-CURIE prefixed terms
-            # following is to support that, however API will not ingest
-            # always submit in form SNOMED:123212
-            if re.match(r"(?i)(^SNOMED)|([0-9]+)", term):
-                ontology = "SNOMED"
-                ontologies.add(ontology)
-                ontology_clusters[ontology].add(term)
-            else:
-                ontology = term.split(":")[0]
-                ontologies.add(ontology)
-                ontology_clusters[ontology].add(term)
-
-    for ontology in ontologies:
-        try:
-            details = Ontology.get(ontology)
-        except Ontology.DoesNotExist:
-            if ontology == "SNOMED":
-                # use ontoserver
-                entry = Ontology(ontology.upper())
-                entry.data = json.dumps(
-                    {"id": "SNOMED", "baseUri": "http://snomed.info/sct"}
-                )
-                entry.save()
-                details = entry
-            else:
-                # use ENSEMBL
-                response = requests.get(f"{ENSEMBL_OLS}/{ontology}")
-                if response:
-                    response_json = response.json()
-                    entry = Ontology(ontology.upper())
-                    entry.data = json.dumps(
-                        {
-                            "id": response_json["ontologyId"].upper(),
-                            "baseUri": response_json["config"]["baseUris"][0],
-                        }
+    for ontology, terms in ontology_clusters.items():
+        if ontology == "SNOMED":
+            for term in terms:
+                # fetch only anscestors that aren't fetched yet
+                try:
+                    data = Anscestors.get(term)
+                except Anscestors.DoesNotExist:
+                    futures.append(
+                        executor.submit(threaded_request_ontoserver, term, ONTOSERVER)
                     )
-                    entry.save()
-                    details = entry
-                else:
-                    details = None
-
-        if details:
-            if ontology == "SNOMED":
-                terms = ontology_clusters[ontology]
-
-                for term in terms:
-                    # fetch only anscestors that aren't fetched yet
-                    try:
-                        data = Anscestors.get(term)
-                    except Anscestors.DoesNotExist:
-                        data = json.loads(details.data)
-                        thread = threading.Thread(
-                            target=threaded_request_ontoserver,
-                            args=(term, ONTOSERVER, response_queue),
-                        )
-                        thread.start()
-                        threads.append(thread)
-            else:
-                terms = ontology_clusters[ontology]
-
-                for term in terms:
-                    # fetch only anscestors that aren't fetched yet
-                    try:
-                        data = Anscestors.get(term)
-                    except Anscestors.DoesNotExist:
+        else:
+            for term in terms:
+                # fetch only anscestors that aren't fetched yet
+                try:
+                    data = Anscestors.get(term)
+                except Anscestors.DoesNotExist:
+                    # details will be missing if the ontology info is not in OLS
+                    if details := get_ontology_details(ontology):
                         data = json.loads(details.data)
                         iri = data["baseUri"] + term.split(":")[1]
                         iri_double_encoded = urllib.parse.quote_plus(
                             urllib.parse.quote_plus(iri)
                         )
                         url = f"{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/hierarchicalAncestors"
-                        thread = threading.Thread(
-                            target=threaded_request_ensemble,
-                            args=(term, url, response_queue),
+                        futures.append(
+                            executor.submit(threaded_request_ensemble, term, url)
                         )
-                        thread.start()
-                        threads.append(thread)
+    term_anscestors = defaultdict(set)
 
-    [thread.join() for thread in threads]
-
-    for term, ancestors in list(response_queue.queue):
-        term_anscestors[term].update(ancestors)
-        term_anscestors[term].add(term)
+    for future in as_completed(futures):
+        term, ancestors = future.result()
+        if ancestors:
+            term_anscestors[term].update(ancestors)
+            term_anscestors[term].add(term)
 
     term_descendants = defaultdict(set)
 
@@ -300,7 +297,7 @@ def clean_files(bucket, prefix):
 
 
 def ctas_basic_tables(
-    *, source_table, destination_table, destination_prefix, bucket_count
+    *, source_table, destination_table, destination_prefix, bucket_count, bucket_by
 ):
     clean_files(ENV_ATHENA.ATHENA_METADATA_BUCKET, destination_prefix)
     drop_tables(destination_table)
@@ -308,7 +305,7 @@ def ctas_basic_tables(
     query = CTAS_TEMPLATE.format(
         target=destination_table,
         uri=f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/{destination_prefix}",
-        bucket_by="id",
+        bucket_by=bucket_by,
         table=source_table,
         bucket_count=bucket_count,
     )
@@ -389,42 +386,48 @@ def onto_index():
 def lambda_handler(event, context):
     # CTAS this must finish before all
     threads = []
-    for src, dest, prefix, bucket_count in (
+    for src, dest, prefix, bucket_count, bucket_by in (
         (
             ENV_ATHENA.ATHENA_DATASETS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_DATASETS_TABLE,
             "datasets/",
             10,
+            "'id', '_assemblyid'",
         ),
         (
             ENV_ATHENA.ATHENA_COHORTS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_COHORTS_TABLE,
             "cohorts/",
             10,
+            "'id'",
         ),
         (
             ENV_ATHENA.ATHENA_INDIVIDUALS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE,
             "individuals/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
         (
             ENV_ATHENA.ATHENA_BIOSAMPLES_CACHE_TABLE,
             ENV_ATHENA.ATHENA_BIOSAMPLES_TABLE,
             "biosamples/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
         (
             ENV_ATHENA.ATHENA_RUNS_CACHE_TABLE,
             ENV_ATHENA.ATHENA_RUNS_TABLE,
             "runs/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
         (
             ENV_ATHENA.ATHENA_ANALYSES_CACHE_TABLE,
             ENV_ATHENA.ATHENA_ANALYSES_TABLE,
             "analyses/",
-            20,
+            50,
+            "'id', '_datasetid'",
         ),
     ):
         threads.append(
@@ -435,6 +438,7 @@ def lambda_handler(event, context):
                     "destination_table": dest,
                     "destination_prefix": prefix,
                     "bucket_count": bucket_count,
+                    "bucket_by": bucket_by,
                 },
             )
         )

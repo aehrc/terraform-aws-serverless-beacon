@@ -29,7 +29,7 @@ def fan_out(payload: List[dict]):
 
     # compress if larger than 100 kb
     if len(payload_str) > 100 * 1024:
-        payload_str = base64.b64encode(gzip.compress(payload_str.encode())).decode()
+        payload_str = json.dumps(base64.b64encode(gzip.compress(payload_str.encode())).decode())
 
     response = aws_lambda.invoke(
         FunctionName=SPLIT_QUERY_LAMBDA,
