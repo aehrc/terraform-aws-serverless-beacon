@@ -1,20 +1,20 @@
 #
 # analyses API Function /analyses
 #
-resource aws_api_gateway_resource analyses {
+resource "aws_api_gateway_resource" "analyses" {
   path_part   = "analyses"
   parent_id   = aws_api_gateway_rest_api.BeaconApi.root_resource_id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method analyses {
+resource "aws_api_gateway_method" "analyses" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response analyses {
+resource "aws_api_gateway_method_response" "analyses" {
   rest_api_id = aws_api_gateway_method.analyses.rest_api_id
   resource_id = aws_api_gateway_method.analyses.resource_id
   http_method = aws_api_gateway_method.analyses.http_method
@@ -29,14 +29,14 @@ resource aws_api_gateway_method_response analyses {
   }
 }
 
-resource aws_api_gateway_method analyses_post {
+resource "aws_api_gateway_method" "analyses_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response analyses_post {
+resource "aws_api_gateway_method_response" "analyses_post" {
   rest_api_id = aws_api_gateway_method.analyses_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses_post.resource_id
   http_method = aws_api_gateway_method.analyses_post.http_method
@@ -54,20 +54,20 @@ resource aws_api_gateway_method_response analyses_post {
 #
 # analyses API Function /analyses/filtering_terms
 #
-resource aws_api_gateway_resource analyses-filtering_terms {
+resource "aws_api_gateway_resource" "analyses-filtering_terms" {
   path_part   = "filtering_terms"
   parent_id   = aws_api_gateway_resource.analyses.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method analyses-filtering_terms {
+resource "aws_api_gateway_method" "analyses-filtering_terms" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses-filtering_terms.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response analyses-filtering_terms {
+resource "aws_api_gateway_method_response" "analyses-filtering_terms" {
   rest_api_id = aws_api_gateway_method.analyses-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.analyses-filtering_terms.resource_id
   http_method = aws_api_gateway_method.analyses-filtering_terms.http_method
@@ -82,14 +82,14 @@ resource aws_api_gateway_method_response analyses-filtering_terms {
   }
 }
 
-resource aws_api_gateway_method analyses-filtering_terms_post {
+resource "aws_api_gateway_method" "analyses-filtering_terms_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses-filtering_terms.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource aws_api_gateway_method_response analyses-filtering_terms_post {
+resource "aws_api_gateway_method_response" "analyses-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.analyses-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.analyses-filtering_terms_post.http_method
@@ -107,13 +107,13 @@ resource aws_api_gateway_method_response analyses-filtering_terms_post {
 # 
 # /analyses/{id}
 # 
-resource aws_api_gateway_resource analyses-id {
+resource "aws_api_gateway_resource" "analyses-id" {
   path_part   = "{id}"
   parent_id   = aws_api_gateway_resource.analyses.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method analyses-id {
+resource "aws_api_gateway_method" "analyses-id" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses-id.id
   http_method   = "GET"
@@ -124,7 +124,7 @@ resource aws_api_gateway_method analyses-id {
   }
 }
 
-resource aws_api_gateway_method_response analyses-id {
+resource "aws_api_gateway_method_response" "analyses-id" {
   rest_api_id = aws_api_gateway_method.analyses-id.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id.resource_id
   http_method = aws_api_gateway_method.analyses-id.http_method
@@ -139,7 +139,7 @@ resource aws_api_gateway_method_response analyses-id {
   }
 }
 
-resource aws_api_gateway_method analyses-id_post {
+resource "aws_api_gateway_method" "analyses-id_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses-id.id
   http_method   = "POST"
@@ -150,7 +150,7 @@ resource aws_api_gateway_method analyses-id_post {
   }
 }
 
-resource aws_api_gateway_method_response analyses-id_post {
+resource "aws_api_gateway_method_response" "analyses-id_post" {
   rest_api_id = aws_api_gateway_method.analyses-id_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id_post.resource_id
   http_method = aws_api_gateway_method.analyses-id_post.http_method
@@ -168,13 +168,13 @@ resource aws_api_gateway_method_response analyses-id_post {
 # 
 # /analyses/{id}/g_variants
 # 
-resource aws_api_gateway_resource analyses-id-g_variants {
+resource "aws_api_gateway_resource" "analyses-id-g_variants" {
   path_part   = "g_variants"
   parent_id   = aws_api_gateway_resource.analyses-id.id
   rest_api_id = aws_api_gateway_rest_api.BeaconApi.id
 }
 
-resource aws_api_gateway_method analyses-id-g_variants {
+resource "aws_api_gateway_method" "analyses-id-g_variants" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses-id-g_variants.id
   http_method   = "GET"
@@ -185,7 +185,7 @@ resource aws_api_gateway_method analyses-id-g_variants {
   }
 }
 
-resource aws_api_gateway_method_response analyses-id-g_variants {
+resource "aws_api_gateway_method_response" "analyses-id-g_variants" {
   rest_api_id = aws_api_gateway_method.analyses-id-g_variants.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id-g_variants.resource_id
   http_method = aws_api_gateway_method.analyses-id-g_variants.http_method
@@ -200,7 +200,7 @@ resource aws_api_gateway_method_response analyses-id-g_variants {
   }
 }
 
-resource aws_api_gateway_method analyses-id-g_variants_post {
+resource "aws_api_gateway_method" "analyses-id-g_variants_post" {
   rest_api_id   = aws_api_gateway_rest_api.BeaconApi.id
   resource_id   = aws_api_gateway_resource.analyses-id-g_variants.id
   http_method   = "POST"
@@ -211,7 +211,7 @@ resource aws_api_gateway_method analyses-id-g_variants_post {
   }
 }
 
-resource aws_api_gateway_method_response analyses-id-g_variants_post {
+resource "aws_api_gateway_method_response" "analyses-id-g_variants_post" {
   rest_api_id = aws_api_gateway_method.analyses-id-g_variants_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id-g_variants_post.resource_id
   http_method = aws_api_gateway_method.analyses-id-g_variants_post.http_method
@@ -227,32 +227,32 @@ resource aws_api_gateway_method_response analyses-id-g_variants_post {
 }
 
 # enable CORS
-module cors-analyses {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-analyses" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.analyses.id
 }
 
-module cors-analyses-filtering_terms {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-analyses-filtering_terms" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.analyses-filtering_terms.id
 }
 
-module cors-analyses-id {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-analyses-id" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
   api_resource_id = aws_api_gateway_resource.analyses-id.id
 }
 
-module cors-analyses-id-g_variants {
-  source = "squidfunk/api-gateway-enable-cors/aws"
+module "cors-analyses-id-g_variants" {
+  source  = "squidfunk/api-gateway-enable-cors/aws"
   version = "0.3.3"
 
   api_id          = aws_api_gateway_rest_api.BeaconApi.id
@@ -260,7 +260,7 @@ module cors-analyses-id-g_variants {
 }
 
 # wire up lambda analyses
-resource aws_api_gateway_integration analyses {
+resource "aws_api_gateway_integration" "analyses" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses.id
   http_method             = aws_api_gateway_method.analyses.http_method
@@ -269,7 +269,7 @@ resource aws_api_gateway_integration analyses {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response analyses {
+resource "aws_api_gateway_integration_response" "analyses" {
   rest_api_id = aws_api_gateway_method.analyses.rest_api_id
   resource_id = aws_api_gateway_method.analyses.resource_id
   http_method = aws_api_gateway_method.analyses.http_method
@@ -282,7 +282,7 @@ resource aws_api_gateway_integration_response analyses {
   depends_on = [aws_api_gateway_integration.analyses]
 }
 
-resource aws_api_gateway_integration analyses_post {
+resource "aws_api_gateway_integration" "analyses_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses.id
   http_method             = aws_api_gateway_method.analyses_post.http_method
@@ -291,7 +291,7 @@ resource aws_api_gateway_integration analyses_post {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response analyses_post {
+resource "aws_api_gateway_integration_response" "analyses_post" {
   rest_api_id = aws_api_gateway_method.analyses_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses_post.resource_id
   http_method = aws_api_gateway_method.analyses_post.http_method
@@ -305,7 +305,7 @@ resource aws_api_gateway_integration_response analyses_post {
 }
 
 # wire up lambda analyses/filtering_terms
-resource aws_api_gateway_integration analyses-filtering_terms {
+resource "aws_api_gateway_integration" "analyses-filtering_terms" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses-filtering_terms.id
   http_method             = aws_api_gateway_method.analyses-filtering_terms.http_method
@@ -314,7 +314,7 @@ resource aws_api_gateway_integration analyses-filtering_terms {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response analyses-filtering_terms {
+resource "aws_api_gateway_integration_response" "analyses-filtering_terms" {
   rest_api_id = aws_api_gateway_method.analyses-filtering_terms.rest_api_id
   resource_id = aws_api_gateway_method.analyses-filtering_terms.resource_id
   http_method = aws_api_gateway_method.analyses-filtering_terms.http_method
@@ -327,7 +327,7 @@ resource aws_api_gateway_integration_response analyses-filtering_terms {
   depends_on = [aws_api_gateway_integration.analyses-filtering_terms]
 }
 
-resource aws_api_gateway_integration analyses-filtering_terms_post {
+resource "aws_api_gateway_integration" "analyses-filtering_terms_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses-filtering_terms.id
   http_method             = aws_api_gateway_method.analyses-filtering_terms_post.http_method
@@ -336,7 +336,7 @@ resource aws_api_gateway_integration analyses-filtering_terms_post {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response analyses-filtering_terms_post {
+resource "aws_api_gateway_integration_response" "analyses-filtering_terms_post" {
   rest_api_id = aws_api_gateway_method.analyses-filtering_terms_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses-filtering_terms_post.resource_id
   http_method = aws_api_gateway_method.analyses-filtering_terms_post.http_method
@@ -350,7 +350,7 @@ resource aws_api_gateway_integration_response analyses-filtering_terms_post {
 }
 
 # wire up lambda analyses/{id}
-resource aws_api_gateway_integration analyses-id {
+resource "aws_api_gateway_integration" "analyses-id" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses-id.id
   http_method             = aws_api_gateway_method.analyses-id.http_method
@@ -359,7 +359,7 @@ resource aws_api_gateway_integration analyses-id {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  analyses-id {
+resource "aws_api_gateway_integration_response" "analyses-id" {
   rest_api_id = aws_api_gateway_method.analyses-id.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id.resource_id
   http_method = aws_api_gateway_method.analyses-id.http_method
@@ -372,7 +372,7 @@ resource aws_api_gateway_integration_response  analyses-id {
   depends_on = [aws_api_gateway_integration.analyses-id]
 }
 
-resource aws_api_gateway_integration analyses-id_post {
+resource "aws_api_gateway_integration" "analyses-id_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses-id.id
   http_method             = aws_api_gateway_method.analyses-id_post.http_method
@@ -381,7 +381,7 @@ resource aws_api_gateway_integration analyses-id_post {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  analyses-id_post {
+resource "aws_api_gateway_integration_response" "analyses-id_post" {
   rest_api_id = aws_api_gateway_method.analyses-id_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id_post.resource_id
   http_method = aws_api_gateway_method.analyses-id_post.http_method
@@ -395,7 +395,7 @@ resource aws_api_gateway_integration_response  analyses-id_post {
 }
 
 # wire up lambda analyses/{id}/g_variants
-resource aws_api_gateway_integration analyses-id-g_variants {
+resource "aws_api_gateway_integration" "analyses-id-g_variants" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses-id-g_variants.id
   http_method             = aws_api_gateway_method.analyses-id-g_variants.http_method
@@ -404,7 +404,7 @@ resource aws_api_gateway_integration analyses-id-g_variants {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  analyses-id-g_variants {
+resource "aws_api_gateway_integration_response" "analyses-id-g_variants" {
   rest_api_id = aws_api_gateway_method.analyses-id-g_variants.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id-g_variants.resource_id
   http_method = aws_api_gateway_method.analyses-id-g_variants.http_method
@@ -417,7 +417,7 @@ resource aws_api_gateway_integration_response  analyses-id-g_variants {
   depends_on = [aws_api_gateway_integration.analyses-id-g_variants]
 }
 
-resource aws_api_gateway_integration analyses-id-g_variants_post {
+resource "aws_api_gateway_integration" "analyses-id-g_variants_post" {
   rest_api_id             = aws_api_gateway_rest_api.BeaconApi.id
   resource_id             = aws_api_gateway_resource.analyses-id-g_variants.id
   http_method             = aws_api_gateway_method.analyses-id-g_variants_post.http_method
@@ -426,7 +426,7 @@ resource aws_api_gateway_integration analyses-id-g_variants_post {
   uri                     = module.lambda-getAnalyses.lambda_function_invoke_arn
 }
 
-resource aws_api_gateway_integration_response  analyses-id-g_variants_post {
+resource "aws_api_gateway_integration_response" "analyses-id-g_variants_post" {
   rest_api_id = aws_api_gateway_method.analyses-id-g_variants_post.rest_api_id
   resource_id = aws_api_gateway_method.analyses-id-g_variants_post.resource_id
   http_method = aws_api_gateway_method.analyses-id-g_variants_post.http_method
@@ -440,34 +440,34 @@ resource aws_api_gateway_integration_response  analyses-id-g_variants_post {
 }
 
 # permit lambda invokation
-resource aws_lambda_permission APIanalyses {
-  statement_id = "AllowAPIanalysesInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIanalyses" {
+  statement_id  = "AllowAPIanalysesInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getAnalyses.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}"
 }
 
-resource aws_lambda_permission APIanalysesFilteringTerms {
-  statement_id = "AllowAPIanalysesFilteringTermsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIanalysesFilteringTerms" {
+  statement_id  = "AllowAPIanalysesFilteringTermsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getAnalyses.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}/${aws_api_gateway_resource.analyses-filtering_terms.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}/${aws_api_gateway_resource.analyses-filtering_terms.path_part}"
 }
 
-resource aws_lambda_permission APIanalysesId {
-  statement_id = "AllowAPIanalysesIdInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIanalysesId" {
+  statement_id  = "AllowAPIanalysesIdInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getAnalyses.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}/*"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}/*"
 }
 
-resource aws_lambda_permission APIanalysesIdg_variants {
-  statement_id = "AllowAPIanalysesIdg_variantsInvoke"
-  action = "lambda:InvokeFunction"
+resource "aws_lambda_permission" "APIanalysesIdg_variants" {
+  statement_id  = "AllowAPIanalysesIdg_variantsInvoke"
+  action        = "lambda:InvokeFunction"
   function_name = module.lambda-getAnalyses.lambda_function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}/*/${aws_api_gateway_resource.analyses-id-g_variants.path_part}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.BeaconApi.execution_arn}/*/*/${aws_api_gateway_resource.analyses.path_part}/*/${aws_api_gateway_resource.analyses-id-g_variants.path_part}"
 }
