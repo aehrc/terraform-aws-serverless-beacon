@@ -1,6 +1,8 @@
 # Serverless Beacon
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+![assets/logo-black.png](assets/logo-black.png)
+
 ## Why serverless?
 Serverless means the service does not require any servers to be provisioned. The
 idea is to minimise running costs, as well as support arbitrary scalablility. It
@@ -21,7 +23,7 @@ cd terraform-aws-serverless-beacon
 
 ### Option 1: Setting up the development environment
 
-Skip to next section if you're only interested in deployment or using a different architecture compared to AWS lambda environment.
+Skip to next section if you're only interested in deployment or using a different architecture compared to AWS lambda environment. The following setup must be performed on a latest Amazon Linux instance to match the lambda runtimes. If this is not a viable option, please resort to using Docker.
 
 Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
 
@@ -42,11 +44,11 @@ make
 sudo make install
 ```
 
-Make sure you have a terraform version newer than `Terraform v1.1.6` if you're not using the docker image. Run the following command to get the terraform binary.
+Make sure you have a terraform version newer than `Terraform v1.3.7` if you're not using the docker image. Run the following command to get the terraform binary.
 
 ```bash
-wget https://releases.hashicorp.com/terraform/1.2.8/terraform_1.2.8_linux_386.zip
-sudo unzip terraform_1.2.8_linux_386.zip -d /usr/bin/
+wget https://releases.hashicorp.com/terraform/1.2.8/terraform_1.3.7_linux_386.zip
+sudo unzip terraform_1.3.7_linux_386.zip -d /usr/bin/
 ```
 
 ### Option 2: Using the docker image
@@ -98,12 +100,6 @@ terraform apply
 Your beacon deployment could be a part of a larger program with a front-end and other services. In that case, on the parent folder that the repo folder resides, create a `main.tf` file.
 ```bash
 # main.tf
-
-provider "aws" {
-    # aws region
-    region = "REGION"
-}
-
 module "serverless-beacon" {
     # repo folder
     source = "./terraform-aws-serverless-beacon"
@@ -119,8 +115,8 @@ module "serverless-beacon" {
     # aws region
     region = "REGION"
 }
-
 ``` 
+Please refer to [./examples](./examples) to find a minimal and a complete setup.
 ## Development
 
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands. Once the decision to use the library is finalised update the `init.sh` script to automate the process.
@@ -149,7 +145,7 @@ cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
 
 * Collaborative development
 
-Please make a copy of `backend.tf.template` with suited parameters and rename as `backend.tf`. Refer to documentation for more information [https://www.terraform.io/language/settings/backends/configuration](https://www.terraform.io/language/settings/backends/configuration).
+Please make a copy of `backend.tf.template` with suited parameters and rename as `backend.tf`. Refer to documentation for more information [https://www.terraform.io/language/settings/backends/configuration](https://www.terraform.io/language/settings/backends/configuration). If this is not done, make sure the terraform lock and state files are stored securely to avoid infrastructure-vs-code inconsistencies. Please refer to [./examples/full](./examples/full) to find a an example backend.
 
 ## API
 

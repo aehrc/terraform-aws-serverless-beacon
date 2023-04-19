@@ -143,7 +143,7 @@ variable "beacon-org-address" {
 variable "beacon-org-welcome-url" {
   type        = string
   description = "Value for beacon organisation welcome url"
-  default     = "https://beacon.csiro.au"
+  default     = "https://bioinformatics.csiro.au/"
 }
 
 variable "beacon-org-contact-url" {
@@ -155,7 +155,7 @@ variable "beacon-org-contact-url" {
 variable "beacon-org-logo-url" {
   type        = string
   description = "Value for beacon organisation logo url"
-  default     = "https://bioinformatics.csiro.au/covid-19-sbeacon/"
+  default     = "https://raw.githubusercontent.com/aehrc/terraform-aws-serverless-beacon/master/assets/logo-tile.png"
 }
 
 # Beacon service variables
