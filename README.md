@@ -27,15 +27,42 @@ Skip to next section if you're only interested in deployment or using a differen
 
 Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
 
-```bash
-# install development essentials
-sudo yum install -y gcc10 gcc10-c++ git openssl-devel libcurl-devel wget bzip2-devel lzma-sdk xz-devel
-sudo rm /usr/bin/gcc /usr/bin/g++ /usr/bin/c++
-sudo ln -s /usr/bin/gcc10-gcc /usr/bin/gcc
-sudo ln -s /usr/bin/gcc10-g++ /usr/bin/g++
-pip install --upgrade pip
+Required dependencies
+* `GCC` and `G++` version `10.3.1 20210422` or later
+* `CMake 3.20.3` or later
+* Compressionlibraries `xz`, `bzip2` and `zlib`
+* Exact python version - `Python3.9`
 
+Install system-wide dependencies
+
+```bash
+# Install development essentials
+sudo yum update
+sudo yum upgrade
+sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel 
+```
+
+Install `Python 3.9` to a virtual environment
+```bash
+# Download and install python
+cd ~
+wget https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tgz
+
+tar xzf Python-3.9.16.tgz
+cd Python-3.9.16 
+sudo make altinstall
+
+cd ~
+python3.9 -m venv py39
+
+# activate py39 environment
+source ~/py39/bin/activate 
+```
+
+Install CMake
+```bash
 # Install CMake
+cd ~
 wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz
 tar -xvzf cmake-3.20.3.tar.gz
 cd cmake-3.20.3
@@ -44,10 +71,12 @@ make
 sudo make install
 ```
 
-Make sure you have a terraform version newer than `Terraform v1.3.7` if you're not using the docker image. Run the following command to get the terraform binary.
+Make sure you have the terraform version `Terraform v1.3.7` or newer if you're not using the docker image. Run the following command to get the terraform binary.
 
 ```bash
-wget https://releases.hashicorp.com/terraform/1.2.8/terraform_1.3.7_linux_386.zip
+# only for linux - fine other OS version here https://releases.hashicorp.com/terraform/1.3.7/
+cd ~
+wget https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_386.zip
 sudo unzip terraform_1.3.7_linux_386.zip -d /usr/bin/
 ```
 
