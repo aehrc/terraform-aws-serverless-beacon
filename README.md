@@ -14,7 +14,7 @@ The service intends to support beacon v2 according to the
 
 ## Installation
 
-You can use either local development or a docker environment for development and deployment. First download the reqpository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
+You can use either local development or a docker environment for development and deployment. First download the repository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
 
 ```bash
 git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
@@ -40,14 +40,19 @@ Install system-wide dependencies
 # Install development essentials
 sudo yum update
 sudo yum upgrade
-sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel 
+sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel autoconf intltool 
 ```
 
 Install JAVA and MAVEN
 ```bash
+sudo yum install -y java-11-amazon-corretto-devel
 wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz -O /tmp/apache-maven-3.5.4-bin.tar.gz
-tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
-sudo amazon-linux-extras install -y java-openjdk11
+sudo tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
+rm /tmp/apache-maven-3.5.4-bin.tar.gz
+
+# Run the following commands (or add them to .bashrc and run source ~/.bashrc)
+export M2_HOME=/opt/apache-maven-3.5.4
+export PATH=${M2_HOME}/bin:${PATH}
 ```
 
 Install `Python 3.9` to a virtual environment
@@ -58,6 +63,7 @@ wget https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tgz
 
 tar xzf Python-3.9.16.tgz
 cd Python-3.9.16 
+./configure --enable-optimizations
 sudo make altinstall
 
 cd ~
@@ -82,7 +88,7 @@ sudo make install
 Make sure you have the terraform version `Terraform v1.3.7` or newer if you're not using the docker image. Run the following command to get the terraform binary.
 
 ```bash
-# only for linux - fine other OS version here https://releases.hashicorp.com/terraform/1.3.7/
+# only for linux - find other OS version here https://releases.hashicorp.com/terraform/1.3.7/
 cd ~
 wget https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_386.zip
 sudo unzip terraform_1.3.7_linux_386.zip -d /usr/bin/
