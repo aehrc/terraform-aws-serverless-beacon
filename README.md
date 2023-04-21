@@ -40,7 +40,7 @@ Install system-wide dependencies
 # Install development essentials
 sudo yum update
 sudo yum upgrade
-sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel
+sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel autoconf intltool 
 ```
 
 Install JAVA and MAVEN
