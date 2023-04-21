@@ -14,7 +14,7 @@ The service intends to support beacon v2 according to the
 
 ## Installation
 
-You can use either local development or a docker environment for development and deployment. First download the reqpository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
+You can use either local development or a docker environment for development and deployment. First download the repository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
 
 ```bash
 git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
@@ -39,7 +39,7 @@ Install system-wide dependencies
 # Install development essentials
 sudo yum update
 sudo yum upgrade
-sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel 
+sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel
 ```
 
 Install `Python 3.9` to a virtual environment
@@ -50,6 +50,7 @@ wget https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tgz
 
 tar xzf Python-3.9.16.tgz
 cd Python-3.9.16 
+./configure --enable-optimizations
 sudo make altinstall
 
 cd ~
