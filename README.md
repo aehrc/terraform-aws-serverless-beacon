@@ -107,7 +107,7 @@ docker build -t csiro/sbeacon ./docker
 This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
 
 ```bash
-docker run --rm -it -v `pwd`:`pwd` -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:latest /bin/bash
+docker run --rm -it -v `pwd`:`pwd` -v /tmp:/tmp  -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:latest /bin/bash
 ```
 
 ## Deployment
