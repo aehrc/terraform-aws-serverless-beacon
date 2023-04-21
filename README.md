@@ -83,7 +83,7 @@ sudo make install
 Make sure you have the terraform version `Terraform v1.3.7` or newer if you're not using the docker image. Run the following command to get the terraform binary.
 
 ```bash
-# only for linux - fine other OS version here https://releases.hashicorp.com/terraform/1.3.7/
+# only for linux - find other OS version here https://releases.hashicorp.com/terraform/1.3.7/
 cd ~
 wget https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_386.zip
 sudo unzip terraform_1.3.7_linux_386.zip -d /usr/bin/
