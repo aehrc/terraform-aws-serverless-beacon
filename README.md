@@ -46,7 +46,7 @@ sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-
 Install JAVA and MAVEN
 ```bash
 wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz -O /tmp/apache-maven-3.5.4-bin.tar.gz
-tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
+sudo tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
 sudo amazon-linux-extras install -y java-openjdk11
 ```
 
