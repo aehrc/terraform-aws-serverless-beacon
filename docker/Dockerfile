@@ -12,6 +12,7 @@ RUN cd Python-3.9.6 && ./configure --enable-optimizations && make install
 RUN rm /var/lang/bin/python /var/lang/bin/pip
 RUN ln /usr/local/bin/python3.9 /var/lang/bin/python
 RUN ln /usr/local/bin/pip3.9 /var/lang/bin/pip
+RUN pip install --upgrade pip
 
 RUN wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz && \
     tar -xvzf cmake-3.20.3.tar.gz && \

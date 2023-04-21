@@ -54,12 +54,10 @@ int main()
         config.region = Aws::Environment::GetEnv("AWS_REGION");
         config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
 
-        auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
-
-        auto handlerFunction = [&credentialsProvider, &config](aws::lambda_runtime::invocation_request const& req) {
+        auto handlerFunction = [&config](aws::lambda_runtime::invocation_request const& req) {
             std::cout << "Event Received: " << req.payload << std::endl;
-            Aws::S3::S3Client s3Client(credentialsProvider, config);
-            Aws::DynamoDB::DynamoDBClient dynamodbClient(credentialsProvider, config);
+            Aws::S3::S3Client s3Client(config);
+            Aws::DynamoDB::DynamoDBClient dynamodbClient(config);
             return lambdaHandler(req, s3Client, dynamodbClient);
             std::cout.flush();
         };

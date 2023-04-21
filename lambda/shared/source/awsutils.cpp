@@ -26,8 +26,7 @@ Aws::S3::S3Client awsutils::getNewClient(Aws::String region) {
     config.caFile = "/etc/pki/tls/certs/ca-bundle.crt";
     config.connectTimeoutMs = 3000; // Default is 1000ms
 
-    auto credentialsProvider = Aws::MakeShared<Aws::Auth::EnvironmentAWSCredentialsProvider>(TAG);
-    Aws::S3::S3Client client(credentialsProvider, config);
+    Aws::S3::S3Client client(config);
 
     return client;
 }

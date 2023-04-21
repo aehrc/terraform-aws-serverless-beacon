@@ -6,6 +6,7 @@ project(function LANGUAGES CXX)
 
 find_package(aws-lambda-runtime)
 find_package(AWSSDK COMPONENTS dynamodb s3 sns)
+find_package(ZLIB)
 
 file(GLOB MyCSources *.cpp)
 add_executable(${PROJECT_NAME} ${MyCSources})
@@ -17,6 +18,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Gzip
     AWS::aws-lambda-runtime
     ${AWSSDK_LINK_LIBRARIES}
+    z
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE
