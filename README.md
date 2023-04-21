@@ -14,7 +14,7 @@ The service intends to support beacon v2 according to the
 
 ## Installation
 
-You can use either local development or a docker environment for development and deployment. First download the reqpository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
+You can use either local development or a docker environment for development and deployment. First download the repository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
 
 ```bash
 git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
