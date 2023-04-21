@@ -45,9 +45,14 @@ sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-
 
 Install JAVA and MAVEN
 ```bash
+sudo yum install -y java-11-amazon-corretto-devel
 wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz -O /tmp/apache-maven-3.5.4-bin.tar.gz
 sudo tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
-sudo amazon-linux-extras install -y java-openjdk11
+rm /tmp/apache-maven-3.5.4-bin.tar.gz
+
+# Run the following commands (or add them to .bashrc and run source ~/.bashrc)
+export M2_HOME=/opt/apache-maven-3.5.4
+export PATH=${M2_HOME}/bin:${PATH}
 ```
 
 Install `Python 3.9` to a virtual environment
