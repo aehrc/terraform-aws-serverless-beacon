@@ -21,7 +21,7 @@ git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
 cd terraform-aws-serverless-beacon
 ```
 
-### Option 1: Setting up the development environment
+### Option 1: Setting up the development environment on Amazon Linux
 
 Skip to next section if you're only interested in deployment or using a different architecture compared to AWS lambda environment. The following setup must be performed on a latest Amazon Linux instance to match the lambda runtimes. If this is not a viable option, please resort to using Docker.
 
@@ -32,6 +32,7 @@ Required dependencies
 * `CMake 3.20.3` or later
 * Compressionlibraries `xz`, `bzip2` and `zlib`
 * Exact python version - `Python3.9`
+* OpenJDK version `11.0.18` and Apache Maven `3.5.4`
 
 Install system-wide dependencies
 
@@ -40,6 +41,13 @@ Install system-wide dependencies
 sudo yum update
 sudo yum upgrade
 sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel
+```
+
+Install JAVA and MAVEN
+```bash
+wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz -O /tmp/apache-maven-3.5.4-bin.tar.gz
+tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
+sudo amazon-linux-extras install -y java-openjdk11
 ```
 
 Install `Python 3.9` to a virtual environment
