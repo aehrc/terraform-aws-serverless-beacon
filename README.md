@@ -23,6 +23,8 @@ cd terraform-aws-serverless-beacon
 
 ### Option 1: Setting up the development environment on Amazon Linux
 
+Note: the following instructions are strictly for `Amazon Linux 2023 AMI 2023.0.20230419.0 x86_64 HVM kernel-6.1` AMI with name `al2023-ami-2023.0.20230419.0-kernel-6.1-x86_64`.
+
 Skip to next section if you're only interested in deployment or using a different architecture compared to AWS lambda environment. The following setup must be performed on a latest Amazon Linux instance to match the lambda runtimes. If this is not a viable option, please resort to using Docker.
 
 Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
@@ -105,7 +107,7 @@ docker build -t csiro/sbeacon ./docker
 This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
 
 ```bash
-docker run --rm -it -v `pwd`:`pwd` -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:latest /bin/bash
+docker run --rm -it -v `pwd`:`pwd` -v /tmp:/tmp  -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:latest /bin/bash
 ```
 
 ## Deployment
@@ -114,12 +116,6 @@ Once you have configured the development environment or the docker container, in
 
 ```bash
 $ ./init.sh -march=haswell -O3
-```
-
-You'll also need to do this if lambda functions start to display "Error: Runtime exited with error: signal: illegal instruction (core dumped)". In this case it's likely AWS Lambda has moved onto a different architecture from haswell (Family 6, Model 63). You can use cat /proc/cpuinfo in a lambda environment to find the new CPU family and model numbers, or just change -march=haswell to -msse4.2 or -mpopcnt for less optimisation.
-
-```bash
-$ ./init.sh -msse4.2 -O3
 ```
 
 Now set the AWS access keys and token as needed. Since docker uses the same user permissions this may not be needed if you're using an authorised EC2 instance.
@@ -214,3 +210,17 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * All the available endpoints can be retrieved using the deployment url's `/map`. 
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
+
+
+## Troubleshooting
+
+### Illegal instruction (core dumped)
+You'll also need to do this if lambda functions start to display "Error: Runtime exited with error: signal: illegal instruction (core dumped)". In this case it's likely AWS Lambda has moved onto a different architecture from haswell (Family 6, Model 63). You can use cat /proc/cpuinfo in a lambda environment to find the new CPU family and model numbers, or just change -march=haswell to -msse4.2 or -mpopcnt for less optimisation.
+
+```bash
+$ ./init.sh -msse4.2 -O3
+```
+
+### Provider produced inconsistent final plan
+
+If `terraform apply --auto-approve` complaints about a provider error. Please retry. If the issue persists, please raise an issue with the complete terraform log.

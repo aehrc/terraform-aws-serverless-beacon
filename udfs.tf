@@ -15,7 +15,7 @@ resource "null_resource" "udf_compile" {
   }
 
   provisioner "local-exec" {
-    command = "cd ${path.module}/lambda/udfs && mvn clean install -Dpublishing=true -DskipTests"
+    command = "cd ${path.module}/lambda/udfs && mvn clean install -Dpublishing=true -DskipTests -s ../../mvn-settings.xml"
   }
 }
 
