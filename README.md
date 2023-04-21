@@ -39,7 +39,7 @@ Install system-wide dependencies
 # Install development essentials
 sudo yum update
 sudo yum upgrade
-sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel 
+sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel
 ```
 
 Install `Python 3.9` to a virtual environment
@@ -50,6 +50,7 @@ wget https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tgz
 
 tar xzf Python-3.9.16.tgz
 cd Python-3.9.16 
+./configure --enable-optimizations
 sudo make altinstall
 
 cd ~
