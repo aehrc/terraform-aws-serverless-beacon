@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import json
 import base64
 
@@ -168,46 +168,42 @@ def route(request: RequestParams, variant_id):
             )
 
     queries = []
+    
+    dataset_samples_sorted = OrderedDict(sorted(dataset_samples.items()))
     iterated_biosamples = 0
     chosen_biosamples = 0
+    total_biosamples = sum([len(sample_names) for sample_names in dataset_samples_sorted.values()])
 
     for dataset_id, sample_names in dataset_samples.items():
-        if (len(sample_names)) > 0:
-            if request.query.requested_granularity == "count":
-                # query = get_count_query(dataset_id, sample_names)
-                # queries.append(query)
-                # TODO optimise for duplicate individuals
-                iterated_biosamples += len(sample_names)
-            elif request.query.requested_granularity == Granularity.RECORD:
-                # TODO optimise for duplicate individuals
-                chosen_samples = []
+        if len(sample_names) > 0 and request.query.requested_granularity == Granularity.RECORD:
+            # TODO optimise for duplicate individuals
+            chosen_samples = []
 
-                for sample_name in sample_names:
-                    iterated_biosamples += 1
-                    if (
-                        iterated_biosamples > request.query.pagination.skip
-                        and chosen_biosamples < request.query.pagination.limit
-                    ):
-                        chosen_samples.append(sample_name)
-                        chosen_biosamples += 1
+            for sample_name in sample_names:
+                iterated_biosamples += 1
+                if (
+                    iterated_biosamples > request.query.pagination.skip
+                    and chosen_biosamples < request.query.pagination.limit
+                ):
+                    chosen_samples.append(sample_name)
+                    chosen_biosamples += 1
 
-                    if chosen_biosamples == request.query.pagination.limit:
-                        break
-                if len(chosen_samples) > 0:
-                    query = get_record_query(dataset_id, chosen_samples)
-                    queries.append(query)
+                if chosen_biosamples == request.query.pagination.limit:
+                    break
+            if len(chosen_samples) > 0:
+                query = get_record_query(dataset_id, chosen_samples)
+                queries.append(query)
 
-    if request.query.requested_granularity == "boolean":
+    if request.query.requested_granularity == Granularity.BOOLEAN:
         response = build_beacon_boolean_response(
             {}, 1 if exists else 0, request, {}, DefaultSchemas.BIOSAMPLES
         )
         print("Returning Response: {}".format(json.dumps(response)))
         return bundle_response(200, response)
 
-    if request.query.requested_granularity == "count":
-        count = iterated_biosamples
+    if request.query.requested_granularity == Granularity.COUNT:
         response = build_beacon_count_response(
-            {}, count, request, {}, DefaultSchemas.BIOSAMPLES
+            {}, total_biosamples, request, {}, DefaultSchemas.BIOSAMPLES
         )
         print("Returning Response: {}".format(json.dumps(response)))
         return bundle_response(200, response)
@@ -217,7 +213,7 @@ def route(request: RequestParams, variant_id):
         biosamples = Biosample.get_by_query(query) if len(queries) > 0 else []
         response = build_beacon_resultset_response(
             jsons.dump(biosamples, strip_privates=True),
-            len(biosamples),
+            total_biosamples,
             request,
             {},
             DefaultSchemas.BIOSAMPLES,

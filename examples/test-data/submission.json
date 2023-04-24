@@ -1,0 +1,1069 @@
+{
+    "datasetId": "UNQ_1",
+    "dataset": {
+        "id": "UNQ_1",
+        "createDateTime": "2021-03-21T02:37:00-08:00",
+        "dataUseConditions": {
+            "duoDataUse": [
+                {
+                    "id": "DUO:0000042",
+                    "label": "general research use",
+                    "version": "17-07-2016"
+                }
+            ]
+        },
+        "description": "Simulation set 1.",
+        "externalUrl": "http://example.org/wiki/Main_Page",
+        "info": {},
+        "name": "Dataset with fake data",
+        "updateDateTime": "2022-08-05T17:21:00+01:00",
+        "version": "v1.1"
+    },
+    "assemblyId": "GRCH38",
+    "cohortId": "UNQ_1",
+    "cohort": {
+        "id": "UNQ_1",
+        "cohortDataTypes": [
+            {
+                "id": "OMIABIS:0000060",
+                "label": "survey data"
+            },
+            {
+                "id": "OBI:0000070",
+                "label": "genotyping assay"
+            }
+        ],
+        "cohortDesign": {
+            "id": "orcid:0000-0003-3463-0775"
+        },
+        "cohortSize": -1,
+        "cohortType": "beacon-defined",
+        "name": "CGG group"
+    },
+    "vcfLocations": [
+        "s3://<bucket>/<prefix>/chr1.vcf.gz"
+    ],
+    "individuals": [
+        {
+            "id": "UNQ_1-1",
+            "ethnicity": {
+                "id": "SNOMED:52075006",
+                "label": "Congolese"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223688001",
+                "label": "United States of America"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C79426"
+                    }
+                },
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64264"
+                    }
+                }
+            ],
+            "karyotypicSex": "XXY",
+            "sex": {
+                "id": "SNOMED:407378000",
+                "label": "Surgically transgendered transsexual, male-to-female"
+            }
+        },
+        {
+            "id": "UNQ_1-2",
+            "diseases": [
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:734099007",
+                        "label": "Neuroblastoma of central nervous system"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:135811000119107",
+                        "label": "Lewy body dementia with behavioral disturbance (disorder)"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:23853001",
+                        "label": "Disorder of the central nervous system"
+                    }
+                }
+            ],
+            "ethnicity": {
+                "id": "SNOMED:12556008",
+                "label": "Tamils"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223688001",
+                "label": "United States of America"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C79426"
+                    }
+                },
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64264"
+                    }
+                }
+            ],
+            "karyotypicSex": "XXYY",
+            "sex": {
+                "id": "SNOMED:407378000",
+                "label": "Surgically transgendered transsexual, male-to-female"
+            }
+        },
+        {
+            "id": "UNQ_1-3",
+            "diseases": [
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:26929004",
+                        "label": "Alzheimer's disease"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:23853001",
+                        "label": "Disorder of the central nervous system"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:359642000",
+                        "label": "Diabetes mellitus type 2 in nonobese (disorder)"
+                    }
+                }
+            ],
+            "ethnicity": {
+                "id": "SNOMED:113170005",
+                "label": "Aymara"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223688001",
+                "label": "United States of America"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C79426"
+                    }
+                },
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64263"
+                    }
+                }
+            ],
+            "karyotypicSex": "XXX",
+            "sex": {
+                "id": "SNOMED:407374003",
+                "label": "Transsexual"
+            }
+        },
+        {
+            "id": "UNQ_1-4",
+            "ethnicity": {
+                "id": "SNOMED:10432001",
+                "label": "Onge"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223600005",
+                "label": "India"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C79426"
+                    }
+                },
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64264"
+                    }
+                }
+            ],
+            "karyotypicSex": "XYY",
+            "sex": {
+                "id": "SNOMED:407377005",
+                "label": "Female-to-male transsexual"
+            }
+        },
+        {
+            "id": "UNQ_1-5",
+            "diseases": [
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:254955001",
+                        "label": "Pituitary carcinoma"
+                    }
+                }
+            ],
+            "ethnicity": {
+                "id": "SNOMED:12556008",
+                "label": "Tamils"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223498002",
+                "label": "Africa"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64263"
+                    }
+                },
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64264"
+                    }
+                }
+            ],
+            "karyotypicSex": "XXXX",
+            "sex": {
+                "id": "SNOMED:407374003",
+                "label": "Transsexual"
+            }
+        },
+        {
+            "id": "UNQ_1-6",
+            "diseases": [
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:56265001",
+                        "label": "Heart disease (disorder)"
+                    }
+                }
+            ],
+            "ethnicity": {
+                "id": "SNOMED:17789004",
+                "label": "Papuans"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223713009",
+                "label": "Argentina"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C93025"
+                    }
+                }
+            ],
+            "karyotypicSex": "XX",
+            "sex": {
+                "id": "SNOMED:248152002",
+                "label": "Female"
+            }
+        },
+        {
+            "id": "UNQ_1-7",
+            "ethnicity": {
+                "id": "SNOMED:77502007",
+                "label": "Atacamenos"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223498002",
+                "label": "Africa"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C79426"
+                    }
+                }
+            ],
+            "karyotypicSex": "XXXY",
+            "sex": {
+                "id": "SNOMED:407377005",
+                "label": "Female-to-male transsexual"
+            }
+        },
+        {
+            "id": "UNQ_1-8",
+            "diseases": [
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:359642000",
+                        "label": "Diabetes mellitus type 2 in nonobese (disorder)"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:312991009",
+                        "label": "Senile dementia of the Lewy body type (disorder)"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:81531005",
+                        "label": "Diabetes mellitus type 2 in obese (disorder)"
+                    }
+                }
+            ],
+            "ethnicity": {
+                "id": "SNOMED:89026003",
+                "label": "Alacaluf"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223498002",
+                "label": "Africa"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64263"
+                    }
+                }
+            ],
+            "karyotypicSex": "XX",
+            "sex": {
+                "id": "SNOMED:407378000",
+                "label": "Surgically transgendered transsexual, male-to-female"
+            }
+        },
+        {
+            "id": "UNQ_1-9",
+            "diseases": [
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:26929004",
+                        "label": "Alzheimer's disease"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:81531005",
+                        "label": "Diabetes mellitus type 2 in obese (disorder)"
+                    }
+                },
+                {
+                    "diseaseCode": {
+                        "id": "SNOMED:135811000119107",
+                        "label": "Lewy body dementia with behavioral disturbance (disorder)"
+                    }
+                }
+            ],
+            "ethnicity": {
+                "id": "SNOMED:10292001",
+                "label": "Guamians"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223498002",
+                "label": "Africa"
+            },
+            "karyotypicSex": "XXXX",
+            "sex": {
+                "id": "SNOMED:407377005",
+                "label": "Female-to-male transsexual"
+            }
+        },
+        {
+            "id": "UNQ_1-10",
+            "ethnicity": {
+                "id": "SNOMED:76460008",
+                "label": "Yanomama"
+            },
+            "geographicOrigin": {
+                "id": "SNOMED:223688001",
+                "label": "United States of America"
+            },
+            "interventionsOrProcedures": [
+                {
+                    "procedureCode": {
+                        "id": "NCIT:C64264"
+                    }
+                }
+            ],
+            "karyotypicSex": "XXXY",
+            "sex": {
+                "id": "SNOMED:248153007",
+                "label": "Male"
+            }
+        }
+    ],
+    "biosamples": [
+        {
+            "id": "UNQ_1-1",
+            "individualId": "UNQ_1-1",
+            "biosampleStatus": {
+                "id": "SNOMED:365641003",
+                "label": "Minor blood groups - finding"
+            },
+            "collectionDate": "2019-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:719046005",
+                "label": "12q14 microdeletion syndrome"
+            },
+            "obtentionProcedure": {
+                "procedureCode": {
+                    "id": "NCIT:C157179",
+                    "label": "FGFR1 Mutation Analysis"
+                }
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48725",
+                    "label": "T2a Stage Finding"
+                }
+            ],
+            "sampleOriginDetail": {
+                "id": "SNOMED:258497007",
+                "label": "Abscess swab"
+            },
+            "sampleOriginType": {
+                "id": "SNOMED:31675002",
+                "label": "Capillary blood"
+            },
+            "tumorProgression": {
+                "id": "NCIT:C84509",
+                "label": "Primary Malignant Neoplasm"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-2",
+            "individualId": "UNQ_1-2",
+            "biosampleStatus": {
+                "id": "SNOMED:702782002",
+                "label": "Mitochondrial 1555 A to G mutation positive"
+            },
+            "collectionDate": "2022-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:771439009",
+                "label": "14q22q23 microdeletion syndrome"
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48699",
+                    "label": "M0 Stage Finding"
+                }
+            ],
+            "sampleOriginDetail": {
+                "id": "SNOMED:734336008",
+                "label": "Specimen from aorta"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:18809007",
+                "label": "Meckel's ganglionectomy"
+            },
+            "tumorGrade": {
+                "id": "NCIT:C28080",
+                "label": "Grade 3a"
+            },
+            "info": {},
+            "notes": "",
+            "sampleOriginType": {
+                "id": "SNOMED:31675002",
+                "label": "Capillary blood"
+            }
+        },
+        {
+            "id": "UNQ_1-3",
+            "individualId": "UNQ_1-3",
+            "biosampleStatus": {
+                "id": "SNOMED:702782002",
+                "label": "Mitochondrial 1555 A to G mutation positive"
+            },
+            "collectionDate": "2021-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:771439009",
+                "label": "14q22q23 microdeletion syndrome"
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48725",
+                    "label": "T2a Stage Finding"
+                }
+            ],
+            "sampleOriginType": {
+                "id": "SNOMED:702451000",
+                "label": "Cultured cells"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:18809007",
+                "label": "Meckel's ganglionectomy"
+            },
+            "tumorGrade": {
+                "id": "NCIT:C28080",
+                "label": "Grade 3a"
+            },
+            "tumorProgression": {
+                "id": "NCIT:C4813",
+                "label": "Recurrent Malignant Neoplasm"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-4",
+            "individualId": "UNQ_1-4",
+            "biosampleStatus": {
+                "id": "SNOMED:365641003",
+                "label": "Minor blood groups - finding"
+            },
+            "collectionDate": "2021-04-23",
+            "collectionMoment": "P7D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:771439009",
+                "label": "14q22q23 microdeletion syndrome"
+            },
+            "obtentionProcedure": {
+                "procedureCode": {
+                    "id": "NCIT:C157179",
+                    "label": "FGFR1 Mutation Analysis"
+                }
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48725",
+                    "label": "T2a Stage Finding"
+                }
+            ],
+            "sampleOriginDetail": {
+                "id": "SNOMED:258603007",
+                "label": "Respiratory specimen"
+            },
+            "sampleOriginType": {
+                "id": "SNOMED:782814004",
+                "label": "Cultured autograft of skin"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:18809007",
+                "label": "Meckel's ganglionectomy"
+            },
+            "tumorGrade": {
+                "id": "NCIT:C28080",
+                "label": "Grade 3a"
+            },
+            "tumorProgression": {
+                "id": "NCIT:C84509",
+                "label": "Primary Malignant Neoplasm"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-5",
+            "individualId": "UNQ_1-5",
+            "biosampleStatus": {
+                "id": "SNOMED:310294002",
+                "label": "Mitochondrial antibodies positive"
+            },
+            "collectionDate": "2022-04-23",
+            "collectionMoment": "P7D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:362965005",
+                "label": "Disorder of body system (disorder)"
+            },
+            "pathologicalStage": {
+                "id": "NCIT:C27977",
+                "label": "Stage IIIA"
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48725",
+                    "label": "T2a Stage Finding"
+                }
+            ],
+            "sampleOriginDetail": {
+                "id": "SNOMED:258500001",
+                "label": "Nasopharyngeal swab"
+            },
+            "sampleOriginType": {
+                "id": "SNOMED:782814004",
+                "label": "Cultured autograft of skin"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:72019009",
+                "label": "Mechanical vitrectomy by posterior approach"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-6",
+            "individualId": "UNQ_1-6",
+            "biosampleStatus": {
+                "id": "SNOMED:276447000",
+                "label": "Mite present"
+            },
+            "collectionDate": "2018-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:719046005",
+                "label": "12q14 microdeletion syndrome"
+            },
+            "obtentionProcedure": {
+                "procedureCode": {
+                    "id": "NCIT:C15189",
+                    "label": "biopsy"
+                }
+            },
+            "sampleOriginType": {
+                "id": "SNOMED:782814004",
+                "label": "Cultured autograft of skin"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:87021001",
+                "label": "Mechanical vitrectomy by pars plana approach"
+            },
+            "tumorGrade": {
+                "id": "NCIT:C28080",
+                "label": "Grade 3a"
+            },
+            "tumorProgression": {
+                "id": "NCIT:C84509",
+                "label": "Primary Malignant Neoplasm"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-7",
+            "individualId": "UNQ_1-7",
+            "biosampleStatus": {
+                "id": "SNOMED:310294002",
+                "label": "Mitochondrial antibodies positive"
+            },
+            "collectionDate": "2021-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:237592006",
+                "label": "Abnormality of bombesin secretion"
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48699",
+                    "label": "M0 Stage Finding"
+                }
+            ],
+            "sampleOriginDetail": {
+                "id": "SNOMED:734336008",
+                "label": "Specimen from aorta"
+            },
+            "sampleOriginType": {
+                "id": "SNOMED:31675002",
+                "label": "Capillary blood"
+            },
+            "tumorProgression": {
+                "id": "NCIT:C84509",
+                "label": "Primary Malignant Neoplasm"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-8",
+            "individualId": "UNQ_1-8",
+            "biosampleStatus": {
+                "id": "SNOMED:702782002",
+                "label": "Mitochondrial 1555 A to G mutation positive"
+            },
+            "collectionDate": "2015-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:237592006",
+                "label": "Abnormality of bombesin secretion"
+            },
+            "sampleOriginDetail": {
+                "id": "SNOMED:385338007",
+                "label": "Specimen from anus obtained by transanal disk excision"
+            },
+            "sampleOriginType": {
+                "id": "SNOMED:422236008",
+                "label": "Agar medium"
+            },
+            "tumorGrade": {
+                "id": "NCIT:C28080",
+                "label": "Grade 3a"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-9",
+            "individualId": "UNQ_1-9",
+            "biosampleStatus": {
+                "id": "SNOMED:310293008",
+                "label": "Mitochondrial antibodies negative"
+            },
+            "collectionDate": "2018-04-23",
+            "collectionMoment": "P32Y6M1D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:771439009",
+                "label": "14q22q23 microdeletion syndrome"
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48709",
+                    "label": "N1c Stage Finding"
+                }
+            ],
+            "sampleOriginType": {
+                "id": "SNOMED:31675002",
+                "label": "Capillary blood"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:87021001",
+                "label": "Mechanical vitrectomy by pars plana approach"
+            },
+            "info": {},
+            "notes": ""
+        },
+        {
+            "id": "UNQ_1-10",
+            "individualId": "UNQ_1-10",
+            "biosampleStatus": {
+                "id": "SNOMED:365641003",
+                "label": "Minor blood groups - finding"
+            },
+            "collectionDate": "2022-04-23",
+            "collectionMoment": "P7D",
+            "histologicalDiagnosis": {
+                "id": "SNOMED:719046005",
+                "label": "12q14 microdeletion syndrome"
+            },
+            "pathologicalTnmFinding": [
+                {
+                    "id": "NCIT:C48709",
+                    "label": "N1c Stage Finding"
+                }
+            ],
+            "sampleOriginType": {
+                "id": "SNOMED:422236008",
+                "label": "Agar medium"
+            },
+            "sampleProcessing": {
+                "id": "SNOMED:72019009",
+                "label": "Mechanical vitrectomy by posterior approach"
+            },
+            "tumorGrade": {
+                "id": "NCIT:C28080",
+                "label": "Grade 3a"
+            },
+            "tumorProgression": {
+                "id": "NCIT:C84509",
+                "label": "Primary Malignant Neoplasm"
+            },
+            "info": {},
+            "notes": ""
+        }
+    ],
+    "runs": [
+        {
+            "id": "UNQ_1-1",
+            "biosampleId": "UNQ_1-1",
+            "individualId": "UNQ_1-1",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001969",
+                "label": "other library source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "PacBio",
+            "platformModel": {
+                "id": "OBI:0002012",
+                "label": "PacBio RS II"
+            },
+            "runDate": "2021-10-18"
+        },
+        {
+            "id": "UNQ_1-2",
+            "biosampleId": "UNQ_1-2",
+            "individualId": "UNQ_1-2",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001966",
+                "label": "genomic source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "Illumina",
+            "platformModel": {
+                "id": "OBI:0002048",
+                "label": "Illumina HiSeq 3000"
+            },
+            "runDate": "2021-10-18"
+        },
+        {
+            "id": "UNQ_1-3",
+            "biosampleId": "UNQ_1-3",
+            "individualId": "UNQ_1-3",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001966",
+                "label": "genomic source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "NanoPore",
+            "platformModel": {
+                "id": "OBI:0002750",
+                "label": "Oxford Nanopore MinION"
+            },
+            "runDate": "2021-10-18"
+        },
+        {
+            "id": "UNQ_1-4",
+            "biosampleId": "UNQ_1-4",
+            "individualId": "UNQ_1-4",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001969",
+                "label": "other library source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "NanoPore",
+            "platformModel": {
+                "id": "OBI:0002750",
+                "label": "Oxford Nanopore MinION"
+            },
+            "runDate": "2021-10-18"
+        },
+        {
+            "id": "UNQ_1-5",
+            "biosampleId": "UNQ_1-5",
+            "individualId": "UNQ_1-5",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001969",
+                "label": "other library source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "PacBio",
+            "platformModel": {
+                "id": "OBI:0002012",
+                "label": "PacBio RS II"
+            },
+            "runDate": "2018-01-01"
+        },
+        {
+            "id": "UNQ_1-6",
+            "biosampleId": "UNQ_1-6",
+            "individualId": "UNQ_1-6",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001969",
+                "label": "other library source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "PacBio",
+            "platformModel": {
+                "id": "OBI:0002012",
+                "label": "PacBio RS II"
+            },
+            "runDate": "2018-01-01"
+        },
+        {
+            "id": "UNQ_1-7",
+            "biosampleId": "UNQ_1-7",
+            "individualId": "UNQ_1-7",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001969",
+                "label": "other library source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "Illumina",
+            "platformModel": {
+                "id": "OBI:0002048",
+                "label": "Illumina HiSeq 3000"
+            },
+            "runDate": "2021-10-18"
+        },
+        {
+            "id": "UNQ_1-8",
+            "biosampleId": "UNQ_1-8",
+            "individualId": "UNQ_1-8",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001966",
+                "label": "genomic source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "NanoPore",
+            "platformModel": {
+                "id": "OBI:0002750",
+                "label": "Oxford Nanopore MinION"
+            },
+            "runDate": "2021-10-18"
+        },
+        {
+            "id": "UNQ_1-9",
+            "biosampleId": "UNQ_1-9",
+            "individualId": "UNQ_1-9",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001966",
+                "label": "genomic source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "Illumina",
+            "platformModel": {
+                "id": "OBI:0002048",
+                "label": "Illumina HiSeq 3000"
+            },
+            "runDate": "2018-01-01"
+        },
+        {
+            "id": "UNQ_1-10",
+            "biosampleId": "UNQ_1-10",
+            "individualId": "UNQ_1-10",
+            "libraryLayout": "PAIRED",
+            "librarySelection": "RANDOM",
+            "librarySource": {
+                "id": "GENEPIO:0001969",
+                "label": "other library source"
+            },
+            "libraryStrategy": "WGS",
+            "platform": "Illumina",
+            "platformModel": {
+                "id": "OBI:0002048",
+                "label": "Illumina HiSeq 3000"
+            },
+            "runDate": "2022-08-08"
+        }
+    ],
+    "analyses": [
+        {
+            "id": "UNQ_1-1",
+            "individualId": "UNQ_1-1",
+            "biosampleId": "UNQ_1-1",
+            "runId": "UNQ_1-1",
+            "aligner": "bwa-0.7.8",
+            "analysisDate": "2020-2-15",
+            "pipelineName": "pipeline 5",
+            "pipelineRef": "Example",
+            "variantCaller": "SoapSNP",
+            "vcfSampleId": "HG00096"
+        },
+        {
+            "id": "UNQ_1-2",
+            "individualId": "UNQ_1-2",
+            "biosampleId": "UNQ_1-2",
+            "runId": "UNQ_1-2",
+            "aligner": "minimap2",
+            "analysisDate": "2019-3-17",
+            "pipelineName": "pipeline 1",
+            "pipelineRef": "Example",
+            "variantCaller": "GATK4.0",
+            "vcfSampleId": "HG00097"
+        },
+        {
+            "id": "UNQ_1-3",
+            "individualId": "UNQ_1-3",
+            "biosampleId": "UNQ_1-3",
+            "runId": "UNQ_1-3",
+            "aligner": "minimap2",
+            "analysisDate": "2018-10-2",
+            "pipelineName": "pipeline 5",
+            "pipelineRef": "Example",
+            "variantCaller": "GATK4.0",
+            "vcfSampleId": "HG00099"
+        },
+        {
+            "id": "UNQ_1-4",
+            "individualId": "UNQ_1-4",
+            "biosampleId": "UNQ_1-4",
+            "runId": "UNQ_1-4",
+            "aligner": "bwa-0.7.8",
+            "analysisDate": "2018-11-9",
+            "pipelineName": "pipeline 5",
+            "pipelineRef": "Example",
+            "variantCaller": "kmer2snp",
+            "vcfSampleId": "HG00100"
+        },
+        {
+            "id": "UNQ_1-5",
+            "individualId": "UNQ_1-5",
+            "biosampleId": "UNQ_1-5",
+            "runId": "UNQ_1-5",
+            "aligner": "bowtie",
+            "analysisDate": "2019-5-27",
+            "pipelineName": "pipeline 3",
+            "pipelineRef": "Example",
+            "variantCaller": "GATK4.0",
+            "vcfSampleId": "HG00101"
+        },
+        {
+            "id": "UNQ_1-6",
+            "individualId": "UNQ_1-6",
+            "biosampleId": "UNQ_1-6",
+            "runId": "UNQ_1-6",
+            "aligner": "bwa-0.7.8",
+            "analysisDate": "2021-11-22",
+            "pipelineName": "pipeline 1",
+            "pipelineRef": "Example",
+            "variantCaller": "SoapSNP",
+            "vcfSampleId": "HG00102"
+        },
+        {
+            "id": "UNQ_1-7",
+            "individualId": "UNQ_1-7",
+            "biosampleId": "UNQ_1-7",
+            "runId": "UNQ_1-7",
+            "aligner": "bowtie",
+            "analysisDate": "2018-1-8",
+            "pipelineName": "pipeline 1",
+            "pipelineRef": "Example",
+            "variantCaller": "SoapSNP",
+            "vcfSampleId": "HG00103"
+        },
+        {
+            "id": "UNQ_1-8",
+            "individualId": "UNQ_1-8",
+            "biosampleId": "UNQ_1-8",
+            "runId": "UNQ_1-8",
+            "aligner": "minimap2",
+            "analysisDate": "2022-3-6",
+            "pipelineName": "pipeline 1",
+            "pipelineRef": "Example",
+            "variantCaller": "GATK4.0",
+            "vcfSampleId": "HG00105"
+        },
+        {
+            "id": "UNQ_1-9",
+            "individualId": "UNQ_1-9",
+            "biosampleId": "UNQ_1-9",
+            "runId": "UNQ_1-9",
+            "aligner": "bowtie",
+            "analysisDate": "2021-2-17",
+            "pipelineName": "pipeline 2",
+            "pipelineRef": "Example",
+            "variantCaller": "SoapSNP",
+            "vcfSampleId": "HG00106"
+        },
+        {
+            "id": "UNQ_1-10",
+            "individualId": "UNQ_1-10",
+            "biosampleId": "UNQ_1-10",
+            "runId": "UNQ_1-10",
+            "aligner": "bwa-0.7.8",
+            "analysisDate": "2019-8-13",
+            "pipelineName": "pipeline 1",
+            "pipelineRef": "Example",
+            "variantCaller": "SoapSNP",
+            "vcfSampleId": "HG00107"
+        }
+    ],
+    "index": true
+}
