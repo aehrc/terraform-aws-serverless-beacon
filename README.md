@@ -155,7 +155,7 @@ module "serverless-beacon" {
     region = "REGION"
 }
 ``` 
-Please refer to [./examples](./examples) to find a minimal and a complete setup.
+Please refer to [./examples/minimum/](./examples/minimum/) or  [./examples/full](./examples/full) to find a minimal and a complete setup.
 ## Development
 
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands. Once the decision to use the library is finalised update the `init.sh` script to automate the process.
@@ -187,6 +187,10 @@ cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
 Please make a copy of `backend.tf.template` with suited parameters and rename as `backend.tf`. Refer to documentation for more information [https://www.terraform.io/language/settings/backends/configuration](https://www.terraform.io/language/settings/backends/configuration). If this is not done, make sure the terraform lock and state files are stored securely to avoid infrastructure-vs-code inconsistencies. Please refer to [./examples/full](./examples/full) to find a an example backend.
 
 ## API
+
+### Example data
+
+Please find the data in [./examples/test-data/](./examples/test-data/) and use the [./examples/test-data/GUIDE.md](./examples/test-data/GUIDE.md) to try the provided test data.
 
 ### Data ingestion API
 
@@ -224,3 +228,4 @@ $ ./init.sh -msse4.2 -O3
 ### Provider produced inconsistent final plan
 
 If `terraform apply --auto-approve` complaints about a provider error. Please retry. If the issue persists, please raise an issue with the complete terraform log.
+
