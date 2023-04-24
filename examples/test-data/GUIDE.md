@@ -13,6 +13,11 @@ Now edit the `submission.json` using the S3 URI of the `vcf.gz` file.
 ```
 
 ## Data submission
+<<<<<<< HEAD
+=======
+
+You can submit the data in two ways.
+>>>>>>> b3efa98 (Refactoring results count, updated examples guide)
 
 You can submit this data in two ways.
 
@@ -30,7 +35,11 @@ Alternatively, you can upload edited `submission.json` file to an S3 location ac
 }
 ```
 
+<<<<<<< HEAD
 Option 2 is recommended for larger submissions with thousands of metadata entries.
+=======
+This approach is recommended for larger submissions with thousands of metadata entries.
+>>>>>>> b3efa98 (Refactoring results count, updated examples guide)
 
 ## API testing
 
