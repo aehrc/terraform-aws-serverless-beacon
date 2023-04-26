@@ -18,7 +18,7 @@ You can submit the data in two ways.
 
 ### Submission as request body
 
-You can simply copy the edited JSON content in to the API gateway `/submit` POST endpoint. If you're using a REST client make sure you add authorization headers before you make the request. For example, Postman supports Authorization type AWS Signature and there you can enter AWS Keys.
+You can simply copy the edited JSON content in to the API gateway `/submit_dataset` POST endpoint. If you're using a REST client make sure you add authorization headers before you make the request. For example, Postman supports Authorization type AWS Signature and there you can enter AWS Keys.
 
 ### Submission as an S3 payload
 
