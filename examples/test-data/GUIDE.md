@@ -16,11 +16,11 @@ Now edit the `submission.json` file such that they match the S3 URI of the `vcf.
 
 You can submit the data in two ways.
 
-### Submission as request body
+### Option 1: Submission as request body
 
 You can simply copy the edited JSON content in to the API gateway `/submit_dataset` POST endpoint. If you're using a REST client make sure you add authorization headers before you make the request. For example, Postman supports Authorization type AWS Signature and there you can enter AWS Keys.
 
-### Submission as an S3 payload
+### Option 2: Submission as an S3 payload
 
 Alternatively, you can upload edited `submission.json` file to an S3 location accessible from deployment. Then you can use the file's S3 URI as follows in the API Gateway or in your REST client.
 
