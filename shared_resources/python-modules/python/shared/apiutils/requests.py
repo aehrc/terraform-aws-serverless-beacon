@@ -155,6 +155,8 @@ class RequestParams(CamelModel):
                 self.query.pagination.limit = int(v)
             elif k == "includeResultsetResponses":
                 self.query.include_resultset_responses = IncludeResultsetResponses(v)
+            elif k == "requestedGranularity":
+                self.query.requested_granularity = Granularity(v)
             else:
                 req_params_dict[k] = v
         if len(req_params_dict):
