@@ -7,7 +7,16 @@ resource "aws_s3_bucket" "variants-bucket" {
   tags          = var.common-tags
 }
 
+resource "aws_s3_bucket_ownership_controls" "variants_bucket_ownership_controls" {
+  bucket = aws_s3_bucket.variants-bucket.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
 resource "aws_s3_bucket_acl" "variants_bucket_acl" {
+  depends_on = [aws_s3_bucket_ownership_controls.variants_bucket_ownership_controls]
+
   bucket = aws_s3_bucket.variants-bucket.id
   acl    = "private"
 }
@@ -38,7 +47,16 @@ resource "aws_s3_bucket" "metadata-bucket" {
   tags          = var.common-tags
 }
 
+resource "aws_s3_bucket_ownership_controls" "metadata_bucket_ownership_controls" {
+  bucket = aws_s3_bucket.metadata-bucket.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
 resource "aws_s3_bucket_acl" "metadata" {
+  depends_on = [aws_s3_bucket_ownership_controls.metadata_bucket_ownership_controls]
+
   bucket = aws_s3_bucket.metadata-bucket.id
   acl    = "private"
 }
@@ -82,7 +100,16 @@ resource "aws_s3_bucket" "lambda-layers-bucket" {
   tags          = var.common-tags
 }
 
+resource "aws_s3_bucket_ownership_controls" "lambda_layers_bucket_ownership_controls" {
+  bucket = aws_s3_bucket.lambda-layers-bucket.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
 resource "aws_s3_bucket_acl" "lambda-layers" {
+  depends_on = [aws_s3_bucket_ownership_controls.lambda_layers_bucket_ownership_controls]
+
   bucket = aws_s3_bucket.lambda-layers-bucket.id
   acl    = "private"
 }
