@@ -146,7 +146,7 @@ def index_terms_tree():
                                 "compose": {
                                     "include": [
                                         {
-                                            "system": data["baseUri"],
+                                            "system": "http://snomed.info/sct",
                                             "filter": [
                                                 {
                                                     "property": "concept",
