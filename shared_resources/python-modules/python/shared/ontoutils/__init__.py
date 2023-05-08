@@ -1,0 +1,162 @@
+import json
+import time
+import urllib
+from functools import lru_cache
+
+import requests
+
+from shared.dynamodb import Ontology, Descendants, Anscestors
+
+
+ENSEMBL_OLS = "https://www.ebi.ac.uk/ols/api/ontologies"
+ONTOSERVER = "https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand"
+
+
+@lru_cache()
+def get_term_ancestors_in_beacon(term):
+    terms = set()
+    try:
+        terms.update(Anscestors.get(term).anscestors)
+    except Anscestors.DoesNotExist:
+        terms.add(term)
+    return terms
+
+
+@lru_cache()
+def get_term_descendants_in_beacon(term: str):
+    terms = set()
+    try:
+        terms.update(Descendants.get(term).descendants)
+    except Descendants.DoesNotExist:
+        terms.add(term)
+    return terms
+
+
+@lru_cache()
+def get_term_all_ancestors(term: str):
+    term, ancestors = request_hierarchy(term, True)
+    ancestors.add(term)
+
+    return ancestors
+
+
+@lru_cache()
+def get_term_all_descendants(term: str):
+    term, descendants = request_hierarchy(term, False)
+    descendants.add(term)
+
+    return descendants
+
+
+@lru_cache()
+def get_ontology_details(ontology) -> Ontology:
+    details = None
+    try:
+        details = Ontology.get(ontology)
+    except Ontology.DoesNotExist:
+        if ontology == "SNOMED":
+            # use ontoserver
+            details = Ontology(ontology.upper())
+            details.data = json.dumps(
+                {"id": "SNOMED", "baseUri": "http://snomed.info/sct"}
+            )
+            details.save()
+        else:
+            # use ENSEMBL
+            if response := requests.get(f"{ENSEMBL_OLS}/{ontology}"):
+                response_json = response.json()
+                details = Ontology(ontology.upper())
+                details.data = json.dumps(
+                    {
+                        "id": response_json["ontologyId"].upper(),
+                        "baseUri": response_json["config"]["baseUris"][0],
+                    }
+                )
+                details.save()
+
+    return details
+
+
+@lru_cache()
+def request_ontoserver_hierarchy(term: str, ancestors=True):
+    snomed = "SNOMED" in term.upper()
+    retries = 1
+    response = None
+    while (not response or response.status_code != 200) and retries < 10:
+        retries += 1
+        response = requests.post(
+            ONTOSERVER,
+            json={
+                "resourceType": "Parameters",
+                "parameter": [
+                    {
+                        "name": "valueSet",
+                        "resource": {
+                            "resourceType": "ValueSet",
+                            "compose": {
+                                "include": [
+                                    {
+                                        "system": "http://snomed.info/sct",
+                                        "filter": [
+                                            {
+                                                "property": "concept",
+                                                "op": "generalizes"
+                                                if ancestors
+                                                else "descendent-of",
+                                                "value": f"{term.replace('SNOMED:', '')}",
+                                            }
+                                        ],
+                                    }
+                                ]
+                            },
+                        },
+                    }
+                ],
+            },
+        )
+        if response.status_code == 200:
+            response_json = response.json()
+            members = set()
+            for response_term in response_json["expansion"]["contains"]:
+                members.add(
+                    "SNOMED:" + response_term["code"]
+                    if snomed
+                    else response_term["code"]
+                )
+            return (term, members)
+        else:
+            time.sleep(1)
+
+    raise Exception(f"Error fetching term from Ontoserver {term}")
+
+
+@lru_cache()
+def request_ensembl_hierarchy(term: str, ancestors=True):
+    ontology, code = term.split(":")
+    details = get_ontology_details(ontology)
+    # if no details available, it is probably not an ontology term
+    if not details:
+        return (term, set())
+
+    data = json.loads(details.data)
+    iri = data["baseUri"] + code
+    iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(iri))
+    url = f"{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/{'hierarchicalAncestors' if ancestors else 'hierarchicalDescendants'}"
+
+    if response := requests.get(url):
+        response_json = response.json()
+        members = set()
+        for response_term in response_json["_embedded"]["terms"]:
+            obo_id = response_term["obo_id"]
+            if obo_id:
+                members.add(obo_id)
+        return (term, members)
+
+    raise Exception(f"Error fetching term from Ensembl OLS {term}")
+
+
+@lru_cache()
+def request_hierarchy(term, ancestors):
+    if term.startswith("SNOMED"):
+        return request_ontoserver_hierarchy(term, ancestors)
+    return request_ensembl_hierarchy(term, ancestors)
