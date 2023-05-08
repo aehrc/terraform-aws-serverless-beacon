@@ -6,7 +6,10 @@ from .analysis import Analysis
 from .dataset import Dataset
 from .cohort import Cohort
 from .run import Run
-from shared.dynamodb import Descendants, Anscestors
+from shared.ontoutils import (
+    get_term_ancestors_in_beacon,
+    get_term_descendants_in_beacon,
+)
 from shared.utils import ENV_ATHENA
 from shared.apiutils import (
     OntologyFilter,
@@ -46,24 +49,6 @@ def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
         return "!=" if filter.operator == Operator.NOT else filter.operator
     # infer an alphanumeric comparison
     return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
-
-
-def _get_term_ancestors(term):
-    terms = set()
-    try:
-        terms.update(Anscestors.get(term).anscestors)
-    except Anscestors.DoesNotExist:
-        terms.add(term)
-    return terms
-
-
-def _get_term_descendants(term: str):
-    terms = set()
-    try:
-        terms.update(Descendants.get(term).descendants)
-    except Descendants.DoesNotExist:
-        terms.add(term)
-    return terms
 
 
 def entity_search_conditions(
@@ -117,12 +102,12 @@ def entity_search_conditions(
             if f.include_descendant_terms:
                 # process inclusion of term descendants dependant on 'similarity'
                 if f.similarity in (Similarity.HIGH or Similarity.EXACT):
-                    expanded_terms = _get_term_descendants(f.id)
+                    expanded_terms = get_term_descendants_in_beacon(f.id)
                 else:
                     # NOTE: this simplistic similarity method not nessisarily efficient or nessisarily desirable
-                    ancestors = _get_term_ancestors(f.id)
+                    ancestors = get_term_ancestors_in_beacon(f.id)
                     ancestor_descendants = sorted(
-                        [_get_term_descendants(a) for a in ancestors], key=len
+                        [get_term_descendants_in_beacon(a) for a in ancestors], key=len
                     )
                     if f.similarity == Similarity.MEDIUM:
                         # all terms which have an ancestor half way up
