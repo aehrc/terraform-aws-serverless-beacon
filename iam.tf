@@ -827,26 +827,6 @@ data "aws_iam_policy_document" "dynamodb-onto-access" {
       aws_dynamodb_table.anscestor_terms.arn,
     ]
   }
-
-  statement {
-    actions = [
-      "dynamodb:Query",
-    ]
-    resources = [
-      "${aws_dynamodb_table.datasets.arn}/index/*",
-      "${aws_dynamodb_table.variant_query_responses.arn}/index/*",
-      "${aws_dynamodb_table.ontology_terms.arn}/index/*",
-    ]
-  }
-
-  statement {
-    actions = [
-      "dynamodb:Scan",
-    ]
-    resources = [
-      aws_dynamodb_table.ontology_terms.arn,
-    ]
-  }
 }
 
 # DynamoDB Ontology Related Write Access
