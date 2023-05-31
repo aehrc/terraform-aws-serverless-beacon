@@ -1,16 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
 import threading
-import urllib
-import json
 import time
-import re
 
 from smart_open import open as sopen
-import requests
 import boto3
 
-from shared.dynamodb import OntoData, Ontology, Descendants, Anscestors
+from shared.dynamodb import Descendants, Anscestors
+from shared.ontoutils import request_hierarchy
 from shared.utils import ENV_ATHENA
 from ctas_queries import QUERY as CTAS_TEMPLATE
 from generate_query_index import QUERY as INDEX_QUERY
@@ -42,36 +39,7 @@ RELATIONS_QUERY = RELATIONS_QUERY.format(
 )
 
 
-def get_ontology_details(ontology):
-    details = None
-    try:
-        details = Ontology.get(ontology)
-    except Ontology.DoesNotExist:
-        if ontology == "SNOMED":
-            # use ontoserver
-            details = Ontology(ontology.upper())
-            details.data = json.dumps(
-                {"id": "SNOMED", "baseUri": "http://snomed.info/sct"}
-            )
-            details.save()
-        else:
-            # use ENSEMBL
-            if response := requests.get(f"{ENSEMBL_OLS}/{ontology}"):
-                response_json = response.json()
-                details = Ontology(ontology.upper())
-                details.data = json.dumps(
-                    {
-                        "id": response_json["ontologyId"].upper(),
-                        "baseUri": response_json["config"]["baseUris"][0],
-                    }
-                )
-                details.save()
-
-    # any other error must be raised
-    return details
-
-
-def get_ontologies_clusters():
+def get_ontologie_terms_in_beacon():
     query = f'SELECT DISTINCT term FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}"'
 
     response = athena.start_query_execution(
@@ -83,7 +51,7 @@ def get_ontologies_clusters():
     execution_id = response["QueryExecutionId"]
     await_result(execution_id)
 
-    ontology_clusters = defaultdict(set)
+    ontology_terms = list()
 
     with sopen(
         f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
@@ -92,125 +60,27 @@ def get_ontologies_clusters():
             if n == 0:
                 continue
             term = line.strip().strip('"')
-
-            # beacon API does not allow non CURIE formatted terms
-            # however, SNOMED appears are non-CURIE prefixed terms
-            # following is to support that, however API will not ingest
-            # always submit in form SNOMED:123212
-            if re.match(r"(?i)(^SNOMED)|([0-9]+)", term):
-                ontology = "SNOMED"
-                ontology_clusters[ontology].add(term)
-            else:
-                ontology = term.split(":")[0]
-                ontology_clusters[ontology].add(term)
-
-    return ontology_clusters
+            ontology_terms.append(term)
+    return ontology_terms
 
 
-# in future, there could be an issue when descendants entries exceed 400KB
+# TODO in future, there could be an issue when descendants entries exceed 400KB
 # which means we would have roughtly 20480, 20 byte entries (unlikely?)
 # this would also mean, our SQL queries would reach the 256KB limit
 # we should be able to easily spread terms across multiple dynamodb
 # entries and have multiple queries (as recommended by AWS)
 def index_terms_tree():
-    # START subroutines
-    # subroutine for ensemble
-    def threaded_request_ensemble(term, url):
-        if response := requests.get(url):
-            response_json = response.json()
-            anscestors = set()
-            for response_term in response_json["_embedded"]["terms"]:
-                obo_id = response_term["obo_id"]
-                if obo_id:
-                    anscestors.add(obo_id)
-            return (term, anscestors)
-        else:
-            print(f"Error fetching term from Ensembl OLS {term}")
-
-    # subroutine for ontoserver
-    def threaded_request_ontoserver(term, url):
-        snomed = "SNOMED" in term.upper()
-        retries = 1
-        response = None
-        while (not response or response.status_code != 200) and retries < 10:
-            retries += 1
-            response = requests.post(
-                url,
-                json={
-                    "resourceType": "Parameters",
-                    "parameter": [
-                        {
-                            "name": "valueSet",
-                            "resource": {
-                                "resourceType": "ValueSet",
-                                "compose": {
-                                    "include": [
-                                        {
-                                            "system": "http://snomed.info/sct",
-                                            "filter": [
-                                                {
-                                                    "property": "concept",
-                                                    "op": "generalizes",
-                                                    "value": f"{term.replace('SNOMED:', '')}",
-                                                }
-                                            ],
-                                        }
-                                    ]
-                                },
-                            },
-                        }
-                    ],
-                },
-            )
-            if response.status_code == 200:
-                response_json = response.json()
-                anscestors = set()
-                for response_term in response_json["expansion"]["contains"]:
-                    anscestors.add(
-                        "SNOMED:" + response_term["code"]
-                        if snomed
-                        else response_term["code"]
-                    )
-                return (term, anscestors)
-            else:
-                time.sleep(1)
-
-        if response.status_code != 200:
-            print(f"Error fetching term from Ontoserver {term}")
-
-    # END subroutines
-
-    ontology_clusters = get_ontologies_clusters()
+    terms_in_beacon = get_ontologie_terms_in_beacon()
     executor = ThreadPoolExecutor(500)
     futures = []
 
-    for ontology, terms in ontology_clusters.items():
-        if ontology == "SNOMED":
-            for term in terms:
-                # fetch only anscestors that aren't fetched yet
-                try:
-                    data = Anscestors.get(term)
-                except Anscestors.DoesNotExist:
-                    futures.append(
-                        executor.submit(threaded_request_ontoserver, term, ONTOSERVER)
-                    )
-        else:
-            for term in terms:
-                # fetch only anscestors that aren't fetched yet
-                try:
-                    data = Anscestors.get(term)
-                except Anscestors.DoesNotExist:
-                    # details will be missing if the ontology info is not in OLS
-                    if details := get_ontology_details(ontology):
-                        data = json.loads(details.data)
-                        iri = data["baseUri"] + term.split(":")[1]
-                        iri_double_encoded = urllib.parse.quote_plus(
-                            urllib.parse.quote_plus(iri)
-                        )
-                        url = f"{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/hierarchicalAncestors"
-                        futures.append(
-                            executor.submit(threaded_request_ensemble, term, url)
-                        )
+    for term in terms_in_beacon:
+        try:
+            Anscestors.get(term)
+        except Anscestors.DoesNotExist:
+            futures.append(executor.submit(request_hierarchy, term, True))
+
+    # record ancestors
     term_anscestors = defaultdict(set)
 
     for future in as_completed(futures):
@@ -219,17 +89,21 @@ def index_terms_tree():
             term_anscestors[term].update(ancestors)
             term_anscestors[term].add(term)
 
+    # reverse the tree for descendent term search
     term_descendants = defaultdict(set)
 
+    # write ancestors
     with Anscestors.batch_write() as batch:
         for term, anscestors in term_anscestors.items():
             item = Anscestors(term)
             item.anscestors = anscestors
             batch.save(item)
 
+            # record descendents
             for anscestor in anscestors:
                 term_descendants[anscestor].add(term)
 
+    # write descendents
     with Descendants.batch_write() as batch:
         for term, descendants in term_descendants.items():
             # if descendants are recorded, just update, else make record
@@ -258,7 +132,6 @@ def await_result(execution_id, sleep=2):
         status = exec["QueryExecution"]["Status"]["State"]
 
         if status in ("QUEUED", "RUNNING"):
-            print(f"Sleeping {sleep} seconds")
             time.sleep(sleep)
             retries += 1
 
@@ -351,36 +224,6 @@ def record_relations():
         WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
     )
     await_result(response["QueryExecutionId"])
-
-
-# TODO re-evaluate the following function remove or useful?
-def onto_index():
-    response = athena.start_query_execution(
-        QueryString=ONTO_TERMS_QUERY,
-        QueryExecutionContext={"Database": ENV_ATHENA.ATHENA_METADATA_DATABASE},
-        WorkGroup=ENV_ATHENA.ATHENA_WORKGROUP,
-    )
-    execution_id = response["QueryExecutionId"]
-    await_result(execution_id)
-
-    with sopen(
-        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/query-results/{execution_id}.csv"
-    ) as s3f:
-        for n, line in enumerate(s3f):
-            if n == 0:
-                continue
-            term, tablename, colname, type, label = [
-                item.strip('"') for item in line.strip().split(",")
-            ]
-            entry = OntoData.make_index_entry(
-                term=term,
-                tableName=tablename,
-                columnName=colname,
-                type=type,
-                label=label,
-            )
-            entry.save()
-    return
 
 
 def lambda_handler(event, context):
