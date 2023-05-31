@@ -131,7 +131,7 @@ class RequestQuery(CamelModel):
         self._filters = data.get("filters", [])
 
     @validator("filters", pre=True, each_item=True)
-    def check_squares(cls, term):
+    def transform_filters(cls, term):
         if isinstance(term, str):
             term = {"id": term}
         return term

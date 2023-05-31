@@ -101,7 +101,7 @@ def entity_search_conditions(
             # if descendantTerms is false, then similarity measures dont really make sense...
             if f.include_descendant_terms:
                 # process inclusion of term descendants dependant on 'similarity'
-                if f.similarity in (Similarity.HIGH or Similarity.EXACT):
+                if f.similarity in (Similarity.HIGH, Similarity.EXACT):
                     expanded_terms = get_term_descendants_in_beacon(f.id)
                 else:
                     # NOTE: this simplistic similarity method not nessisarily efficient or nessisarily desirable
@@ -122,6 +122,14 @@ def entity_search_conditions(
             expanded_terms = " , ".join(["?" for a in expanded_terms])
             # process scope clarification if specified different
             group = f.scope or default_scope
+            join_constraints.append(
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.term IN ({expanded_terms}) """
+            )
+        elif isinstance(f, CustomFilter):
+            # TODO this is a dummy replacement, for future implementation
+            group = f.scope or default_scope
+            expanded_terms = "?"
+            join_execution_parameters += [f.id]
             join_constraints.append(
                 f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.term IN ({expanded_terms}) """
             )
