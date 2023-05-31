@@ -132,7 +132,6 @@ def await_result(execution_id, sleep=2):
         status = exec["QueryExecution"]["Status"]["State"]
 
         if status in ("QUEUED", "RUNNING"):
-            print(f"Sleeping {sleep} seconds")
             time.sleep(sleep)
             retries += 1
 
