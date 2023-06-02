@@ -1,5 +1,4 @@
 import json
-import os
 from collections import defaultdict
 from typing_extensions import Self
 from typing import List, Optional, Tuple, Union
