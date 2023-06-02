@@ -6,12 +6,15 @@ from route_biosamples_id_g_variants import route as route_biosamples_id_g_varian
 from route_biosamples_id_analyses import route as route_biosamples_id_analyses
 from route_biosamples_id_runs import route as route_biosamples_id_runs
 from route_biosamples_filtering_terms import route as route_biosamples_filtering_terms
-from shared.apiutils import RequestParams, parse_request
+from shared.apiutils import parse_request, bundle_response
 
 
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
-    request_params: RequestParams = parse_request(event)
+    request_params, errors, status = parse_request(event)
+    
+    if errors:
+        return bundle_response(status, errors)
 
     if event["resource"] == "/biosamples":
         return route_biosamples(request_params)

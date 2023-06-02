@@ -96,8 +96,9 @@ resource "aws_cognito_user" "admin" {
 }
 
 # 
-# admin group assignments
+# group assignments
 # 
+# admin
 resource "aws_cognito_user_in_group" "admin-record-access" {
   user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
   group_name   = aws_cognito_user_group.record-access.name
@@ -114,6 +115,19 @@ resource "aws_cognito_user_in_group" "admin-boolean-access" {
   user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
   group_name   = aws_cognito_user_group.boolean-access.name
   username     = aws_cognito_user.admin.username
+}
+
+# guest
+resource "aws_cognito_user_in_group" "guest-count-access" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  group_name   = aws_cognito_user_group.count-access.name
+  username     = aws_cognito_user.guest.username
+}
+
+resource "aws_cognito_user_in_group" "guest-boolean-access" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  group_name   = aws_cognito_user_group.boolean-access.name
+  username     = aws_cognito_user.guest.username
 }
 
 # 
