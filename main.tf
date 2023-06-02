@@ -17,7 +17,7 @@ locals {
   # this makes the code simpler
   # sbeacon info variables
   sbeacon_variables = {
-    # Beacon variables
+    # beacon variables
     BEACON_API_VERSION         = var.beacon-api-version
     BEACON_ID                  = var.beacon-id
     BEACON_NAME                = var.beacon-name
@@ -32,7 +32,7 @@ locals {
     BEACON_DOCUMENTATION_URL   = var.beacon-documentation-url
     BEACON_DEFAULT_GRANULARITY = var.beacon-default-granularity
     BEACON_URI                 = var.beacon-uri
-    # Organisation variables
+    # organisation variables
     BEACON_ORG_ID          = var.organisation-id
     BEACON_ORG_NAME        = var.organisation-name
     BEACON_ORG_DESCRIPTION = var.beacon-org-description
@@ -44,6 +44,8 @@ locals {
     BEACON_SERVICE_TYPE_GROUP    = var.beacon-service-type-group
     BEACON_SERVICE_TYPE_ARTIFACT = var.beacon-service-type-artifact
     BEACON_SERVICE_TYPE_VERSION  = var.beacon-service-type-version
+    # authentication variables
+    BEACON_ENABLE_AUTH = var.beacon-enable-auth
   }
   # athena related variables
   athena_variables = {
