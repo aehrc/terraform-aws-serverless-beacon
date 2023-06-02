@@ -225,9 +225,9 @@ module "serverless-beacon" {
     # add the following as desired
     beacon-enable-auth          = true
     beacon-guest-username       = "guest@gmail.com"
-    beacon-guest-password       = "guest1234pw"
+    beacon-guest-password       = "XXXXX"
     beacon-admin-username       = "admin@gmail.com"
-    beacon-admin-password       = "admin1234pw"
+    beacon-admin-password       = "XXXXX"
 }
 ``` 
 
