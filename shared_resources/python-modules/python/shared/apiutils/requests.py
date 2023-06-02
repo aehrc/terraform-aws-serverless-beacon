@@ -3,7 +3,7 @@ import os
 from typing_extensions import Self
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, PrivateAttr, constr, validator
+from pydantic import BaseModel, PrivateAttr, constr, validator, parse_obj_as
 from strenum import StrEnum
 from humps import camelize
 
@@ -157,8 +157,16 @@ class RequestParams(CamelModel):
                 self.query.include_resultset_responses = IncludeResultsetResponses(v)
             elif k == "requestedGranularity":
                 self.query.requested_granularity = Granularity(v)
+            elif k == "filters":
+                filters = v.split(",")
+                self.query.filters = parse_obj_as(
+                    List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]],
+                    [{"id": term} for term in filters],
+                )
+                self.query._filters = filters
             else:
                 req_params_dict[k] = v
+        # query parameters related to variants
         if len(req_params_dict):
             self.query.request_parameters = RequestQueryParams(**req_params_dict)
         return self
