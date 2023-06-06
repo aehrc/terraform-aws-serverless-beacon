@@ -259,7 +259,7 @@ guest_login_command = "aws cognito-idp admin-initiate-auth --user-pool-id us-eas
 
 Use either `admin_login_command` or `guest_login_command` to retrieve the **IdToken**. You can use this as the bearer token to access the API.
 
-### How API secxurity works
+### How API security works
 
 There are three groups of users `record-access-user-group`, `count-access-user-group` and `boolean-access-user-group`. Admin user belons to all three groups while guest has only **counts** and **boolean** access. Adding new users must be done using the Cognito User Pool as an administrator. Alternatively, infrastructure can be modified to support alternative authentication flows.
 
