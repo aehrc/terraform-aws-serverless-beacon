@@ -141,18 +141,18 @@ Your beacon deployment could be a part of a larger program with a front-end and 
 # main.tf
 module "serverless-beacon" {
     # repo folder
-    source = "./terraform-aws-serverless-beacon"
-    beacon-id = "au.csiro-serverless.beacon"
+    source                      = "./terraform-aws-serverless-beacon"
+    beacon-id                   = "au.csiro-serverless.beacon"
     # bucket prefixes
-    variants-bucket-prefix = "sbeacon-"
-    metadata-bucket-prefix = "sbeacon-metadata-"
+    variants-bucket-prefix      = "sbeacon-"
+    metadata-bucket-prefix      = "sbeacon-metadata-"
     lambda-layers-bucket-prefix = "sbeacon-lambda-layers-"
     # beacon variables
-    beacon-name = ""
-    organisation-id = ""
-    organisation-name = ""
+    beacon-name                 = ""
+    organisation-id             = ""
+    organisation-name           = ""
     # aws region
-    region = "REGION"
+    region                      = "REGION"
 }
 ``` 
 Please refer to [./examples/minimum/](./examples/minimum/) or  [./examples/full](./examples/full) to find a minimal and a complete setup. Consider adding `outputs.tf` file as well.
@@ -240,11 +240,13 @@ output "cognito_client_id" {
 }
 
 output "admin_login_command" {
-  value = module.serverless-beacon.admin_login_command
+  value       = module.serverless-beacon.admin_login_command
+  description = "AWS cli command to get admin login token"
 }
 
 output "guest_login_command" {
-  value = module.serverless-beacon.guest_login_command
+  value       = module.serverless-beacon.guest_login_command
+  description = "AWS cli command to get guest login token"
 }
 ``` 
 A examples are available at [./examples/minimum/](./examples/minimum/) and  [./examples/full](./examples/full).

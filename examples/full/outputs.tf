@@ -9,9 +9,11 @@ output "cognito_client_id" {
 }
 
 output "admin_login_command" {
-  value = module.serverless-beacon.admin_login_command
+  value       = module.serverless-beacon.admin_login_command
+  description = "AWS cli command to get admin login token"
 }
 
 output "guest_login_command" {
-  value = module.serverless-beacon.guest_login_command
+  value       = module.serverless-beacon.guest_login_command
+  description = "AWS cli command to get guest login token"
 }
