@@ -179,7 +179,7 @@ cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
 
 # troubleshoot with "ldd ./binary-name" to see what libaries needed
 # you can use the following command to copy the libraries to binaries/lib/
-<binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
+ldd <binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
 ```
 
 * Collaborative development
