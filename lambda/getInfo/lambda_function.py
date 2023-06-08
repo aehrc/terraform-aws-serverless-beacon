@@ -1,7 +1,6 @@
 import json
 
 from shared.apiutils import (
-    RequestParams,
     parse_request,
     build_beacon_info_response,
     bundle_response,
@@ -10,7 +9,11 @@ from shared.apiutils import (
 
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
-    request_params: RequestParams = parse_request(event)
+    request_params, errors, status = parse_request(event)
+    
+    if errors:
+        return bundle_response(status, errors)
+
     authorised_datasets = []
     response = build_beacon_info_response(authorised_datasets, request_params)
     print("Returning Response: {}".format(json.dumps(response)))

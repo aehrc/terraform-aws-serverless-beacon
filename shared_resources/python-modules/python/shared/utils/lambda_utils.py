@@ -152,6 +152,10 @@ class BeaconEnvironment:
     def BEACON_SERVICE_TYPE_VERSION(self):
         return os.environ["BEACON_SERVICE_TYPE_VERSION"]
 
+    @property
+    def BEACON_ENABLE_AUTH(self):
+        return os.environ["BEACON_ENABLE_AUTH"]
+
 
 class AthenaEnvironment:
     @property

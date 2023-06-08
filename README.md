@@ -141,21 +141,21 @@ Your beacon deployment could be a part of a larger program with a front-end and 
 # main.tf
 module "serverless-beacon" {
     # repo folder
-    source = "./terraform-aws-serverless-beacon"
-    beacon-id = "au.csiro-serverless.beacon"
+    source                      = "./terraform-aws-serverless-beacon"
+    beacon-id                   = "au.csiro-serverless.beacon"
     # bucket prefixes
-    variants-bucket-prefix = "sbeacon-"
-    metadata-bucket-prefix = "sbeacon-metadata-"
+    variants-bucket-prefix      = "sbeacon-"
+    metadata-bucket-prefix      = "sbeacon-metadata-"
     lambda-layers-bucket-prefix = "sbeacon-lambda-layers-"
     # beacon variables
-    beacon-name = ""
-    organisation-id = ""
-    organisation-name = ""
+    beacon-name                 = ""
+    organisation-id             = ""
+    organisation-name           = ""
     # aws region
-    region = "REGION"
+    region                      = "REGION"
 }
 ``` 
-Please refer to [./examples/minimum/](./examples/minimum/) or  [./examples/full](./examples/full) to find a minimal and a complete setup.
+Please refer to [./examples/minimum/](./examples/minimum/) or  [./examples/full](./examples/full) to find a minimal and a complete setup. Consider adding `outputs.tf` file as well.
 ## Development
 
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands. Once the decision to use the library is finalised update the `init.sh` script to automate the process.
@@ -179,7 +179,7 @@ cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
 
 # troubleshoot with "ldd ./binary-name" to see what libaries needed
 # you can use the following command to copy the libraries to binaries/lib/
-<binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
+ldd <binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
 ```
 
 * Collaborative development
@@ -214,6 +214,56 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * All the available endpoints can be retrieved using the deployment url's `/map`. 
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
+
+## Securing the API
+
+We have provided the essential architectural templates to enable the token based authentication of the API access. If you are using the module configuration of sBeacon, modify the `main.tf` as follows. Alternatively, you can edit these variable in the `variables.tf` file.
+
+```bash
+# main.tf
+module "serverless-beacon" {
+    # add the following as desired
+    beacon-enable-auth          = true
+    beacon-guest-username       = "guest@gmail.com"
+    beacon-guest-password       = "XXXXX"
+    beacon-admin-username       = "admin@gmail.com"
+    beacon-admin-password       = "XXXXX"
+}
+``` 
+
+In order to retrieve the commands needed to get access token, add an `output.tf` file in the module configuration.
+```bash
+# variables.tf
+output "cognito_client_id" {
+  value       = module.serverless-beacon.cognito_client_id
+  description = "Cognito client Id for user registration and login."
+}
+
+output "admin_login_command" {
+  value       = module.serverless-beacon.admin_login_command
+  description = "AWS cli command to get admin login token"
+}
+
+output "guest_login_command" {
+  value       = module.serverless-beacon.guest_login_command
+  description = "AWS cli command to get guest login token"
+}
+``` 
+A examples are available at [./examples/minimum/](./examples/minimum/) and  [./examples/full](./examples/full).
+
+Upon successful `terraform apply` you'll be prompted with an output similar to below.
+```bash 
+api_url = "https://XXXXX.execute-api.us-east-1.amazonaws.com/"
+cognito_client_id = "XXXXX"
+admin_login_command = "aws cognito-idp admin-initiate-auth --user-pool-id us-east-1_A89RD07je --region us-east-1 --client-id 100n0tno0e0sql96mcgciaa8to --auth-flow ADMIN_USER_PASSWORD_AUTH --auth-parameters USERNAME=admin@gmail.com,PASSWORD=XXXXX --output json --query AuthenticationResult.IdToken"
+guest_login_command = "aws cognito-idp admin-initiate-auth --user-pool-id us-east-1_A89RD07je --region us-east-1 --client-id XXXXX --auth-flow ADMIN_USER_PASSWORD_AUTH --auth-parameters USERNAME=guest@gmail.com,PASSWORD=XXXXX --output json --query AuthenticationResult.IdToken"
+```
+
+Use either `admin_login_command` or `guest_login_command` to retrieve the **IdToken**. You can use this as the bearer token to access the API.
+
+### How API security works
+
+There are three groups of users `record-access-user-group`, `count-access-user-group` and `boolean-access-user-group`. Admin user belons to all three groups while guest has only **counts** and **boolean** access. Adding new users must be done using the Cognito User Pool as an administrator. Alternatively, infrastructure can be modified to support alternative authentication flows.
 
 
 ## Troubleshooting

@@ -4,12 +4,15 @@ from route_g_variants import route as route_g_variants
 from route_g_variants_id import route as route_g_variants_id
 from route_g_variants_id_individuals import route as route_g_variants_id_individuals
 from route_g_variants_id_biosamples import route as route_g_variants_id_biosamples
-from shared.apiutils import RequestParams, parse_request
+from shared.apiutils import parse_request, bundle_response
 
 
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
-    request_params: RequestParams = parse_request(event)
+    request_params, errors, status = parse_request(event)
+    
+    if errors:
+        return bundle_response(status, errors)
 
     if event["resource"] == "/g_variants":
         return route_g_variants(request_params)
