@@ -214,10 +214,12 @@ def parse_request(event) -> Tuple[RequestParams, str]:
     try:
         request_params = RequestParams(**body_dict).from_request(params)
     except ValidationError as e:
-        errors = defaultdict(list)
+        errors = defaultdict(set)
+
         for e in e.errors():
-            errors[e["msg"]].append(".".join(e["loc"]))
-        return request_params, dict(errors), 400
+            errors[e["msg"]].add(".".join([str(l) for l in e["loc"]]))
+
+        return request_params, dict({k: list(v) for k, v in errors.items()}), 400
 
     if BEACON_ENABLE_AUTH:
         # either use belongs to a group or they are unauthorized
