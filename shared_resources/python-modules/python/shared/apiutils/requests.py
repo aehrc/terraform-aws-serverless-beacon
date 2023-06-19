@@ -1,11 +1,22 @@
 import json
-import os
+from collections import defaultdict
 from typing_extensions import Self
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
-from pydantic import BaseModel, PrivateAttr, constr, validator, parse_obj_as
+from pydantic import (
+    BaseModel,
+    Extra,
+    ValidationError,
+    PrivateAttr,
+    constr,
+    validator,
+    parse_obj_as,
+)
 from strenum import StrEnum
 from humps import camelize
+
+from shared.utils import ENV_BEACON
+
 
 #
 # Thirdparty Code as annotated
@@ -16,8 +27,9 @@ from humps import camelize
 
 
 CURIE_REGEX = r"^([a-zA-Z0-9]*):\/?[a-zA-Z0-9]*$"
-BEACON_API_VERSION = os.environ["BEACON_API_VERSION"]
-BEACON_DEFAULT_GRANULARITY = os.environ["BEACON_DEFAULT_GRANULARITY"]
+BEACON_API_VERSION = ENV_BEACON.BEACON_API_VERSION
+BEACON_DEFAULT_GRANULARITY = ENV_BEACON.BEACON_DEFAULT_GRANULARITY
+BEACON_ENABLE_AUTH = ENV_BEACON.BEACON_ENABLE_AUTH
 
 
 # Thirdparty Code
@@ -25,6 +37,7 @@ class CamelModel(BaseModel):
     class Config:
         alias_generator = camelize
         allow_population_by_field_name = True
+        extra = Extra.forbid
 
 
 class RequestQueryParams(CamelModel):
@@ -185,7 +198,7 @@ class RequestParams(CamelModel):
 
 
 # TODO create a decorator for lambda handlers
-def parse_request(event) -> RequestParams:
+def parse_request(event) -> Tuple[RequestParams, str]:
     body_dict = dict()
     if event["httpMethod"] == "POST":
         try:
@@ -193,6 +206,40 @@ def parse_request(event) -> RequestParams:
         except ValueError:
             pass
     params = event.get("queryStringParameters", None) or dict()
-    request_params = RequestParams(**body_dict).from_request(params)
 
-    return request_params
+    errors = None
+    request_params = None
+    status = 200
+
+    try:
+        request_params = RequestParams(**body_dict).from_request(params)
+    except ValidationError as e:
+        errors = defaultdict(list)
+        for e in e.errors():
+            errors[e["msg"]].append(".".join(e["loc"]))
+        return request_params, dict(errors), 400
+
+    if BEACON_ENABLE_AUTH:
+        # either use belongs to a group or they are unauthorized
+        groups = (
+            event.get("requestContext", dict())
+            .get("authorizer", dict())
+            .get("claims", dict())
+            .get("cognito:groups", "unauthorized")
+        )
+        groups = groups.split(",")
+        authorized = (
+            f"{request_params.query.requested_granularity}-access-user-group" in groups
+        )
+
+        # return unauthorized status
+        if not authorized:
+            return (
+                None,
+                {
+                    "anauthorized_access": f"User does not belong to {request_params.query.requested_granularity}-access-user-group"
+                },
+                400,
+            )
+
+    return request_params, errors, status
