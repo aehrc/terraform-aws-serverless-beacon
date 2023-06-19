@@ -20,10 +20,7 @@ from shared.apiutils import (
 )
 
 
-queried_athena_models = {
-    a.__name__: a for a in [Analysis, Biosample, Individual, Cohort, Dataset, Run]
-}
-id_type_string_to_class = {
+type_class = {
     "individuals": Individual,
     "biosamples": Biosample,
     "runs": Run,
@@ -31,7 +28,6 @@ id_type_string_to_class = {
     "datasets": Dataset,
     "cohorts": Cohort,
 }
-class_to_id_type_string = {a: b for b, a in id_type_string_to_class.items()}
 type_relations_table_id = {
     "individuals": "individualid",
     "biosamples": "biosampleid",
@@ -58,8 +54,6 @@ def entity_search_conditions(
     id_modifier="id",
     with_where=True,
 ):
-    id_class = id_type_string_to_class[id_type]
-
     # arrays to gradually form the SQL expression
     join_constraints = []
     outer_constraints = []
@@ -68,34 +62,26 @@ def entity_search_conditions(
     outer_execution_parameters = []
 
     for f in filters:
-        # separate and handle filter ids, depending if they are Ontology terms,
-        # terms relating directly to the respective table columns
-        # or terms relating to tables linked to the respective table
-        f_id = f.id.split(".")
+        if isinstance(f, AlphanumericFilter):
+            # check to see if the field is in default scope
+            # karyotypicSex = "XX" for default scope (Individuals)
+            if f.scope is None or f.scope == default_scope:
+                operator = _get_comparison_operator(f)
+                outer_constraints.append("{} {} ?".format(f.id, operator))
+                outer_execution_parameters.append(str(f.value))
+            # otherwise, we have to use the relations table
+            # eg: scope = "cohorts", cohortType = "beacon-defined"
+            else:
+                group = f.scope
+                joined_class = type_class[group]
+                operator = _get_comparison_operator(f)
+                comparison = "{} {} ?".format(f.id, operator)
+                join_execution_parameters.append(str(f.value))
+                join_constraints.append(
+                    f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
+                )
 
-        # check to see if there is any relevent field of the referred id_type
-        # karyotypicSex = "XX" for default scope (Individuals)
-        if len(f_id) == 1 and f_id[0] in id_class._table_columns:
-            operator = _get_comparison_operator(f)
-            outer_constraints.append("{} {} ?".format(f_id[0], operator))
-            outer_execution_parameters.append(str(f.value))
-
-        # eg: Cohort.cohortType = "beacon-defined"
-        elif (
-            len(f_id) == 2
-            and f_id[0] in queried_athena_models.keys()
-            and f_id[1] in queried_athena_models[f_id[0]]._table_columns
-        ):
-            joined_class = queried_athena_models[f_id[0]]
-            operator = _get_comparison_operator(f)
-            comparison = "{} {} ?".format(f_id[1], operator)
-            join_execution_parameters.append(str(f.value))
-            group = class_to_id_type_string[joined_class]
-            join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
-            )
-
-        if isinstance(f, OntologyFilter):
+        elif isinstance(f, OntologyFilter):
             # by default expanded terms is just the term itself
             expanded_terms = {f.id}
             # if descendantTerms is false, then similarity measures dont really make sense...

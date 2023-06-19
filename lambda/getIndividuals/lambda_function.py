@@ -1,6 +1,6 @@
 import json
 
-from shared.apiutils import RequestParams, parse_request
+from shared.apiutils import parse_request, bundle_response
 from route_individuals import route as route_individuals
 from route_individuals_id import route as route_individuals_id
 from route_individuals_id_g_variants import route as route_individuals_id_g_variants
@@ -10,7 +10,10 @@ from route_individuals_filtering_terms import route as route_individuals_filteri
 
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
-    request_params: RequestParams = parse_request(event)
+    request_params, errors, status = parse_request(event)
+
+    if errors:
+        return bundle_response(status, errors)
 
     if event["resource"] == "/individuals":
         return route_individuals(request_params)

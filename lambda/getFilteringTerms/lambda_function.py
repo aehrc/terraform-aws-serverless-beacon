@@ -6,7 +6,6 @@ from smart_open import open as sopen
 from shared.athena import run_custom_query
 from shared.utils import ENV_ATHENA
 from shared.apiutils import (
-    RequestParams,
     build_filtering_terms_response,
     parse_request,
     bundle_response,
@@ -15,8 +14,11 @@ from shared.apiutils import (
 
 def lambda_handler(event, context):
     print("event received", event)
+    request, errors, status = parse_request(event)
 
-    request: RequestParams = parse_request(event)
+    if errors:
+        return bundle_response(status, errors)
+
     query = f"""
     SELECT DISTINCT term, label, type 
     FROM "{ENV_ATHENA.ATHENA_TERMS_TABLE}"
@@ -42,3 +44,7 @@ def lambda_handler(event, context):
 
     print("Returning Response: {}".format(json.dumps(response)))
     return bundle_response(200, response)
+
+
+if __name__ == "__main__":
+    pass

@@ -1,16 +1,41 @@
-# Serverless Beacon
+## Serverless Beacon
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ![assets/logo-black.png](assets/logo-black.png)
+
+## Contents
+
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+- [Why serverless?](#why-serverless)
+- [Introduction to sBeacon](#introduction-to-sbeacon)
+- [Installation](#installation)
+  * [Option 1: Setting up the development environment on Amazon Linux](#option-1-setting-up-the-development-environment-on-amazon-linux)
+  * [Option 2: Using the docker image](#option-2-using-the-docker-image)
+- [Deployment](#deployment)
+  * [Direct deployment](#direct-deployment)
+  * [Use as a module](#use-as-a-module)
+- [Development](#development)
+- [API Usage](#api-usage)
+  * [Example data](#example-data)
+  * [Data ingestion API](#data-ingestion-api)
+  * [Query API](#query-api)
+- [Securing the API](#securing-the-api)
+  * [Enabling API security](#enabling-api-security)
+  * [API access commands](#api-access-commands)
+  * [How API security works](#how-api-security-works)
+- [Troubleshooting](#troubleshooting)
+  * [Illegal instruction (core dumped)](#illegal-instruction-core-dumped)
+  * [Provider produced inconsistent final plan](#provider-produced-inconsistent-final-plan)
+<!-- TOC end -->
 
 ## Why serverless?
 Serverless means the service does not require any servers to be provisioned. The
 idea is to minimise running costs, as well as support arbitrary scalablility. It
 also means setup is very fast.
 
-## Beacon
-The service intends to support beacon v2 according to the
-[ga4gh specification](https://github.com/ga4gh-beacon/specification).
+## Introduction to sBeacon
+sBeacon implements Beacon v2 protocol according to the
+[ga4gh specification](https://github.com/ga4gh-beacon/specification). sBeacon can be used as a beacon network participant. Please refer to [https://docs.genomebeacons.org/networks/](https://docs.genomebeacons.org/networks/).
 
 ## Installation
 
@@ -112,6 +137,10 @@ docker run --rm -it -v `pwd`:`pwd` -v /tmp:/tmp  -u `id -u`:`id -g` -w `pwd` csi
 
 ## Deployment
 
+### Direct deployment
+
+You can simply deploy the cloned repository following the establishment of AWS keys in the development terminal. Alternatively, sBeacon can be used as a module in an existing terraform project.
+
 Once you have configured the development environment or the docker container, install the essential AWS C++ SDKs and initialise the other libraries using the following command. Do this only once or as core C++ libraries change.
 
 ```bash
@@ -134,28 +163,29 @@ terraform plan # should finish without errors
 terraform apply
 ```
 
-## Use as a module
+### Use as a module
 
 Your beacon deployment could be a part of a larger program with a front-end and other services. In that case, on the parent folder that the repo folder resides, create a `main.tf` file.
 ```bash
 # main.tf
 module "serverless-beacon" {
     # repo folder
-    source = "./terraform-aws-serverless-beacon"
-    beacon-id = "au.csiro-serverless.beacon"
+    source                      = "./terraform-aws-serverless-beacon"
+    beacon-id                   = "au.csiro-serverless.beacon"
     # bucket prefixes
-    variants-bucket-prefix = "sbeacon-"
-    metadata-bucket-prefix = "sbeacon-metadata-"
+    variants-bucket-prefix      = "sbeacon-"
+    metadata-bucket-prefix      = "sbeacon-metadata-"
     lambda-layers-bucket-prefix = "sbeacon-lambda-layers-"
     # beacon variables
-    beacon-name = ""
-    organisation-id = ""
-    organisation-name = ""
+    beacon-name                 = ""
+    organisation-id             = ""
+    organisation-name           = ""
     # aws region
-    region = "REGION"
+    region                      = "REGION"
 }
 ``` 
-Please refer to [./examples/minimum/](./examples/minimum/) or  [./examples/full](./examples/full) to find a minimal and a complete setup.
+Please refer to [./examples/minimum/](./examples/minimum/) or  [./examples/full](./examples/full) to find a minimal and a complete setup. Consider adding `outputs.tf` file as well.
+
 ## Development
 
 All the layers needed for the program to run are in layers folder. To add a new layer for immediate use with additional configs, run the following commands. Once the decision to use the library is finalised update the `init.sh` script to automate the process.
@@ -179,14 +209,14 @@ cp lib terraform-aws-serverless-beacon/layers/<Library Name>/
 
 # troubleshoot with "ldd ./binary-name" to see what libaries needed
 # you can use the following command to copy the libraries to binaries/lib/
-<binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
+ldd <binary file> | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
 ```
 
 * Collaborative development
 
 Please make a copy of `backend.tf.template` with suited parameters and rename as `backend.tf`. Refer to documentation for more information [https://www.terraform.io/language/settings/backends/configuration](https://www.terraform.io/language/settings/backends/configuration). If this is not done, make sure the terraform lock and state files are stored securely to avoid infrastructure-vs-code inconsistencies. Please refer to [./examples/full](./examples/full) to find a an example backend.
 
-## API
+## API Usage
 
 ### Example data
 
@@ -214,6 +244,59 @@ Querying is available as per API defined by BeaconV2 [https://beacon-project.io/
 * All the available endpoints can be retrieved using the deployment url's `/map`. 
 * Schema for beacon V2 configuration can be obtained from `/configuration`.
 * Entry types are defined at `/entry_types`.
+
+## Securing the API
+
+We have provided the essential architectural templates to enable the token based authentication of the API access. If you are using the module configuration of sBeacon, modify the `main.tf` as follows. Alternatively, you can edit these variable in the `variables.tf` file.
+
+### Enabling API security
+```bash
+# main.tf
+module "serverless-beacon" {
+    # add the following as desired
+    beacon-enable-auth          = true
+    beacon-guest-username       = "guest@gmail.com"
+    beacon-guest-password       = "XXXXX"
+    beacon-admin-username       = "admin@gmail.com"
+    beacon-admin-password       = "XXXXX"
+}
+``` 
+
+In order to retrieve the commands needed to get access token, add an `output.tf` file in the module configuration.
+```bash
+# variables.tf
+output "cognito_client_id" {
+  value       = module.serverless-beacon.cognito_client_id
+  description = "Cognito client Id for user registration and login."
+}
+
+output "admin_login_command" {
+  value       = module.serverless-beacon.admin_login_command
+  description = "AWS cli command to get admin login token"
+}
+
+output "guest_login_command" {
+  value       = module.serverless-beacon.guest_login_command
+  description = "AWS cli command to get guest login token"
+}
+``` 
+A examples are available at [./examples/minimum/](./examples/minimum/) and  [./examples/full](./examples/full).
+
+### API access commands
+
+Upon successful `terraform apply` you'll be prompted with an output similar to below.
+```bash 
+api_url = "https://XXXXX.execute-api.us-east-1.amazonaws.com/"
+cognito_client_id = "XXXXX"
+admin_login_command = "aws cognito-idp admin-initiate-auth --user-pool-id us-east-1_A89RD07je --region us-east-1 --client-id 100n0tno0e0sql96mcgciaa8to --auth-flow ADMIN_USER_PASSWORD_AUTH --auth-parameters USERNAME=admin@gmail.com,PASSWORD=XXXXX --output json --query AuthenticationResult.IdToken"
+guest_login_command = "aws cognito-idp admin-initiate-auth --user-pool-id us-east-1_A89RD07je --region us-east-1 --client-id XXXXX --auth-flow ADMIN_USER_PASSWORD_AUTH --auth-parameters USERNAME=guest@gmail.com,PASSWORD=XXXXX --output json --query AuthenticationResult.IdToken"
+```
+
+Use either `admin_login_command` or `guest_login_command` to retrieve the **IdToken**. You can use this as the bearer token to access the API.
+
+### How API security works
+
+There are three groups of users `record-access-user-group`, `count-access-user-group` and `boolean-access-user-group`. Admin user belons to all three groups while guest has only **counts** and **boolean** access. Adding new users must be done using the Cognito User Pool as an administrator. Alternatively, infrastructure can be modified to support alternative authentication flows.
 
 
 ## Troubleshooting

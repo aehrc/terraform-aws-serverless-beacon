@@ -32,4 +32,9 @@ module "serverless-beacon" {
   beacon-service-type-group    = "au.csiro"
   beacon-service-type-artifact = "beacon"
   beacon-service-type-version  = "1.0"
+  beacon-enable-auth           = true
+  beacon-guest-username        = "guest@gmail.com"
+  beacon-guest-password        = "guest1234"
+  beacon-admin-username        = "admin@gmail.com"
+  beacon-admin-password        = "admin1234"
 }

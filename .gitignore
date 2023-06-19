@@ -25,3 +25,4 @@ vcf.txt
 tmp*
 nohup.out
 tmpterms
+*.tfvars
