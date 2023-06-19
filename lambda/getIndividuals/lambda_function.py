@@ -11,7 +11,7 @@ from route_individuals_filtering_terms import route as route_individuals_filteri
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
     request_params, errors, status = parse_request(event)
-    
+
     if errors:
         return bundle_response(status, errors)
 
