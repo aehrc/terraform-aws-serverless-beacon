@@ -164,7 +164,7 @@ def summarise_dataset(dataset):
 
 def validate_request(parameters):
     # load validator
-    new_schema = "./schemas/submitDataset-schema-new.json"
+    new_schema = "./schemas/submit-dataset-schema-new.json"
     schema_dir = os.path.dirname(os.path.abspath(new_schema))
     new_schema = json.load(open(new_schema))
     resolveNew = RefResolver(base_uri="file://" + schema_dir + "/", referrer=new_schema)
