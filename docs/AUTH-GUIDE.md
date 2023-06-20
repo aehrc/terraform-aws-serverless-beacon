@@ -31,7 +31,7 @@ By default, passwords for the default users are set through the `main.tf` file. 
 
 In order to retrieve the commands needed to get access token, add an `output.tf` file in the module configuration.
 ```bash
-# variables.tf
+# outputs.tf
 output "cognito_client_id" {
   value       = module.serverless-beacon.cognito_client_id
   description = "Cognito client Id for user registration and login."
