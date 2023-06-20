@@ -1,15 +1,31 @@
-# Getting started with test data
+## Contents
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Getting started with test data](#getting-started-with-test-data)
+- [Data submission](#data-submission)
+  * [Option 1: Submission as request body](#option-1-submission-as-request-body)
+  * [Option 2: Submission as an S3 payload](#option-2-submission-as-an-s3-payload)
+- [API usage](#api-usage)
+  * [POST requst to `/g_variants` with following payload](#post-requst-to-g_variants-with-following-payload)
+  * [POST request to `/g_variants/R1JDSDM4CTEJNTQ2ODAyCUcJQw==/individuals` with following payload](#post-request-to-g_variantsr1jdsdm4ctejntq2odaycucjqwindividuals-with-following-payload)
+  * [POST request to `/individuals` with following payload](#post-request-to-individuals-with-following-payload)
+
+<!-- TOC end -->
+
+## Getting started with test data
 
 Please ensure you first upload the `chr1.vcf.gz` and `chr1.vcf.gz.tbi` files to an S3 bucket that is accessible from the sBeacon deployment account. Obtain the S3 URI for the `chr1.vcf.gz` from the uploaded desitation. Note that, both `vcf.gz` and `vcf.gz.tbi` files must have the same prefix in S3 for this to work. Please note that, all the buckets you create in AWS are in the same region as the deployment.
 
-Now edit the `submission.json` using the S3 URI of the `vcf.gz` file.
+Now edit the [`submission.json`](../examples/test-data/submission.json) using the S3 URI of the `vcf.gz` file.
 
 ```json
-. . .
+{
+    // other fields
     "vcfLocations": [
         "s3://<bucket>/<prefix>/chr1.vcf.gz"
-    ]
-. . .
+    ],
+    // other fields
+}
 ```
 
 ## Data submission
@@ -22,7 +38,7 @@ You can simply copy the edited JSON content in to the API gateway `/submit_datas
 
 ### Option 2: Submission as an S3 payload
 
-Alternatively, you can upload edited `submission.json` file to an S3 location accessible from deployment. Then you can use the file's S3 URI as follows in the API Gateway or in your REST client.
+Alternatively, you can upload edited [`submission.json`](../examples/test-data/submission.json) file to an S3 location accessible from deployment. Then you can use the file's S3 URI as follows in the API Gateway or in your REST client.
 
 ```json
 {
@@ -32,9 +48,13 @@ Alternatively, you can upload edited `submission.json` file to an S3 location ac
 
 Option 2 is recommended for larger submissions with thousands of metadata entries.
 
-## API testing
+## API usage
 
 ### POST requst to `/g_variants` with following payload
+
+**Query**
+
+Schema for the `query.requestParameters` attribute is available at [../shared_resources/schemas/g-variants-request-parameters.json](../shared_resources/schemas/g-variants-request-parameters.json).
 
 ```json
 {
@@ -61,7 +81,9 @@ Option 2 is recommended for larger submissions with thousands of metadata entrie
 }
 ```
 
-Result
+**Result**
+
+Result follows the `genomic variations` models which has the schema presented at [../shared_resources/schemas/genomic-variation-schema.json](../shared_resources/schemas/genomic-variation-schema.json).
 
 ```json
 {
@@ -167,6 +189,7 @@ Result
 
 ### POST request to `/g_variants/R1JDSDM4CTEJNTQ2ODAyCUcJQw==/individuals` with following payload
 
+**Query**
 ```json
 {
     "meta": {
@@ -182,7 +205,7 @@ Result
 }
 ```
 
-Result
+**Result**
 
 ```json
 {
@@ -270,6 +293,7 @@ Result
 
 ### POST request to `/individuals` with following payload
 
+**Query**
 ```json
 {
     "query": {
@@ -286,7 +310,7 @@ Result
 }
 ```
 
-Result
+**Result**
 
 ```json
 {
