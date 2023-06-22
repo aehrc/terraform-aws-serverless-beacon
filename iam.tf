@@ -819,7 +819,8 @@ data "aws_iam_policy_document" "dynamodb-onto-access" {
   statement {
     actions = [
       "dynamodb:DescribeTable",
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem"
     ]
     resources = [
       aws_dynamodb_table.ontologies.arn,
@@ -836,7 +837,6 @@ data "aws_iam_policy_document" "dynamodb-onto-write-access" {
       "dynamodb:DescribeTable",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
-      "dynamodb:GetItem",
       "dynamodb:BatchWriteItem"
     ]
     resources = [
