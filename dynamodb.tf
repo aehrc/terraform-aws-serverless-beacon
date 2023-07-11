@@ -30,11 +30,11 @@ resource "aws_dynamodb_table" "datasets" {
 resource "aws_dynamodb_table" "ontologies" {
   billing_mode = "PAY_PER_REQUEST"
   name         = "Ontologies"
-  hash_key     = "prefix"
+  hash_key     = "id"
   tags         = var.common-tags
 
   attribute {
-    name = "prefix"
+    name = "id"
     type = "S"
   }
 }

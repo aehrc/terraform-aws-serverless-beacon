@@ -52,26 +52,30 @@ def get_term_all_descendants(term: str):
 def get_ontology_details(ontology) -> Ontology:
     details = None
     try:
-        details = Ontology.get(ontology)
+        details = Ontology.get(ontology.lower())
     except Ontology.DoesNotExist:
         if ontology == "SNOMED":
-            # use ontoserver
-            details = Ontology(ontology.upper())
-            details.data = json.dumps(
-                {"id": "SNOMED", "baseUri": "http://snomed.info/sct"}
+            # use ontoserver details
+            details = Ontology(ontology.lower())
+            details = Ontology("snomed")
+            details.name = "SNOMED Clinical Terms Australian extension"
+            details.url = "http://snomed.info/sct"
+            details.version = (
+                "http://snomed.info/sct/32506021000036107/version/20210204"
             )
+            details.namespacePrefix = "http://snomed.info/sct"
+            details.iriPrefix = "http://snomed.info/sct"
             details.save()
         else:
             # use ENSEMBL
             if response := requests.get(f"{ENSEMBL_OLS}/{ontology}"):
                 response_json = response.json()
-                details = Ontology(ontology.upper())
-                details.data = json.dumps(
-                    {
-                        "id": response_json["ontologyId"].upper(),
-                        "baseUri": response_json["config"]["baseUris"][0],
-                    }
-                )
+                details = Ontology(response_json["ontologyId"].lower())
+                details.name = response_json["config"]["title"]
+                details.url = response_json["config"]["id"]
+                details.version = response_json["config"]["version"]
+                details.namespacePrefix = response_json["config"]["preferredPrefix"]
+                details.iriPrefix = response_json["config"]["baseUris"][0]
                 details.save()
 
     return details
@@ -82,6 +86,8 @@ def request_ontoserver_hierarchy(term: str, ancestors=True):
     snomed = "SNOMED" in term.upper()
     retries = 1
     response = None
+    details = get_ontology_details("SNOMED")
+
     while (not response or response.status_code != 200) and retries < 10:
         retries += 1
         response = requests.post(
@@ -96,7 +102,7 @@ def request_ontoserver_hierarchy(term: str, ancestors=True):
                             "compose": {
                                 "include": [
                                     {
-                                        "system": "http://snomed.info/sct",
+                                        "system": details.url,
                                         "filter": [
                                             {
                                                 "property": "concept",
@@ -138,8 +144,7 @@ def request_ensembl_hierarchy(term: str, ancestors=True):
     if not details:
         return (term, set())
 
-    data = json.loads(details.data)
-    iri = data["baseUri"] + code
+    iri = details.iriPrefix + code
     iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(iri))
     url = f"{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/{'hierarchicalAncestors' if ancestors else 'hierarchicalDescendants'}"
 

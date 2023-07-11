@@ -15,8 +15,12 @@ class Ontology(Model):
         table_name = ENV_DYNAMO.DYNAMO_ONTOLOGIES_TABLE
         region = REGION
 
-    prefix = UnicodeAttribute(hash_key=True)
-    data = UnicodeAttribute()
+    id = UnicodeAttribute(hash_key=True)
+    name = UnicodeAttribute(default_for_new=None, null=True)
+    url = UnicodeAttribute()
+    version = UnicodeAttribute(default_for_new=None, null=True)
+    namespacePrefix = UnicodeAttribute()
+    iriPrefix = UnicodeAttribute()
 
 
 # Descendants table

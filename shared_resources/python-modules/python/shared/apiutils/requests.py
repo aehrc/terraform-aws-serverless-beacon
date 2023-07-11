@@ -1,17 +1,17 @@
 import json
 from collections import defaultdict
 from typing_extensions import Self
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Annotated
 
 from pydantic import (
+    ConfigDict,
     BaseModel,
-    Extra,
+    TypeAdapter,
     ValidationError,
     PrivateAttr,
     constr,
-    validator,
-    parse_obj_as,
 )
+from pydantic.functional_validators import BeforeValidator
 from strenum import StrEnum
 from humps import camelize
 
@@ -26,7 +26,7 @@ from shared.utils import ENV_BEACON
 #
 
 
-CURIE_REGEX = r"^([a-zA-Z0-9]*):\/?[a-zA-Z0-9]*$"
+CURIE_REGEX = r"^([a-zA-Z0-9]*):[a-zA-Z0-9]*$"
 BEACON_API_VERSION = ENV_BEACON.BEACON_API_VERSION
 BEACON_DEFAULT_GRANULARITY = ENV_BEACON.BEACON_DEFAULT_GRANULARITY
 BEACON_ENABLE_AUTH = ENV_BEACON.BEACON_ENABLE_AUTH
@@ -34,10 +34,9 @@ BEACON_ENABLE_AUTH = ENV_BEACON.BEACON_ENABLE_AUTH
 
 # Thirdparty Code
 class CamelModel(BaseModel):
-    class Config:
-        alias_generator = camelize
-        allow_population_by_field_name = True
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        alias_generator=camelize, populate_by_name=True, extra="forbid"
+    )
 
 
 class RequestQueryParams(CamelModel):
@@ -49,10 +48,10 @@ class RequestQueryParams(CamelModel):
     alternate_bases: str = "N"
     variant_min_length: int = 0
     variant_max_length: int = -1
-    allele: Optional[str]
-    geneId: Optional[str]
-    aminoacid_change: Optional[str]
-    variant_type: Optional[str]
+    allele: Optional[str] = None
+    geneId: Optional[str] = None
+    aminoacid_change: Optional[str] = None
+    variant_type: Optional[str] = None
     _user_params: dict() = PrivateAttr()
 
     def __init__(self, **data):
@@ -95,7 +94,7 @@ class Granularity(StrEnum):
 
 # Thirdparty Code
 class OntologyFilter(CamelModel):
-    id: constr(regex=CURIE_REGEX)
+    id: constr(pattern=CURIE_REGEX)
     scope: Optional[str] = None
     include_descendant_terms: bool = True
     similarity: Similarity = Similarity.EXACT
@@ -127,9 +126,18 @@ class RequestMeta(CamelModel):
     api_version: str = BEACON_API_VERSION
 
 
+def transform_filters(term):
+    if isinstance(term, str):
+        term = {"id": term}
+    return term
+
+
 # Thirdparty Code
 class RequestQuery(CamelModel):
-    filters: List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]] = []
+    filters: Annotated[
+        List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]],
+        BeforeValidator(transform_filters),
+    ] = []
     include_resultset_responses: IncludeResultsetResponses = (
         IncludeResultsetResponses.HIT
     )
@@ -142,12 +150,6 @@ class RequestQuery(CamelModel):
     def __init__(self, **data):
         super().__init__(**data)
         self._filters = data.get("filters", [])
-
-    @validator("filters", pre=True, each_item=True)
-    def transform_filters(cls, term):
-        if isinstance(term, str):
-            term = {"id": term}
-        return term
 
 
 # Thirdparty Code
@@ -172,11 +174,12 @@ class RequestParams(CamelModel):
                 self.query.requested_granularity = Granularity(v)
             elif k == "filters":
                 filters = v.split(",")
-                self.query.filters = parse_obj_as(
-                    List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]],
-                    [{"id": term} for term in filters],
+                adapter = TypeAdapter(
+                    List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]]
                 )
-                self.query._filters = filters
+                self.query.filters = adapter.validate_json(
+                    [{"id": term} for term in filters]
+                )
             else:
                 req_params_dict[k] = v
         # query parameters related to variants
