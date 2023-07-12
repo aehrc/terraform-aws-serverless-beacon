@@ -71,7 +71,9 @@ def get_vcf_chromosomes(vcf):
 
 def get_matching_chromosome(vcf_chromosomes, target_chromosome):
     for vcf_chrom in vcf_chromosomes:
-        if _match_chromosome_name(vcf_chrom) == target_chromosome:
+        if vcf_chrom == target_chromosome:
+            return vcf_chrom
+        elif _match_chromosome_name(vcf_chrom) == target_chromosome:
             return vcf_chrom
     return None
 
