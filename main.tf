@@ -791,11 +791,12 @@ module "lambda-indexer" {
   timeout             = 600
   attach_policy_jsons = true
   policy_jsons = [
+    data.aws_iam_policy_document.lambda-indexer.json,
     data.aws_iam_policy_document.athena-full-access.json,
     data.aws_iam_policy_document.dynamodb-onto-access.json,
     data.aws_iam_policy_document.dynamodb-onto-write-access.json
   ]
-  number_of_policy_jsons = 3
+  number_of_policy_jsons = 4
   source_path            = "${path.module}/lambda/indexer"
 
   tags = var.common-tags
@@ -803,7 +804,8 @@ module "lambda-indexer" {
   environment_variables = merge(
     local.dynamodb_variables,
     local.sbeacon_variables,
-    local.athena_variables
+    local.athena_variables,
+    { INDEXER_TOPIC_ARN : aws_sns_topic.indexer.arn }
   )
 
   layers = [

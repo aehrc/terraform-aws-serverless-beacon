@@ -377,6 +377,10 @@ resource "aws_api_gateway_deployment" "BeaconApi" {
       aws_api_gateway_integration_response.cohorts-id-filtering_terms_post,
       aws_api_gateway_method_response.cohorts-id-filtering_terms,
       aws_api_gateway_method_response.cohorts-id-filtering_terms_post,
+      # index
+      aws_api_gateway_method.index_post,
+      aws_api_gateway_integration.index_post,
+      aws_api_gateway_method_response.index_post,
     ]))
   }
 }

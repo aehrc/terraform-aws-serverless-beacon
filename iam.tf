@@ -721,8 +721,12 @@ data "aws_iam_policy_document" "lambda-getRuns" {
 #
 data "aws_iam_policy_document" "lambda-indexer" {
   statement {
-    actions   = []
-    resources = []
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.indexer.arn,
+    ]
   }
 }
 
@@ -820,7 +824,8 @@ data "aws_iam_policy_document" "dynamodb-onto-access" {
     actions = [
       "dynamodb:DescribeTable",
       "dynamodb:GetItem",
-      "dynamodb:BatchGetItem"
+      "dynamodb:BatchGetItem",
+      "dynamodb:Scan",
     ]
     resources = [
       aws_dynamodb_table.ontologies.arn,
@@ -837,7 +842,8 @@ data "aws_iam_policy_document" "dynamodb-onto-write-access" {
       "dynamodb:DescribeTable",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
-      "dynamodb:BatchWriteItem"
+      "dynamodb:BatchWriteItem",
+      "dynamodb:DeleteItem",
     ]
     resources = [
       aws_dynamodb_table.ontologies.arn,

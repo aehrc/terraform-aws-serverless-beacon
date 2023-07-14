@@ -2,13 +2,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
 import threading
 import time
+import json
 
 from smart_open import open as sopen
 import boto3
 
-from shared.dynamodb import Descendants, Anscestors
+from shared.dynamodb import Descendants, Anscestors, Ontology
 from shared.ontoutils import request_hierarchy
-from shared.utils import ENV_ATHENA
+from shared.apiutils import bundle_response
+from shared.utils import ENV_ATHENA, ENV_SNS
 from ctas_queries import QUERY as CTAS_TEMPLATE
 from generate_query_index import QUERY as INDEX_QUERY
 from generate_query_terms import QUERY as TERMS_QUERY
@@ -17,6 +19,7 @@ from generate_query_relations import QUERY as RELATIONS_QUERY
 
 athena = boto3.client("athena")
 s3 = boto3.client("s3")
+sns = boto3.client("sns")
 
 
 ENSEMBL_OLS = "https://www.ebi.ac.uk/ols/api/ontologies"
@@ -226,7 +229,7 @@ def record_relations():
     await_result(response["QueryExecutionId"])
 
 
-def lambda_handler(event, context):
+def reindex_tables():
     # CTAS this must finish before all
     threads = []
     for src, dest, prefix, bucket_count, bucket_by in (
@@ -288,23 +291,84 @@ def lambda_handler(event, context):
         threads[-1].start()
     [thread.join() for thread in threads]
 
-    # this is the longest process
-    index_thread = threading.Thread(target=index_terms)
-    index_thread.start()
 
-    relations_thread = threading.Thread(target=record_relations)
-    relations_thread.start()
+def clean_onto_index_tables():
+    with Anscestors.batch_write() as batch:
+        for entry in Anscestors.scan():
+            batch.delete(entry)
+    with Descendants.batch_write() as batch:
+        for entry in Descendants.scan():
+            batch.delete(entry)
+    with Ontology.batch_write() as batch:
+        for entry in Ontology.scan():
+            batch.delete(entry)
 
-    # terms are neded for the tree index
-    terms_thread = threading.Thread(target=record_terms)
-    terms_thread.start()
-    terms_thread.join()
+
+def lambda_handler(event, context):
+    body_dict = dict()
+
+    # API call
+    if event.get("httpMethod", "") == "POST":
+        try:
+            body_dict = json.loads(event.get("body") or "{}")
+        except ValueError:
+            # fallback to defaul behaviour
+            body_dict = dict()
+        kwargs = {
+            "TopicArn": ENV_SNS.INDEXER_TOPIC_ARN,
+            "Message": json.dumps(body_dict),
+        }
+        print("Publishing to SNS: {}".format(json.dumps(kwargs)))
+        sns.publish(**kwargs)
+
+        return bundle_response(
+            200,
+            {
+                "success": True,
+                "message": "Running indexer asynchronously. Indexer may take upto few minutes.",
+            },
+        )
+    elif "Sns" in event.get("Records", ["None"])[0]:
+        body_dict = json.loads(event["Records"][0]["Sns"]["Message"])
+
+    re_index_tables = body_dict.get("reIndexTables", True)
+    re_index_ontology_tables = body_dict.get("reIndexOntologyTerms", False)
+
+    # re-index all tables using CTAS
+    if re_index_tables:
+        reindex_tables()
+
+    # cleanup recorded terms in DynamoDB
+    if re_index_ontology_tables:
+        clean_onto_index_tables()
+
+    # index terms and corresponding entity type and id they appear
+    index_thread = None
+    if re_index_tables:
+        index_thread = threading.Thread(target=index_terms)
+        index_thread.start()
+
+    # the massive JOIN operation between all tables to create the links
+    relations_thread = None
+
+    if re_index_tables:
+        relations_thread = threading.Thread(target=record_relations)
+        relations_thread.start()
+
+    # create the global terms table with term, label, type and kind
+    # derived from terms cache discarding entity ids
+    if body_dict.get("reIndexTables", True):
+        record_terms()
+
+    # build ontology tree
     index_terms_tree()
 
     # join last running threads
-    index_thread.join()
-    relations_thread.join()
-    print("Success")
+    if re_index_tables:
+        index_thread.join()
+        relations_thread.join()
+
+    print("Indexing complete!")
 
 
 if __name__ == "__main__":
