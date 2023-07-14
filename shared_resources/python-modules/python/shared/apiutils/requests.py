@@ -177,7 +177,7 @@ class RequestParams(CamelModel):
                 adapter = TypeAdapter(
                     List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]]
                 )
-                self.query.filters = adapter.validate_json(
+                self.query.filters = adapter.validate_python(
                     [{"id": term} for term in filters]
                 )
             else:
@@ -194,7 +194,7 @@ class RequestParams(CamelModel):
             "filters": self.query._filters,
             "req_params": self.query.request_parameters._user_params,
             "includeResultsetResponses": self.query.include_resultset_responses,
-            "pagination": self.query.pagination.dict(),
+            "pagination": self.query.pagination.model_dump(),
             "requestedGranularity": self.query.requested_granularity,
             "testMode": self.query.test_mode,
         }
