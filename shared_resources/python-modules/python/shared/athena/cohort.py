@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 import jsons
 import boto3
@@ -27,6 +28,8 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
         "inclusionCriteria",
         "name",
     ]
+    _table_column_types = defaultdict(lambda: "string")
+    _table_column_types["cohortSize"] = "int"
 
     def __init__(
         self,
@@ -60,7 +63,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
             return
         header_entity = (
             "struct<"
-            + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
+            + ",".join([f"{col.lower()}:{cls._table_column_types[col]}" for col in cls._table_columns])
             + ">"
         )
         header_terms = (
@@ -87,7 +90,7 @@ class Cohort(jsons.JsonSerializable, AthenaModel):
                 for cohort in array:
                     row = tuple(
                         cohort.get(k, "")
-                        if type(cohort.get(k, "")) == str
+                        if type(cohort.get(k, "")) in (str, int)
                         else json.dumps(cohort.get(k, ""))
                         for k in [k.strip("_") for k in cls._table_columns]
                     )

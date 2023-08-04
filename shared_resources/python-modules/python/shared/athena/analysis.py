@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 import boto3
 import jsons
@@ -31,6 +32,7 @@ class Analysis(jsons.JsonSerializable, AthenaModel):
         "pipelineRef",
         "variantCaller",
     ]
+    _table_column_types = defaultdict(lambda: "string")
 
     def __init__(
         self,

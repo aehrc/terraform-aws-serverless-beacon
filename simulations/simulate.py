@@ -173,7 +173,7 @@ def get_random_dataset(id, vcfLocations, vcfChromosomeMap, seed=0):
     return item, dynamo_item
 
 
-def get_random_cohort(id, seed=0):
+def get_random_cohort(id, size, seed=0):
     random.seed(seed)
 
     item = Cohort(id=id)
@@ -197,7 +197,7 @@ def get_random_cohort(id, seed=0):
             ]
         )
     }
-    item.cohortSize = -1
+    item.cohortSize = size
     item.cohortType = random.choice(["study-defined", "beacon-defined", "user-defined"])
     item.collectionEvents = {}
     item.exclusionCriteria = {}
@@ -686,7 +686,8 @@ def simulate_datasets_cohorts(template):
 
         # vcf chromosomes
         for vcf in set(vcfs):
-            chroms = get_vcf_chromosomes(vcf)
+            errored, _, chroms = get_vcf_chromosomes(vcf)
+            assert errored == False, "Unable to fetch chromosomes"
             vcfm = VcfChromosomeMap()
             vcfm.vcf = vcf
             vcfm.chromosomes = chroms
@@ -723,7 +724,7 @@ def simulate_datasets_cohorts(template):
 
     for dataset in tqdm(dynamo_items, desc="Simulating cohorts"):
         id = dataset.id
-        cohort = get_random_cohort(id=id, seed=id)
+        cohort = get_random_cohort(id=id, size=dataset.sampleCount, seed=id)
 
         for term, label, typ in extract_terms([jsons.dump(cohort)]):
             terms_writer.write(("cohorts", cohort.id, term, label, typ))

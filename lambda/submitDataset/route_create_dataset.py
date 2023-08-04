@@ -113,6 +113,7 @@ def create_dataset(attributes, vcf_chromosome_maps):
         # cohort information
         json_cohort = attributes.get("cohort", None)
         if json_cohort:
+            json_cohort["cohortSize"] = len(attributes.get("individuals", []))
             json_cohort["id"] = cohortId
             # Cohort.upload_array([cohort])
             threads.append(Thread(target=Cohort.upload_array, args=([json_cohort],)))

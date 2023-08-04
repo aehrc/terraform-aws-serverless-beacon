@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 import boto3
 import jsons
@@ -40,6 +41,7 @@ class Biosample(jsons.JsonSerializable, AthenaModel):
         "info",
         "notes",
     ]
+    _table_column_types = defaultdict(lambda: "string")
 
     def __init__(
         self,

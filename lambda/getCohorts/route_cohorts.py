@@ -30,18 +30,10 @@ def get_bool_query(conditions=[]):
 def get_record_query(skip, limit, conditions=[]):
     # TODO cohorts and individuals must be related via a many-to-many table
     query = f"""
-    SELECT id, cohortdatatypes, cohortdesign, B.csize as cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
-    FROM 
-        "{{database}}"."{{table}}" as A 
-    LEFT JOIN 
-        (
-            SELECT _cohortid, count(*) as csize 
-            FROM "{{database}}"."{ENV_ATHENA.ATHENA_INDIVIDUALS_TABLE}"
-            GROUP BY _cohortid
-        ) as B
-    ON A.id = B._cohortid
+    SELECT id, cohortdatatypes, cohortdesign, cohortsize, cohorttype, collectionevents, exclusioncriteria, inclusioncriteria, name
+    FROM "{{database}}"."{{table}}"
     {conditions}
-    ORDER BY A.id
+    ORDER BY id
     OFFSET {skip}
     LIMIT {limit};
     """

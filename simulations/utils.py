@@ -105,7 +105,7 @@ def upload_batch_s3(args):
 def get_writer(cls, path):
     header = (
         "struct<"
-        + ",".join([f"{col.lower()}:string" for col in cls._table_columns])
+        + ",".join([f"{col.lower()}:{cls._table_column_types[col]}" for col in cls._table_columns])
         + ">"
     )
     bloom_filter_columns = list(map(lambda x: x.lower(), cls._table_columns))
@@ -124,7 +124,7 @@ def get_writer(cls, path):
 def write_local(cls, item, writer):
     row = tuple(
         item.__dict__[k]
-        if type(item.__dict__[k]) == str
+        if type(item.__dict__[k]) in (str, int)
         else json.dumps(item.__dict__[k])
         for k in cls._table_columns
     )

@@ -54,7 +54,7 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts-cache" {
 
     columns {
       name = "cohortsize"
-      type = "string"
+      type = "int"
     }
 
     columns {
