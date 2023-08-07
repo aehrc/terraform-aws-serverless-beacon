@@ -25,7 +25,6 @@
   * [Docker error (invalid reference format)](#docker-error-invalid-reference-format)
   * [Illegal instruction (core dumped)](#illegal-instruction-core-dumped)
   * [Provider produced inconsistent final plan](#provider-produced-inconsistent-final-plan)
-
 <!-- TOC end -->
 
 ## Why serverless?
