@@ -250,7 +250,7 @@ docker run --rm -it -v "`pwd`":"`pwd`" -v /tmp:/tmp  -u `id -u`:`id -g` -w "`pwd
 You'll also need to do this if lambda functions start to display "Error: Runtime exited with error: signal: illegal instruction (core dumped)". In this case it's likely AWS Lambda has moved onto a different architecture from haswell (Family 6, Model 63). You can use cat /proc/cpuinfo in a lambda environment to find the new CPU family and model numbers, or just change -march=haswell to -msse4.2 or -mpopcnt for less optimisation.
 
 ```bash
-$ ./init.sh -msse4.2 -O3
+./init.sh -msse4.2 -O3
 ```
 
 ### Provider produced inconsistent final plan
