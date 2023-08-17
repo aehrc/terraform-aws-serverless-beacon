@@ -6,11 +6,12 @@ import json
 import boto3
 from smart_open import open as sopen
 
+from shared.ontoutils import get_ontology_details
 from shared.utils import ENV_ATHENA
 
 
 athena = boto3.client("athena")
-pattern = re.compile(f"^\\w[^:]+:.+$")
+pattern = re.compile(r"^\w[^:]+:.+$")
 
 # Perform database level operations based on the queries
 
@@ -99,11 +100,12 @@ class AthenaModel:
 def extract_terms(array):
     for item in array:
         if type(item) == dict:
-            label = item.get("label", "")
-            typ = item.get("type", "string")
             for key, value in item.items():
                 if type(value) == str:
                     if key == "id" and pattern.match(value):
+                        label = item.get("label", "")
+                        ontology = get_ontology_details(value.split(":")[0])
+                        typ = (ontology.name if ontology else "") or ""
                         yield value, label, typ
                 if type(value) == dict:
                     yield from extract_terms([value])

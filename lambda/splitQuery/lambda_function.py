@@ -28,6 +28,7 @@ def perform_query(payload: dict):
     return json.loads(response["Payload"].read())
 
 
+# TODO if the response is too big upload to S3
 def split_query(payloads: List[dict], is_async: bool = False):
     executor = ThreadPoolExecutor(THREADS)
     futures = [executor.submit(perform_query, payload) for payload in payloads]

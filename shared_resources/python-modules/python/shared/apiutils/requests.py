@@ -26,7 +26,8 @@ from shared.utils import ENV_BEACON
 #
 
 
-CURIE_REGEX = r"^([a-zA-Z0-9]*):[a-zA-Z0-9]*$"
+# TODO friendly error messages (not too verbose)
+CURIE_REGEX = r"^\w[^:]+:.+$"
 BEACON_API_VERSION = ENV_BEACON.BEACON_API_VERSION
 BEACON_DEFAULT_GRANULARITY = ENV_BEACON.BEACON_DEFAULT_GRANULARITY
 BEACON_ENABLE_AUTH = ENV_BEACON.BEACON_ENABLE_AUTH
@@ -49,7 +50,7 @@ class RequestQueryParams(CamelModel):
     variant_min_length: int = 0
     variant_max_length: int = -1
     allele: Optional[str] = None
-    geneId: Optional[str] = None
+    gene_id: Optional[str] = None
     aminoacid_change: Optional[str] = None
     variant_type: Optional[str] = None
     _user_params: dict() = PrivateAttr()
@@ -177,6 +178,7 @@ class RequestParams(CamelModel):
                 adapter = TypeAdapter(
                     List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]]
                 )
+                self.query._filters = filters
                 self.query.filters = adapter.validate_python(
                     [{"id": term} for term in filters]
                 )

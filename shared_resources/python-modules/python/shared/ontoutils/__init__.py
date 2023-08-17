@@ -82,7 +82,7 @@ def get_ontology_details(ontology) -> Ontology:
 
 
 @lru_cache()
-def request_ontoserver_hierarchy(term: str, ancestors=True):
+def request_ontoserver_hierarchy(term: str, fetch_ancestors=True):
     snomed = "SNOMED" in term.upper()
     retries = 1
     response = None
@@ -107,7 +107,7 @@ def request_ontoserver_hierarchy(term: str, ancestors=True):
                                             {
                                                 "property": "concept",
                                                 "op": "generalizes"
-                                                if ancestors
+                                                if fetch_ancestors
                                                 else "descendent-of",
                                                 "value": f"{term.replace('SNOMED:', '')}",
                                             }
@@ -137,7 +137,7 @@ def request_ontoserver_hierarchy(term: str, ancestors=True):
 
 
 @lru_cache()
-def request_ensembl_hierarchy(term: str, ancestors=True):
+def request_ensembl_hierarchy(term: str, fetch_ancestors=True):
     ontology, code = term.split(":")
     details = get_ontology_details(ontology)
     # if no details available, it is probably not an ontology term
@@ -146,7 +146,7 @@ def request_ensembl_hierarchy(term: str, ancestors=True):
 
     iri = details.iriPrefix + code
     iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(iri))
-    url = f"{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/{'hierarchicalAncestors' if ancestors else 'hierarchicalDescendants'}"
+    url = f"{ENSEMBL_OLS}/{ontology}/terms/{iri_double_encoded}/{'hierarchicalAncestors' if fetch_ancestors else 'hierarchicalDescendants'}"
 
     if response := requests.get(url):
         response_json = response.json()
@@ -161,7 +161,7 @@ def request_ensembl_hierarchy(term: str, ancestors=True):
 
 
 @lru_cache()
-def request_hierarchy(term, ancestors):
+def request_hierarchy(term, fetch_ancestors=True):
     if term.startswith("SNOMED"):
-        return request_ontoserver_hierarchy(term, ancestors)
-    return request_ensembl_hierarchy(term, ancestors)
+        return request_ontoserver_hierarchy(term, fetch_ancestors)
+    return request_ensembl_hierarchy(term, fetch_ancestors)

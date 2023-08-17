@@ -62,6 +62,7 @@ def best_parallelism(N):
     best_cost = float("inf")
     # This range must be smaller than total available concurrency
     # otherwise the pipeline will hang without enough lambdas to continue
+    # TODO make 800 an env variable
     for P in range(1, 800):
         if (cost := f_cost(N, P)) < best_cost:
             best_cost = cost
@@ -129,6 +130,7 @@ def perform_variant_search(
         split_start = start_min
 
         while split_start <= start_max:
+            # TODO improve SPLIT_SIZE - make dynamic
             split_end = min(split_start + SPLIT_SIZE - 1, start_max)
             for vcf_location, chrom in vcf_locations.items():
                 payload = {
