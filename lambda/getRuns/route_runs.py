@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import jsons
 
@@ -72,13 +73,27 @@ def route(request: RequestParams):
         return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
-        query = get_record_query(
+        executor = ThreadPoolExecutor(2)
+        # records fetching
+        record_query = get_record_query(
             request.query.pagination.skip, request.query.pagination.limit, conditions
         )
-        runs = Run.get_by_query(query, execution_parameters=execution_parameters)
+        record_future = executor.submit(
+            Run.get_by_query, record_query, execution_parameters=execution_parameters
+        )
+        # counts fetching
+        count_query = get_count_query(conditions)
+        count_future = executor.submit(
+            Run.get_count_by_query,
+            count_query,
+            execution_parameters=execution_parameters,
+        )
+        executor.shutdown()
+        count = count_future.result()
+        runs = record_future.result()
         response = build_beacon_resultset_response(
             jsons.dump(runs, strip_privates=True),
-            len(runs),
+            count,
             request,
             {},
             DefaultSchemas.BIOSAMPLES,
