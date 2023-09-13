@@ -10,15 +10,6 @@ from query_builder import QueryBuiler
 
 # uncomment below for debugging
 # os.environ['LD_DEBUG'] = 'all'
-VARIANTS_BUCKET = os.environ["VARIANTS_BUCKET"]
-BASES = [
-    "A",
-    "C",
-    "G",
-    "T",
-    "N",
-]
-
 all_count_pattern = re.compile("[0-9]+")
 get_all_calls = all_count_pattern.findall
 s3 = boto3.client("s3")
@@ -199,8 +190,7 @@ def perform_query(payload: dict(), is_async: bool = False):
             hit_indexes = [
                 i
                 for i, alt in enumerate(vcf_all_alts)
-                if alt.upper() in BASES
-                and variant_min_length <= len(alt) <= variant_max_length
+                if variant_min_length <= len(alt) <= variant_max_length
             ]
         else:
             hit_indexes = [
@@ -249,7 +239,7 @@ def perform_query(payload: dict(), is_async: bool = False):
             hit_set = {i + 1 for i in hit_indexes}
             # ["Chr1 123 A G SNP"]
             variants += [
-                f"{chromosome}\t{vcf_position}\t{vcf_reference}\t{vcf_all_alts[i]}\t{vcf_variant_type}"
+                f"{chromosome}\t{vcf_position}\t{vcf_reference}\t{vcf_all_alts[i-1]}\t{vcf_variant_type}"
                 for i in set(all_calls) & hit_set
             ]
             call_count += sum(1 for call in all_calls if call in hit_set)
