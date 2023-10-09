@@ -207,3 +207,10 @@ variable "beacon-admin-password" {
   description = "Value for admin password"
   default     = "admin1234"
 }
+
+# configuration variables
+variable "config-max-variant-search-base-range" {
+  type        = number
+  description = "Max allowed range for variant searching"
+  default     = 5000
+}

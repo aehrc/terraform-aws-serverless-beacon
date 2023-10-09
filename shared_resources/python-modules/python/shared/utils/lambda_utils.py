@@ -279,6 +279,12 @@ class SnsEnvironment:
         return os.environ["INDEXER_TOPIC_ARN"]
 
 
+class ConfigEnvironment:
+    @property
+    def CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE(self):
+        return int(os.environ["CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE"])
+
+
 def clear_tmp():
     try:
         for file_name in os.listdir("/tmp"):
@@ -307,3 +313,4 @@ ENV_BEACON = BeaconEnvironment()
 ENV_ATHENA = AthenaEnvironment()
 ENV_DYNAMO = DynamoDBEnvironment()
 ENV_SNS = SnsEnvironment()
+ENV_CONFIG = ConfigEnvironment()

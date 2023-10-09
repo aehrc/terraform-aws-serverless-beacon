@@ -46,6 +46,8 @@ locals {
     BEACON_SERVICE_TYPE_VERSION  = var.beacon-service-type-version
     # authentication variables
     BEACON_ENABLE_AUTH = var.beacon-enable-auth
+    # configurations
+    CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE = var.config-max-variant-search-base-range
   }
   # athena related variables
   athena_variables = {

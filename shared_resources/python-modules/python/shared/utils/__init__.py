@@ -4,6 +4,7 @@ from .lambda_utils import (
     ENV_BEACON,
     ENV_DYNAMO,
     ENV_SNS,
+    ENV_CONFIG,
     make_temp_file,
     clear_tmp,
 )
