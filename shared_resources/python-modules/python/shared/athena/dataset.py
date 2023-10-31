@@ -1,6 +1,7 @@
 import json
 import csv
 import sys
+from collections import defaultdict
 
 import jsons
 import boto3
@@ -33,6 +34,7 @@ class Dataset(jsons.JsonSerializable, AthenaModel):
         "updateDateTime",
         "version",
     ]
+    _table_column_types = defaultdict(lambda: "string")
 
     def __init__(
         self,

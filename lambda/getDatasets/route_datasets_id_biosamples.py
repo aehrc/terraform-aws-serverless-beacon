@@ -1,4 +1,6 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
+
 import jsons
 
 from shared.athena import Biosample, entity_search_conditions
@@ -79,18 +81,32 @@ def route(request: RequestParams, dataset_id):
         return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
-        query = get_record_query(
+        executor = ThreadPoolExecutor(2)
+        # records fetching
+        record_query = get_record_query(
             dataset_id,
             request.query.pagination.skip,
             request.query.pagination.limit,
             conditions,
         )
-        biosamples = Biosample.get_by_query(
-            query, execution_parameters=execution_parameters
+        record_future = executor.submit(
+            Biosample.get_by_query,
+            record_query,
+            execution_parameters=execution_parameters,
         )
+        # counts fetching
+        count_query = get_count_query(dataset_id, conditions)
+        count_future = executor.submit(
+            Biosample.get_count_by_query,
+            count_query,
+            execution_parameters=execution_parameters,
+        )
+        executor.shutdown()
+        count = count_future.result()
+        biosamples = record_future.result()
         response = build_beacon_resultset_response(
             jsons.dump(biosamples, strip_privates=True),
-            len(biosamples),
+            count,
             request,
             {},
             DefaultSchemas.BIOSAMPLES,

@@ -91,9 +91,11 @@ def route(request: RequestParams, analysis_id):
                     idx = f"{pos}_{ref}_{alt}"
                     variant_call_counts[idx] += query_response.call_count
                     variant_allele_counts[idx] += query_response.all_alleles_count
+                    # TODO - compress using hex/binary, chrom = INDEX (single digit/letter)
                     internal_id = (
                         f"{query_params.assembly_id}\t{chrom}\t{pos}\t{ref}\t{alt}"
                     )
+                    # TODO sort these results by pos - to avoid timing assumptions possible
                     results.append(
                         get_variant_entry(
                             base64.b64encode(f"{internal_id}".encode()).decode(),

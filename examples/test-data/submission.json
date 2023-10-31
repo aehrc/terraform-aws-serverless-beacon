@@ -36,7 +36,6 @@
         "cohortDesign": {
             "id": "orcid:0000-0003-3463-0775"
         },
-        "cohortSize": -1,
         "cohortType": "beacon-defined",
         "name": "CGG group"
     },

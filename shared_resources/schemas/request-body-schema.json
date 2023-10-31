@@ -85,9 +85,18 @@
                                     "type": "string"
                                 },
                                 "value": {
-                                    "description": "Alphanumeric search term to be used within the query which can contain wildcard characters (%) to denote any number of unknown characters.  Values can be assocatied with units if applicable.",
-                                    "example": "P70Y",
-                                    "type": "string"
+                                    "oneOf": [
+                                        {
+                                            "description": "Alphanumeric search term to be used within the query which can contain wildcard characters (%) to denote any number of unknown characters.  Values can be assocatied with units if applicable.",
+                                            "example": "P70Y",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "description": "Alphanumeric search value to be used within the query in a numeric comparison. Values may be assocatied with units if applicable.",
+                                            "example": 50,
+                                            "type": "number"
+                                        }
+                                    ]
                                 }
                             },
                             "required": [

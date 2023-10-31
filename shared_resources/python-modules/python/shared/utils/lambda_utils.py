@@ -154,7 +154,7 @@ class BeaconEnvironment:
 
     @property
     def BEACON_ENABLE_AUTH(self):
-        return os.environ["BEACON_ENABLE_AUTH"].strip().lower() in ('true', '1')
+        return os.environ["BEACON_ENABLE_AUTH"].strip().lower() in ("true", "1")
 
 
 class AthenaEnvironment:
@@ -273,6 +273,18 @@ class DynamoDBEnvironment:
         return os.environ["DYNAMO_ONTO_INDEX_TABLE"]
 
 
+class SnsEnvironment:
+    @property
+    def INDEXER_TOPIC_ARN(self):
+        return os.environ["INDEXER_TOPIC_ARN"]
+
+
+class ConfigEnvironment:
+    @property
+    def CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE(self):
+        return int(os.environ["CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE"])
+
+
 def clear_tmp():
     try:
         for file_name in os.listdir("/tmp"):
@@ -300,3 +312,5 @@ def make_temp_file():
 ENV_BEACON = BeaconEnvironment()
 ENV_ATHENA = AthenaEnvironment()
 ENV_DYNAMO = DynamoDBEnvironment()
+ENV_SNS = SnsEnvironment()
+ENV_CONFIG = ConfigEnvironment()

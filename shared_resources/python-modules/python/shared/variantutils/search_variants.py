@@ -29,7 +29,9 @@ def fan_out(payload: List[dict]):
 
     # compress if larger than 100 kb
     if len(payload_str) > 100 * 1024:
-        payload_str = json.dumps(base64.b64encode(gzip.compress(payload_str.encode())).decode())
+        payload_str = json.dumps(
+            base64.b64encode(gzip.compress(payload_str.encode())).decode()
+        )
 
     response = aws_lambda.invoke(
         FunctionName=SPLIT_QUERY_LAMBDA,
@@ -62,6 +64,7 @@ def best_parallelism(N):
     best_cost = float("inf")
     # This range must be smaller than total available concurrency
     # otherwise the pipeline will hang without enough lambdas to continue
+    # TODO make 800 an env variable
     for P in range(1, 800):
         if (cost := f_cost(N, P)) < best_cost:
             best_cost = cost
@@ -129,6 +132,7 @@ def perform_variant_search(
         split_start = start_min
 
         while split_start <= start_max:
+            # TODO improve SPLIT_SIZE - make dynamic
             split_end = min(split_start + SPLIT_SIZE - 1, start_max)
             for vcf_location, chrom in vcf_locations.items():
                 payload = {

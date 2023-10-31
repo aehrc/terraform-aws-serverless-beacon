@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Data submission schemas](#data-submission-schemas)
+- [Data re-indexing](#data-re-indexing)
 - [Model schemas](#model-schemas)
 - [Examples](#examples)
 
@@ -17,6 +18,19 @@ sBeacon comply with the Beacon V2 schema in terms of the API interface for query
 
 * Submit dataset - please follow the JSON schema at [../shared_resources/schemas/submit-dataset-schema-new.json](../shared_resources/schemas/submit-dataset-schema-new.json)
 * Update dataset - please follow the JSON schema at [../shared_resources/schemas/submit-dataset-schema-update.json](../shared_resources/schemas/submit-dataset-schema-update.json)
+
+## Data re-indexing
+
+Changes or unavailability of ontology services will require re-indexing upon the service availability. This can be achieved using the `/index` endpoint using POST requests. The payload assumes the following format with defaults as indicated. The minimal payload can have an empty object (`{}`).
+
+```json
+{
+    "reIndexTables": true, // default = true
+    "reIndexOntologyTerms": true // default = false
+}
+```
+
+> Complete indexing (`true` for all above parameters) must be done, at least once for successful operation of sBeacon. This is automatically carried out on the first data submission done with `index=true` in the payload. Please refer to the submission schemas.
 
 ## Model schemas
 

@@ -1,4 +1,6 @@
 import json
+from collections import defaultdict
+
 import pyorc
 import jsons
 import boto3
@@ -32,6 +34,7 @@ class Individual(jsons.JsonSerializable, AthenaModel):
         "sex",
         "treatments",
     ]
+    _table_column_types = defaultdict(lambda: "string")
 
     def __init__(
         self,

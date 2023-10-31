@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 import jsons
 import boto3
@@ -31,6 +32,7 @@ class Run(jsons.JsonSerializable, AthenaModel):
         "platformModel",
         "runDate",
     ]
+    _table_column_types = defaultdict(lambda: "string")
 
     def __init__(
         self,

@@ -54,7 +54,7 @@ def build_response(data, num_total_results, qparams, func):
         "id": "",  # TODO: Set the name of the dataset/cohort
         "setType": "",  # TODO: Set the type of collection
         "exists": num_total_results > 0,
-        "resultsCount": num_total_results,
+        "resultsCount": len(data),
         "results": data,
         # 'info': None,
         "resultsHandover": None,  # build_results_handover

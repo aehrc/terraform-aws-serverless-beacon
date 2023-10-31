@@ -50,7 +50,7 @@ cmake .. -DBUILD_ONLY="dynamodb;s3;sns" \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=OFF \
   -DCUSTOM_MEMORY_MANAGEMENT=OFF \
-  -DCMAKE_INSTALL_PREFIX=${INCLUDE} \
+  -DCMAKE_INSTALL_PREFIX="${INCLUDE}" \
   -DENABLE_UNITY_BUILD=ON
 make install
 
@@ -63,7 +63,7 @@ mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=OFF \
-  -DCMAKE_INSTALL_PREFIX=${INCLUDE}
+  -DCMAKE_INSTALL_PREFIX="${INCLUDE}"
 make install
 
 #
@@ -77,6 +77,7 @@ cd htslib && autoreconf && ./configure --enable-libcurl && make
 cd ${REPOSITORY_DIRECTORY}
 mkdir -p layers/binaries/lib
 mkdir -p layers/binaries/bin
+# TODO check what libraries are missing and add only those
 ldd ${SOURCE}/htslib/tabix | awk 'NF == 4 { system("cp " $3 " ./layers/binaries/lib") }'
 cp ${SOURCE}/htslib/tabix ./layers/binaries/bin/
 

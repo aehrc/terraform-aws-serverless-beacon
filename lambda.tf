@@ -64,3 +64,14 @@ resource "aws_lambda_permission" "SNSperformQuery" {
   principal     = "sns.amazonaws.com"
   source_arn    = aws_sns_topic.performQuery.arn
 }
+
+#
+# indexer Lambda Function
+#
+resource "aws_lambda_permission" "SNSindexer" {
+  statement_id  = "AllowSNSindexerInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda-indexer.lambda_function_arn
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.indexer.arn
+}

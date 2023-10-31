@@ -8,14 +8,17 @@ from pydantic import (
     BaseModel,
     TypeAdapter,
     ValidationError,
+    ValidationInfo,
     PrivateAttr,
     constr,
+    field_validator,
+    model_validator,
 )
 from pydantic.functional_validators import BeforeValidator
 from strenum import StrEnum
 from humps import camelize
 
-from shared.utils import ENV_BEACON
+from shared.utils import ENV_BEACON, ENV_CONFIG
 
 
 #
@@ -26,10 +29,12 @@ from shared.utils import ENV_BEACON
 #
 
 
-CURIE_REGEX = r"^([a-zA-Z0-9]*):[a-zA-Z0-9]*$"
+# TODO friendly error messages (not too verbose)
+CURIE_REGEX = r"^\w[^:]+:.+$"
 BEACON_API_VERSION = ENV_BEACON.BEACON_API_VERSION
 BEACON_DEFAULT_GRANULARITY = ENV_BEACON.BEACON_DEFAULT_GRANULARITY
 BEACON_ENABLE_AUTH = ENV_BEACON.BEACON_ENABLE_AUTH
+CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE = ENV_CONFIG.CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE
 
 
 # Thirdparty Code
@@ -49,7 +54,7 @@ class RequestQueryParams(CamelModel):
     variant_min_length: int = 0
     variant_max_length: int = -1
     allele: Optional[str] = None
-    geneId: Optional[str] = None
+    gene_id: Optional[str] = None
     aminoacid_change: Optional[str] = None
     variant_type: Optional[str] = None
     _user_params: dict() = PrivateAttr()
@@ -57,6 +62,39 @@ class RequestQueryParams(CamelModel):
     def __init__(self, **data):
         super().__init__(**data)
         self._user_params = data
+
+    @field_validator("start", "end")
+    @classmethod
+    def vallidate_base_positions(cls, base: list[int], info: ValidationInfo):
+        # if base range is give; must not exeed limit
+        if len(base) == 2:
+            if base[0] >= base[1]:
+                raise ValueError(f"Values in {info.field_name} must be ascending")
+            elif abs(base[0] - base[1]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE:
+                raise ValueError(
+                    f"""Range in '{info.field_name}' exceeds max allowed ({CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE})"""
+                )
+        return base
+
+    @model_validator(mode="after")
+    def validate_base_range(self):
+        error_message = f"Base range should be positive and less than {CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE}. Consider using start (eg: [100, 200]) and end (eg: [250, 300]) ranges or shorten the range between start and end positions (eg: start=[100], end=[200])"
+        # if start and end is give; that must be within limit
+        if (
+            len(self.start) == 1
+            and len(self.end) == 1
+            and abs(self.start[0] - self.end[0]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE
+        ):
+            raise ValueError(error_message, ['start', 'end'])
+        # if start is a range and end is a base
+        if len(self.start) == 2 and len(self.end) == 1:
+            if abs(self.end[0] - self.start[0]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE:
+                raise ValueError(error_message, ['start', 'end'])
+        # if start is a base and end is a range
+        if len(self.start) == 1 and len(self.end) == 2:
+            if abs(self.end[1] - self.start[0]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE:
+                raise ValueError(error_message, ['start', 'end'])
+        return self
 
 
 # Thirdparty Code
@@ -103,7 +141,7 @@ class OntologyFilter(CamelModel):
 # Thirdparty Code
 class AlphanumericFilter(CamelModel):
     id: str
-    value: Union[str, List[int]]
+    value: Union[str, int]
     scope: Optional[str] = None
     operator: Operator = Operator.EQUAL
 
@@ -177,7 +215,8 @@ class RequestParams(CamelModel):
                 adapter = TypeAdapter(
                     List[Union[AlphanumericFilter, OntologyFilter, CustomFilter]]
                 )
-                self.query.filters = adapter.validate_json(
+                self.query._filters = filters
+                self.query.filters = adapter.validate_python(
                     [{"id": term} for term in filters]
                 )
             else:
@@ -194,7 +233,7 @@ class RequestParams(CamelModel):
             "filters": self.query._filters,
             "req_params": self.query.request_parameters._user_params,
             "includeResultsetResponses": self.query.include_resultset_responses,
-            "pagination": self.query.pagination.dict(),
+            "pagination": self.query.pagination.model_dump(),
             "requestedGranularity": self.query.requested_granularity,
             "testMode": self.query.test_mode,
         }

@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import jsons
 
@@ -15,6 +16,8 @@ from shared.apiutils import (
 
 
 # TODO dataset and individual connection should be refactored
+# confirmt hat, dataset and individual relate via 1..n
+# what if same individual get two datasets? of would that just be 2 biosamples?
 def get_bool_query(id, conditions=""):
     query = f"""
     SELECT 1 FROM "{{database}}"."{{table}}"
@@ -81,18 +84,32 @@ def route(request: RequestParams, dataset_id):
         return bundle_response(200, response)
 
     if request.query.requested_granularity == Granularity.RECORD:
-        query = get_record_query(
+        executor = ThreadPoolExecutor(2)
+        # records fetching
+        record_query = get_record_query(
             dataset_id,
             request.query.pagination.skip,
             request.query.pagination.limit,
             conditions,
         )
-        individuals = Individual.get_by_query(
-            query, execution_parameters=execution_parameters
+        record_future = executor.submit(
+            Individual.get_by_query,
+            record_query,
+            execution_parameters=execution_parameters,
         )
+        # counts fetching
+        count_query = get_count_query(dataset_id, conditions)
+        count_future = executor.submit(
+            Individual.get_count_by_query,
+            count_query,
+            execution_parameters=execution_parameters,
+        )
+        executor.shutdown()
+        count = count_future.result()
+        individuals = record_future.result()
         response = build_beacon_resultset_response(
             jsons.dump(individuals, strip_privates=True),
-            len(individuals),
+            count,
             request,
             {},
             DefaultSchemas.INDIVIDUALS,
