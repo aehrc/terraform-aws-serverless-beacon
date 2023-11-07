@@ -279,6 +279,12 @@ class SnsEnvironment:
         return os.environ["INDEXER_TOPIC_ARN"]
 
 
+class CognitoEnvironment:
+    @property
+    def COGNITO_USER_POOL_ID(self):
+        return os.environ["COGNITO_USER_POOL_ID"]
+
+
 class ConfigEnvironment:
     @property
     def CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE(self):
@@ -314,3 +320,4 @@ ENV_ATHENA = AthenaEnvironment()
 ENV_DYNAMO = DynamoDBEnvironment()
 ENV_SNS = SnsEnvironment()
 ENV_CONFIG = ConfigEnvironment()
+ENV_COGNITO = CognitoEnvironment()

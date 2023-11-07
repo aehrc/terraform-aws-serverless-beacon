@@ -852,3 +852,15 @@ data "aws_iam_policy_document" "dynamodb-onto-write-access" {
     ]
   }
 }
+
+# Admin Lambda Access
+data "aws_iam_policy_document" "admin-lambda-access" {
+  statement {
+    actions = [
+      "cognito-idp:*"
+    ]
+    resources = [
+      aws_cognito_user_pool.BeaconUserPool.arn
+    ]
+  }
+}

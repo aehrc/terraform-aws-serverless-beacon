@@ -817,3 +817,35 @@ module "lambda-indexer" {
     local.python_modules_layer
   ]
 }
+
+#
+# admin Lambda Function
+#
+module "lambda-admin" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name       = "admin"
+  description         = "Run the admin tasks."
+  runtime             = "python3.9"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 512
+  timeout             = 60
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.admin-lambda-access.json
+  ]
+  number_of_policy_jsons = 1
+  source_path            = "${path.module}/lambda/admin"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    local.sbeacon_variables,
+    { COGNITO_USER_POOL_ID = aws_cognito_user_pool.BeaconUserPool.id }
+  )
+
+  layers = [
+    local.python_libraries_layer,
+    local.python_modules_layer
+  ]
+}

@@ -30,8 +30,11 @@ resource "aws_cognito_user_pool" "BeaconUserPool" {
   }
 
   schema {
-    name                = "terraform"
-    attribute_data_type = "Boolean"
+    name                     = "terraform"
+    attribute_data_type      = "Boolean"
+    developer_only_attribute = false
+    mutable                  = false
+    required                 = false
   }
 }
 
@@ -50,6 +53,12 @@ resource "aws_cognito_user_pool_client" "BeaconUserPool-client" {
 # 
 # groups
 # 
+resource "aws_cognito_user_group" "admin-group" {
+  name         = "admin-group"
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  description  = "Group of users who can has admin privileges"
+}
+
 resource "aws_cognito_user_group" "record-access" {
   name         = "record-access-user-group"
   user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
@@ -80,6 +89,8 @@ resource "aws_cognito_user" "guest" {
     terraform      = true
     email          = var.beacon-guest-username
     email_verified = true
+    given_name     = "Guest"
+    family_name    = "Guest"
   }
 }
 
@@ -90,6 +101,8 @@ resource "aws_cognito_user" "admin" {
 
   attributes = {
     terraform      = true
+    given_name     = "Admin"
+    family_name    = "Admin"
     email          = var.beacon-admin-username
     email_verified = true
   }
@@ -99,6 +112,12 @@ resource "aws_cognito_user" "admin" {
 # group assignments
 # 
 # admin
+resource "aws_cognito_user_in_group" "admin-admin-access" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  group_name   = aws_cognito_user_group.admin-group.name
+  username     = aws_cognito_user.admin.username
+}
+
 resource "aws_cognito_user_in_group" "admin-record-access" {
   user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
   group_name   = aws_cognito_user_group.record-access.name
