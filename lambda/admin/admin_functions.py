@@ -47,10 +47,12 @@ def get_users(event):
     pagination_token = (event.get("queryStringParameters") or dict()).get(
         "pagination_token", None
     )
+    limit = int((event.get("queryStringParameters") or dict()).get("limit", 60))
     filterKey = (event.get("queryStringParameters") or dict()).get("key", None)
     filterValue = (event.get("queryStringParameters") or dict()).get("query", None)
     kwargs = {
         "UserPoolId": USER_POOL_ID,
+        "Limit": limit,
     }
     if pagination_token:
         kwargs["PaginationToken"] = pagination_token
