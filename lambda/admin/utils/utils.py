@@ -1,6 +1,8 @@
 import re
 from functools import wraps
 
+from botocore.exceptions import ClientError
+
 from shared.apiutils.responses import bundle_response
 
 
@@ -62,8 +64,18 @@ class Router:
         for handler in self.handlers:
             try:
                 response = handler(request_path, http_method, event)
+            except ClientError as error:
+                error_code = error.response["Error"]["Code"]
+                error_message = error.response["Error"]["Message"]
+                print(f"An error occurred: {error_code} - {error_message}")
+                return bundle_response(
+                    500, {"error": error_code, "message": error_message}
+                )
             except Exception as e:
-                return bundle_response(500, {"error": str(e)})
+                print(f"An error occurred: {e}")
+                return bundle_response(
+                    500, {"error": "UnhandledException", "message": str(e)}
+                )
 
             if response:
                 return bundle_response(200, response)
