@@ -190,9 +190,7 @@ def route(event):
     event_body = event.get("body")
 
     if not event_body:
-        return bundle_response(
-            400, build_bad_request(code=400, message="No body sent with request.")
-        )
+        return bundle_response(400, {"message": "No body sent with request."})
     try:
         body_dict = json.loads(event_body)
 
@@ -203,17 +201,12 @@ def route(event):
                 body_dict = json.loads(payload.read())
     except ValueError:
         return bundle_response(
-            400,
-            build_bad_request(
-                code=400, message="Error parsing request body, Expected JSON."
-            ),
+            400, {"message": "Error parsing request body, Expected JSON."}
         )
 
     if validation_errors := validate_request(body_dict):
         print(", ".join(validation_errors))
-        return bundle_response(
-            400, build_bad_request(code=400, message=", ".join(validation_errors))
-        )
+        return bundle_response(400, {"message": validation_errors})
     print("Validated the payload")
 
     result = submit_dataset(body_dict)
