@@ -328,8 +328,12 @@ def lambda_handler(event, context):
                 "message": "Running indexer asynchronously. Indexer may take upto few minutes.",
             },
         )
+    # SNS
     elif "Sns" in event.get("Records", ["None"])[0]:
         body_dict = json.loads(event["Records"][0]["Sns"]["Message"])
+    # Local
+    else:
+        body_dict = event
 
     re_index_tables = body_dict.get("reIndexTables", True)
     re_index_ontology_tables = body_dict.get("reIndexOntologyTerms", False)
@@ -372,5 +376,5 @@ def lambda_handler(event, context):
 
 
 if __name__ == "__main__":
-    lambda_handler({}, {})
+    lambda_handler({"reIndexTables": True, "reIndexOntologyTerms": True}, {})
     pass
