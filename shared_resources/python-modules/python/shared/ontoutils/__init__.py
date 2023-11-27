@@ -70,13 +70,17 @@ def get_ontology_details(ontology) -> Ontology:
             # use ENSEMBL
             if response := requests.get(f"{ENSEMBL_OLS}/{ontology}"):
                 response_json = response.json()
-                details = Ontology(response_json["ontologyId"].lower())
-                details.name = response_json["config"]["title"]
-                details.url = response_json["config"]["id"]
-                details.version = response_json["config"]["version"]
-                details.namespacePrefix = response_json["config"]["preferredPrefix"]
-                details.iriPrefix = response_json["config"]["baseUris"][0]
-                details.save()
+                # TODO this will likely fail until OLS fix their V4 API
+                try:
+                    details = Ontology(response_json["ontologyId"].lower())
+                    details.name = response_json["config"]["title"]
+                    details.url = response_json["config"]["id"]
+                    details.version = response_json["config"]["version"]
+                    details.namespacePrefix = response_json["config"]["preferredPrefix"]
+                    details.iriPrefix = response_json["config"]["baseUris"][0]
+                    details.save()
+                except:
+                    return None
 
     return details
 
