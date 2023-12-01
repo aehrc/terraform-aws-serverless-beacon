@@ -99,8 +99,9 @@ def perform_query(payload: dict(), is_async: bool = False):
         vcf_reference_length = len(vcf_reference)
 
         # must be within end range
-        if not end_min <= vcf_position + vcf_reference_length - 1 <= end_max:
-            continue
+        # TODO this seems to be incorrect
+        # if not end_min <= vcf_position + vcf_reference_length - 1 <= end_max:
+        #     continue
 
         # validation; if not N validate
         if vcf_reference.upper() != reference_bases and reference_bases != "N":
