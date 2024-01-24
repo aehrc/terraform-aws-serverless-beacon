@@ -3,7 +3,8 @@ import json
 import boto3
 
 from shared.utils.lambda_utils import ENV_COGNITO
-from utils import path_pattern_matcher
+from shared.apiutils.router import path_pattern_matcher, BeaconError
+
 
 cognito_client = boto3.client("cognito-idp")
 USER_POOL_ID = ENV_COGNITO.COGNITO_USER_POOL_ID
@@ -14,18 +15,24 @@ def get_username_by_email(email):
         UserPoolId=USER_POOL_ID, Filter=f'email = "{email}"', Limit=1
     )
 
-    if response and response["Users"]:
-        username = response["Users"][0]["Username"]
-        return username
+    if response.get("Users"):
+        return response["Users"][0]["Username"]
+
     raise Exception(f"User with email {email} not found")
 
 
 @path_pattern_matcher("users", "post")
 def add_user(event):
     body_dict = json.loads(event.get("body"))
-    email = body_dict["email"]
-    first_name = body_dict["first_name"]
-    last_name = body_dict["last_name"]
+    email = body_dict.get("email")
+    first_name = body_dict.get("first_name")
+    last_name = body_dict.get("last_name")
+
+    if not all([email, first_name, last_name]):
+        raise BeaconError(
+            error_code="BeaconAddUserMissingAttribute",
+            error_message="Missing required attributes!",
+        )
 
     cognito_client.admin_create_user(
         UserPoolId=USER_POOL_ID,

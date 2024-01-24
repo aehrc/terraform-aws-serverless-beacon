@@ -257,7 +257,7 @@ def build_filtering_terms_response(filtering_terms, resources, qparams: RequestP
     }
 
 
-def build_bad_request(*, code=None, message=None, qparams):
+def build_bad_request(*, code, message, qparams: RequestParams):
     return {
         "error": {"errorCode": code, "errorMessage": f"{message}"},
         "meta": build_meta(qparams, None, []),

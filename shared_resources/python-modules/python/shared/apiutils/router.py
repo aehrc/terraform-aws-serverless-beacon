@@ -6,6 +6,16 @@ from botocore.exceptions import ClientError
 from shared.apiutils.responses import bundle_response
 
 
+class BeaconError(Exception):
+    def __init__(self, error_code, error_message):
+        self.error_code = error_code
+        self.error_message = error_message
+        super().__init__(self.error_message)
+
+    def __str__(self):
+        return f'Error Code: {self.error_code}, Error Message: "{self.error_message}"'
+
+
 def path_pattern_matcher(pattern, method):
     """
     Decorator to match a request path against a template string pattern.
@@ -70,6 +80,11 @@ class Router:
                 print(f"An error occurred: {error_code} - {error_message}")
                 return bundle_response(
                     500, {"error": error_code, "message": error_message}
+                )
+            except BeaconError as error:
+                print(f"An error occurred: {error.error_code} - {error.error_message}")
+                return bundle_response(
+                    500, {"error": error.error_code, "message": error.error_message}
                 )
             except Exception as e:
                 print(f"An error occurred: {e}")
