@@ -387,6 +387,12 @@ resource "aws_api_gateway_deployment" "BeaconApi" {
       aws_api_gateway_integration_response.admin_proxy,
       aws_api_gateway_method_response.admin_proxy,
       module.lambda-admin,
+      # analytics
+      aws_api_gateway_method.analytics_proxy,
+      aws_api_gateway_integration.analytics_proxy,
+      aws_api_gateway_integration_response.analytics_proxy,
+      aws_api_gateway_method_response.analytics_proxy,
+      module.lambda-analytics,
     ]))
   }
 }
