@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Generator, List
 import os
 import json
-from typing import List
 import math
 import gzip
 import base64
@@ -89,7 +89,7 @@ def perform_variant_search(
     query_id="TEST",
     dataset_samples=[],
     include_samples=False,
-):
+) -> Generator[PerformQueryResponse, None, None]:
     try:
         # get vcf file and the name of chromosome in it eg: "chr1", "Chr4", "CHR1" or just "1"
         vcf_chromosomes = {

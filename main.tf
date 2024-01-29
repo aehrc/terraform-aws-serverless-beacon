@@ -865,14 +865,19 @@ module "lambda-analytics" {
   attach_policy_jsons = true
   policy_jsons = [
     data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.dynamodb-onto-access.json
+    data.aws_iam_policy_document.dynamodb-onto-access.json,
+    data.aws_iam_policy_document.lambda-analytics.json
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path            = "${path.module}/lambda/analytics"
 
   tags = var.common-tags
 
   environment_variables = merge(
+    {
+      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
+      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
+    },
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables

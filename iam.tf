@@ -717,6 +717,27 @@ data "aws_iam_policy_document" "lambda-getRuns" {
 }
 
 #
+# analytics Lambda Function
+#
+data "aws_iam_policy_document" "lambda-analytics" {
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [module.lambda-splitQuery.lambda_function_arn]
+  }
+
+  statement {
+    actions = [
+      "SNS:Publish",
+    ]
+    resources = [
+      aws_sns_topic.splitQuery.arn,
+    ]
+  }
+}
+
+#
 # indexer Lambda Function
 #
 data "aws_iam_policy_document" "lambda-indexer" {
