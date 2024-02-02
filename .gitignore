@@ -26,3 +26,6 @@ tmp*
 nohup.out
 tmpterms
 *.tfvars
+
+# docker related bundle ignores
+lambda/analytics/shared/
