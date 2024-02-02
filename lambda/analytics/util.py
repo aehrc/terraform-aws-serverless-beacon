@@ -58,3 +58,28 @@ def parse_athena_result(exec_id: str):
                 entries.append(instance)
 
     return entries
+
+
+def datasets_query(assembly_id):
+    query = f"""
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, count(A._vcfsampleid) as numsamples, ARRAY_AGG(A._vcfsampleid) as samples
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
+    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
+    ON A._datasetid = D.id
+    GROUP by (D.id, D._vcflocations, D._vcfchromosomemap, D._assemblyid)
+    HAVING D._assemblyid='{assembly_id}' 
+    """
+    return query
+
+
+def filtered_datasets_with_samples_query(conditions, assembly_id):
+    query = f"""
+    SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
+    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
+    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
+    ON A._datasetid = D.id
+    {conditions} 
+    AND D._assemblyid='{assembly_id}' 
+    GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
+    """
+    return query

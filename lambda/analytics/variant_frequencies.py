@@ -2,7 +2,13 @@ import json
 import threading
 from copy import deepcopy
 
-from util import parse_filters, parse_athena_result, parse_varinats
+from util import (
+    parse_filters,
+    parse_athena_result,
+    parse_varinats,
+    datasets_query,
+    filtered_datasets_with_samples_query,
+)
 from shared.athena import entity_search_conditions
 from shared.apiutils.router import path_pattern_matcher, BeaconError
 from shared.variantutils import perform_variant_search
@@ -15,30 +21,6 @@ from shared.athena import (
 from shared.apiutils import Granularity, IncludeResultsetResponses
 
 # TODO add multi-threading for queries
-
-def datasets_query(assembly_id):
-    query = f"""
-    SELECT D.id, D._vcflocations, D._vcfchromosomemap, count(A._vcfsampleid) as numsamples, ARRAY_AGG(A._vcfsampleid) as samples
-    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
-    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
-    ON A._datasetid = D.id
-    GROUP by (D.id, D._vcflocations, D._vcfchromosomemap, D._assemblyid)
-    HAVING D._assemblyid='{assembly_id}' 
-    """
-    return query
-
-
-def filtered_datasets_with_samples_query(conditions, assembly_id):
-    query = f"""
-    SELECT D.id, D._vcflocations, D._vcfchromosomemap, ARRAY_AGG(A._vcfsampleid) as samples
-    FROM "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_ANALYSES_TABLE}" A
-    JOIN "{ENV_ATHENA.ATHENA_METADATA_DATABASE}"."{ENV_ATHENA.ATHENA_DATASETS_TABLE}" D
-    ON A._datasetid = D.id
-    {conditions} 
-    AND D._assemblyid='{assembly_id}' 
-    GROUP BY D.id, D._vcflocations, D._vcfchromosomemap 
-    """
-    return query
 
 
 @path_pattern_matcher("v_frequencies", "post")

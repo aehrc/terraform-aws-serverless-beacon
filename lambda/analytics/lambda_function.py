@@ -2,7 +2,7 @@ import json
 
 from shared.apiutils import Router
 from variant_frequencies import variant_frequencies
-
+from variant_correlations import variant_correlations
 
 router = Router()
 
@@ -10,7 +10,8 @@ router = Router()
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
 
-    router.register(variant_frequencies, auth_groups=['record-access-user-group'])
+    router.register(variant_frequencies, auth_groups=["record-access-user-group"])
+    router.register(variant_correlations, auth_groups=["record-access-user-group"])
 
     return router.route(event)
 
