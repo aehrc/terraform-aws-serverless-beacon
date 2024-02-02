@@ -1,5 +1,4 @@
 import json
-import threading
 from copy import deepcopy
 
 from util import (
@@ -10,9 +9,8 @@ from util import (
     filtered_datasets_with_samples_query,
 )
 from shared.athena import entity_search_conditions
-from shared.apiutils.router import path_pattern_matcher, BeaconError
+from shared.apiutils.router import path_pattern_matcher
 from shared.variantutils import perform_variant_search
-from shared.utils import ENV_ATHENA
 from shared.athena import (
     Dataset,
     run_custom_query,

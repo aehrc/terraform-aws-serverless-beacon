@@ -3,18 +3,8 @@ import json
 
 from smart_open import open as sopen
 
-from typing import List, Optional, Tuple, Union, Annotated
-from pydantic import (
-    ConfigDict,
-    BaseModel,
-    TypeAdapter,
-    ValidationError,
-    ValidationInfo,
-    PrivateAttr,
-    constr,
-    field_validator,
-    model_validator,
-)
+from typing import List, Union
+from pydantic import TypeAdapter
 
 from shared.apiutils import (
     AlphanumericFilter,

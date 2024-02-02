@@ -1,12 +1,10 @@
 import json
-import threading
 from copy import deepcopy
 from typing import List
 from collections import defaultdict
 import itertools
 
 import scipy.stats as stats
-import numpy as np
 
 from util import (
     parse_filters,
@@ -16,7 +14,7 @@ from util import (
     filtered_datasets_with_samples_query,
 )
 from shared.athena import entity_search_conditions
-from shared.apiutils.router import path_pattern_matcher, BeaconError
+from shared.apiutils.router import path_pattern_matcher
 from shared.variantutils import perform_variant_search
 from shared.utils import ENV_ATHENA
 from shared.athena import (
@@ -223,7 +221,6 @@ def variant_correlations(event):
         "query_variant_samples": {str(k): v for k, v in query_variant_samples.items()},
         "query_variant_hits": {str(k): v for k, v in query_variant_hits.items()},
         "correlations": {str(k): v for k, v in correlations.items()},
-        "v_queries_results": [dataset["id"] for dataset in all_datasets_arr],
     }
 
     return {"result": result, "success": True}
