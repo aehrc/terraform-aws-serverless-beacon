@@ -126,6 +126,12 @@ def get_all_variant_hits(all_datasets_arr, variant_filters: List[RequestQueryPar
     return all_variant_hits
 
 
+def tuples_to_list_str(tuples):
+    return str(
+        list([list(item) if isinstance(item, tuple) else item for item in tuples])
+    )
+
+
 @path_pattern_matcher("v_correlations", "post")
 def variant_correlations(event):
     """
@@ -157,16 +163,18 @@ def variant_correlations(event):
     }
     # grouped by filter index
     filter_frequencies = defaultdict(lambda: [0 for _ in all_datasets_arr])
+    query_filter_samples = defaultdict(lambda: [[] for _ in all_datasets_arr])
     # grouped by variant(queried) index
     variant_frequencies = defaultdict(lambda: [0 for _ in all_datasets_arr])
-    query_variant_samples = defaultdict(lambda: [0 for _ in all_datasets_arr])
-    query_variant_hits = defaultdict(lambda: [0 for _ in all_datasets_arr])
+    query_variant_samples = defaultdict(lambda: [[] for _ in all_datasets_arr])
+    query_variant_hits = defaultdict(lambda: [[] for _ in all_datasets_arr])
 
     # filter frequencies
     for index, datasets in filtered_datasets.items():
         for dataset in datasets:
             dix = dataset_index[dataset["id"]]
             filter_frequencies[index][dix] = len(dataset["samples"])
+            query_filter_samples[index][dix] = dataset["samples"]
 
     # variant frequencies
     for dataset_id, variants_results in all_variant_hits.items():
@@ -201,7 +209,7 @@ def variant_correlations(event):
                     )
                 )
             variant_frequencies[indexes][dix] = len(samples_intersection)
-            query_variant_samples[indexes][dix] = len(samples_intersection)
+            query_variant_samples[indexes][dix] = list(samples_intersection)
             query_variant_hits[indexes][dix] = [
                 dict(zip(["chrom", "pos", "ref_base", "alt_base"], hit))
                 for hit in variants_hit
@@ -217,10 +225,16 @@ def variant_correlations(event):
     result = {
         "dataset_ids": [dataset["id"] for dataset in all_datasets_arr],
         "filter_frequencies": {str(k): v for k, v in filter_frequencies.items()},
+        "query_filter_samples": {str(k): v for k, v in query_filter_samples.items()},
         "variant_frequencies": {str(k): v for k, v in variant_frequencies.items()},
-        "query_variant_samples": {str(k): v for k, v in query_variant_samples.items()},
-        "query_variant_hits": {str(k): v for k, v in query_variant_hits.items()},
-        "correlations": {str(k): v for k, v in correlations.items()},
+        # convert tuples to str format lists so that javascript can parse them
+        "query_variant_samples": {
+            tuples_to_list_str(k): v for k, v in query_variant_samples.items()
+        },
+        "query_variant_hits": {
+            tuples_to_list_str(k): v for k, v in query_variant_hits.items()
+        },
+        "correlations": {tuples_to_list_str(k): v for k, v in correlations.items()},
     }
 
     return {"result": result, "success": True}
