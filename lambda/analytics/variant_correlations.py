@@ -215,12 +215,28 @@ def variant_correlations(event):
                 for hit in variants_hit
             ]
 
-    correlations = dict()
+    filter_variant_correlations = dict()
+    filter_variant_intersections = dict()
 
-    for f_index, f_freqs in filter_frequencies.items():
-        for v_index, v_freqs in variant_frequencies.items():
+    # variables must be paired to compute pearson r
+    # so we check filter freq againt variant freq, subjected to the presence of filter
+    # Pearsons Assumption - 
+    # Pearson's correlation coefficient assumes a linear relationship between the two variables. 
+    # If the occurrences of the two variables are independent of each other or 
+    # if their relationship is not linear, Pearson's r might not be the best measure of their association.
+    for f_index, f_samples in query_filter_samples.items():
+        for v_index, v_samples in query_variant_samples.items():
+            f_freqs = [len(f_sample) for f_sample in f_samples]
+            v_freqs = [
+                len(set(f_sample).intersection(v_samples[d_index]))
+                for d_index, f_sample in enumerate(f_samples)
+            ]
             statistic, p_value = stats.pearsonr(f_freqs, v_freqs)
-            correlations[(f_index, v_index)] = (statistic, p_value)
+            filter_variant_correlations[(f_index, v_index)] = (statistic, p_value)
+            filter_variant_intersections[(f_index, v_index)] = [
+                list(set(f_sample).intersection(v_samples[d_index]))
+                for d_index, f_sample in enumerate(f_samples)
+            ]
 
     result = {
         "dataset_ids": [dataset["id"] for dataset in all_datasets_arr],
@@ -234,7 +250,12 @@ def variant_correlations(event):
         "query_variant_hits": {
             tuples_to_list_str(k): v for k, v in query_variant_hits.items()
         },
-        "correlations": {tuples_to_list_str(k): v for k, v in correlations.items()},
+        "filter_variant_correlations": {
+            tuples_to_list_str(k): v for k, v in filter_variant_correlations.items()
+        },
+        "filter_variant_intersections": {
+            tuples_to_list_str(k): v for k, v in filter_variant_intersections.items()
+        },
     }
 
     return {"result": result, "success": True}
