@@ -148,23 +148,18 @@ def variant_correlations(event):
 
     # get all datasets
     all_datasets_arr = get_all_datasets(assembly_id)
-    # # get filtered datasets and samples to scan
+    # get filtered datasets and samples to scan
     filtered_datasets = get_filtered_datasets(metadata_filters, assembly_id)
-
     # get all variants
     all_variant_hits = get_all_variant_hits(all_datasets_arr, variant_filters)
-
-    # building the dataset for correlation computation
-    # for each filter we need a table like below
-    # Dataset    |      1     |      2      |      3      |      4      |
-    # -------------------------------------------------------------------
-    # Disease    |  x:5 y:10  |  x:10 y:20  |  x:15 y:30  |  x:20 y:40  |
-    # Variant    |  p:5 q:10  |  p:10 q:20  |  p:15 q:30  |  p:20 q:40  |
-
     # dataset IDs transforming into array indexes
     dataset_index = {
         dataset["id"]: index for index, dataset in enumerate(all_datasets_arr)
     }
+    # following dictionaries are keyed by the position index from queries
+    # values are obtained per dataset; can be either numeric (frequency)
+    # or arrays (samples observed in each dataset)
+    # 
     # grouped by filter index
     filter_frequencies = defaultdict(lambda: [0 for _ in all_datasets_arr])
     query_filter_samples = defaultdict(lambda: [[] for _ in all_datasets_arr])
