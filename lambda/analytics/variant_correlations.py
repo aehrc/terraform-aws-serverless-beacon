@@ -159,7 +159,7 @@ def variant_correlations(event):
     # following dictionaries are keyed by the position index from queries
     # values are obtained per dataset; can be either numeric (frequency)
     # or arrays (samples observed in each dataset)
-    # 
+    #
     # grouped by filter index
     filter_frequencies = defaultdict(lambda: [0 for _ in all_datasets_arr])
     query_filter_samples = defaultdict(lambda: [[] for _ in all_datasets_arr])
