@@ -5,6 +5,7 @@ from collections import defaultdict
 import itertools
 
 import scipy.stats as stats
+import numpy as np
 
 from util import (
     parse_filters,
@@ -220,9 +221,9 @@ def variant_correlations(event):
 
     # variables must be paired to compute pearson r
     # so we check filter freq againt variant freq, subjected to the presence of filter
-    # Pearsons Assumption - 
-    # Pearson's correlation coefficient assumes a linear relationship between the two variables. 
-    # If the occurrences of the two variables are independent of each other or 
+    # Pearsons Assumption -
+    # Pearson's correlation coefficient assumes a linear relationship between the two variables.
+    # If the occurrences of the two variables are independent of each other or
     # if their relationship is not linear, Pearson's r might not be the best measure of their association.
     for f_index, f_samples in query_filter_samples.items():
         for v_index, v_samples in query_variant_samples.items():
@@ -232,6 +233,10 @@ def variant_correlations(event):
                 for d_index, f_sample in enumerate(f_samples)
             ]
             statistic, p_value = stats.pearsonr(f_freqs, v_freqs)
+
+            if np.isnan(statistic) or np.isnan(p_value):
+                statistic, p_value = "NaN", "Nan"
+
             filter_variant_correlations[(f_index, v_index)] = (statistic, p_value)
             filter_variant_intersections[(f_index, v_index)] = [
                 list(set(f_sample).intersection(v_samples[d_index]))
@@ -242,7 +247,9 @@ def variant_correlations(event):
         "dataset_ids": [dataset["id"] for dataset in all_datasets_arr],
         "filter_frequencies": {str(k): v for k, v in filter_frequencies.items()},
         "query_filter_samples": {str(k): v for k, v in query_filter_samples.items()},
-        "variant_frequencies": {str(k): v for k, v in variant_frequencies.items()},
+        "variant_frequencies": {
+            tuples_to_list_str(k): v for k, v in variant_frequencies.items()
+        },
         # convert tuples to str format lists so that javascript can parse them
         "query_variant_samples": {
             tuples_to_list_str(k): v for k, v in query_variant_samples.items()
