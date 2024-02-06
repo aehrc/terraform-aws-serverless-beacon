@@ -34,13 +34,13 @@ def get_unique_subsets(count):
     return all_subsets
 
 
-def get_datasets_by_filter(metadata_filter):
+def get_datasets_by_filter(metadata_filter, assembly_id):
     filter_conditions, execution_parameters = entity_search_conditions(
         [metadata_filter], "analyses", "analyses", id_modifier="A.id"
     )
     filtered_datasets_arr = parse_athena_result(
         run_custom_query(
-            filtered_datasets_with_samples_query(filter_conditions, "GRCH38"),
+            filtered_datasets_with_samples_query(filter_conditions, assembly_id),
             return_id=True,
             execution_parameters=execution_parameters,
         )
@@ -49,9 +49,9 @@ def get_datasets_by_filter(metadata_filter):
     return filtered_datasets_arr
 
 
-def get_all_datasets():
+def get_all_datasets(assembly_id):
     all_datasets_arr = parse_athena_result(
-        run_custom_query(datasets_query("GRCH38"), return_id=True)
+        run_custom_query(datasets_query(assembly_id), return_id=True)
     )
     for dataset in all_datasets_arr:
         dataset["samples"] = (
@@ -60,10 +60,12 @@ def get_all_datasets():
     return all_datasets_arr
 
 
-def get_filtered_datasets(metadata_filters):
+def get_filtered_datasets(metadata_filters, assembly_id):
     filtered_datasets = dict()
     for filter_index, metadata_filter in enumerate(metadata_filters):
-        filtered_datasets[filter_index] = get_datasets_by_filter(metadata_filter)
+        filtered_datasets[filter_index] = get_datasets_by_filter(
+            metadata_filter, assembly_id
+        )
         for dataset in filtered_datasets[filter_index]:
             dataset["samples"] = (
                 dataset["samples"].replace("[", "").replace("]", "").split(", ")
@@ -133,7 +135,7 @@ def tuples_to_list_str(tuples):
     )
 
 
-@path_pattern_matcher("v_correlations", "post")
+# @path_pattern_matcher("v_correlations", "post")
 def variant_correlations(event):
     """
     Compute correlation between the variants mentioned and the phenotypes
@@ -142,11 +144,12 @@ def variant_correlations(event):
     body_dict = json.loads(event.get("body"))
     metadata_filters = parse_filters(body_dict.get("filters", []))
     variant_filters = parse_varinats(body_dict.get("variants", []))
+    assembly_id = variant_filters[0].assembly_id
 
     # get all datasets
-    all_datasets_arr = get_all_datasets()
+    all_datasets_arr = get_all_datasets(assembly_id)
     # # get filtered datasets and samples to scan
-    filtered_datasets = get_filtered_datasets(metadata_filters)
+    filtered_datasets = get_filtered_datasets(metadata_filters, assembly_id)
 
     # get all variants
     all_variant_hits = get_all_variant_hits(all_datasets_arr, variant_filters)

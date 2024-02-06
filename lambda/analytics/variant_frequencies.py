@@ -32,18 +32,19 @@ def variant_frequencies(event):
     body_dict = json.loads(event.get("body"))
     metadata_filters = parse_filters(body_dict.get("filters", []))
     variant_filters = parse_varinats(body_dict.get("variants", []))
+    assembly_id = variant_filters[0].assembly_id
     filter_conditions, execution_parameters = entity_search_conditions(
         metadata_filters, "analyses", "analyses", id_modifier="A.id"
     )
     result = dict()
     # get all datasets
     all_datasets_arr = parse_athena_result(
-        run_custom_query(datasets_query("GRCH38"), return_id=True)
+        run_custom_query(datasets_query(assembly_id), return_id=True)
     )
     # get filtered datasets and samples to scan
     filtered_datasets_arr = parse_athena_result(
         run_custom_query(
-            filtered_datasets_with_samples_query(filter_conditions, "GRCH38"),
+            filtered_datasets_with_samples_query(filter_conditions, assembly_id),
             return_id=True,
             execution_parameters=execution_parameters,
         )
