@@ -57,6 +57,72 @@ resource "aws_cognito_user_group" "admin-group" {
   name         = "admin-group"
   user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
   description  = "Group of users who can has admin privileges"
+  role_arn     = aws_iam_role.admin-group-role.arn
+}
+
+data "aws_iam_policy_document" "admin-group-assume-role-policy" {
+  statement {
+    effect = "Deny"
+
+    principals {
+      type        = "Federated"
+      identifiers = ["cognito-identity.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "cognito-identity.amazonaws.com:aud"
+      values   = ["us-east-1:12345678-dead-beef-cafe-123456790ab"]
+    }
+
+    condition {
+      test     = "ForAnyValue:StringLike"
+      variable = "cognito-identity.amazonaws.com:amr"
+      values   = ["authenticated"]
+    }
+  }
+  statement {
+    effect = "Deny"
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        "arn:aws:sts::${data.aws_caller_identity.this.account_id}:assumed-role/admin/admin"
+      ]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "admin-group-role" {
+  name               = "admin-group-role"
+  assume_role_policy = data.aws_iam_policy_document.admin-group-assume-role-policy.json
+}
+
+data "aws_iam_policy_document" "admin-group-role-policy" {
+  statement {
+    actions = [
+      "cognito-idp:*"
+    ]
+    resources = [
+      aws_cognito_user_pool.BeaconUserPool.arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "admin-group-role-policy" {
+  name        = "admin-group-role-policy"
+  description = "admin group permissions"
+  policy      = data.aws_iam_policy_document.admin-group-role-policy.json
+
+}
+
+resource "aws_iam_role_policy_attachment" "admin-group-role-policy-attachment" {
+  role       = aws_iam_role.admin-group-role.name
+  policy_arn = aws_iam_policy.admin-group-role-policy.arn
 }
 
 resource "aws_cognito_user_group" "record-access" {

@@ -884,4 +884,14 @@ data "aws_iam_policy_document" "admin-lambda-access" {
       aws_cognito_user_pool.BeaconUserPool.arn
     ]
   }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "sts:AssumeRole"
+    ]
+    resources = [
+      aws_iam_role.admin-group-role.arn
+    ]
+  }
 }

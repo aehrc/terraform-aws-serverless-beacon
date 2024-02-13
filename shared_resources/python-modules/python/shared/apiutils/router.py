@@ -66,6 +66,8 @@ def path_pattern_matcher(pattern, method):
 class Router:
     """Router: manages the route functions."""
 
+    # TODO retrieve roles, create a session client to be used by handlers
+
     def __init__(self):
         # Create the chain of handlers
         self.handlers = []

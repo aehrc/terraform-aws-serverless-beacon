@@ -2,6 +2,8 @@ provider "aws" {
   region = var.region
 }
 
+data "aws_caller_identity" "this" {}
+
 # DOCS
 # Lambda memory - https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
 #                 https://stackoverflow.com/questions/66522916/aws-lambda-memory-vs-cpu-configuration
