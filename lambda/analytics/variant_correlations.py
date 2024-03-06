@@ -135,7 +135,7 @@ def tuples_to_list_str(tuples):
     )
 
 
-# @path_pattern_matcher("v_correlations", "post")
+@path_pattern_matcher("v_correlations", "post")
 def variant_correlations(event):
     """
     Compute correlation between the variants mentioned and the phenotypes
