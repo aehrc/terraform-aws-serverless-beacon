@@ -1,29 +1,25 @@
+import itertools
 import json
+from collections import defaultdict
 from copy import deepcopy
 from typing import List
-from collections import defaultdict
-import itertools
 
-import scipy.stats as stats
 import numpy as np
-
+import scipy.stats as stats
 from analytics_utils import (
-    parse_filters,
-    parse_athena_result,
-    parse_varinats,
+    authenticate_analytics,
     datasets_query,
     filtered_datasets_with_samples_query,
-    authenticate_analytics,
-)
-from shared.athena import entity_search_conditions
-from shared.variantutils import perform_variant_search
-from shared.athena import (
-    Dataset,
-    run_custom_query,
-    entity_search_conditions,
+    parse_athena_result,
+    parse_filters,
+    parse_varinats,
 )
 from shared.apiutils import Granularity, IncludeResultsetResponses, RequestQueryParams
-from shared.apiutils.router import lambda_router
+from shared.apiutils.router import LambdaRouter
+from shared.athena import Dataset, entity_search_conditions, run_custom_query
+from shared.variantutils import perform_variant_search
+
+router = LambdaRouter()
 
 
 def get_unique_subsets(count):
@@ -135,7 +131,7 @@ def tuples_to_list_str(tuples):
     )
 
 
-@lambda_router.attach("/analytics/v_correlations", "post", authenticate_analytics)
+@router.attach("/analytics/v_correlations", "post", authenticate_analytics)
 def variant_correlations(event, context):
     """
     Compute correlation between the variants mentioned and the phenotypes

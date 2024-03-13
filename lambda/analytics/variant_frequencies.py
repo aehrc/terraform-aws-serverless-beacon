@@ -2,27 +2,23 @@ import json
 from copy import deepcopy
 
 from analytics_utils import (
-    parse_filters,
-    parse_athena_result,
-    parse_varinats,
+    authenticate_analytics,
     datasets_query,
     filtered_datasets_with_samples_query,
-    authenticate_analytics,
-)
-from shared.athena import entity_search_conditions
-from shared.variantutils import perform_variant_search
-from shared.athena import (
-    Dataset,
-    run_custom_query,
-    entity_search_conditions,
+    parse_athena_result,
+    parse_filters,
+    parse_varinats,
 )
 from shared.apiutils import Granularity, IncludeResultsetResponses
-from shared.apiutils.router import lambda_router
+from shared.apiutils.router import LambdaRouter
+from shared.athena import Dataset, entity_search_conditions, run_custom_query
+from shared.variantutils import perform_variant_search
 
+router = LambdaRouter()
 # TODO add multi-threading for queries
 
 
-@lambda_router.attach("/analytics/v_frequencies", "post", authenticate_analytics)
+@router.attach("/analytics/v_frequencies", "post", authenticate_analytics)
 def variant_frequencies(event, context):
     """
     Compute frequency of given variants subjecting to filters (if any) provided

@@ -1,12 +1,15 @@
 import json
 
-import admin_functions # to initialise router
-from shared.apiutils import lambda_router
+from admin_functions import router as admin_router
+from shared.apiutils import LambdaRouter
+
+router = LambdaRouter()
 
 
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
-    return lambda_router.handle_route(event, context)
+    router.update(admin_router)
+    return router.handle_route(event, context)
 
 
 if __name__ == "__main__":

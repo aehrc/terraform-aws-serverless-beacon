@@ -1,5 +1,4 @@
 from botocore.exceptions import ClientError
-
 from shared.apiutils.responses import bundle_response
 
 
@@ -42,6 +41,15 @@ class LambdaRouter:
             return func
 
         return decorator
+
+    def update(self, router):
+        """
+        Update the router with another router. Overwrite if the same route is defined in multiple places.
+
+        :param router: Another router object.
+        :return: None.
+        """
+        self._routes.update(router._routes)
 
     def handle_route(self, event, context):
         """
@@ -149,6 +157,3 @@ class LambdaRouter:
                 params[param_name] = path_part
 
         return params
-
-
-lambda_router = LambdaRouter()
