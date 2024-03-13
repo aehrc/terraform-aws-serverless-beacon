@@ -9,7 +9,7 @@ from .requests import (
     Granularity,
     IncludeResultsetResponses,
     Similarity,
-    Operator
+    Operator,
 )
 from .requests import parse_request
 from .responses import (
@@ -24,4 +24,4 @@ from .responses import (
     bundle_response,
 )
 from .schemas import DefaultSchemas
-from .router import path_pattern_matcher, Router
+from .router import AuthError, BeaconError, lambda_router

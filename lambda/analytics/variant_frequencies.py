@@ -1,15 +1,15 @@
 import json
 from copy import deepcopy
 
-from util import (
+from analytics_utils import (
     parse_filters,
     parse_athena_result,
     parse_varinats,
     datasets_query,
     filtered_datasets_with_samples_query,
+    authenticate_analytics,
 )
 from shared.athena import entity_search_conditions
-from shared.apiutils.router import path_pattern_matcher
 from shared.variantutils import perform_variant_search
 from shared.athena import (
     Dataset,
@@ -17,12 +17,13 @@ from shared.athena import (
     entity_search_conditions,
 )
 from shared.apiutils import Granularity, IncludeResultsetResponses
+from shared.apiutils.router import lambda_router
 
 # TODO add multi-threading for queries
 
 
-@path_pattern_matcher("v_frequencies", "post")
-def variant_frequencies(event):
+@lambda_router.attach("/analytics/v_frequencies", "post", authenticate_analytics)
+def variant_frequencies(event, context):
     """
     Compute frequency of given variants subjecting to filters (if any) provided
     Results are grouped into datasets

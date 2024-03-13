@@ -7,23 +7,23 @@ import itertools
 import scipy.stats as stats
 import numpy as np
 
-from util import (
+from analytics_utils import (
     parse_filters,
     parse_athena_result,
     parse_varinats,
     datasets_query,
     filtered_datasets_with_samples_query,
+    authenticate_analytics,
 )
 from shared.athena import entity_search_conditions
-from shared.apiutils.router import path_pattern_matcher
 from shared.variantutils import perform_variant_search
-from shared.utils import ENV_ATHENA
 from shared.athena import (
     Dataset,
     run_custom_query,
     entity_search_conditions,
 )
 from shared.apiutils import Granularity, IncludeResultsetResponses, RequestQueryParams
+from shared.apiutils.router import lambda_router
 
 
 def get_unique_subsets(count):
@@ -135,8 +135,8 @@ def tuples_to_list_str(tuples):
     )
 
 
-@path_pattern_matcher("v_correlations", "post")
-def variant_correlations(event):
+@lambda_router.attach("/analytics/v_correlations", "post", authenticate_analytics)
+def variant_correlations(event, context):
     """
     Compute correlation between the variants mentioned and the phenotypes
     provided as metadata filters

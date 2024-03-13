@@ -3,8 +3,8 @@ import json
 import boto3
 
 from shared.utils.lambda_utils import ENV_COGNITO
-from shared.apiutils.router import path_pattern_matcher, BeaconError
-
+from shared.apiutils import lambda_router, BeaconError
+from admin_utils import authenticate_admin
 
 cognito_client = boto3.client("cognito-idp")
 USER_POOL_ID = ENV_COGNITO.COGNITO_USER_POOL_ID
@@ -21,8 +21,8 @@ def get_username_by_email(email):
     raise Exception(f"User with email {email} not found")
 
 
-@path_pattern_matcher("users", "post")
-def add_user(event):
+@lambda_router.attach("/admin/users", "post", authenticate_admin)
+def add_user(event, context):
     body_dict = json.loads(event.get("body"))
     email = body_dict.get("email")
     first_name = body_dict.get("first_name")
@@ -49,8 +49,8 @@ def add_user(event):
     return {"success": True}
 
 
-@path_pattern_matcher("users", "get")
-def get_users(event):
+@lambda_router.attach("/admin/users", "get", authenticate_admin)
+def get_users(event, context):
     pagination_token = (event.get("queryStringParameters") or dict()).get(
         "pagination_token", None
     )
@@ -74,8 +74,9 @@ def get_users(event):
     return {"users": users, "pagination_token": next_pagination_token}
 
 
-@path_pattern_matcher("users/{email}", "delete")
-def delete_user(event, email):
+@lambda_router.attach("/admin/users/{email}", "delete", authenticate_admin)
+def delete_user(event, context):
+    email = event["pathParameters"]["email"]
     username = get_username_by_email(email)
     cognito_client.admin_delete_user(UserPoolId=USER_POOL_ID, Username=username)
 
@@ -83,8 +84,9 @@ def delete_user(event, email):
     return {"success": True}
 
 
-@path_pattern_matcher("users/{email}/groups", "get")
-def user_groups(event, email):
+@lambda_router.attach("/admin/users/{email}/groups", "get", authenticate_admin)
+def user_groups(event, context):
+    email = event["pathParameters"]["email"]
     username = get_username_by_email(email)
     response = cognito_client.admin_list_groups_for_user(
         Username=username, UserPoolId=USER_POOL_ID
@@ -95,8 +97,9 @@ def user_groups(event, email):
     return {"groups": groups}
 
 
-@path_pattern_matcher("users/{email}/groups", "post")
-def update_user_groups(event, email):
+@lambda_router.attach("/admin/users/{email}/groups", "post", authenticate_admin)
+def update_user_groups(event, context):
+    email = event["pathParameters"]["email"]
     body_dict = json.loads(event.get("body"))
     chosen_groups = []
     removed_groups = []

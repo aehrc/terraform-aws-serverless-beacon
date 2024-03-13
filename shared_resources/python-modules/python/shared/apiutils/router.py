@@ -1,7 +1,3 @@
-import re
-from functools import wraps
-from collections import defaultdict
-
 from botocore.exceptions import ClientError
 
 from shared.apiutils.responses import bundle_response
@@ -27,93 +23,132 @@ class AuthError(Exception):
         return f'Auth Error: "{self.error_message}"'
 
 
-def path_pattern_matcher(pattern, method):
-    """
-    Decorator to match a request path against a template string pattern.
-    If the path matches the pattern, the matched variables are added to the function's arguments.
-    """
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(request_path, request_method, auth_groups, event):
-            # Convert the pattern into a regular expression
-            pattern_regex = re.sub(r"{(\w+)}", r"(?P<\1>[^/]+)", pattern)
-            pattern_regex = f"^{pattern_regex}$"
-
-            match = re.match(pattern_regex, request_path)
-
-            if match and method.lower() == request_method.lower():
-                # Check if authorisation is good
-                user_groups = event["requestContext"]["authorizer"]["claims"][
-                    "cognito:groups"
-                ].split(",")
-                if not all([auth_group in user_groups for auth_group in auth_groups]):
-                    raise AuthError(
-                        error_code="Unauthorised",
-                        error_message="User does not have access",
-                    )
-                # Extract matched variables from the request path
-                path_vars = match.groupdict()
-                return func(event, **path_vars)
-            else:
-                return None  # No match
-
-        return wrapper
-
-    return decorator
-
-
-class Router:
-    """Router: manages the route functions."""
-
-    # TODO retrieve roles, create a session client to be used by handlers
-
+class LambdaRouter:
     def __init__(self):
-        # Create the chain of handlers
-        self.handlers = []
-        # Authorised user groups
-        self.auth_groups = defaultdict(list)
+        self._routes = {}
 
-    def register(self, handler, auth_groups=[]):
-        # register handlers and their groups
-        self.handlers.append(handler)
-        self.auth_groups[handler] = auth_groups
+    def attach(self, path, method, auth_func=None):
+        """
+        A decorator for adding routes.
 
-    def route(self, event):
-        http_method = event["httpMethod"]
-        request_path = (
-            event["pathParameters"].get("proxy", "") if event["pathParameters"] else {}
-        )
+        :param path: The path to match, with parameters in curly braces, e.g., /users/{userId}
+        :param method: HTTP method to match, e.g. get
+        :param auth_func: An optional authorization function that takes the event and context.
+                          It should raise an exception if authorization fails.
+        """
 
-        for handler in self.handlers:
-            try:
-                response = handler(
-                    request_path, http_method, self.auth_groups[handler], event
-                )
-            except ClientError as error:
-                error_code = error.response["Error"]["Code"]
-                error_message = error.response["Error"]["Message"]
-                print(f"An error occurred: {error_code} - {error_message}")
-                return bundle_response(
-                    500, {"error": error_code, "message": error_message}
-                )
-            except BeaconError as error:
-                print(f"An error occurred: {error.error_code} - {error.error_message}")
-                return bundle_response(
-                    500, {"error": error.error_code, "message": error.error_message}
-                )
-            except AuthError as error:
-                print(f"An error occurred: {error.error_code} - {error.error_message}")
-                return bundle_response(
-                    401, {"error": error.error_code, "message": error.error_message}
-                )
-            except Exception as e:
-                print(f"An error occurred: {e}")
-                return bundle_response(
-                    500, {"error": "UnhandledException", "message": str(e)}
-                )
+        def decorator(func):
+            self._add_route(path, method, func, auth_func)
+            return func
 
-            if response:
-                return bundle_response(200, response)
+        return decorator
 
-        return bundle_response(404, {})
+    def handle_route(self, event, context):
+        """
+        Route an incoming request to the appropriate handler.
+
+        :param event: The event dict provided by AWS Lambda proxy integration.
+        :param context: The context object provided by AWS Lambda.
+        :return: The response from the handler or an error response.
+        """
+        path = event["path"]
+        handler = None
+        auth_func = None
+        route = None
+
+        for _route, _method in self._routes:
+            if not (
+                _method == event["httpMethod"].lower()
+                and self._match_path(_route, path)
+            ):
+                continue
+
+            handler = self._routes[(_route, _method)]["handler"]
+            auth_func = self._routes[(_route, _method)].get("auth")
+            route = _route
+
+        if handler is None:
+            return bundle_response(404, {})
+
+        try:
+            if auth_func:
+                auth_func(event, context)
+
+            path_parameters = self._extract_path_parameters(route, path)
+            event["pathParameters"] = path_parameters
+            response = handler(event, context)
+
+            return bundle_response(200, response)
+
+        except ClientError as error:
+            error_code = error.response["Error"]["Code"]
+            error_message = error.response["Error"]["Message"]
+            print(f"An error occurred: {error_code} - {error_message}")
+            return bundle_response(500, {"error": error_code, "message": error_message})
+
+        except BeaconError as error:
+            print(f"An error occurred: {error.error_code} - {error.error_message}")
+            return bundle_response(
+                500, {"error": error.error_code, "message": error.error_message}
+            )
+
+        except AuthError as error:
+            print(f"An error occurred: {error.error_code} - {error.error_message}")
+            return bundle_response(
+                401, {"error": error.error_code, "message": error.error_message}
+            )
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return bundle_response(
+                500, {"error": "UnhandledException", "message": str(e)}
+            )
+
+    def _add_route(self, path, method, handler, auth_func=None):
+        """
+        Add a route to the router.
+
+        :param path: The path to match, with parameters in curly braces, e.g., /users/{userId}
+        :param method: HTTP method to match, e.g. get
+        :param handler: The function to handle the request.
+        :param auth_func: An optional authorization function that takes the event and context.
+                          It should raise an exception if authorization fails.
+        """
+
+        self._routes[(path, method.lower())] = {"handler": handler, "auth": auth_func}
+
+    def _match_path(self, route, path):
+        """
+        Check if the requested path matches the route.
+        """
+        route_parts = route.strip("/").split("/")
+        path_parts = path.strip("/").split("/")
+
+        if len(route_parts) != len(path_parts):
+            return False
+
+        for route_part, path_part in zip(route_parts, path_parts):
+            if route_part.startswith("{") and route_part.endswith("}"):
+                continue
+            if route_part != path_part:
+                return False
+
+        return True
+
+    def _extract_path_parameters(self, route, path):
+        """
+        Extract path parameters based on the route definition.
+        """
+        params = {}
+        route_parts = route.strip("/").split("/")
+        path_parts = path.strip("/").split("/")
+
+        for route_part, path_part in zip(route_parts, path_parts):
+            if route_part.startswith("{") and route_part.endswith("}"):
+                param_name = route_part.strip("{}")
+                params[param_name] = path_part
+
+        return params
+
+
+lambda_router = LambdaRouter()

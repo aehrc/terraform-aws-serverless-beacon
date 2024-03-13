@@ -1,19 +1,12 @@
 import json
 
-from shared.apiutils import Router
-from variant_frequencies import variant_frequencies
-from variant_correlations import variant_correlations
-
-router = Router()
+import variant_correlations, variant_frequencies # to initialise router
+from shared.apiutils import lambda_router
 
 
 def lambda_handler(event, context):
     print("Event Received: {}".format(json.dumps(event)))
-
-    router.register(variant_frequencies, auth_groups=["record-access-user-group"])
-    router.register(variant_correlations, auth_groups=["record-access-user-group"])
-
-    return router.route(event)
+    return lambda_router.handle_route(event, context)
 
 
 if __name__ == "__main__":
