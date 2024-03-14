@@ -1,3 +1,4 @@
+from .analytics import VariantEffect
 from .entries import get_variant_entry
 from .framework import beacon_map, configuration, entry_types
 from .requests import (

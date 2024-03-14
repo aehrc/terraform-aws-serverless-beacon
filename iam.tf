@@ -735,6 +735,15 @@ data "aws_iam_policy_document" "lambda-analytics" {
       aws_sns_topic.splitQuery.arn,
     ]
   }
+
+  statement {
+    actions = [
+      "S3:GetObject",
+    ]
+    resources = [
+      "*",
+    ]
+  }
 }
 
 #

@@ -1,6 +1,7 @@
 import itertools
 import json
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import List
 
@@ -10,16 +11,30 @@ from analytics_utils import (
     authenticate_analytics,
     datasets_query,
     filtered_datasets_with_samples_query,
+    load_svep,
     parse_athena_result,
     parse_filters,
+    parse_variant_effects,
     parse_varinats,
 )
-from shared.apiutils import Granularity, IncludeResultsetResponses, RequestQueryParams
+from shared.apiutils import (
+    Granularity,
+    IncludeResultsetResponses,
+    RequestQueryParams,
+    VariantEffect,
+)
 from shared.apiutils.router import LambdaRouter
 from shared.athena import Dataset, entity_search_conditions, run_custom_query
 from shared.variantutils import perform_variant_search
 
 router = LambdaRouter()
+executor = ThreadPoolExecutor(32)
+
+
+def tuples_to_list_str(tuples):
+    return str(
+        list([list(item) if isinstance(item, tuple) else item for item in tuples])
+    )
 
 
 def get_unique_subsets(count):
@@ -45,55 +60,82 @@ def get_datasets_by_filter(metadata_filter, assembly_id):
     return filtered_datasets_arr
 
 
-def get_all_datasets(assembly_id):
-    all_datasets_arr = parse_athena_result(
-        run_custom_query(datasets_query(assembly_id), return_id=True)
-    )
+def pre_process_datasets(all_datasets_arr):
     for dataset in all_datasets_arr:
         dataset["samples"] = (
             dataset["samples"].replace("[", "").replace("]", "").split(", ")
         )
+        # load svep result if available, else put a placeholder
+        if svep_data := dataset.get("info", dict()).get("svep_data"):
+            dataset["info"]["svep_data"] = load_svep(svep_data)
+        else:
+            dataset["info"]["svep_data"] = dict()
     return all_datasets_arr
 
 
-def get_filtered_datasets(metadata_filters, assembly_id):
+def get_datasets(metadata_filters, assembly_id):
     filtered_datasets = dict()
+    # all datasets futures
+    result_id_future = executor.submit(
+        run_custom_query, datasets_query(assembly_id), return_id=True
+    )
+    # filtered results futures
     for filter_index, metadata_filter in enumerate(metadata_filters):
-        filtered_datasets[filter_index] = get_datasets_by_filter(
-            metadata_filter, assembly_id
+        filtered_datasets[filter_index] = executor.submit(
+            get_datasets_by_filter, metadata_filter, assembly_id
         )
+    # all datasets results
+    all_datasets_arr = parse_athena_result(result_id_future.result())
+    all_datasets_arr = pre_process_datasets(all_datasets_arr)
+    # filtered results
+    for filter_index, metadata_filter in enumerate(metadata_filters):
+        filtered_datasets[filter_index] = filtered_datasets[filter_index].result()
         for dataset in filtered_datasets[filter_index]:
             dataset["samples"] = (
                 dataset["samples"].replace("[", "").replace("]", "").split(", ")
             )
-    return filtered_datasets
+    return all_datasets_arr, filtered_datasets
 
 
-def get_all_variant_hits(all_datasets_arr, variant_filters: List[RequestQueryParams]):
+def get_all_variant_hits(
+    all_datasets_arr,
+    variant_filters: List[RequestQueryParams],
+    variant_effect_filters: List[VariantEffect],
+):
     all_variant_hits = {dataset["id"]: dict() for dataset in all_datasets_arr}
+    dataset_svep = {
+        dataset["id"]: dataset["info"]["svep_data"] for dataset in all_datasets_arr
+    }
+    responses = []
+
     for n, params in enumerate(variant_filters):
-        query_responses = perform_variant_search(
-            datasets=[
-                Dataset(
-                    id=dataset["id"],
-                    vcfChromosomeMap=dataset["_vcfchromosomemap"],
-                    vcfLocations=dataset["_vcflocations"],
-                )
-                for dataset in all_datasets_arr
-            ],
-            reference_name=params.reference_name,
-            reference_bases=params.reference_bases,
-            alternate_bases=params.alternate_bases,
-            start=params.start,
-            end=params.end,
-            variant_type=params.variant_type,
-            variant_min_length=params.variant_min_length,
-            variant_max_length=params.variant_max_length,
-            requested_granularity=Granularity.RECORD,
-            include_datasets=IncludeResultsetResponses.ALL,
-            include_samples=True,
+        responses.append(
+            executor.submit(
+                perform_variant_search,
+                datasets=[
+                    Dataset(
+                        id=dataset["id"],
+                        vcfChromosomeMap=dataset["_vcfchromosomemap"],
+                        vcfLocations=dataset["_vcflocations"],
+                    )
+                    for dataset in all_datasets_arr
+                ],
+                reference_name=params.reference_name,
+                reference_bases=params.reference_bases,
+                alternate_bases=params.alternate_bases,
+                start=params.start,
+                end=params.end,
+                variant_type=params.variant_type,
+                variant_min_length=params.variant_min_length,
+                variant_max_length=params.variant_max_length,
+                requested_granularity=Granularity.RECORD,
+                include_datasets=IncludeResultsetResponses.ALL,
+                include_samples=True,
+            )
         )
 
+    for n, params in enumerate(variant_filters):
+        query_responses = responses[n].result()
         aggregate_response = {
             "variants": [],
             "variant_samples": [],
@@ -119,16 +161,24 @@ def get_all_variant_hits(all_datasets_arr, variant_filters: List[RequestQueryPar
                     alt,
                     typ,
                 ) = variant.strip().split("\t")
-                entry["variants"].append(
-                    {"chrom": chrom, "pos": pos, "ref_base": ref, "alt_base": alt}
+                variant_effects = dataset_svep[dataset_id].get(
+                    (chrom, ref, alt, pos), []
                 )
+                valid_variant = len(variant_effect_filters) == 0 or any(
+                    [effect in variant_effects for effect in variant_effect_filters]
+                )
+
+                if valid_variant:
+                    entry["variants"].append(
+                        {
+                            "chrom": chrom,
+                            "pos": pos,
+                            "ref_base": ref,
+                            "alt_base": alt,
+                            "effects": tuple(variant_effects),
+                        }
+                    )
     return all_variant_hits
-
-
-def tuples_to_list_str(tuples):
-    return str(
-        list([list(item) if isinstance(item, tuple) else item for item in tuples])
-    )
 
 
 @router.attach("/analytics/v_correlations", "post", authenticate_analytics)
@@ -140,14 +190,16 @@ def variant_correlations(event, context):
     body_dict = json.loads(event.get("body"))
     metadata_filters = parse_filters(body_dict.get("filters", []))
     variant_filters = parse_varinats(body_dict.get("variants", []))
+    variant_effect_filters = parse_variant_effects(body_dict.get("variant_effects", []))
     assembly_id = variant_filters[0].assembly_id
 
-    # get all datasets
-    all_datasets_arr = get_all_datasets(assembly_id)
-    # get filtered datasets and samples to scan
-    filtered_datasets = get_filtered_datasets(metadata_filters, assembly_id)
+    # get all with svep result and filtered datasets
+    all_datasets_arr, filtered_datasets = get_datasets(metadata_filters, assembly_id)
     # get all variants
-    all_variant_hits = get_all_variant_hits(all_datasets_arr, variant_filters)
+    all_variant_hits = get_all_variant_hits(
+        all_datasets_arr, variant_filters, variant_effect_filters
+    )
+
     # dataset IDs transforming into array indexes
     dataset_index = {
         dataset["id"]: index for index, dataset in enumerate(all_datasets_arr)
@@ -206,7 +258,7 @@ def variant_correlations(event, context):
             variant_frequencies[indexes][dix] = len(samples_intersection)
             query_variant_samples[indexes][dix] = list(samples_intersection)
             query_variant_hits[indexes][dix] = [
-                dict(zip(["chrom", "pos", "ref_base", "alt_base"], hit))
+                dict(zip(["chrom", "pos", "ref_base", "alt_base", "effects"], hit))
                 for hit in variants_hit
             ]
 
@@ -263,4 +315,8 @@ def variant_correlations(event, context):
 
 
 if __name__ == "__main__":
+    event = {"body": open("test.json").read()}
+    res = variant_correlations(event, {})
+
+    print(json.dumps(res))
     pass
