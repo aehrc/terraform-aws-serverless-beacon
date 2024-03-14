@@ -1,5 +1,6 @@
 ## Serverless Beacon
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
 ![assets/logo-black.png](assets/logo-black.png)
 
@@ -126,6 +127,7 @@ Initialise the docker container using the following command.
 
 ```bash
 docker build -t csiro/sbeacon ./docker
+docker buildx build --platform linux/amd64  -t csiro/sbeacon ./docker
 ```
 
 This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
