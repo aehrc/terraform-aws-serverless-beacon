@@ -97,8 +97,8 @@ pip install jsons==1.6.3 --target layers/python_libraries/python
 pip install jsonschema==4.18.0 --target layers/python_libraries/python
 pip install pydantic==2.0.2 --target layers/python_libraries/python
 pip install pyhumps==3.8.0 --target layers/python_libraries/python
-pip install pynamodb==5.5.0 --target layers/python_libraries/python
+pip install pynamodb==6.0.0 --target layers/python_libraries/python
 pip install pyorc==0.8.0 --target layers/python_libraries/python
 pip install requests==2.31.0 --target layers/python_libraries/python
-pip install smart_open==6.3.0 --target layers/python_libraries/python
+pip install smart_open==7.0.4 --target layers/python_libraries/python
 pip install strenum==0.4.15 --target layers/python_libraries/python
