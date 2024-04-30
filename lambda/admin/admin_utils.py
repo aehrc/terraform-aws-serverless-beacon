@@ -8,5 +8,5 @@ def authenticate_admin(event, context):
     if not "admin-group" in groups:
         raise AuthError(
             error_code="Unauthorised",
-            error_message="User does not have access",
+            error_message="User does not have admin access",
         )

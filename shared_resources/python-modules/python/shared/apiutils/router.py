@@ -1,5 +1,7 @@
+import json
+
 from botocore.exceptions import ClientError
-from shared.apiutils.responses import bundle_response
+from shared.apiutils.responses import DateTimeEncoder, bundle_response
 
 
 class BeaconError(Exception):
@@ -59,6 +61,7 @@ class LambdaRouter:
         :param context: The context object provided by AWS Lambda.
         :return: The response from the handler or an error response.
         """
+        print("Event Received: {}".format(json.dumps(event)))
         path = event["path"]
         handler = None
         auth_func = None
@@ -85,6 +88,7 @@ class LambdaRouter:
             path_parameters = self._extract_path_parameters(route, path)
             event["pathParameters"] = path_parameters
             response = handler(event, context)
+            print("Response Body: {}".format(json.dumps(response, cls=DateTimeEncoder)))
 
             return bundle_response(200, response)
 
@@ -102,6 +106,7 @@ class LambdaRouter:
 
         except AuthError as error:
             print(f"An error occurred: {error.error_code} - {error.error_message}")
+            # TODO
             return bundle_response(
                 401, {"error": error.error_code, "message": error.error_message}
             )
