@@ -214,3 +214,24 @@ variable "config-max-variant-search-base-range" {
   description = "Max allowed range for variant searching"
   default     = 5000
 }
+
+# OPENAI config
+variable "azure-openai-api-key" {
+  type    = string
+  default = "Azure openai api key"
+}
+
+variable "azure-openai-endpoint" {
+  type    = string
+  default = "Azure openai endpoint"
+}
+
+variable "azure-openai-api-version" {
+  type    = string
+  default = "Azure openai api version"
+}
+
+variable "azure-openai-chat-deployment-name" {
+  type    = string
+  default = "Azure openai chat deployment name"
+}

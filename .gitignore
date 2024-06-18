@@ -29,3 +29,4 @@ tmpterms
 
 # docker related bundle ignores
 lambda/analytics/shared/
+lambda/askbeacon/shared/
