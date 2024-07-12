@@ -67,7 +67,7 @@ Return a JSON object with an array formatted to look like:
 }}
 
 CONDITIONS
-filters: this is an array with objects having two attributes called "term" and "scope". Ignore genomic variab
+filters: this is an array with objects having two attributes called "term" and "scope". Ignore genomic variants
 term: please insert only one condition here, if there are many, use multiple objects in "filters" array
 
 QUERY
@@ -127,7 +127,7 @@ biosample collection or phenotypic information.
 
 Consider the scenarios below.
 - If user is just greeting, write a few word greeting along the lines "Hello, I am AskBeacon assistant. What did you have mind for sBeacon?"
-lightly modify the greeting message to be creating.
+lightly modify the greeting message to be creative.
 
 Repond with JSON of the form;
 {{
@@ -214,7 +214,7 @@ YOU HAVE DISCOVERED FOLLOWING INFORMATION (IGNORE IF EMPTY)
 YOU ARE RETURNING FOLLOWING ONTOLOGY TERMS (IGNORE IF EMPTY)
 {terms}
 INSTRUCTIONS
-Generate a followup so that the user can provide if they want. If there are some extracted content acknowledge that.
+Generate a followup so that the user can provide more info if they want. If there are some extracted content, acknowledge that.
 If there arent any, please advise them in less than 20 words. Note that following are the allowed information.
 - scope
 - granularity
