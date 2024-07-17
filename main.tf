@@ -893,19 +893,21 @@ module "lambda-analytics" {
 module "lambda-askbeacon" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name  = "askbeacon"
-  description    = "Run the llm tasks."
-  create_package = false
-  image_uri      = module.docker_image_askbeacon_lambda.image_uri
-  package_type   = "Image"
-  memory_size    = 512
-  timeout        = 60
+  function_name       = "askbeacon"
+  description         = "Run the llm tasks."
+  create_package      = false
+  image_uri           = module.docker_image_askbeacon_lambda.image_uri
+  package_type        = "Image"
+  memory_size         = 512
+  timeout             = 60
   attach_policy_jsons = true
+
   policy_jsons = [
-    data.aws_iam_policy_document.athena-full-access.json
+    data.aws_iam_policy_document.s3-askbeacon-access.json,
+    data.aws_iam_policy_document.athena-readonly-access.json
   ]
-  number_of_policy_jsons = 1
-  source_path = "${path.module}/lambda/askbeacon"
+  number_of_policy_jsons = 2
+  source_path            = "${path.module}/lambda/askbeacon"
 
   tags = var.common-tags
 
@@ -918,9 +920,9 @@ module "lambda-askbeacon" {
     local.sbeacon_variables,
     local.dynamodb_variables,
     {
-      AZURE_OPENAI_API_KEY = var.azure-openai-api-key
-      AZURE_OPENAI_ENDPOINT = var.azure-openai-endpoint
-      AZURE_OPENAI_API_VERSION = var.azure-openai-api-version
+      AZURE_OPENAI_API_KEY              = var.azure-openai-api-key
+      AZURE_OPENAI_ENDPOINT             = var.azure-openai-endpoint
+      AZURE_OPENAI_API_VERSION          = var.azure-openai-api-version
       AZURE_OPENAI_CHAT_DEPLOYMENT_NAME = var.azure-openai-chat-deployment-name
     }
   )

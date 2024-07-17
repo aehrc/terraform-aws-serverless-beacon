@@ -904,3 +904,54 @@ data "aws_iam_policy_document" "admin-lambda-access" {
     ]
   }
 }
+
+# Athena Read-only Access
+data "aws_iam_policy_document" "athena-readonly-access" {
+  statement {
+    actions = [
+      "athena:GetQueryExecution",
+      "athena:GetQueryResults",
+      "athena:StartQueryExecution"
+    ]
+    resources = [
+      aws_athena_workgroup.sbeacon-workgroup.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "glue:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
+
+# S3 askbeacon Access
+data "aws_iam_policy_document" "s3-askbeacon-access" {
+  statement {
+    actions = [
+      "s3:*",
+    ]
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/askbeacon-exec",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/askbeacon-exec/*",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/askbeacon-db",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/askbeacon-db/*",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/query-results/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:ListBucket",
+      "s3:GetObject",
+    ]
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}",
+      "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*",
+    ]
+  }
+}
