@@ -3,15 +3,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 
 import joblib
-from askbeacon_utils import authenticate_endpoint
-from docarray import BaseDoc
-from docarray.index import InMemoryExactNNIndex
-from docarray.typing import NdArray
 from models import VecDBEntry, embeddings_model
 from shared.apiutils.router import LambdaRouter
 from shared.athena import run_custom_query
 from shared.utils import ENV_ATHENA
 from smart_open import open as sopen
+from utils.auth import authenticate_endpoint
 
 router = LambdaRouter()
 
@@ -68,7 +65,7 @@ def split_into_chunks(array, chunk_size=50):
 
 
 @router.attach("/ask/index", "post", authenticate_endpoint)
-def index():
+def index(event, context):
     entries = get_terms()
     batches = split_into_chunks(entries)
     docs = []
@@ -98,4 +95,4 @@ def index():
 
 
 if __name__ == "__main__":
-    index()
+    index("", "")

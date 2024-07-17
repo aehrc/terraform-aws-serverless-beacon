@@ -1,10 +1,14 @@
+from analytics import router as analytics_router
 from ask import router as ask_router
-from askbeacon_utils import authenticate_endpoint
+from index import router as index_router
 from models import llm_text
 from shared.apiutils import LambdaRouter
+from utils.auth import authenticate_endpoint
 
 router = LambdaRouter()
 router.update(ask_router)
+router.update(index_router)
+router.update(analytics_router)
 
 
 @router.attach("/ask/hello", "get", authenticate_endpoint)

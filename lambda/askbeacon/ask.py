@@ -3,9 +3,10 @@ from copy import deepcopy
 from typing import Dict
 
 import templates
-from askbeacon_utils import authenticate_endpoint, search_db
 from models import Filters, Granularity, GranularityEnum, Scope, ScopeEnum, Variant
 from shared.apiutils.router import LambdaRouter
+from utils.auth import authenticate_endpoint
+from utils.db import search_db
 
 router = LambdaRouter()
 

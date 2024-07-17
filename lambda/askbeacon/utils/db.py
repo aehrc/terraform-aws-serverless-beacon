@@ -5,20 +5,8 @@ import joblib
 import numpy as np
 from docarray.index import InMemoryExactNNIndex
 from models import VecDBEntry, embeddings_model
-from shared.apiutils import AuthError
 from shared.utils import ENV_ATHENA
 from smart_open import open as sopen
-
-
-def authenticate_endpoint(event, context):
-    authorizer = event["requestContext"]["authorizer"]
-    groups = authorizer["claims"]["cognito:groups"].split(",")
-
-    if not "record-access-user-group" in groups:
-        raise AuthError(
-            error_code="Unauthorised",
-            error_message="User does not have access",
-        )
 
 
 @cache
