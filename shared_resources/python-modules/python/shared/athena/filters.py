@@ -1,24 +1,24 @@
 from typing import List, Union
 
-from .individual import Individual
-from .biosample import Biosample
-from .analysis import Analysis
-from .dataset import Dataset
-from .cohort import Cohort
-from .run import Run
+from shared.apiutils import (
+    AlphanumericFilter,
+    CustomFilter,
+    OntologyFilter,
+    Operator,
+    Similarity,
+)
 from shared.ontoutils import (
     get_term_ancestors_in_beacon,
     get_term_descendants_in_beacon,
 )
 from shared.utils import ENV_ATHENA
-from shared.apiutils import (
-    OntologyFilter,
-    AlphanumericFilter,
-    CustomFilter,
-    Similarity,
-    Operator,
-)
 
+from .analysis import Analysis
+from .biosample import Biosample
+from .cohort import Cohort
+from .dataset import Dataset
+from .individual import Individual
+from .run import Run
 
 type_class = {
     "individuals": Individual,
@@ -68,7 +68,7 @@ def entity_search_conditions(
             if f.scope is None or f.scope == default_scope:
                 operator = _get_comparison_operator(f)
                 outer_constraints.append("{} {} ?".format(f.id, operator))
-                outer_execution_parameters.append(str(f.value))
+                outer_execution_parameters.append(f"'{str(f.value)}'")
             # otherwise, we have to use the relations table
             # eg: scope = "cohorts", cohortType = "beacon-defined"
             else:
@@ -76,7 +76,7 @@ def entity_search_conditions(
                 joined_class = type_class[group]
                 operator = _get_comparison_operator(f)
                 comparison = "{} {} ?".format(f.id, operator)
-                join_execution_parameters.append(str(f.value))
+                join_execution_parameters.append(f"'{str(f.value)}'")
                 join_constraints.append(
                     f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
                 )
