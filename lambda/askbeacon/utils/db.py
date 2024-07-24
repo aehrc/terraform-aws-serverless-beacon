@@ -4,17 +4,17 @@ from typing import List
 import joblib
 import numpy as np
 from docarray.index import InMemoryExactNNIndex
-from models import VecDBEntry, embeddings_model
 from shared.utils import ENV_ATHENA
 from smart_open import open as sopen
+from utils.models import VecDBEntry, embeddings_model
 
 
 @cache
 def get_vec_db():
     with sopen(
         f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-db/db.pkl.bz2", "rb"
-    ) as fo:
-        docs = joblib.load(fo)
+    ) as fp:
+        docs = joblib.load(fp)
         db = InMemoryExactNNIndex[VecDBEntry]()
         db.index(docs)
 

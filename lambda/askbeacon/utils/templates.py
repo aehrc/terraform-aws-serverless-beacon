@@ -5,7 +5,16 @@ from langchain_core.runnables import (
     RunnableParallel,
     RunnablePassthrough,
 )
-from models import Filters, Granularity, Scope, Variant, YesNo, llm_json, llm_text
+from utils.models import (
+    Filters,
+    GeneratedCodeAnalytics,
+    Granularity,
+    Scope,
+    Variant,
+    YesNo,
+    llm_json,
+    llm_text,
+)
 
 scope_extractor_template = """
 INSTRUCTIONS
@@ -94,6 +103,44 @@ QUERY
 {query}
 
 OUTPUT
+"""
+
+analytics_code_generator_template = """
+INSTRUCTIONS
+You must create a python code achieve the task indicated by the user query.
+Please comment your code for easy understanding
+The response must be in the following JSON format
+{{
+    code: python code
+    files: [] # this is a list of output files written by the script
+    assumptions: [] # list of short assumptions you made
+    feedback: [] # list of short instructions for user if they need to attend such as modify attributes according to the actual table content (do not include anything related to libraries, imports or variables)
+}}
+
+CONDITIONS
+You can only use following python libraries and they are already imported as shown within brackets
+* Pandas (import pandas as pd)
+* Numpy (import numpy as np)
+* Matplotlib (import matplotlib.pyplot as plt)
+* Seaborn (import seaborn as sns)
+Do not write any import statements (or include comments regarding imports)
+Do not try to simulate any data
+All files must be written to /tmp/ directory
+
+INPUT
+Following inputs are available for you. All inputs are pandas dataframes
+{data}
+
+QUERY
+{query}
+
+OUTPUT
+"""
+
+analytics_table_data_template = """
+Table name: {name}
+Columns: {cols}
+Datatypes: {types}
 """
 
 
@@ -228,3 +275,9 @@ Do not add conclusions or make assumptions. No need to validate relationship of 
     )
 
     return followup_template | llm_text
+
+
+def get_code_generator_chain():
+    return get_extractor_chain(
+        analytics_code_generator_template, GeneratedCodeAnalytics
+    )

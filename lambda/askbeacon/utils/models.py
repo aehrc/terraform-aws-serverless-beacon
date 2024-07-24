@@ -79,3 +79,10 @@ class Granularity(BaseModel):
 class YesNo(BaseModel):
     yes: bool
     reason: str
+
+
+class GeneratedCodeAnalytics(BaseModel):
+    code: str
+    files: List[str]
+    assumptions: List[str]
+    feedback: List[str]

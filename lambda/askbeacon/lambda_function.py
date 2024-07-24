@@ -1,9 +1,9 @@
 from analytics import router as analytics_router
 from ask import router as ask_router
 from index import router as index_router
-from models import llm_text
 from shared.apiutils import LambdaRouter
 from utils.auth import authenticate_endpoint
+from utils.models import llm_text
 
 router = LambdaRouter()
 router.update(ask_router)
@@ -21,7 +21,6 @@ def test(event, context):
 
 
 def lambda_handler(event, context):
-    print(router._routes)
     return router.handle_route(event, context)
 
 

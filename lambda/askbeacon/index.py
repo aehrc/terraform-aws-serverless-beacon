@@ -3,12 +3,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 
 import joblib
-from models import VecDBEntry, embeddings_model
 from shared.apiutils.router import LambdaRouter
 from shared.athena import run_custom_query
 from shared.utils import ENV_ATHENA
 from smart_open import open as sopen
 from utils.auth import authenticate_endpoint
+from utils.models import VecDBEntry, embeddings_model
 
 router = LambdaRouter()
 
