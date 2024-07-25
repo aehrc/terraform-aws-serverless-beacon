@@ -14,6 +14,9 @@ ADD shared ${LAMBDA_TASK_ROOT}/shared
 ADD analytics_utils ${LAMBDA_TASK_ROOT}/analytics_utils
 ADD utils ${LAMBDA_TASK_ROOT}/utils
 
+# Pre-warm libraries (a little prayer to improve load times)
+RUN python -c "import pandas as pd, numpy as np, matplotlib.pyplot as plt; print('Libraries loaded')"
+
 # Set the CMD to your handler
 CMD [ "lambda_function.lambda_handler" ]
 

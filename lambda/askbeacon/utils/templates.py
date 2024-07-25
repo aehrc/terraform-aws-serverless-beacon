@@ -112,7 +112,7 @@ Please comment your code for easy understanding
 The response must be in the following JSON format
 {{
     code: python code
-    files: [] # this is a list of output files written by the script
+    files: [] # this is a list of output files paths written by the script
     assumptions: [] # list of short assumptions you made
     feedback: [] # list of short instructions for user if they need to attend such as modify attributes according to the actual table content (do not include anything related to libraries, imports or variables)
 }}
@@ -126,6 +126,12 @@ You can only use following python libraries and they are already imported as sho
 Do not write any import statements (or include comments regarding imports)
 Do not try to simulate any data
 All files must be written to /tmp/ directory
+Do not plt.show() the plot, just save it
+Do not add any return variables
+Do not make checks to validate presense of columns, you already have that info below
+If the chosen fields are not strings apply following rules
+- dict - a dictionary with keys "id" and "label" mark this in feedback to let usser adjust code
+- list - list entries likely are dictionaries with keys "id" and "label" mark this in feedback to let usser adjust code
 
 INPUT
 Following inputs are available for you. All inputs are pandas dataframes
@@ -139,8 +145,8 @@ OUTPUT
 
 analytics_table_data_template = """
 Table name: {name}
-Columns: {cols}
-Datatypes: {types}
+    Columns: {cols}
+    Datatypes: {types}
 """
 
 
@@ -277,7 +283,18 @@ Do not add conclusions or make assumptions. No need to validate relationship of 
     return followup_template | llm_text
 
 
-def get_code_generator_chain():
+def get_analytics_code_generator_chain():
     return get_extractor_chain(
         analytics_code_generator_template, GeneratedCodeAnalytics
     )
+
+
+def generate_analytics_table_data(table_names, table_info):
+    constructed_str = ""
+
+    for name, (cols, types) in zip(table_names, table_info):
+        constructed_str += analytics_table_data_template.format(
+            name=name, cols=cols, types=types
+        )
+
+    return constructed_str

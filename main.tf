@@ -893,14 +893,15 @@ module "lambda-analytics" {
 module "lambda-askbeacon" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name       = "askbeacon"
-  description         = "Run the llm tasks."
-  create_package      = false
-  image_uri           = module.docker_image_askbeacon_lambda.image_uri
-  package_type        = "Image"
-  memory_size         = 512
-  timeout             = 60
-  attach_policy_jsons = true
+  function_name          = "askbeacon"
+  description            = "Run the llm tasks."
+  create_package         = false
+  image_uri              = module.docker_image_askbeacon_lambda.image_uri
+  package_type           = "Image"
+  memory_size            = 512
+  timeout                = 60
+  attach_policy_jsons    = true
+  ephemeral_storage_size = 1024
 
   policy_jsons = [
     data.aws_iam_policy_document.s3-askbeacon-access.json,
@@ -924,6 +925,7 @@ module "lambda-askbeacon" {
       AZURE_OPENAI_ENDPOINT             = var.azure-openai-endpoint
       AZURE_OPENAI_API_VERSION          = var.azure-openai-api-version
       AZURE_OPENAI_CHAT_DEPLOYMENT_NAME = var.azure-openai-chat-deployment-name
+      MPLCONFIGDIR                      = "/tmp/matplotlib-tmpdir"
     }
   )
 }
