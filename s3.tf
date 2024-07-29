@@ -92,6 +92,21 @@ resource "aws_s3_bucket_lifecycle_configuration" "metadata_bucket_lifecycle" {
 }
 
 # 
+# enable cors for metadata bucket
+# 
+resource "aws_s3_bucket_cors_configuration" "metadata-bucket" {
+  bucket = aws_s3_bucket.metadata-bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = []
+    max_age_seconds = 3000
+  }
+}
+
+# 
 # S3 bucket for lambda layers
 # 
 resource "aws_s3_bucket" "lambda-layers-bucket" {
