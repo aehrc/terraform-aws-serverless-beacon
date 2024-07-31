@@ -15,7 +15,7 @@ from smart_open import open as sopen
 from utils.db import search_db
 from utils.models import GeneratedCodeAnalytics, Scope, ScopeEnum
 from utils.s3 import generate_presigned_url
-from utils.sanitisers import remove_imports
+from utils.sanitisers import sanitise
 from utils.templates import (
     generate_analytics_table_data,
     get_analytics_code_generator_chain,
@@ -132,7 +132,7 @@ def run_extractors(
     # this breaks the whole thing
     with contextlib.redirect_stdout(std_output), contextlib.redirect_stderr(std_error):
         try:
-            code = remove_imports(code)
+            code = sanitise(code)
             exec(code, exec_globals, locals())
             computed_dataframes = locals().get("dataframes", None)
 
@@ -268,8 +268,8 @@ def run_analysis(code):
     # this breaks the whole thing
     with contextlib.redirect_stdout(std_output), contextlib.redirect_stderr(std_error):
         try:
-            code = remove_imports(code)
-            exec(code, globals(), locals())
+            code = sanitise(code)
+            exec(code, exec_globals, locals())
             computed_files = locals().get("files", None)
 
             if not isinstance(computed_files, list):
@@ -285,18 +285,20 @@ def run_analysis(code):
 
     urls = []
 
-    for file in computed_files:
-        name = file.split("/")[-1]
-        with sopen(
-            f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/outputs/{name}",
-            "wb",
-        ) as fo, open(file, "rb") as fp:
-            fo.write(fp.read())
+    if isinstance(computed_files, list):
+        for file in computed_files:
+            name = file.split("/")[-1]
+            with sopen(
+                f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/outputs/{name}",
+                "wb",
+            ) as fo, open(file, "rb") as fp:
+                fo.write(fp.read())
 
-        url = generate_presigned_url(
-            ENV_ATHENA.ATHENA_METADATA_BUCKET, f"askbeacon-exec/{job_id}/outputs/{name}"
-        )
-        urls.append(url)
+            url = generate_presigned_url(
+                ENV_ATHENA.ATHENA_METADATA_BUCKET,
+                f"askbeacon-exec/{job_id}/outputs/{name}",
+            )
+            urls.append(url)
 
     return {
         "success": success,
