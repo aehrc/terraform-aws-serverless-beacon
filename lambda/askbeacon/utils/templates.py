@@ -47,7 +47,7 @@ Return a JSON object formatted to look like:
 {{
     success: true or false, if a none of the attributes could be identified
     assembly_id: what is the mentioned assembly name (eg: grch38, hg38, or something similar) if unsure use "unknown",
-    chromosome: chromosome mentioned in the query (could be a number 1-22, X or Y), if unsure use "unknown",
+    chromosome: chromosome mentioned in the query (could be a numeric string from 1 to 22, X or Y), if unsure use "unknown",
     start: start base pair or position; single number or an array of two numbers, if unsure use "unknown",
     end: end base pair or position; single number or an array of two numbers, if unsure use "unknown",
 }}
