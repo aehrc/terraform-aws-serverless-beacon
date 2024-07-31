@@ -73,11 +73,12 @@ def query(event, context):
         hits = []
         for filter in filters:
             entries = search_db(filter["term"])
-            for entry in entries:
+            for entry, score in entries:
                 hits.append(
                     {
                         "scope": filter["scope"],
                         "term": entry.term,
+                        "score": score,
                         "label": entry.label,
                         "query": filter["term"],
                     }
@@ -106,7 +107,7 @@ def query(event, context):
         "extracted": "\n".join([f"{k}: {v}" for k, v in next_history.items()]),
         "terms": "\n".join(
             [
-                f"{hit['query']} - {hit['term']} - {hit['label']}"
+                f"{hit['term']} - {hit['label']}"
                 for hit in extracted_data.get("filters", [])
             ]
         ),
@@ -126,8 +127,9 @@ if __name__ == "__main__":
     event = {
         "body": json.dumps(
             {
-                "query": "Individual counts with kidney problems",
-                "history": {"filters": "provided"},
+                "query": "I want genomic variants",
+                # "query": "Individual counts with kidney problems",
+                # "history": {"filters": "provided"},
             }
         )
     }

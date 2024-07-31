@@ -58,7 +58,7 @@ class Scope(BaseModel):
 class Variant(BaseModel):
     success: bool
     assembly_id: str = "unknown"
-    chromosome: str = "unknown"
+    chromosome: Union[str, int] = "unknown"
     start: Union[List[int], int, str] = "unknown"
     end: Union[List[int], int, str] = "unknown"
 

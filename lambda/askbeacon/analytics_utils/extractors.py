@@ -15,6 +15,7 @@ from smart_open import open as sopen
 from utils.db import search_db
 from utils.models import GeneratedCodeAnalytics, Scope, ScopeEnum
 from utils.s3 import generate_presigned_url
+from utils.sanitisers import remove_imports
 from utils.templates import (
     generate_analytics_table_data,
     get_analytics_code_generator_chain,
@@ -61,11 +62,12 @@ def generate_extractor_code(query: str) -> Dict:
 
         for fil in filters:
             entries = search_db(fil["term"])
-            for entry in entries:
+            for entry, score in entries:
                 hits.append(
                     {
                         "scope": fil["scope"],
                         "term": entry.term,
+                        "score": score,
                         "label": entry.label,
                         "query": fil["term"],
                     }
@@ -111,12 +113,17 @@ def run_extractors(
     code: str,
 ) -> Dict:
     BeaconV2 = lambda: _BeaconV2(url, header)
-    globals()["BeaconV2"] = BeaconV2
+    exec_globals = copy(globals())
+    exec_globals["BeaconV2"] = BeaconV2
+    exec_globals["os"] = None
+    exec_globals["sys"] = None
+
     std_output = io.StringIO()
     std_error = io.StringIO()
     success = False
     result_dataframes_json = []
     result_dataframes_pandas = []
+    dataframe_names = []
 
     # We must not use any overlapping variable names
     # variables in the global scpope (above) will not be overwritten
@@ -125,7 +132,8 @@ def run_extractors(
     # this breaks the whole thing
     with contextlib.redirect_stdout(std_output), contextlib.redirect_stderr(std_error):
         try:
-            exec(code, globals(), locals())
+            code = remove_imports(code)
+            exec(code, exec_globals, locals())
             computed_dataframes = locals().get("dataframes", None)
 
             if not isinstance(computed_dataframes, list):
@@ -229,6 +237,7 @@ def run_analysis(code):
     std_error = io.StringIO()
     success = False
     computed_files = []
+    exec_globals = copy(globals())
 
     # load job realted files
     with sopen(
@@ -242,13 +251,15 @@ def run_analysis(code):
     ) as fo:
         dataframes = joblib.load(fo)
 
-    globals()["np"] = np
-    globals()["plt"] = plt
-    globals()["pd"] = pd
-    globals()["sns"] = sns
+    exec_globals["np"] = np
+    exec_globals["plt"] = plt
+    exec_globals["pd"] = pd
+    exec_globals["sns"] = sns
+    exec_globals["os"] = None
+    exec_globals["sys"] = None
 
     for name, dataframe in zip(metadata["table_names"], dataframes):
-        globals()[name] = dataframe
+        exec_globals[name] = dataframe
 
     # We must not use any overlapping variable names
     # variables in the global scpope (above) will not be overwritten
@@ -257,6 +268,7 @@ def run_analysis(code):
     # this breaks the whole thing
     with contextlib.redirect_stdout(std_output), contextlib.redirect_stderr(std_error):
         try:
+            code = remove_imports(code)
             exec(code, globals(), locals())
             computed_files = locals().get("files", None)
 

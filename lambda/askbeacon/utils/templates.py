@@ -78,7 +78,7 @@ Return a JSON object with an array formatted to look like:
 CONDITIONS
 filters: this is an array with objects having two attributes called "term" and "scope". Ignore genomic variants
 term: please insert only one condition here, if there are many, use multiple objects in "filters" array
-
+if you do not see any terms, just return an empty array like {{filters: []}}
 QUERY
 {query}
 
@@ -90,7 +90,7 @@ INSTRUCTIONS
 Does the query contain a set of conditions.
 Return a JSON object with an array formatted to look like:
 {{
-    granularity: what kind of a return is expected, null if not found
+    granularity: what kind of a return is expected, 'unknown' if not found
 }}
 
 CANDIDATE GRANULARITIES
@@ -275,7 +275,7 @@ If there arent any, please advise them in less than 20 words. Note that followin
 - filters
 
 If nothing much is needed, let them know you can add more if needed or validate and run query.
-If you see terms, explain that queried terms are translated into ontology codes (format is "query" - "ontology code" - "label"), tell that in list form so user can map it.
+If you see terms, explain that queried terms are translated into ontology codes (format is "ontology code" - "label"), tell that in list form so user can map it.
 Do not add conclusions or make assumptions. No need to validate relationship of terms to query.
 """
     )

@@ -66,7 +66,7 @@ class BeaconV2:
             FilterType.CUSTOM,
         ]:
             raise ValueError(f"Invalid filter type: {filter_type}")
-        self._filters.append((filter_type, filter_value, filter_scope))
+        self._filters.append({"id": filter_value, "scope": filter_scope})
         return self
 
     def with_g_variant_params(
@@ -150,7 +150,7 @@ class BeaconV2:
         body = {
             "query": {
                 "pagination": {"skip": self._skip, "limit": self._limit},
-                "filters": [],
+                "filters": self._filters,
                 "requestedGranularity": "record",
             },
             "meta": {"apiVersion": "v2.0"},

@@ -27,4 +27,4 @@ def search_db(condition: str) -> List[VecDBEntry]:
 
     db = get_vec_db()
     matches, scores = db.find(embedding, search_field="embedding", limit=20)
-    return [m for (m, s) in zip(matches, scores) if s > 0.8]
+    return [(m, s) for (m, s) in zip(matches, scores) if s > 0.9]

@@ -73,7 +73,6 @@ def test(event, _):
 
 # if __name__ == "__main__":
 #     import os
-#     from pprint import pprint
 #     from textwrap import dedent
 
 #     url = f"https://{os.environ['SBEACON_API_URL']}/prod"
@@ -95,13 +94,15 @@ def test(event, _):
 #             .load()
 #         )
 
+#         print(json.dumps(data2, indent=4))
+
 #         dataframes = [data1, data2]
 #     """
 #     )
 
 #     print(code)
 #     result = run_extractors(url, header, code)
-#     pprint(result)
+#     print(result)
 
 # if __name__ == "__main__":
 #     query = "Plot the frequency of different karyotypic sex attributes"
