@@ -129,6 +129,7 @@ All files must be written to /tmp/ directory
 Do not plt.show() the plot, just save it
 Do not add any return variables
 Do not make checks to validate presense of columns, you already have that info below
+If there are plots, unless explicitly asked use vertical formats. Plot labels could be long, so add enough padding with `bbox_inches='tight'` when saving figures
 If the chosen fields are not strings apply following rules
 - dict - a dictionary with keys "id" and "label" mark this in feedback to let usser adjust code
 - list - list entries likely are dictionaries with keys "id" and "label" mark this in feedback to let usser adjust code

@@ -217,21 +217,45 @@ variable "config-max-variant-search-base-range" {
 
 # OPENAI config
 variable "azure-openai-api-key" {
-  type    = string
-  default = "Azure openai api key"
+  type        = string
+  default     = null
+  description = "Azure openai api key"
 }
 
 variable "azure-openai-endpoint" {
-  type    = string
-  default = "Azure openai endpoint"
+  type        = string
+  description = "Azure openai endpoint"
 }
 
 variable "azure-openai-api-version" {
-  type    = string
-  default = "Azure openai api version"
+  type        = string
+  description = "Azure openai api version"
 }
 
 variable "azure-openai-chat-deployment-name" {
-  type    = string
-  default = "Azure openai chat deployment name"
+  type        = string
+  description = "Azure openai chat deployment name"
+}
+
+variable "openai-api-key" {
+  type        = string
+  default     = null
+  description = "OpenAI api key"
+}
+
+variable "openai-completions-model-name" {
+  type        = string
+  default     = "gpt-4-turbo"
+  description = "OpenAI model name"
+}
+
+variable "openai-embedding-model-name" {
+  type        = string
+  default     = "text-embedding-3-small"
+  description = "OpenAI embedding model name"
+}
+
+variable "embedding-distance-threshold" {
+  type    = number
+  default = 0.9
 }

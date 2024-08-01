@@ -925,6 +925,10 @@ module "lambda-askbeacon" {
       AZURE_OPENAI_ENDPOINT             = var.azure-openai-endpoint
       AZURE_OPENAI_API_VERSION          = var.azure-openai-api-version
       AZURE_OPENAI_CHAT_DEPLOYMENT_NAME = var.azure-openai-chat-deployment-name
+      OPENAI_API_KEY                    = var.openai-api-key
+      OPENAI_COMPLETIONS_MODEL_NAME     = var.openai-completions-model-name
+      OPENAI_EMBEDDING_MODEL_NAME       = var.openai-embedding-model-name
+      EMBEDDING_DISTANCE_THRESHOLD      = var.embedding-distance-threshold
       MPLCONFIGDIR                      = "/tmp/matplotlib-tmpdir"
     }
   )

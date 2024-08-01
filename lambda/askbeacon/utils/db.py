@@ -1,3 +1,4 @@
+import os
 from functools import cache
 from typing import List
 
@@ -24,7 +25,10 @@ def get_vec_db():
 def search_db(condition: str) -> List[VecDBEntry]:
     embedding = embeddings_model.embed_query(condition)
     embedding = np.array(embedding)
+    thresh = float(os.environ["EMBEDDING_DISTANCE_THRESHOLD"])
 
     db = get_vec_db()
-    matches, scores = db.find(embedding, search_field="embedding", limit=20)
-    return [(m, s) for (m, s) in zip(matches, scores) if s > 0.9]
+    matches, scores = db.find(embedding, search_field="embedding", limit=3)
+    print(matches)
+    print(scores)
+    return [(m, s) for (m, s) in zip(matches, scores) if s > thresh]

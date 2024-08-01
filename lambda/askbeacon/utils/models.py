@@ -4,26 +4,45 @@ from typing import List, Union
 
 from docarray import BaseDoc
 from docarray.typing import NdArray
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
+from langchain_openai import (
+    AzureChatOpenAI,
+    AzureOpenAIEmbeddings,
+    ChatOpenAI,
+    OpenAIEmbeddings,
+)
 from pydantic import BaseModel
 
-llm_json = AzureChatOpenAI(
-    openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
-    azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
-    model="gpt-4-128k",
-    model_kwargs={"response_format": {"type": "json_object"}},
-)
+if os.environ.get("OPENAI_API_KEY"):
+    print("USING OPENAI")
+    llm_json = ChatOpenAI(
+        model=os.environ["OPENAI_COMPLETIONS_MODEL_NAME"],
+        model_kwargs={"response_format": {"type": "json_object"}},
+    )
 
-llm_text = AzureChatOpenAI(
-    openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
-    azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
-    model="gpt-4-128k",
-    model_kwargs={"response_format": {"type": "text"}},
-)
+    llm_text = ChatOpenAI(
+        model=os.environ["OPENAI_COMPLETIONS_MODEL_NAME"],
+        model_kwargs={"response_format": {"type": "text"}},
+    )
 
-embeddings_model = AzureOpenAIEmbeddings(
-    azure_deployment="firstcontact-embeddings", model="gpt-4-128k"
-)
+    embeddings_model = OpenAIEmbeddings(model=os.environ["OPENAI_EMBEDDING_MODEL_NAME"])
+else:
+    print("USING AZURE")
+    llm_json = AzureChatOpenAI(
+        openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+        azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
+        model="gpt-4-128k",
+        model_kwargs={"response_format": {"type": "json_object"}},
+    )
+
+    llm_text = AzureChatOpenAI(
+        openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+        azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
+        model="gpt-4-128k",
+        model_kwargs={"response_format": {"type": "text"}},
+    )
+    embeddings_model = AzureOpenAIEmbeddings(
+        azure_deployment="firstcontact-embeddings", model="gpt-4-128k"
+    )
 
 
 class VecDBEntry(BaseDoc):

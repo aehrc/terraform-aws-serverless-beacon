@@ -127,9 +127,7 @@ if __name__ == "__main__":
     event = {
         "body": json.dumps(
             {
-                "query": "I want genomic variants",
-                # "query": "Individual counts with kidney problems",
-                # "history": {"filters": "provided"},
+                "query": "",
             }
         )
     }
