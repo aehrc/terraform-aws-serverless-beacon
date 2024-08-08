@@ -259,3 +259,16 @@ You'll also need to do this if lambda functions start to display "Error: Runtime
 
 If `terraform apply --auto-approve` complaints about a provider error. Please retry. If the issue persists, please raise an issue with the complete terraform log.
 
+### Updating partition_keys schema in glue.catalog_table according to AWS documentation
+
+```bash
+Error: error setting partition_keys: Invalid address to set: []string{"partition_keys", "0", "parameters"}
+```
+
+This is a known issue as outline in the following PR in terraform AWS.
+
+* https://github.com/hashicorp/terraform-provider-aws/pull/26702
+
+There is not workaround for this yet and we must delete `sbeacon-terms-index` table and `sbeacon-terms` tables before performing a terraform apply. After that, we can do the terraform apply and then run the indexer again.
+
+Issue exists to date and has been active for the last few years - https://github.com/hashicorp/terraform-provider-aws/issues/26686
