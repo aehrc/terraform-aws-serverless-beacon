@@ -21,7 +21,7 @@ INSTRUCTIONS
 Given a user query, select the result scope to best suited for the query.
 Return a JSON object formatted to look like:
 {{
-    scope: most appropriate scope to respond to the query, if unsure put null
+    scope: most appropriate scope to respond to the query, if unsure put "unknown"
 }}
 
 SCOPE MUST BE ONE OF
