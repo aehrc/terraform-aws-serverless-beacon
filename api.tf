@@ -391,6 +391,11 @@ resource "aws_api_gateway_deployment" "BeaconApi" {
       aws_api_gateway_integration.analytics_proxy,
       aws_api_gateway_integration_response.analytics_proxy,
       aws_api_gateway_method_response.analytics_proxy,
+      # askbeacon
+      aws_api_gateway_method.ask_proxy,
+      aws_api_gateway_integration.ask_proxy,
+      aws_api_gateway_integration_response.ask_proxy,
+      aws_api_gateway_method_response.ask_proxy,
     ]))
   }
 }

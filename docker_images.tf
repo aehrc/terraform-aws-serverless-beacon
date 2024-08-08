@@ -1,9 +1,5 @@
 data "aws_ecr_authorization_token" "token" {}
 
-locals {
-  ecr_repo_name = "sbeacon-lambda-containers"
-}
-
 provider "docker" {
   registry_auth {
     address  = format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, var.region)
@@ -24,7 +20,7 @@ module "docker_image_analytics_lambda" {
   source = "terraform-aws-modules/lambda/aws//modules/docker-build"
 
   create_ecr_repo = true
-  ecr_repo        = local.ecr_repo_name
+  ecr_repo        = "sbeacon-analytics-lambda-containers"
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -46,5 +42,42 @@ module "docker_image_analytics_lambda" {
 
   triggers = {
     dir_sha = data.external.analytics_lambda_source_hash.result.hash
+  }
+}
+
+# 
+# askbeacon lambda container
+# 
+data "external" "askbeacon_lambda_source_hash" {
+  program     = ["python", "./lambda/askbeacon/docker_prep.py"]
+  working_dir = path.module
+}
+
+module "docker_image_askbeacon_lambda" {
+  source = "terraform-aws-modules/lambda/aws//modules/docker-build"
+
+  create_ecr_repo = true
+  ecr_repo        = "sbeacon-askbeacon-lambda-containers"
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 1 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 1
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+  use_image_tag = false
+  source_path   = "${path.module}/lambda/askbeacon"
+
+  triggers = {
+    dir_sha = data.external.askbeacon_lambda_source_hash.result.hash
   }
 }
