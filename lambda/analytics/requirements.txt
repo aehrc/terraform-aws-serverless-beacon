@@ -4,7 +4,7 @@ jsonschema==4.18.0
 pydantic==2.0.2
 pyhumps==3.8.0
 pynamodb==5.5.0
-pyorc==0.8.0
+pyorc==0.9.0
 requests==2.31.0
 smart_open==6.3.0
 strenum==0.4.15

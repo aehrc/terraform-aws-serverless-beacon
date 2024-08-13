@@ -103,14 +103,13 @@ Initialise the docker container using the following command.
 # on x86_64 machines
 docker build -t csiro/sbeacon ./docker
 # on aarch64
-docker buildx build --platform linux/x86_64  -t csiro/sbeacon ./docker
+docker build --platform linux/amd64  -t csiro/sbeacon ./docker
 ```
 
 This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
 
 ```bash
 docker run --rm -it -v `pwd`:`pwd` -v /var/run/docker.sock:/var/run/docker.sock  -w `pwd` --platform linux/x86_64 csiro/sbeacon:latest /bin/bash
-sbdocker
 ```
 
 ## Deployment

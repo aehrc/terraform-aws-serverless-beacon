@@ -25,7 +25,11 @@ vcf.txt
 tmp*
 nohup.out
 tmpterms
+
+# terraform
 *.tfvars
+backend.tf
+.terraform.lock.hcl
 
 # docker related bundle ignores
 lambda/analytics/shared/
