@@ -11,7 +11,7 @@ REPOSITORY_DIRECTORY="${PWD}"
 LIBRARIES="${REPOSITORY_DIRECTORY}/libraries"
 SOURCE="${LIBRARIES}/source"
 
-# Clean ~/varscot-libraries
+# Clean sbeacon-libraries
 if [ -d "${LIBRARIES}" ]
   then
     rm -rf "${LIBRARIES}"

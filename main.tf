@@ -99,7 +99,7 @@ module "lambda-submitDataset" {
   function_name       = "submitDataset"
   description         = "Creates or updates a dataset and triggers summariseVcf."
   handler             = "lambda_function.lambda_handler"
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   architectures       = ["x86_64"]
   memory_size         = 1769
   timeout             = 60
@@ -140,7 +140,7 @@ module "lambda-getInfo" {
   function_name      = "getInfo"
   description        = "Returns basic information about the beacon and the datasets."
   handler            = "lambda_function.lambda_handler"
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   memory_size        = 1769
   timeout            = 60
   attach_policy_json = true
@@ -168,7 +168,7 @@ module "lambda-getConfiguration" {
 
   function_name      = "getConfiguration"
   description        = "Get the beacon configuration."
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   handler            = "lambda_function.lambda_handler"
   memory_size        = 1769
   timeout            = 60
@@ -198,7 +198,7 @@ module "lambda-getMap" {
 
   function_name      = "getMap"
   description        = "Get the beacon map."
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   handler            = "lambda_function.lambda_handler"
   memory_size        = 1769
   timeout            = 60
@@ -228,7 +228,7 @@ module "lambda-getEntryTypes" {
 
   function_name      = "getEntryTypes"
   description        = "Get the beacon map."
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   handler            = "lambda_function.lambda_handler"
   memory_size        = 1769
   timeout            = 60
@@ -258,7 +258,7 @@ module "lambda-getFilteringTerms" {
 
   function_name       = "getFilteringTerms"
   description         = "Get the beacon map."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -292,7 +292,7 @@ module "lambda-getAnalyses" {
 
   function_name       = "getAnalyses"
   description         = "Get the beacon map."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -331,7 +331,7 @@ module "lambda-getGenomicVariants" {
 
   function_name       = "getGenomicVariants"
   description         = "Get the variants."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -370,7 +370,7 @@ module "lambda-getIndividuals" {
 
   function_name       = "getIndividuals"
   description         = "Get the individuals."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -409,7 +409,7 @@ module "lambda-getBiosamples" {
 
   function_name       = "getBiosamples"
   description         = "Get the biosamples."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -448,7 +448,7 @@ module "lambda-getDatasets" {
 
   function_name       = "getDatasets"
   description         = "Get the datasets."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -487,7 +487,7 @@ module "lambda-getCohorts" {
 
   function_name       = "getCohorts"
   description         = "Get the cohorts."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -525,7 +525,7 @@ module "lambda-getRuns" {
 
   function_name       = "getRuns"
   description         = "Get the runs."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -565,7 +565,7 @@ module "lambda-splitQuery" {
   function_name      = "splitQuery"
   description        = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler            = "lambda_function.lambda_handler"
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   memory_size        = 1769
   timeout            = 30
   attach_policy_json = true
@@ -593,7 +593,7 @@ module "lambda-performQuery" {
   function_name          = "performQuery"
   description            = "Queries a slice of a vcf for a specified variant."
   handler                = "lambda_function.lambda_handler"
-  runtime                = "python3.9"
+  runtime                = "python3.12"
   memory_size            = 1769
   timeout                = 10
   ephemeral_storage_size = 1024
@@ -623,7 +623,7 @@ module "lambda-indexer" {
 
   function_name       = "indexer"
   description         = "Run the indexing tasks."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 600
@@ -660,7 +660,7 @@ module "lambda-admin" {
 
   function_name       = "admin"
   description         = "Run the admin tasks."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 512
   timeout             = 60

@@ -42,6 +42,7 @@ sBeacon implements Beacon v2 protocol according to the
 You can use either local development or a docker environment for development and deployment. First download the repository using the following command. If you're missing the `git` command please have a look at the **Option 1** commands.
 
 ```bash
+# use following or the bitbucket if you have access to it
 git clone https://github.com/aehrc/terraform-aws-serverless-beacon.git
 cd terraform-aws-serverless-beacon
 ```
@@ -55,11 +56,8 @@ Skip to next section if you're only interested in deployment or using a differen
 Run the following shell commands to setup necessary build tools. Valid for Amazon Linux development instances.
 
 Required dependencies
-* `GCC` and `G++` version `10.3.1 20210422` or later
-* `CMake 3.20.3` or later
 * Compressionlibraries `xz`, `bzip2` and `zlib`
-* Exact python version - `Python3.9`
-* OpenJDK version `11.0.18` and Apache Maven `3.5.4`
+* Exact python version - `Python3.12`
 
 Install system-wide dependencies
 
@@ -67,58 +65,34 @@ Install system-wide dependencies
 # Install development essentials
 sudo yum update
 sudo yum upgrade
-sudo yum install -y gcc-c++ git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel autoconf intltool 
+sudo yum install -y git openssl-devel libcurl-devel wget bzip2-devel xz-devel libffi-devel zlib-devel autoconf intltool 
 ```
 
-Install JAVA and MAVEN
-```bash
-sudo yum install -y java-11-amazon-corretto-devel
-wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz -O /tmp/apache-maven-3.5.4-bin.tar.gz
-sudo tar xf /tmp/apache-maven-3.5.4-bin.tar.gz -C /opt
-rm /tmp/apache-maven-3.5.4-bin.tar.gz
-
-# Run the following commands (or add them to .bashrc and run source ~/.bashrc)
-export M2_HOME=/opt/apache-maven-3.5.4
-export PATH=${M2_HOME}/bin:${PATH}
-```
-
-Install `Python 3.9` to a virtual environment
+Install `Python 3.12` to a virtual environment
 ```bash
 # Download and install python
 cd ~
-wget https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tgz
+wget https://www.python.org/ftp/python/3.12.5/Python-3.12.5.tgz
 
-tar xzf Python-3.9.16.tgz
-cd Python-3.9.16 
+tar xzf Python-3.12.5.tgz
+cd Python-3.12.5
 ./configure --enable-optimizations
 sudo make altinstall
 
 cd ~
-python3.9 -m venv py39
+python3.12 -m venv py312
 
-# activate py39 environment
-source ~/py39/bin/activate 
+# activate py312 environment
+source ~/py312/bin/activate 
 ```
 
-Install CMake
-```bash
-# Install CMake
-cd ~
-wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz
-tar -xvzf cmake-3.20.3.tar.gz
-cd cmake-3.20.3
-./bootstrap
-make
-sudo make install
-```
-
-Make sure you have the terraform version `Terraform v1.3.7` or newer if you're not using the docker image. Run the following command to get the terraform binary.
+Make sure you have the terraform version `Terraform v1.9.4` or newer if you're not using the docker image. Run the following command to get the terraform binary.
 
 ```bash
-# only for linux - find other OS version here https://releases.hashicorp.com/terraform/1.3.7/
+# only for linux - find other OS version here https://releases.hashicorp.com/terraform/1.9.4/
 cd ~
-wget https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_386.zip
-sudo unzip terraform_1.3.7_linux_386.zip -d /usr/bin/
+wget https://releases.hashicorp.com/terraform/1.9.4/terraform_1.9.4_linux_amd64.zip
+sudo unzip terraform_1.9.4_linux_amd64.zip -d /usr/bin/
 ```
 
 ### Option 2: Using the docker image
@@ -126,14 +100,17 @@ sudo unzip terraform_1.3.7_linux_386.zip -d /usr/bin/
 Initialise the docker container using the following command.
 
 ```bash
+# on x86_64 machines
 docker build -t csiro/sbeacon ./docker
-docker buildx build --platform linux/amd64  -t csiro/sbeacon ./docker
+# on aarch64
+docker buildx build --platform linux/x86_64  -t csiro/sbeacon ./docker
 ```
 
 This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
 
 ```bash
-docker run --rm -it -v `pwd`:`pwd` -v /tmp:/tmp  -u `id -u`:`id -g` -w `pwd` csiro/sbeacon:latest /bin/bash
+docker run --rm -it -v `pwd`:`pwd` -v /var/run/docker.sock:/var/run/docker.sock  -w `pwd` --platform linux/x86_64 csiro/sbeacon:latest /bin/bash
+sbdocker
 ```
 
 ## Deployment
@@ -145,7 +122,7 @@ You can simply deploy the cloned repository following the establishment of AWS k
 Once you have configured the development environment or the docker container, install the essential AWS C++ SDKs and initialise the other libraries using the following command. Do this only once or as core C++ libraries change.
 
 ```bash
-$ ./init.sh -march=haswell -O3
+$ ./init.sh
 ```
 
 Now set the AWS access keys and token as needed. Since docker uses the same user permissions this may not be needed if you're using an authorised EC2 instance.
