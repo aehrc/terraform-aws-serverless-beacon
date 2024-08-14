@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from botocore.exceptions import ClientError
 from shared.apiutils.responses import DateTimeEncoder, bundle_response
@@ -95,24 +96,29 @@ class LambdaRouter:
         except ClientError as error:
             error_code = error.response["Error"]["Code"]
             error_message = error.response["Error"]["Message"]
-            print(f"An error occurred: {error_code} - {error_message}")
+            print(f"A client error occurred: {error_code} - {error_message}")
+            print(traceback.format_exc())
             return bundle_response(500, {"error": error_code, "message": error_message})
 
         except BeaconError as error:
-            print(f"An error occurred: {error.error_code} - {error.error_message}")
+            print(
+                f"A beacon error occurred: {error.error_code} - {error.error_message}"
+            )
+            print(traceback.format_exc())
             return bundle_response(
                 500, {"error": error.error_code, "message": error.error_message}
             )
 
         except AuthError as error:
-            print(f"An error occurred: {error.error_code} - {error.error_message}")
-            # TODO
+            print(f"An auth error occurred: {error.error_code} - {error.error_message}")
+            print(traceback.format_exc())
             return bundle_response(
                 401, {"error": error.error_code, "message": error.error_message}
             )
 
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unhandled error occurred: {e}")
+            print(traceback.format_exc())
             return bundle_response(
                 500, {"error": "UnhandledException", "message": str(e)}
             )

@@ -1,6 +1,6 @@
+import hashlib
 import os
 import shutil
-import hashlib
 from pathlib import Path
 
 DIRECOTY = str(Path(__file__).resolve().parent)
