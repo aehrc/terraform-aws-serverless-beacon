@@ -103,15 +103,24 @@ Initialise the docker container using the following command.
 # on x86_64 machines
 docker build -t csiro/sbeacon ./docker
 # on aarch64
-docker buildx build --platform linux/x86_64  -t csiro/sbeacon ./docker
+docker build --platform linux/amd64  -t csiro/sbeacon ./docker
 ```
 
 This will initialise the docker container that contains everything you need including terraform. In order to start the docker container from within the repository directory run the following command.
 
 ```bash
 docker run --rm -it -v `pwd`:`pwd` -v /var/run/docker.sock:/var/run/docker.sock  -w `pwd` --platform linux/x86_64 csiro/sbeacon:latest /bin/bash
-sbdocker
 ```
+
+### Option 2: Using the VSCODE dev containers
+
+Your system must have docker installed with the active user having essential permissions to use containers.
+
+We have placed a devcontainer configuration in the `.devcontainer` directory. Install `dev containers` extension in your VSCODE ([extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)).
+
+Open the cloned repository directory folder using VSCODE.
+
+Click on the `Remote Indicator (><)` icon on bottom left and press `Reopen in container` to get started. You will have VSCODE open inside the appropriate development environment with essential plugins including `aws cli` and `terraform cli`.
 
 ## Deployment
 
