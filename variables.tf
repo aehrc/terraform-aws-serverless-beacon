@@ -212,7 +212,7 @@ variable "beacon-admin-password" {
 variable "config-max-variant-search-base-range" {
   type        = number
   description = "Max allowed range for variant searching"
-  default     = 5000
+  default     = 10000
 }
 
 # OPENAI config

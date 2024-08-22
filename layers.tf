@@ -12,7 +12,7 @@ resource "aws_lambda_layer_version" "binaries_layer" {
   layer_name       = "binaries_layer"
   source_code_hash = filebase64sha256("${data.archive_file.binaries_layer.output_path}")
 
-  compatible_runtimes = ["python3.9"]
+  compatible_runtimes = ["python3.12"]
 }
 
 ### python thirdparty libraries layer 
@@ -24,7 +24,7 @@ module "python_libraries_layer" {
 
   layer_name          = "python_libraries_layer"
   description         = "python libraries"
-  compatible_runtimes = ["python3.9"]
+  compatible_runtimes = ["python3.12"]
 
   source_path = "${path.module}/layers/python_libraries/"
 
@@ -40,7 +40,7 @@ module "python_modules_layer" {
 
   layer_name          = "python_modules_layer"
   description         = "python libraries"
-  compatible_runtimes = ["python3.9"]
+  compatible_runtimes = ["python3.12"]
 
   source_path = "${path.module}/shared_resources/python-modules/"
 

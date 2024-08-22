@@ -34,3 +34,6 @@ backend.tf
 # docker related bundle ignores
 lambda/analytics/shared/
 lambda/askbeacon/shared/
+
+# MAC
+.DS_Store
