@@ -1,0 +1,13 @@
+region                            = "us-east-1"
+beacon-id                         = "au.csiro-serverless.beacon"
+variants-bucket-prefix            = "sbeacon-"
+metadata-bucket-prefix            = "sbeacon-metadata-"
+lambda-layers-bucket-prefix       = "sbeacon-lambda-layers-"
+beacon-name                       = "CSIRO Serverless Beacon"
+organisation-id                   = "CSIRO"
+organisation-name                 = "CSIRO"
+beacon-enable-auth                = true
+beacon-guest-username             = "guest@gmail.com"
+beacon-guest-password             = "guest"
+beacon-admin-username             = "admin@gmail.com"
+beacon-admin-password             = "admin"
