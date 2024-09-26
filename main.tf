@@ -2,6 +2,8 @@ provider "aws" {
   region = var.region
 }
 
+data "aws_caller_identity" "this" {}
+
 # DOCS
 # Lambda memory - https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
 #                 https://stackoverflow.com/questions/66522916/aws-lambda-memory-vs-cpu-configuration
@@ -97,7 +99,7 @@ module "lambda-submitDataset" {
   function_name       = "submitDataset"
   description         = "Creates or updates a dataset and triggers summariseVcf."
   handler             = "lambda_function.lambda_handler"
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   architectures       = ["x86_64"]
   memory_size         = 1769
   timeout             = 60
@@ -115,7 +117,6 @@ module "lambda-submitDataset" {
   environment_variables = merge(
     {
       DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
-      SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
       INDEXER_LAMBDA                  = module.lambda-indexer.lambda_function_name
     },
     local.sbeacon_variables,
@@ -131,173 +132,6 @@ module "lambda-submitDataset" {
 }
 
 #
-# summariseDataset Lambda Function
-#
-module "lambda-summariseDataset" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name      = "summariseDataset"
-  description        = "Calculates summary counts for a dataset."
-  handler            = "lambda_function.lambda_handler"
-  runtime            = "python3.9"
-  memory_size        = 1769
-  timeout            = 60
-  attach_policy_json = true
-  policy_json        = data.aws_iam_policy_document.lambda-summariseDataset.json
-  source_path        = "${path.module}/lambda/summariseDataset"
-  tags               = var.common-tags
-
-  environment_variables = {
-    DYNAMO_DATASETS_TABLE                  = aws_dynamodb_table.datasets.name
-    SUMMARISE_VCF_SNS_TOPIC_ARN            = aws_sns_topic.summariseVcf.arn
-    DYNAMO_VCF_SUMMARIES_TABLE             = aws_dynamodb_table.vcf_summaries.name
-    DYNAMO_VARIANT_DUPLICATES_TABLE        = aws_dynamodb_table.variant_duplicates.name
-    DUPLICATE_VARIANT_SEARCH_SNS_TOPIC_ARN = aws_sns_topic.duplicateVariantSearch.arn
-    VARIANTS_BUCKET                        = aws_s3_bucket.variants-bucket.bucket
-    ABS_MAX_DATA_SPLIT                     = local.maximum_load_file_size
-  }
-
-  layers = [
-    local.python_libraries_layer
-  ]
-}
-
-#
-# summariseVcf Lambda Function
-#
-module "lambda-summariseVcf" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name      = "summariseVcf"
-  description        = "Calculates information in a vcf and saves it in datasets dynamoDB."
-  handler            = "lambda_function.lambda_handler"
-  runtime            = "python3.9"
-  memory_size        = 1769
-  timeout            = 60
-  attach_policy_json = true
-  policy_json        = data.aws_iam_policy_document.lambda-summariseVcf.json
-  source_path        = "${path.module}/lambda/summariseVcf"
-  tags               = var.common-tags
-
-  environment_variables = {
-    SUMMARISE_SLICE_SNS_TOPIC_ARN = aws_sns_topic.summariseSlice.arn
-    VARIANTS_BUCKET               = aws_s3_bucket.variants-bucket.bucket
-    DYNAMO_VCF_SUMMARIES_TABLE    = aws_dynamodb_table.vcf_summaries.name
-  }
-
-  layers = [
-    local.python_libraries_layer
-  ]
-}
-
-#
-# summariseSlice Lambda Function
-#
-module "lambda-summariseSlice" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name      = "summariseSlice"
-  description        = "Counts calls and variants in region of a vcf."
-  handler            = "function"
-  runtime            = "provided"
-  architectures      = ["x86_64"]
-  memory_size        = 1769
-  timeout            = 60
-  attach_policy_json = true
-  policy_json        = data.aws_iam_policy_document.lambda-summariseSlice.json
-
-  source_path = [
-    {
-      path = local.shared_source_path,
-      commands = [
-        ":zip . ./shared"
-      ]
-    },
-    {
-      path = local.gzip_source_path,
-      commands = [
-        ":zip . ./gzip"
-      ]
-    },
-    {
-      path = "${path.module}/lambda/summariseSlice/",
-      commands = [
-        "bash ${local.build_cpp_path} ./",
-        "cd build/function_binaries",
-        ":zip"
-      ],
-      patterns = [
-        "source/*",
-      ]
-    }
-  ]
-
-  tags = var.common-tags
-
-  environment_variables = {
-    ASSEMBLY_GSI                    = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-    DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
-    SUMMARISE_DATASET_SNS_TOPIC_ARN = aws_sns_topic.summariseDataset.arn
-    SUMMARISE_SLICE_SNS_TOPIC_ARN   = aws_sns_topic.summariseSlice.arn
-    DYNAMO_VCF_SUMMARIES_TABLE      = aws_dynamodb_table.vcf_summaries.name
-    VARIANTS_BUCKET                 = aws_s3_bucket.variants-bucket.bucket
-    MAX_SLICE_GAP                   = 100000
-    VCF_S3_OUTPUT_SIZE_LIMIT        = local.vcf_processed_file_size
-  }
-}
-
-#
-# duplicateVariantSearch Lambda Function
-#
-module "lambda-duplicateVariantSearch" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name      = "duplicateVariantSearch"
-  description        = "Searches for duplicate variants across vcfs."
-  handler            = "function"
-  runtime            = "provided"
-  architectures      = ["x86_64"]
-  memory_size        = 8192
-  timeout            = 60
-  attach_policy_json = true
-  policy_json        = data.aws_iam_policy_document.lambda-duplicateVariantSearch.json
-
-  source_path = [
-    {
-      path = local.shared_source_path,
-      commands = [
-        ":zip . ./shared"
-      ]
-    },
-    {
-      path = local.gzip_source_path,
-      commands = [
-        ":zip . ./gzip"
-      ]
-    },
-    {
-      path = "${path.module}/lambda/duplicateVariantSearch/",
-      commands = [
-        "bash ${local.build_cpp_path} ./",
-        "cd build/function_binaries",
-        ":zip"
-      ],
-      patterns = [
-        "source/*",
-      ]
-    }
-  ]
-
-  tags = var.common-tags
-
-  environment_variables = {
-    ASSEMBLY_GSI                    = "${[for gsi in aws_dynamodb_table.datasets.global_secondary_index : gsi.name][0]}"
-    DYNAMO_VARIANT_DUPLICATES_TABLE = aws_dynamodb_table.variant_duplicates.name
-    DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
-  }
-}
-
-#
 # getInfo Lambda Function
 #
 module "lambda-getInfo" {
@@ -306,7 +140,7 @@ module "lambda-getInfo" {
   function_name      = "getInfo"
   description        = "Returns basic information about the beacon and the datasets."
   handler            = "lambda_function.lambda_handler"
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   memory_size        = 1769
   timeout            = 60
   attach_policy_json = true
@@ -334,7 +168,7 @@ module "lambda-getConfiguration" {
 
   function_name      = "getConfiguration"
   description        = "Get the beacon configuration."
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   handler            = "lambda_function.lambda_handler"
   memory_size        = 1769
   timeout            = 60
@@ -364,7 +198,7 @@ module "lambda-getMap" {
 
   function_name      = "getMap"
   description        = "Get the beacon map."
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   handler            = "lambda_function.lambda_handler"
   memory_size        = 1769
   timeout            = 60
@@ -394,7 +228,7 @@ module "lambda-getEntryTypes" {
 
   function_name      = "getEntryTypes"
   description        = "Get the beacon map."
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   handler            = "lambda_function.lambda_handler"
   memory_size        = 1769
   timeout            = 60
@@ -424,7 +258,7 @@ module "lambda-getFilteringTerms" {
 
   function_name       = "getFilteringTerms"
   description         = "Get the beacon map."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -458,7 +292,7 @@ module "lambda-getAnalyses" {
 
   function_name       = "getAnalyses"
   description         = "Get the beacon map."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -497,7 +331,7 @@ module "lambda-getGenomicVariants" {
 
   function_name       = "getGenomicVariants"
   description         = "Get the variants."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -536,7 +370,7 @@ module "lambda-getIndividuals" {
 
   function_name       = "getIndividuals"
   description         = "Get the individuals."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -575,7 +409,7 @@ module "lambda-getBiosamples" {
 
   function_name       = "getBiosamples"
   description         = "Get the biosamples."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -614,7 +448,7 @@ module "lambda-getDatasets" {
 
   function_name       = "getDatasets"
   description         = "Get the datasets."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -653,7 +487,7 @@ module "lambda-getCohorts" {
 
   function_name       = "getCohorts"
   description         = "Get the cohorts."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -691,7 +525,7 @@ module "lambda-getRuns" {
 
   function_name       = "getRuns"
   description         = "Get the runs."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
@@ -731,7 +565,7 @@ module "lambda-splitQuery" {
   function_name      = "splitQuery"
   description        = "Splits a dataset into smaller slices of VCFs and invokes performQuery on each."
   handler            = "lambda_function.lambda_handler"
-  runtime            = "python3.9"
+  runtime            = "python3.12"
   memory_size        = 1769
   timeout            = 30
   attach_policy_json = true
@@ -759,7 +593,7 @@ module "lambda-performQuery" {
   function_name          = "performQuery"
   description            = "Queries a slice of a vcf for a specified variant."
   handler                = "lambda_function.lambda_handler"
-  runtime                = "python3.9"
+  runtime                = "python3.12"
   memory_size            = 1769
   timeout                = 10
   ephemeral_storage_size = 1024
@@ -789,7 +623,7 @@ module "lambda-indexer" {
 
   function_name       = "indexer"
   description         = "Run the indexing tasks."
-  runtime             = "python3.9"
+  runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 600
@@ -810,6 +644,38 @@ module "lambda-indexer" {
     local.sbeacon_variables,
     local.athena_variables,
     { INDEXER_TOPIC_ARN : aws_sns_topic.indexer.arn }
+  )
+
+  layers = [
+    local.python_libraries_layer,
+    local.python_modules_layer
+  ]
+}
+
+#
+# admin Lambda Function
+#
+module "lambda-admin" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name       = "admin"
+  description         = "Run the admin tasks."
+  runtime             = "python3.12"
+  handler             = "lambda_function.lambda_handler"
+  memory_size         = 512
+  timeout             = 60
+  attach_policy_jsons = true
+  policy_jsons = [
+    data.aws_iam_policy_document.admin-lambda-access.json
+  ]
+  number_of_policy_jsons = 1
+  source_path            = "${path.module}/lambda/admin"
+
+  tags = var.common-tags
+
+  environment_variables = merge(
+    local.sbeacon_variables,
+    { COGNITO_USER_POOL_ID = aws_cognito_user_pool.BeaconUserPool.id }
   )
 
   layers = [
