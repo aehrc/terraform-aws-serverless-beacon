@@ -1,0 +1,24 @@
+{
+  "build": {
+    "dockerfile": "../docker/Dockerfile",
+    "args": {
+      "PLATFORM": "linux/amd64"
+    }
+  },
+  "runArgs": [
+    "--init",
+    "--privileged", // Required for Docker in Docker
+    "-v", "/var/run/docker.sock:/var/run/docker.sock" // Mount Docker socket
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.python",
+        "hashicorp.terraform",
+        "usernamehw.errorlens"
+      ]
+    }
+  }
+}
