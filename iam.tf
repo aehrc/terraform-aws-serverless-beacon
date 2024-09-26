@@ -31,15 +31,6 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
 
   statement {
     actions = [
-      "SNS:Publish",
-    ]
-    resources = [
-      aws_sns_topic.summariseDataset.arn,
-    ]
-  }
-
-  statement {
-    actions = [
       "s3:GetObject",
       "s3:PutObject",
       "s3:ListBucket",
@@ -55,178 +46,6 @@ data "aws_iam_policy_document" "lambda-submitDataset" {
       "lambda:InvokeFunction",
     ]
     resources = [module.lambda-indexer.lambda_function_arn]
-  }
-}
-
-#
-#
-# summariseDataset Lambda Function
-#
-data "aws_iam_policy_document" "lambda-summariseDataset" {
-  statement {
-    actions = [
-      "dynamodb:UpdateItem",
-      "dynamodb:Query",
-    ]
-    resources = [
-      aws_dynamodb_table.datasets.arn,
-      aws_dynamodb_table.variant_duplicates.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "dynamodb:BatchGetItem",
-    ]
-    resources = [
-      aws_dynamodb_table.vcf_summaries.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "SNS:Publish",
-    ]
-    resources = [
-      aws_sns_topic.summariseVcf.arn,
-      aws_sns_topic.duplicateVariantSearch.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
-    ]
-    resources = ["*"]
-  }
-}
-
-#
-# summariseVcf Lambda Function
-#
-data "aws_iam_policy_document" "lambda-summariseVcf" {
-  statement {
-    actions = [
-      "dynamodb:UpdateItem",
-    ]
-    resources = [
-      aws_dynamodb_table.vcf_summaries.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "SNS:Publish",
-    ]
-    resources = [
-      aws_sns_topic.summariseSlice.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    actions = [
-      "s3:DeleteObject",
-    ]
-    resources = [
-      "${aws_s3_bucket.variants-bucket.arn}/*"
-    ]
-  }
-}
-
-#
-# summariseSlice Lambda Function
-#
-data "aws_iam_policy_document" "lambda-summariseSlice" {
-  statement {
-    actions = [
-      "dynamodb:UpdateItem",
-    ]
-    resources = [
-      aws_dynamodb_table.datasets.arn,
-      aws_dynamodb_table.vcf_summaries.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "SNS:Publish",
-    ]
-    resources = [
-      aws_sns_topic.summariseDataset.arn,
-      aws_sns_topic.summariseSlice.arn,
-      aws_sns_topic.duplicateVariantSearch.arn
-    ]
-  }
-
-  statement {
-    actions = [
-      "dynamodb:Scan",
-    ]
-    resources = [
-      aws_dynamodb_table.datasets.arn,
-      "${aws_dynamodb_table.datasets.arn}/index/*",
-    ]
-  }
-
-  statement {
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
-      "s3:PutObject",
-    ]
-    resources = ["*"]
-  }
-}
-
-#
-# duplicateVariantSearch Lambda Function
-#
-data "aws_iam_policy_document" "lambda-duplicateVariantSearch" {
-  statement {
-    actions = [
-      "dynamodb:UpdateItem",
-    ]
-    resources = [
-      aws_dynamodb_table.variant_duplicates.arn,
-      aws_dynamodb_table.datasets.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "SNS:Publish",
-    ]
-    resources = [
-      aws_sns_topic.summariseDataset.arn,
-      aws_sns_topic.duplicateVariantSearch.arn,
-    ]
-  }
-
-  statement {
-    actions = [
-      "dynamodb:Scan",
-    ]
-    resources = [
-      aws_dynamodb_table.datasets.arn,
-      "${aws_dynamodb_table.datasets.arn}/index/*",
-    ]
-  }
-
-  statement {
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-    ]
-    resources = ["*"]
   }
 }
 
@@ -849,6 +668,51 @@ data "aws_iam_policy_document" "dynamodb-onto-write-access" {
       aws_dynamodb_table.ontologies.arn,
       aws_dynamodb_table.descendant_terms.arn,
       aws_dynamodb_table.anscestor_terms.arn,
+    ]
+  }
+}
+
+# Admin Lambda Access
+data "aws_iam_policy_document" "admin-lambda-access" {
+  statement {
+    actions = [
+      "cognito-idp:*"
+    ]
+    resources = [
+      aws_cognito_user_pool.BeaconUserPool.arn
+    ]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "sts:AssumeRole"
+    ]
+    resources = [
+      aws_iam_role.admin-group-role.arn
+    ]
+  }
+}
+
+# Athena Read-only Access
+data "aws_iam_policy_document" "athena-readonly-access" {
+  statement {
+    actions = [
+      "athena:GetQueryExecution",
+      "athena:GetQueryResults",
+      "athena:StartQueryExecution"
+    ]
+    resources = [
+      aws_athena_workgroup.sbeacon-workgroup.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "glue:*"
+    ]
+    resources = [
+      "*"
     ]
   }
 }
