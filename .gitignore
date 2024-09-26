@@ -25,4 +25,11 @@ vcf.txt
 tmp*
 nohup.out
 tmpterms
+
+# terraform
 *.tfvars
+backend.tf
+.terraform.lock.hcl
+
+# MAC
+.DS_Store
