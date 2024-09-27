@@ -1,25 +1,22 @@
 import json
 from collections import defaultdict
-from typing_extensions import Self
-from typing import List, Optional, Tuple, Union, Annotated
+from typing import Annotated, List, Optional, Self, Tuple, Union
 
+from humps import camelize
 from pydantic import (
-    ConfigDict,
     BaseModel,
+    ConfigDict,
+    PrivateAttr,
     TypeAdapter,
     ValidationError,
     ValidationInfo,
-    PrivateAttr,
     constr,
     field_validator,
     model_validator,
 )
 from pydantic.functional_validators import BeforeValidator
-from strenum import StrEnum
-from humps import camelize
-
 from shared.utils import ENV_BEACON, ENV_CONFIG
-
+from strenum import StrEnum
 
 #
 # Thirdparty Code as annotated
@@ -57,7 +54,7 @@ class RequestQueryParams(CamelModel):
     gene_id: Optional[str] = None
     aminoacid_change: Optional[str] = None
     variant_type: Optional[str] = None
-    _user_params: dict() = PrivateAttr()
+    _user_params: dict = PrivateAttr()
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -85,15 +82,15 @@ class RequestQueryParams(CamelModel):
             and len(self.end) == 1
             and abs(self.start[0] - self.end[0]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE
         ):
-            raise ValueError(error_message, ['start', 'end'])
+            raise ValueError(error_message, ["start", "end"])
         # if start is a range and end is a base
         if len(self.start) == 2 and len(self.end) == 1:
             if abs(self.end[0] - self.start[0]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE:
-                raise ValueError(error_message, ['start', 'end'])
+                raise ValueError(error_message, ["start", "end"])
         # if start is a base and end is a range
         if len(self.start) == 1 and len(self.end) == 2:
             if abs(self.end[1] - self.start[0]) > CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE:
-                raise ValueError(error_message, ['start', 'end'])
+                raise ValueError(error_message, ["start", "end"])
         return self
 
 
@@ -183,7 +180,7 @@ class RequestQuery(CamelModel):
     request_parameters: RequestQueryParams = RequestQueryParams()
     test_mode: bool = False
     requested_granularity: Granularity = Granularity(BEACON_DEFAULT_GRANULARITY)
-    _filters: dict() = PrivateAttr()
+    _filters: dict = PrivateAttr()
 
     def __init__(self, **data):
         super().__init__(**data)
