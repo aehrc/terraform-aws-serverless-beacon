@@ -1,20 +1,17 @@
 from datetime import datetime, timezone
 
 import boto3
-from pynamodb.models import Model
-from pynamodb.settings import OperationSettings
-from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from pynamodb.attributes import (
-    UnicodeAttribute,
-    NumberAttribute,
-    UnicodeSetAttribute,
-    UTCDateTimeAttribute,
     ListAttribute,
     MapAttribute,
+    NumberAttribute,
+    UnicodeAttribute,
+    UnicodeSetAttribute,
+    UTCDateTimeAttribute,
 )
-
+from pynamodb.indexes import AllProjection, GlobalSecondaryIndex
+from pynamodb.models import Model
 from shared.utils import ENV_DYNAMO
-
 
 SESSION = boto3.session.Session()
 REGION = SESSION.region_name
@@ -37,7 +34,7 @@ class DatasetIndex(GlobalSecondaryIndex):
 
 class VcfChromosomeMap(MapAttribute):
     vcf = UnicodeAttribute()
-    chromosomes = UnicodeSetAttribute(default_for_new=[])
+    chromosomes = UnicodeSetAttribute(default_for_new=list)
 
 
 # datasets table
@@ -60,9 +57,9 @@ class Dataset(Model):
     datasetIndex = DatasetIndex()
 
     # overriding the method to add timestamp on update
-    def update(self, actions=[], condition=None, settings=OperationSettings.default):
+    def update(self, actions=[], condition=None):
         actions.append(Dataset.updateDateTime.set(get_current_time_utc()))
-        Model.update(self, actions, condition, settings)
+        Model.update(self, actions, condition)
 
 
 if __name__ == "__main__":
