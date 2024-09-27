@@ -29,6 +29,7 @@ def search_db(condition: str) -> List[VecDBEntry]:
 
     db = get_vec_db()
     matches, scores = db.find(embedding, search_field="embedding", limit=3)
-    print(matches)
-    print(scores)
+    print(f"Search results for: {condition}")
+    print(f"\tmatches: {[f"{m.term}:{m.label}" for m in matches]}")
+    print(f"\tscores: {[s for s in scores]}")
     return [(m, s) for (m, s) in zip(matches, scores) if s > thresh]
