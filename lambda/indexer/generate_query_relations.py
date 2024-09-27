@@ -11,8 +11,6 @@ AS
 SELECT 
     D.id as datasetid,
     C.id as cohortid,
-    I._datasetid as did,
-    I._cohortid as cid,
     I.id AS individualid, 
     B.id AS biosampleid, 
     R.id AS runid,  
