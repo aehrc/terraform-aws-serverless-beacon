@@ -1,21 +1,18 @@
-from threading import Thread
 import json
 import os
+from threading import Thread
 
-from jsonschema import Draft202012Validator, RefResolver
-from smart_open import open as sopen
-import jsons
 import boto3
-
-from util import get_vcf_chromosome_maps
-from shared.utils import clear_tmp
+import jsons
+from jsonschema import Draft202012Validator, RefResolver
 from shared.apiutils import build_bad_request, bundle_response
+from shared.athena import Analysis, Biosample, Cohort, Dataset, Individual, Run
 from shared.dynamodb import Dataset as DynamoDataset
-from shared.athena import Dataset, Cohort, Individual, Biosample, Run, Analysis
-
+from shared.utils import clear_tmp
+from smart_open import open as sopen
+from util import get_vcf_chromosome_maps
 
 DATASETS_TABLE_NAME = os.environ["DYNAMO_DATASETS_TABLE"]
-SUMMARISE_DATASET_SNS_TOPIC_ARN = os.environ["SUMMARISE_DATASET_SNS_TOPIC_ARN"]
 INDEXER_LAMBDA = os.environ["INDEXER_LAMBDA"]
 
 # uncomment below for debugging
@@ -149,18 +146,7 @@ def submit_dataset(body_dict):
 
     create_dataset(body_dict, vcf_chromosome_maps)
 
-    # if summarise:
-    #     summarise_dataset(body_dict['datasetId'])
-    #     pending.append('Summarising')
-
     return bundle_response(200, {"Completed": completed, "Running": pending})
-
-
-def summarise_dataset(dataset):
-    kwargs = {"TopicArn": SUMMARISE_DATASET_SNS_TOPIC_ARN, "Message": dataset}
-    print("Publishing to SNS: {}".format(json.dumps(kwargs)))
-    response = sns.publish(**kwargs)
-    print("Received Response: {}".format(json.dumps(response)))
 
 
 def validate_request(parameters):
@@ -190,9 +176,7 @@ def route(event):
     event_body = event.get("body")
 
     if not event_body:
-        return bundle_response(
-            400, build_bad_request(code=400, message="No body sent with request.")
-        )
+        return bundle_response(400, {"message": "No body sent with request."})
     try:
         body_dict = json.loads(event_body)
 
@@ -203,17 +187,12 @@ def route(event):
                 body_dict = json.loads(payload.read())
     except ValueError:
         return bundle_response(
-            400,
-            build_bad_request(
-                code=400, message="Error parsing request body, Expected JSON."
-            ),
+            400, {"message": "Error parsing request body, Expected JSON."}
         )
 
     if validation_errors := validate_request(body_dict):
         print(", ".join(validation_errors))
-        return bundle_response(
-            400, build_bad_request(code=400, message=", ".join(validation_errors))
-        )
+        return bundle_response(400, {"message": validation_errors})
     print("Validated the payload")
 
     result = submit_dataset(body_dict)
