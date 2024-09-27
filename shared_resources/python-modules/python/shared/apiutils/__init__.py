@@ -2,16 +2,16 @@ from .entries import get_variant_entry
 from .framework import beacon_map, configuration, entry_types
 from .requests import (
     AlphanumericFilter,
-    OntologyFilter,
     CustomFilter,
-    RequestParams,
-    RequestQueryParams,
     Granularity,
     IncludeResultsetResponses,
+    OntologyFilter,
+    Operator,
+    RequestParams,
+    RequestQueryParams,
     Similarity,
-    Operator
+    parse_request,
 )
-from .requests import parse_request
 from .responses import (
     build_bad_request,
     build_beacon_boolean_response,
@@ -23,4 +23,5 @@ from .responses import (
     build_filtering_terms_response,
     bundle_response,
 )
+from .router import AuthError, BeaconError, LambdaRouter
 from .schemas import DefaultSchemas
