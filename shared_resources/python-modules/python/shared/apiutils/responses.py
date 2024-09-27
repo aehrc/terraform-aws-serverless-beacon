@@ -1,4 +1,4 @@
-import os
+import datetime
 import json
 from typing import Optional
 import functools
@@ -9,6 +9,14 @@ from shared.utils import ENV_BEACON
 
 
 HEADERS = {"Access-Control-Allow-Origin": "*"}
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        return super(DateTimeEncoder, self).default(obj)
+
 
 #
 # Start Thirdparty Code as annotated
@@ -175,6 +183,7 @@ def build_beacon_collection_response(
 ########################################
 # Thirdparty code
 
+
 def build_beacon_info_response(authorised_datasets, qparams):
     # CHANGE: variables taken from terraform
     beacon_response = {
@@ -222,7 +231,10 @@ def build_beacon_service_info_response():
             "version": ENV_BEACON.BEACON_SERVICE_TYPE_VERSION,
         },
         "description": ENV_BEACON.BEACON_DESCRIPTION,
-        "organization": {"name": ENV_BEACON.BEACON_ORG_NAME, "url": ENV_BEACON.BEACON_WELCOME_URL},
+        "organization": {
+            "name": ENV_BEACON.BEACON_ORG_NAME,
+            "url": ENV_BEACON.BEACON_WELCOME_URL,
+        },
         "contactUrl": ENV_BEACON.BEACON_ORG_CONTACT_URL,
         "documentationUrl": ENV_BEACON.BEACON_DOCUMENTATION_URL,
         "createdAt": ENV_BEACON.BEACON_CREATE_DATETIME,
@@ -245,7 +257,7 @@ def build_filtering_terms_response(filtering_terms, resources, qparams: RequestP
     }
 
 
-def build_bad_request(*, code=None, message=None, qparams):
+def build_bad_request(*, code, message, qparams: RequestParams):
     return {
         "error": {"errorCode": code, "errorMessage": f"{message}"},
         "meta": build_meta(qparams, None, []),
@@ -256,5 +268,5 @@ def bundle_response(status_code, body):
     return {
         "statusCode": status_code,
         "headers": HEADERS,
-        "body": json.dumps(body),
+        "body": json.dumps(body, cls=DateTimeEncoder),
     }
