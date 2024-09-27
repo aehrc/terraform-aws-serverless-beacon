@@ -20,7 +20,7 @@ class BeaconV2:
         self._scope = None
         self._id = None
         self._filters = []
-        self._g_variant_params = {}
+        self._g_variant_params = None
         self._return_scope = None
         self._skip = 0
         self._limit = 1000
@@ -69,7 +69,7 @@ class BeaconV2:
         self._filters.append({"id": filter_value, "scope": filter_scope})
         return self
 
-    def with_g_variant_params(
+    def with_g_variant(
         self,
         assemblyId: str,
         referenceBases: str,
@@ -78,21 +78,9 @@ class BeaconV2:
         end: List[int],
         referenceName: str,
     ) -> "BeaconV2":
-        if self._scope != "g_variants":
-            raise ValueError(
-                "g_variant parameters can only be set if the scope is 'g_variants'"
-            )
-        if not (
-            isinstance(start, list)
-            and len(start) == 2
-            and all(isinstance(i, int) for i in start)
-        ):
+        if not (isinstance(start, list) and all(isinstance(i, int) for i in start)):
             raise ValueError("Start must be a list of two integers.")
-        if not (
-            isinstance(end, list)
-            and len(end) == 2
-            and all(isinstance(i, int) for i in end)
-        ):
+        if not (isinstance(end, list) and all(isinstance(i, int) for i in end)):
             raise ValueError("End must be a list of two integers.")
         self._g_variant_params = {
             "assemblyId": assemblyId,
@@ -119,8 +107,10 @@ class BeaconV2:
         return self
 
     def load(self):
+        # scope is needed to load data
         if self._scope is None:
             raise ValueError("Scope must be set before loading data.")
+        # g_variant parameters are needed when scope is g_variants, or set a different return scope
         if (
             self._scope == "g_variants"
             and self._return_scope is None
@@ -129,23 +119,9 @@ class BeaconV2:
             raise ValueError(
                 "g_variant parameters must be provided when the scope is 'g_variants', or use 'id' with return scope"
             )
-        if (
-            self._return_scope is not None
-            and self._id is None
-            or self._return_scope is None
-            and self._id is not None
-        ):
+        # either both are none or both are not none
+        if (self._return_scope is None) != (self._id is None):
             raise ValueError("Must use 'id' with return scope")
-
-        # Simulate data loading based on scope, ID, and filters
-        print(f"Loading data for scope: {self._scope}")
-        if self._id:
-            print(f"Using ID: {self._id}")
-        print(f"Using filters: {self._filters}")
-        if self._scope == "g_variants":
-            print(f"With g_variant parameters: {self._g_variant_params}")
-        if self._return_scope:
-            print(f"Fetching related scope: {self._return_scope}")
 
         body = {
             "query": {
@@ -155,34 +131,109 @@ class BeaconV2:
             },
             "meta": {"apiVersion": "v2.0"},
         }
+        # add variant query parameters
+        if self._g_variant_params:
+            print(f"With g_variant parameters: {self._g_variant_params}")
+            body["query"]["requestParameters"] = self._g_variant_params
 
-        if not self._id:
-            url = f"{self._api_url}/{self._scope}"
+        # special case for g_variants then asking another scope
+        if self._g_variant_params and self._scope != "g_variants":
+            url = f"{self._api_url}/g_variants"
+            print(f"Primary Payload: {json.dumps(body)}")
+            print(f"Primary URL: {url}")
+            headers = {
+                "Authorization": self._auth_header,
+                "Content-Type": "application/json",
+            }
+            response = requests.post(url, headers=headers, data=json.dumps(body))
+
+            if not response.ok:
+                print("Status", response.status_code)
+                print("Response", response.text)
+                raise Exception("Unable to call API on user behalf.")
+            variants = response.json()["response"]["resultSets"][0]["results"]
+            print(f"Variant Ids: {len(variants)}")
+
+            if not variants:
+                raise ValueError("No variants found for the given parameters.")
+
+            del body["query"]["requestParameters"]
+
+            # individuals to be fetched
+            individuals = []
+
+            for variant in variants:
+                vid = variant["variantInternalId"]
+                # TODO
+                # ref = variant["variation"]["referenceBases"]
+                # alt = variant["variation"]["alternateBases"]
+                # start = variant["variation"]["location"]["interval"]["start"]["value"]
+                # end = variant["variation"]["location"]["interval"]["end"]["value"]
+                print(f"Loading data for scope: {self._scope}")
+                url = f"{self._api_url}/g_variants/{vid}/{self._scope}"
+                print(f"Secondary Payload: {json.dumps(body)}")
+                print(f"Secondary URL: {url}")
+                response = requests.post(url, headers=headers, data=json.dumps(body))
+
+                if not response.ok:
+                    print("Status", response.status_code)
+                    print("Response", response.text)
+                    raise Exception("Unable to call API on user behalf.")
+
+                for individual in response.json()["response"]["resultSets"][0][
+                    "results"
+                ]:
+                    # TODO
+                    # inject variant details
+                    # individual["variantInternalId"] = vid
+                    # individual["referenceBases"] = ref
+                    # individual["alternateBases"] = alt
+                    # individual["start"] = start
+                    # individual["end"] = end
+
+                    individuals.append(individual)
+
+            #  Get unique individuals by 'id'
+            results = {"response": {"resultSets": [{"results": individuals}]}}
+            print(f"Individuals: {len(individuals)}")
+
+            return results
         else:
-            url = f"{self._api_url}/{self._scope}/{self._id}/{self._return_scope}"
+            print(f"Loading data for scope: {self._scope}")
+            if not self._id:
+                url = f"{self._api_url}/{self._scope}"
+            else:
+                print(f"Using ID: {self._id}")
+                print(f"Fetching related scope: {self._return_scope}")
+                url = f"{self._api_url}/{self._scope}/{self._id}/{self._return_scope}"
 
-        print(f"Payload: {json.dumps(body)}")
-        print(f"URL: {url}")
+            print(f"Payload: {json.dumps(body)}")
+            print(f"URL: {url}")
 
-        headers = {
-            "Authorization": self._auth_header,
-            "Content-Type": "application/json",
-        }
+            headers = {
+                "Authorization": self._auth_header,
+                "Content-Type": "application/json",
+            }
 
-        response = requests.post(url, headers=headers, data=json.dumps(body))
+            response = requests.post(url, headers=headers, data=json.dumps(body))
 
-        if not response.ok:
-            print("Status", response.status_code)
-            print("Response", response.text)
-            raise Exception("Unable to call API on user behalf.")
+            if not response.ok:
+                print("Status", response.status_code)
+                print("Response", response.text)
+                raise Exception("Unable to call API on user behalf.")
+            response = response.json()
 
-        return response.json()
+            if len(response["response"]["resultSets"][0]["results"]) == 0:
+                raise ValueError("No results found for the given parameters.")
+
+            return response
 
 
 def normalise_response(data: dict):
     df = pd.json_normalize(data, ["response", "resultSets", "results"], max_level=0)
     cols = list(df.columns)
 
+    # make id the first col
     if "id" in cols:
         cols.insert(0, cols.pop(cols.index("id")))
         df = df[cols]
