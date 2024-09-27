@@ -46,6 +46,9 @@ def generate_extractor_code(query: str) -> Dict:
     extractor_chain = get_data_extractor_map_chain()
     extracted_data = extractor_chain.invoke(query)
 
+    print(f"{extracted_data=}")
+    print(f"filters text: {extracted_data["filters"].filters}")
+
     if len(extracted_data["filters"].filters) > 0:
         filters = extracted_data["filters"]
         filters = filters.model_dump(mode="json")["filters"]
@@ -64,13 +67,39 @@ def generate_extractor_code(query: str) -> Dict:
                     }
                 )
         extracted_data["filters"] = hits
+        print(f"filters coded: {hits}")
+    else:
+        extracted_data["filters"] = []
+
     sdk_construct = "data = BeaconV2()"
     sdk_comments = ""
 
     scope = extracted_data.get("scope", Scope(scope=ScopeEnum.UNKNOWN))
     filters = extracted_data["filters"]
 
+    if extracted_data["variant"].success:
+        sdk_comments += f"""# Variants detected in the query.\n"""
+        sdk_construct += f""".with_g_variant("""
+        print(f"variant found: {extracted_data["variant"].dict()}")
+        assembly_id = extracted_data["variant"].assembly_id
+        sdk_construct += "'GRCH38'" if assembly_id == "unknown" else f"'{assembly_id}'"
+        sdk_construct += ",'N','N',"
+        start = extracted_data["variant"].start
+        if isinstance(start, list):
+            sdk_construct += "[0]," if start == "unknown" else f"{start},"
+        else:
+            sdk_construct += "[0]," if start == "unknown" else f"[{start}],"
+        end = extracted_data["variant"].end
+        if isinstance(end, list):
+            sdk_construct += "[0]," if end == "unknown" else f"{end},"
+        else:
+            sdk_construct += "[0]," if end == "unknown" else f"[{end}],"
+        reference_name = extracted_data["variant"].chromosome
+        sdk_construct += "'1'" if reference_name == "unknown" else f"'{reference_name}'"
+        sdk_construct += ")"
+
     if scope.scope != ScopeEnum.UNKNOWN:
+        print(f"{scope=}")
         scope = scope.model_dump(mode="json")["scope"]
         sdk_construct += f""".with_scope("{scope}")"""
         sdk_comments += f"""# Scope detected to be '{scope}'.\n"""
@@ -79,6 +108,7 @@ def generate_extractor_code(query: str) -> Dict:
         sdk_construct += f""".with_scope('<ENTER YOUR SCOPE>')"""
 
     for fil in filters:
+        print(f"{fil=}")
         sdk_comments += f"""# {fil["term"]} -> '{fil["label"]}'\n"""
         sdk_construct += (
             f""".with_filter('ontology', '{fil["term"]}', '{fil["scope"]}') """
