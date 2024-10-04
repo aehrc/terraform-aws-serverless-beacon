@@ -303,7 +303,6 @@ def clean_onto_index_tables():
         for entry in Ontology.scan():
             batch.delete(entry)
 
-
 def lambda_handler(event, context):
     body_dict = dict()
 
