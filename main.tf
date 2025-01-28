@@ -68,8 +68,8 @@ locals {
     ATHENA_RUNS_CACHE_TABLE        = aws_glue_catalog_table.sbeacon-runs-cache.name
     ATHENA_ANALYSES_TABLE          = aws_glue_catalog_table.sbeacon-analyses.name
     ATHENA_ANALYSES_CACHE_TABLE    = aws_glue_catalog_table.sbeacon-analyses-cache.name
-    ATHENA_TERMS_TABLE             = aws_glue_catalog_table.sbeacon-terms.name
-    ATHENA_TERMS_INDEX_TABLE       = aws_glue_catalog_table.sbeacon-terms-index.name
+    ATHENA_TERMS_TABLE             = aws_cloudformation_stack.sbeacon_terms_stack.parameters.TableName
+    ATHENA_TERMS_INDEX_TABLE       = aws_cloudformation_stack.sbeacon_terms_index_stack.parameters.TableName
     ATHENA_TERMS_CACHE_TABLE       = aws_glue_catalog_table.sbeacon-terms-cache.name
     ATHENA_RELATIONS_TABLE         = aws_glue_catalog_table.sbeacon-relations.name
   }

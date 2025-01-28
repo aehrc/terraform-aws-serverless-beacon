@@ -628,105 +628,158 @@ resource "aws_glue_catalog_table" "sbeacon-analyses" {
 
 # 
 # Ontology terms index
+# aws cloudformation is used because of terraform bug - https://github.com/hashicorp/terraform-provider-aws/issues/26686
 # 
-resource "aws_glue_catalog_table" "sbeacon-terms-index" {
-  name          = "sbeacon_terms_index"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
+resource "aws_cloudformation_stack" "sbeacon_terms_index_stack" {
+  name = "sbeacon-terms-index-stack"
 
   parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
+    DatabaseName = aws_glue_catalog_database.metadata-database.name
+    TableName    = "sbeacon_terms_index"
   }
 
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms-index"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
+  template_body = jsonencode(
+    {
+      Parameters = {
+        DatabaseName = {
+          Type = "String"
+        }
+        TableName = {
+          Type = "String"
+        }
+      }
+      Resources = {
+        SBeaconTermsGlueCatalogTable = {
+          Type = "AWS::Glue::Table"
+          Properties = {
+            DatabaseName = { Ref = "DatabaseName" }
+            CatalogId    = { Ref = "AWS::AccountId" }
+            TableInput = {
+              Name      = { Ref = "TableName" }
+              TableType = "EXTERNAL_TABLE"
+              Parameters = {
+                EXTERNAL       = "TRUE"
+                "orc.compress" = "SNAPPY"
+                numFiles       = "-1"
+              }
+              StorageDescriptor = {
+                Location     = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms-index"
+                InputFormat  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+                OutputFormat = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+                SerdeInfo = {
+                  Name                 = "ORC"
+                  SerializationLibrary = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+                  Parameters = {
+                    "serialization.format"      = "1"
+                    "orc.column.index.access"   = "FALSE"
+                    "hive.orc.use-column-names" = "TRUE"
+                  }
+                }
+                Columns = [
+                  {
+                    Name = "id"
+                    Type = "string"
+                  },
+                  {
+                    Name = "term"
+                    Type = "string"
+                  }
+                ]
+              }
+              PartitionKeys = [
+                {
+                  Name    = "kind"
+                  Type    = "string"
+                  Comment = "partition by kind"
+                }
+              ]
+            }
+          }
+        }
       }
     }
-
-    columns {
-      name = "id"
-      type = "string"
-    }
-
-    columns {
-      name = "term"
-      type = "string"
-    }
-  }
-
-  partition_keys {
-    comment = "partition by kind"
-    name    = "kind"
-    type    = "string"
-  }
+  )
 }
 
 # 
 # Ontology terms (for pagination and filtering)
+# aws cloudformation is used because of terraform bug - https://github.com/hashicorp/terraform-provider-aws/issues/26686
 # 
-resource "aws_glue_catalog_table" "sbeacon-terms" {
-  name          = "sbeacon_terms"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
+resource "aws_cloudformation_stack" "sbeacon_terms_stack" {
+  name = "sbeacon-terms-stack"
 
   parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
+    DatabaseName = aws_glue_catalog_database.metadata-database.name
+    TableName    = "sbeacon_terms"
   }
 
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
+  template_body = jsonencode(
+    {
+      Parameters = {
+        DatabaseName = {
+          Type = "String"
+        }
+        TableName = {
+          Type = "String"
+        }
+      }
+      Resources = {
+        SBeaconTermsGlueCatalogTable = {
+          Type = "AWS::Glue::Table"
+          Properties = {
+            DatabaseName = { Ref = "DatabaseName" }
+            CatalogId    = { Ref = "AWS::AccountId" }
+            TableInput = {
+              Name      = { Ref = "TableName" }
+              TableType = "EXTERNAL_TABLE"
+              Parameters = {
+                EXTERNAL       = "TRUE"
+                "orc.compress" = "SNAPPY"
+                numFiles       = "-1"
+              }
+              StorageDescriptor = {
+                Location     = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms"
+                InputFormat  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+                OutputFormat = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+                SerdeInfo = {
+                  Name                 = "ORC"
+                  SerializationLibrary = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+                  Parameters = {
+                    "serialization.format"      = "1"
+                    "orc.column.index.access"   = "FALSE"
+                    "hive.orc.use-column-names" = "TRUE"
+                  }
+                }
+                Columns = [
+                  {
+                    Name = "term"
+                    Type = "string"
+                  },
+                  {
+                    Name = "label"
+                    Type = "string"
+                  },
+                  {
+                    Name = "type"
+                    Type = "string"
+                  },
+                ]
+              }
+              PartitionKeys = [
+                {
+                  Name    = "kind"
+                  Type    = "string"
+                  Comment = "partition by kind"
+                }
+              ]
+            }
+          }
+        }
       }
     }
-
-    columns {
-      name = "term"
-      type = "string"
-    }
-
-    columns {
-      name = "label"
-      type = "string"
-    }
-
-    columns {
-      name = "type"
-      type = "string"
-    }
-  }
-
-  partition_keys {
-    comment = "partition by kind"
-    name    = "kind"
-    type    = "string"
-  }
+  )
 }
 
 # 
