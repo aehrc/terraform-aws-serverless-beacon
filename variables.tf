@@ -224,16 +224,19 @@ variable "azure-openai-api-key" {
 
 variable "azure-openai-endpoint" {
   type        = string
+  default     = null
   description = "Azure openai endpoint"
 }
 
 variable "azure-openai-api-version" {
   type        = string
+  default     = null
   description = "Azure openai api version"
 }
 
 variable "azure-openai-chat-deployment-name" {
   type        = string
+  default     = null
   description = "Azure openai chat deployment name"
 }
 
