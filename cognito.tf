@@ -174,6 +174,20 @@ resource "aws_cognito_user" "admin" {
   }
 }
 
+resource "aws_cognito_user" "demo" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  username     = var.beacon-demo-username
+  password     = var.beacon-demo-password
+
+  attributes = {
+    terraform      = true
+    given_name     = "Demo"
+    family_name    = "Demo"
+    email          = var.beacon-demo-username
+    email_verified = true
+  }
+}
+
 # 
 # group assignments
 # 
@@ -213,6 +227,25 @@ resource "aws_cognito_user_in_group" "guest-boolean-access" {
   user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
   group_name   = aws_cognito_user_group.boolean-access.name
   username     = aws_cognito_user.guest.username
+}
+
+# demo
+resource "aws_cognito_user_in_group" "demo-record-access" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  group_name   = aws_cognito_user_group.record-access.name
+  username     = aws_cognito_user.demo.username
+}
+
+resource "aws_cognito_user_in_group" "demo-count-access" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  group_name   = aws_cognito_user_group.count-access.name
+  username     = aws_cognito_user.demo.username
+}
+
+resource "aws_cognito_user_in_group" "demo-boolean-access" {
+  user_pool_id = aws_cognito_user_pool.BeaconUserPool.id
+  group_name   = aws_cognito_user_group.boolean-access.name
+  username     = aws_cognito_user.demo.username
 }
 
 # 

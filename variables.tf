@@ -208,6 +208,18 @@ variable "beacon-admin-password" {
   default     = "admin1234"
 }
 
+variable "beacon-demo-username" {
+  type        = string
+  description = "Value for demo username  (must be an email)"
+  default     = "demo@example.com"
+}
+
+variable "beacon-demo-password" {
+  type        = string
+  description = "Value for demo password"
+  default     = "demo1234"
+}
+
 # configuration variables
 variable "config-max-variant-search-base-range" {
   type        = number
