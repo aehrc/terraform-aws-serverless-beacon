@@ -19,10 +19,8 @@ from utils.templates import (
     get_analytics_code_generator_chain,
 )
 
-job_id = "test"
 
-
-def generate_analysis_code(query):
+def generate_analysis_code(job_id: str, query: str) -> str:
     with sopen(
         f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/metadata.json",
         "r",
@@ -56,10 +54,22 @@ def generate_analysis_code(query):
     else:
         constructed_str += f"#     None given\n"
 
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/generated_exexutor.py",
+        "w",
+    ) as fo:
+        fo.write(constructed_str)
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/analysis_query.txt",
+        "w",
+    ) as fo:
+        fo.write(query)
+
     return constructed_str
 
 
-def run_analysis(code):
+def run_analysis(job_id: str, code: str):
     std_output = io.StringIO()
     std_error = io.StringIO()
     success = False
@@ -77,6 +87,12 @@ def run_analysis(code):
         "rb",
     ) as fo:
         dataframes = joblib.load(fo)
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/executor.py",
+        "w",
+    ) as fo:
+        fo.write(code)
 
     exec_globals["np"] = np
     exec_globals["plt"] = plt
@@ -127,9 +143,17 @@ def run_analysis(code):
             )
             urls.append(url)
 
-    return {
+    result = {
         "success": success,
         "files": urls,
         "stdout": std_output.getvalue(),
         "stderr": std_error.getvalue(),
     }
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/execution_result.json",
+        "w",
+    ) as fo:
+        json.dump(result, fo)
+
+    return result

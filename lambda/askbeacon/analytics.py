@@ -17,8 +17,10 @@ router = LambdaRouter()
 def prompt_extraction(event, _):
     body_dict = json.loads(event.get("body"))
     query = body_dict["query"]
+    job_id = body_dict["jobId"]
+
     try:
-        code = generate_extractor_code(query)
+        code = generate_extractor_code(job_id, query)
         return {"success": True, "code": code}
     except Exception as e:
         return {"success": False, "code": f"# Unable to generate code\n# {str(e)}"}
@@ -30,7 +32,9 @@ def execute_extraction(event, _):
     url = f"https://{event['requestContext']['domainName']}/prod"
     body_dict = json.loads(event.get("body"))
     code = body_dict["code"]
-    result = run_extractors(url, header, code)
+    job_id = body_dict["jobId"]
+
+    result = run_extractors(job_id, url, header, code)
 
     return {"success": True, **result}
 
@@ -39,8 +43,10 @@ def execute_extraction(event, _):
 def prompt_analysis(event, _):
     body_dict = json.loads(event.get("body"))
     query = body_dict["query"]
+    job_id = body_dict["jobId"]
+
     try:
-        code = generate_analysis_code(query)
+        code = generate_analysis_code(job_id, query)
         return {"success": True, "code": code}
     except Exception as e:
         return {"success": False, "code": f"# Unable to generate code\n# {str(e)}"}
@@ -50,7 +56,9 @@ def prompt_analysis(event, _):
 def execute_analysis(event, _):
     body_dict = json.loads(event.get("body"))
     code = body_dict["code"]
-    result = run_analysis(code)
+    job_id = body_dict["jobId"]
+
+    result = run_analysis(job_id, code)
 
     return {"success": True, **result}
 

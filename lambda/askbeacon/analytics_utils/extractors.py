@@ -16,8 +16,6 @@ from utils.templates import get_data_extractor_map_chain
 from .beacon_sdk import BeaconV2 as _BeaconV2
 from .beacon_sdk import normalise_response
 
-job_id = "test"
-
 
 def get_var_name(var, env):
     for name, value in env.items():
@@ -42,7 +40,7 @@ def get_table_summary(data: List[Dict]):
     return table_col_names, table_col_types
 
 
-def generate_extractor_code(query: str) -> Dict:
+def generate_extractor_code(job_id: str, query: str) -> Dict:
     extractor_chain = get_data_extractor_map_chain()
     extracted_data = extractor_chain.invoke(query)
 
@@ -125,10 +123,23 @@ def generate_extractor_code(query: str) -> Dict:
 
     sdk_construct = black.format_str(sdk_construct, mode=black.FileMode())
 
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/generated_extract.py",
+        "w",
+    ) as fo:
+        fo.write(sdk_construct)
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/extraction_query.txt",
+        "w",
+    ) as fo:
+        fo.write(query)
+
     return sdk_construct
 
 
 def run_extractors(
+    job_id: str,
     url: str,
     header: str,
     code: str,
@@ -208,9 +219,17 @@ def run_extractors(
             }
             json.dump(metadata, fo)
 
-    return {
+    result = {
         "dataframes": result_dataframes_json,
         "success": success,
         "stdout": std_output.getvalue(),
         "stderr": std_error.getvalue(),
     }
+
+    with sopen(
+        f"s3://{ENV_ATHENA.ATHENA_METADATA_BUCKET}/askbeacon-exec/{job_id}/extraction_result.json",
+        "w",
+    ) as fo:
+        json.dump(result, fo)
+
+    return result
