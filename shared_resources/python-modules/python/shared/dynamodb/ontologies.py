@@ -42,6 +42,15 @@ class Anscestors(Model):
     term = UnicodeAttribute(hash_key=True)
     anscestors = UnicodeSetAttribute()
 
+# Term details table
+class TermLabels(Model):
+    class Meta:
+        table_name = ENV_DYNAMO.DYNAMO_TERM_LABELS_TABLE
+        region = REGION
+
+    term = UnicodeAttribute(hash_key=True)
+    label = UnicodeAttribute()
+
 
 if __name__ == "__main__":
     pass

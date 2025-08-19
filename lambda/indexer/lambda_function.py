@@ -7,7 +7,7 @@ import json
 from smart_open import open as sopen
 import boto3
 
-from shared.dynamodb import Descendants, Anscestors, Ontology
+from shared.dynamodb import Descendants, Anscestors, Ontology, TermLabels
 from shared.ontoutils import request_hierarchy
 from shared.apiutils import bundle_response
 from shared.utils import ENV_ATHENA, ENV_SNS
@@ -85,12 +85,16 @@ def index_terms_tree():
 
     # record ancestors
     term_anscestors = defaultdict(set)
+    # record term labels
+    term_label = dict()
 
     for future in as_completed(futures):
-        term, ancestors = future.result()
-        if ancestors:
-            term_anscestors[term].update(ancestors)
+        term, ancestors_dict = future.result()
+
+        if ancestors_dict:
+            term_anscestors[term].update(list(ancestors_dict.keys()))
             term_anscestors[term].add(term)
+            term_label.update(ancestors_dict)
 
     # reverse the tree for descendent term search
     term_descendants = defaultdict(set)
@@ -117,6 +121,13 @@ def index_terms_tree():
                 item = Descendants(term)
                 item.descendants = descendants
                 batch.save(item)
+
+    # write term labels
+    with TermLabels.batch_write() as batch:
+        for term, label in term_label.items():
+            item = TermLabels(term)
+            item.label = label
+            batch.save(item)
 
 
 def update_athena_partitions(table):
@@ -301,6 +312,9 @@ def clean_onto_index_tables():
             batch.delete(entry)
     with Ontology.batch_write() as batch:
         for entry in Ontology.scan():
+            batch.delete(entry)
+    with TermLabels.batch_write() as batch:
+        for entry in TermLabels.scan():
             batch.delete(entry)
 
 

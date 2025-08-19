@@ -680,6 +680,7 @@ data "aws_iam_policy_document" "dynamodb-onto-access" {
       aws_dynamodb_table.ontologies.arn,
       aws_dynamodb_table.descendant_terms.arn,
       aws_dynamodb_table.anscestor_terms.arn,
+      aws_dynamodb_table.term_labels.arn,
     ]
   }
 }
@@ -698,6 +699,7 @@ data "aws_iam_policy_document" "dynamodb-onto-write-access" {
       aws_dynamodb_table.ontologies.arn,
       aws_dynamodb_table.descendant_terms.arn,
       aws_dynamodb_table.anscestor_terms.arn,
+      aws_dynamodb_table.term_labels.arn,
     ]
   }
 }

@@ -39,6 +39,18 @@ resource "aws_dynamodb_table" "ontologies" {
   }
 }
 
+resource "aws_dynamodb_table" "term_labels" {
+  billing_mode = "PAY_PER_REQUEST"
+  name         = "TermLabels"
+  hash_key     = "term"
+  tags         = var.common-tags
+
+  attribute {
+    name = "term"
+    type = "S"
+  }
+}
+
 resource "aws_dynamodb_table" "descendant_terms" {
   billing_mode = "PAY_PER_REQUEST"
   name         = "Descendants"

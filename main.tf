@@ -83,6 +83,7 @@ locals {
     DYNAMO_ONTOLOGIES_TABLE              = aws_dynamodb_table.ontologies.name
     DYNAMO_ANSCESTORS_TABLE              = aws_dynamodb_table.anscestor_terms.name
     DYNAMO_DESCENDANTS_TABLE             = aws_dynamodb_table.descendant_terms.name
+    DYNAMO_TERM_LABELS_TABLE             = aws_dynamodb_table.term_labels.name
   }
   # layers
   binaries_layer         = "${aws_lambda_layer_version.binaries_layer.layer_arn}:${aws_lambda_layer_version.binaries_layer.version}"
@@ -116,8 +117,8 @@ module "lambda-submitDataset" {
 
   environment_variables = merge(
     {
-      DYNAMO_DATASETS_TABLE           = aws_dynamodb_table.datasets.name
-      INDEXER_LAMBDA                  = module.lambda-indexer.lambda_function_name
+      DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      INDEXER_LAMBDA        = module.lambda-indexer.lambda_function_name
     },
     local.sbeacon_variables,
     local.athena_variables,
@@ -737,9 +738,10 @@ module "lambda-askbeacon" {
 
   policy_jsons = [
     data.aws_iam_policy_document.s3-askbeacon-access.json,
-    data.aws_iam_policy_document.athena-readonly-access.json
+    data.aws_iam_policy_document.athena-readonly-access.json,
+    data.aws_iam_policy_document.dynamodb-onto-access.json,
   ]
-  number_of_policy_jsons = 2
+  number_of_policy_jsons = 3
   source_path            = "${path.module}/lambda/askbeacon"
 
   tags = var.common-tags

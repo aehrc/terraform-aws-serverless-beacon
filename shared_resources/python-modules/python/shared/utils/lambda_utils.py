@@ -261,6 +261,10 @@ class DynamoDBEnvironment:
         return os.environ["DYNAMO_ONTOLOGIES_TABLE"]
 
     @property
+    def DYNAMO_TERM_LABELS_TABLE(self):
+        return os.environ["DYNAMO_TERM_LABELS_TABLE"]
+
+    @property
     def DYNAMO_ANSCESTORS_TABLE(self):
         return os.environ["DYNAMO_ANSCESTORS_TABLE"]
 

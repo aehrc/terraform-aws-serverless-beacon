@@ -3,7 +3,8 @@ import os
 import shutil
 from pathlib import Path
 
-DIRECOTY = str(Path(__file__).resolve().parent)
+DIRECTORY = str(Path(__file__).resolve().parent)
+HASH_FILE = ".hash.txt"
 
 
 # docs - https://stackoverflow.com/questions/36204248/creating-unique-hash-for-directory-in-python
@@ -23,22 +24,26 @@ def hash_dir(dir_path: str):
     for path, _, files in os.walk(dir_path):
         # we sort to guarantee that files will always go in the same order
         for file in sorted(files):
+            if file == HASH_FILE:
+                continue
             file_hash = sha1_of_file(os.path.join(path, file))
             sha.update(file_hash.encode())
-
-    return sha.hexdigest()
+    hash = sha.hexdigest()
+    with open(f"{DIRECTORY}/{HASH_FILE}", "w") as f:
+        f.write(hash)
+    return hash
 
 
 def update_shared():
-    if os.path.isdir(f"{DIRECOTY}/shared"):
-        shutil.rmtree(f"{DIRECOTY}/shared")
+    if os.path.isdir(f"{DIRECTORY}/shared"):
+        shutil.rmtree(f"{DIRECTORY}/shared")
 
     shutil.copytree(
-        f"{DIRECOTY}/../../shared_resources/python-modules/python/shared",
-        f"{DIRECOTY}/shared",
+        f"{DIRECTORY}/../../shared_resources/python-modules/python/shared",
+        f"{DIRECTORY}/shared",
     )
 
 
 if __name__ == "__main__":
     update_shared()
-    print(f""" {{ "hash": "{hash_dir(DIRECOTY)}" }} """)
+    print(f""" {{ "hash": "{hash_dir(DIRECTORY)}" }} """)

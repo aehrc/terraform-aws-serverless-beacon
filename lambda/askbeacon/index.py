@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import joblib
 from shared.apiutils.router import LambdaRouter
+from shared.dynamodb import TermLabels
 from shared.athena import run_custom_query
 from shared.utils import ENV_ATHENA
 from smart_open import open as sopen
@@ -30,11 +31,16 @@ def get_terms():
     exec_id = run_custom_query(
         f"SELECT * FROM {ENV_ATHENA.ATHENA_TERMS_TABLE}", return_id=True
     )
-    entries = parse_athena_result(exec_id)
-    for entry in entries:
-        if len(entry.get("label", "")) == 0:
-            continue
-    return entries
+    athena_entries = [
+        entry
+        for entry in parse_athena_result(exec_id)
+        if len(entry.get("label", "")) > 0
+    ]
+    dynamo_entries = [
+        entry.attribute_values for entry in TermLabels.scan() if len(entry.label) > 0
+    ]
+
+    return athena_entries + dynamo_entries
 
 
 def embed_batch(batch_entries):
@@ -79,7 +85,7 @@ def index(event, context):
                     VecDBEntry(
                         term=entry["term"],
                         label=entry["label"],
-                        scope=entry["kind"],
+                        scope="",
                         embedding=entry["embedding"],
                     )
                 )
