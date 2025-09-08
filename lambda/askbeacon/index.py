@@ -39,8 +39,9 @@ def get_terms():
     dynamo_entries = [
         entry.attribute_values for entry in TermLabels.scan() if len(entry.label) > 0
     ]
+    unique_entries = {entry["term"]: entry for entry in athena_entries + dynamo_entries}
 
-    return athena_entries + dynamo_entries
+    return list(unique_entries.values())
 
 
 def embed_batch(batch_entries):
