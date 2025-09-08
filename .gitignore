@@ -37,3 +37,4 @@ lambda/askbeacon/shared/
 
 # MAC
 .DS_Store
+.hash.txt
