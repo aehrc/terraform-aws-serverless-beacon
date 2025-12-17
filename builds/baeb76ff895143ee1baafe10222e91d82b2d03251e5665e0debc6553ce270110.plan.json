@@ -1,0 +1,1 @@
+{"filename": "builds/baeb76ff895143ee1baafe10222e91d82b2d03251e5665e0debc6553ce270110.zip", "runtime": "python3.12", "artifacts_dir": "builds", "build_plan": [[["zip", "./lambda/performQuery", null]]], "quiet": "true"}

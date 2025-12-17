@@ -54,6 +54,7 @@ class RequestQueryParams(CamelModel):
     gene_id: Optional[str] = None
     aminoacid_change: Optional[str] = None
     variant_type: Optional[str] = None
+    use_s3_tables: bool = False
     _user_params: dict = PrivateAttr()
 
     def __init__(self, **data):
@@ -216,6 +217,8 @@ class RequestParams(CamelModel):
                 self.query.filters = adapter.validate_python(
                     [{"id": term} for term in filters]
                 )
+            elif k == "useS3Tables":
+                self.query.request_parameters.use_s3_tables = v.lower() == "true"
             else:
                 req_params_dict[k] = v
         # query parameters related to variants

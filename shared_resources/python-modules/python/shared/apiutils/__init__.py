@@ -26,3 +26,4 @@ from .responses import (
 )
 from .router import AuthError, BeaconError, LambdaRouter
 from .schemas import DefaultSchemas
+from .s3tables import perform_variant_search_s3tables

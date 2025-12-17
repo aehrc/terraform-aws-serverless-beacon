@@ -1,5 +1,5 @@
 output "api_url" {
-  value       = aws_api_gateway_deployment.BeaconApi.invoke_url
+  value       = "https://${aws_api_gateway_rest_api.BeaconApi.id}.execute-api.${var.region}.amazonaws.com/${aws_api_gateway_stage.BeaconApi.stage_name}"
   description = "URL used to invoke the API."
 }
 

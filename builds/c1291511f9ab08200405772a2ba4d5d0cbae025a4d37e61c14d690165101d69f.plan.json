@@ -1,0 +1,1 @@
+{"filename": "builds/c1291511f9ab08200405772a2ba4d5d0cbae025a4d37e61c14d690165101d69f.zip", "runtime": "python3.12", "artifacts_dir": "builds", "build_plan": [[["zip", "./lambda/submitDataset", null]]], "quiet": "true"}

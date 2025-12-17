@@ -1,0 +1,1 @@
+{"filename": "builds/34b7abe1582d7aec3182b60ef73ebf2fea10f6f23817b3066cefa5bcb9150247.zip", "runtime": "python3.12", "artifacts_dir": "builds", "build_plan": [[["zip", "./lambda/getMap", null]]], "quiet": "true"}

@@ -1,0 +1,1 @@
+{"filename": "builds/64257d083f8a8cd123b3936a1f202e6f9316f7b0106dbb19289e332f908d2c88.zip", "runtime": "python3.12", "artifacts_dir": "builds", "build_plan": [[["zip", "./lambda/getCohorts", null]]], "quiet": "true"}

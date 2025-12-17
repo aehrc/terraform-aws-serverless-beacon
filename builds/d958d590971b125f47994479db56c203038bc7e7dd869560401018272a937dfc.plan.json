@@ -1,0 +1,1 @@
+{"filename": "builds/d958d590971b125f47994479db56c203038bc7e7dd869560401018272a937dfc.zip", "runtime": "python3.12", "artifacts_dir": "builds", "build_plan": [[["zip", "./lambda/getBiosamples", null]]], "quiet": "true"}

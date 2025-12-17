@@ -239,6 +239,51 @@ data "aws_iam_policy_document" "lambda-getGenomicVariants" {
     ]
     resources = ["*"]
   }
+
+  statement {
+    actions = [
+      "athena:*",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3:*",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "glue:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "s3tables:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "lakeformation:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
 }
 
 #

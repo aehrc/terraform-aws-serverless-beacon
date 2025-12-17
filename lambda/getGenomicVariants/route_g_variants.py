@@ -1,6 +1,10 @@
 from collections import defaultdict
 import json
 import base64
+import time
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 from shared.variantutils import perform_variant_search
 from shared.utils import ENV_ATHENA
@@ -21,6 +25,7 @@ from shared.apiutils import (
     bundle_response,
     get_variant_entry,
 )
+from shared.apiutils.s3tables import perform_variant_search_s3tables
 
 
 def datasets_query(conditions, assembly_id):
@@ -68,20 +73,33 @@ def route(request: RequestParams):
         )
         samples = []
 
-    query_responses = perform_variant_search(
-        datasets=datasets,
-        reference_name=query_params.reference_name,
-        reference_bases=query_params.reference_bases,
-        alternate_bases=query_params.alternate_bases,
-        start=query_params.start,
-        end=query_params.end,
-        variant_type=query_params.variant_type,
-        variant_min_length=query_params.variant_min_length,
-        variant_max_length=query_params.variant_max_length,
-        requested_granularity=request.query.requested_granularity,
-        include_datasets=request.query.include_resultset_responses,
-        dataset_samples=samples,
-    )
+    if query_params.use_s3_tables:
+        print("Using S3 Tables for variant search")
+        print(f"{query_params=}")
+        query_responses = perform_variant_search_s3tables(
+            reference_name=query_params.reference_name,
+            reference_bases=query_params.reference_bases,
+            alternate_bases=query_params.alternate_bases,
+            start=query_params.start,
+            end=query_params.end,
+            samples=samples,
+        )
+    else:
+        print("Using standard variant search")
+        query_responses = perform_variant_search(
+            datasets=datasets,
+            reference_name=query_params.reference_name,
+            reference_bases=query_params.reference_bases,
+            alternate_bases=query_params.alternate_bases,
+            start=query_params.start,
+            end=query_params.end,
+            variant_type=query_params.variant_type,
+            variant_min_length=query_params.variant_min_length,
+            variant_max_length=query_params.variant_max_length,
+            requested_granularity=request.query.requested_granularity,
+            include_datasets=request.query.include_resultset_responses,
+            dataset_samples=samples,
+        )
 
     variants = set()
     results = list()

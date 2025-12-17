@@ -1,0 +1,1 @@
+{"filename": "builds/00ff83dc4c9d72649a629a8fe05de543caa18a5f61d202c412ea1f3bb4f97feb.zip", "runtime": "", "artifacts_dir": "builds", "build_plan": [[["zip", "./layers/python_libraries/", null]]], "quiet": "true"}

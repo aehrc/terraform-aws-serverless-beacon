@@ -1,0 +1,1 @@
+{"filename": "builds/36cad3ab57dc6c514e9768bce26bb2962af1698e8fea4da15e2fb24f3b2cb845.zip", "runtime": "python3.12", "artifacts_dir": "builds", "build_plan": [[["zip", "./lambda/splitQuery", null]]], "quiet": "true"}
