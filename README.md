@@ -15,7 +15,7 @@
 - [Installation](#installation)
    * [Option 1: Setting up the development environment on Amazon Linux](#option-1-setting-up-the-development-environment-on-amazon-linux)
    * [Option 2: Using the docker image](#option-2-using-the-docker-image)
-   * [Option 3: Using the VSCODE dev containers](#option-3-using-the-vscode-dev-containers)
+   * [Option 3 (Recommended): Using the VSCODE dev containers](#option-3-using-the-vscode-dev-containers)
 - [Deployment](#deployment)
    * [Direct deployment](#direct-deployment)
    * [Use as a module](#use-as-a-module)
