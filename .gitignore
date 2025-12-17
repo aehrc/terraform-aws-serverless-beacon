@@ -29,7 +29,7 @@ tmpterms
 # terraform
 *.tfvars
 backend.tf
-.terraform.lock.hcl
+builds
 
 # docker related bundle ignores
 lambda/analytics/shared/
