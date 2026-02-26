@@ -23,10 +23,15 @@ import com.amazonaws.athena.connector.lambda.handlers.UserDefinedFunctionHandler
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -35,10 +40,11 @@ public class AthenaUDFHandler
 {
     private static final String SOURCE_TYPE = "athena_common_udfs";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Configuration JSONPATH_CONFIGURATION = Configuration.defaultConfiguration()
+            .addOptions(Option.ALWAYS_RETURN_LIST, Option.SUPPRESS_EXCEPTIONS);
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(\\.\\d+)?$");
     private static final Pattern BOOLEAN_PATTERN = Pattern.compile("^(?i:true|false)$");
     private static final Pattern DATE_PATTERN = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}([T\\s]\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?)?([zZ]|[+-]\\d{2}:?\\d{2})?$");
-    private static final Pattern PATH_TOKEN_PATTERN = Pattern.compile("([^\\[\\]]+)|\\[(\\d+)\\]");
 
     public AthenaUDFHandler()
     {
@@ -46,7 +52,8 @@ public class AthenaUDFHandler
     }
 
     /**
-     * Extracts a value from JSON using a simple path (for example: $.a.b[0].c) and compares it with the provided
+     * Extracts one or more values from JSON using JSONPath (for example: $.a.b[0].c, $.a.b[*].c[*].x) and compares
+     * them with the provided
      * input using one of the supported operators.
      *
      * Supported comparison modes:
@@ -56,20 +63,39 @@ public class AthenaUDFHandler
      * 4) string vs regex using operators: regex, matches, ~
      *
      * @param jsonInput JSON document string.
-     * @param jsonPath Simple path expression (dot notation + array indexes).
+     * @param jsonPath JSONPath expression.
      * @param filter Comparison operator.
      * @param comparisonValue Right-hand value as string.
      * @return true when comparison succeeds; false for invalid path/type/operator combinations.
      */
     public Boolean comparejsonpath(String jsonInput, String jsonPath, String filter, String comparisonValue)
     {
-        String leftValue = extractjsonpathvalue(jsonInput, jsonPath);
-        if (leftValue == null || filter == null || comparisonValue == null) {
+        if (filter == null || comparisonValue == null) {
             return false;
         }
 
         String operator = normalizeoperator(filter);
         if (operator == null) {
+            return false;
+        }
+
+        List<String> leftValues = extractjsonpathvalues(jsonInput, jsonPath);
+        if (leftValues.isEmpty()) {
+            return false;
+        }
+
+        for (String leftValue : leftValues) {
+            if (comparevalue(leftValue, operator, comparisonValue)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean comparevalue(String leftValue, String operator, String comparisonValue)
+    {
+        if (leftValue == null) {
             return false;
         }
 
@@ -106,67 +132,81 @@ public class AthenaUDFHandler
         return false;
     }
 
-    private String extractjsonpathvalue(String jsonInput, String jsonPath)
+    private List<String> extractjsonpathvalues(String jsonInput, String jsonPath)
     {
         if (jsonInput == null || jsonPath == null) {
-            return null;
+            return Collections.emptyList();
         }
 
-        JsonNode node;
+        String normalizedPath = normalizejsonpath(jsonPath);
+        if (normalizedPath == null) {
+            return Collections.emptyList();
+        }
+
         try {
-            node = OBJECT_MAPPER.readTree(jsonInput);
+            Object matchesObject = JsonPath.using(JSONPATH_CONFIGURATION)
+                    .parse(jsonInput)
+                    .read(normalizedPath);
+
+            if (!(matchesObject instanceof List<?>)) {
+                return Collections.emptyList();
+            }
+
+            List<?> matches = (List<?>) matchesObject;
+            List<String> values = new ArrayList<>();
+            for (Object match : matches) {
+                String value = tomatchvalue(match);
+                if (value != null) {
+                    values.add(value);
+                }
+            }
+            return values;
+        }
+        catch (RuntimeException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private String normalizejsonpath(String jsonPath)
+    {
+        String normalizedPath = jsonPath.trim();
+        if (normalizedPath.isEmpty()) {
+            return "$";
+        }
+
+        if (normalizedPath.startsWith("$")) {
+            return normalizedPath;
+        }
+
+        if (normalizedPath.startsWith(".")) {
+            return "$" + normalizedPath;
+        }
+
+        return "$." + normalizedPath;
+    }
+
+    private String tomatchvalue(Object value)
+    {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return String.valueOf(value);
+        }
+        if (value instanceof JsonNode) {
+            JsonNode node = (JsonNode) value;
+            return node.isValueNode() ? node.asText() : node.toString();
+        }
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(value);
         }
         catch (JsonProcessingException e) {
             return null;
         }
-
-        String normalizedPath = jsonPath.trim();
-        if (normalizedPath.startsWith("$")) {
-            normalizedPath = normalizedPath.substring(1);
-            if (normalizedPath.startsWith(".")) {
-                normalizedPath = normalizedPath.substring(1);
-            }
-        }
-
-        if (normalizedPath.isEmpty()) {
-            return node.isValueNode() ? node.asText() : node.toString();
-        }
-
-        String[] pathParts = normalizedPath.split("\\.");
-        for (String pathPart : pathParts) {
-            if (pathPart.isEmpty()) {
-                continue;
-            }
-
-            Matcher matcher = PATH_TOKEN_PATTERN.matcher(pathPart);
-            boolean foundToken = false;
-            while (matcher.find()) {
-                foundToken = true;
-                if (matcher.group(1) != null) {
-                    node = node.path(matcher.group(1));
-                }
-                else {
-                    if (!node.isArray()) {
-                        return null;
-                    }
-                    int index = Integer.parseInt(matcher.group(2));
-                    if (index < 0 || index >= node.size()) {
-                        return null;
-                    }
-                    node = node.get(index);
-                }
-
-                if (node == null || node.isMissingNode() || node.isNull()) {
-                    return null;
-                }
-            }
-
-            if (!foundToken) {
-                return null;
-            }
-        }
-
-        return node.isValueNode() ? node.asText() : node.toString();
     }
 
     private boolean comparebigdecimal(BigDecimal left, BigDecimal right, String operator)

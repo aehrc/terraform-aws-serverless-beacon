@@ -81,4 +81,28 @@ public class AthenaUDFHandlerTest
         assertTrue(athenaUDFHandler.comparejsonpath(json, "$.flags.archived", "!=", "true"));
         assertFalse(athenaUDFHandler.comparejsonpath(json, "$.flags.enabled", ">", "false"));
     }
+
+    @Test
+    public void testCompareJsonPathWildcardAnyMatch()
+    {
+        String json = "{\"a\":{\"b\":[{\"c\":{\"x\":\"1\"}},{\"c\":{\"x\":\"3\"}}]}}";
+        assertTrue(athenaUDFHandler.comparejsonpath(json, "$.a.b[*].c.x", "=", "3"));
+        assertFalse(athenaUDFHandler.comparejsonpath(json, "$.a.b[*].c.x", "=", "2"));
+    }
+
+    @Test
+    public void testCompareJsonPathNestedWildcardAnyMatch()
+    {
+        String json = "{\"a\":{\"b\":[{\"c\":[{\"x\":\"foo\"},{\"x\":\"bar\"}]},{\"c\":[{\"x\":\"baz\"}]}]}}";
+        assertTrue(athenaUDFHandler.comparejsonpath(json, "$.a.b[*].c[*].x", "=", "bar"));
+        assertFalse(athenaUDFHandler.comparejsonpath(json, "$.a.b[*].c[*].x", "=", "qux"));
+    }
+
+    @Test
+    public void testCompareJsonPathIntentionallyPositionedMatch()
+    {
+        String json = "{\"a\":{\"b\":[{\"c\":[{\"x\":\"needle\"}]},{\"c\":[{\"x\":\"hay\"},{\"x\":\"stack\"}]}]}}";
+        assertFalse(athenaUDFHandler.comparejsonpath(json, "$.a.b[1].c[*].x", "=", "needle"));
+        assertTrue(athenaUDFHandler.comparejsonpath(json, "$.a.b[0].c[*].x", "=", "needle"));
+    }
 }
