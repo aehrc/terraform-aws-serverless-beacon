@@ -665,6 +665,16 @@ data "aws_iam_policy_document" "athena-full-access" {
       "arn:aws:s3:::${aws_s3_bucket.metadata-bucket.bucket}/*"
     ]
   }
+
+  statement {
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+    resources = [
+      module.lambda-udf.lambda_function_arn,
+      "${module.lambda-udf.lambda_function_arn}:*"
+    ]
+  }
 }
 
 # DynamoDB Ontology Related Access

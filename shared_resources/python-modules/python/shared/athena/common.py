@@ -128,6 +128,12 @@ def run_custom_query(
     execution_parameters=None,
 ):
     query = query.replace("\n", " ")
+    query = f"""
+    USING EXTERNAL FUNCTION comparejsonpath(jsonInput VARCHAR, jsonPath VARCHAR, filter VARCHAR, comparisonValue VARCHAR)
+    RETURNS BOOLEAN
+    LAMBDA 'udf-test-tf'
+    {query}
+    """
     print(f"{query=}")
     print(f"{execution_parameters=}")
 

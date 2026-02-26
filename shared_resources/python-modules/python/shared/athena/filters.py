@@ -66,20 +66,44 @@ def entity_search_conditions(
             # check to see if the field is in default scope
             # karyotypicSex = "XX" for default scope (Individuals)
             if f.scope is None or f.scope == default_scope:
-                operator = _get_comparison_operator(f)
-                outer_constraints.append("{} {} ?".format(f.id, operator))
-                outer_execution_parameters.append(f"'{str(f.value)}'")
+                filter_id = f.id.strip().replace(" ", "")
+
+                if "." not in filter_id:
+                    # naive comparison
+                    operator = _get_comparison_operator(f)
+                    outer_constraints.append("{} {} ?".format(filter_id, operator))
+                    outer_execution_parameters.append(f"'{str(f.value)}'")
+                else:
+                    # this is a json path comparison
+                    json_root = filter_id.split(".", 1)[0]
+                    json_path = filter_id.split(".", 1)[1]
+                    func_call = f"""comparejsonpath({json_root}, '$.{json_path}', '{f.operator}', ?)"""
+                    outer_constraints.append(func_call)
+                    outer_execution_parameters.append(f"'{str(f.value)}'")
             # otherwise, we have to use the relations table
             # eg: scope = "cohorts", cohortType = "beacon-defined"
             else:
                 group = f.scope
                 joined_class = type_class[group]
-                operator = _get_comparison_operator(f)
-                comparison = "{} {} ?".format(f.id, operator)
-                join_execution_parameters.append(f"'{str(f.value)}'")
-                join_constraints.append(
-                    f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
-                )
+                filter_id = f.id.strip().replace(" ", "")
+
+                if "." not in filter_id:
+                    # naive comparison
+                    operator = _get_comparison_operator(f)
+                    comparison = "{} {} ?".format(filter_id, operator)
+                    join_execution_parameters.append(f"'{str(f.value)}'")
+                    join_constraints.append(
+                        f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
+                    )
+                else:
+                    # this is a json path comparison from a different entity
+                    json_root = filter_id.split(".", 1)[0]
+                    json_path = filter_id.split(".", 1)[1]
+                    func_call = f"""comparejsonpath(TN.{json_root}, '$.{json_path}', '{f.operator}', ?)"""
+                    join_execution_parameters.append(f"'{str(f.value)}'")
+                    join_constraints.append(
+                        f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE {func_call} """
+                    )
 
         elif isinstance(f, OntologyFilter):
             # by default expanded terms is just the term itself

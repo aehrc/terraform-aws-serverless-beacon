@@ -15,3 +15,5 @@ RUN pip install -r requirements.txt
 # docker cli
 RUN wget https://download.docker.com/linux/static/stable/x86_64/docker-29.1.3.tgz -qO- | tar xvfz - docker/docker --strip-components=1
 RUN cp -rp ./docker /usr/local/bin/ && rm -r ./docker
+
+RUN dnf install -y maven
