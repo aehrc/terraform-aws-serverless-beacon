@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "shared_resources/python-modules/python"
+    ]
+}
