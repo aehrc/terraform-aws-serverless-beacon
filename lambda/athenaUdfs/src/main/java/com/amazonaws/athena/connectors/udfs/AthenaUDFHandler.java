@@ -30,6 +30,7 @@ import com.jayway.jsonpath.Option;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -45,6 +46,42 @@ public class AthenaUDFHandler
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(\\.\\d+)?$");
     private static final Pattern BOOLEAN_PATTERN = Pattern.compile("^(?i:true|false)$");
     private static final Pattern DATE_PATTERN = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}([T\\s]\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?)?([zZ]|[+-]\\d{2}:?\\d{2})?$");
+
+    private enum PathTokenType
+    {
+        PROPERTY,
+        ARRAY_INDEX,
+        WILDCARD
+    }
+
+    private static class PathToken
+    {
+        private final PathTokenType type;
+        private final String propertyName;
+        private final Integer arrayIndex;
+
+        private PathToken(PathTokenType type, String propertyName, Integer arrayIndex)
+        {
+            this.type = type;
+            this.propertyName = propertyName;
+            this.arrayIndex = arrayIndex;
+        }
+
+        private static PathToken property(String propertyName)
+        {
+            return new PathToken(PathTokenType.PROPERTY, propertyName, null);
+        }
+
+        private static PathToken arrayindex(int arrayIndex)
+        {
+            return new PathToken(PathTokenType.ARRAY_INDEX, null, arrayIndex);
+        }
+
+        private static PathToken wildcard()
+        {
+            return new PathToken(PathTokenType.WILDCARD, null, null);
+        }
+    }
 
     public AthenaUDFHandler()
     {
@@ -143,6 +180,16 @@ public class AthenaUDFHandler
             return Collections.emptyList();
         }
 
+        List<String> values = extractjsonpathvaluesusingjsonpath(jsonInput, normalizedPath);
+        if (!values.isEmpty()) {
+            return values;
+        }
+
+        return extractjsonpathvaluescaseinsensitive(jsonInput, normalizedPath);
+    }
+
+    private List<String> extractjsonpathvaluesusingjsonpath(String jsonInput, String normalizedPath)
+    {
         try {
             Object matchesObject = JsonPath.using(JSONPATH_CONFIGURATION)
                     .parse(jsonInput)
@@ -152,18 +199,169 @@ public class AthenaUDFHandler
                 return Collections.emptyList();
             }
 
-            List<?> matches = (List<?>) matchesObject;
-            List<String> values = new ArrayList<>();
-            for (Object match : matches) {
-                String value = tomatchvalue(match);
-                if (value != null) {
-                    values.add(value);
-                }
-            }
-            return values;
+            return tomatchvalues((List<?>) matchesObject);
         }
         catch (RuntimeException e) {
             return Collections.emptyList();
+        }
+    }
+
+    private List<String> extractjsonpathvaluescaseinsensitive(String jsonInput, String jsonPath)
+    {
+        List<PathToken> tokens = parsejsonpathtokens(jsonPath);
+        if (tokens == null) {
+            return Collections.emptyList();
+        }
+
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(jsonInput);
+            List<JsonNode> currentNodes = new ArrayList<>();
+            currentNodes.add(root);
+
+            for (PathToken token : tokens) {
+                List<JsonNode> nextNodes = new ArrayList<>();
+                for (JsonNode currentNode : currentNodes) {
+                    applypathtoken(currentNode, token, nextNodes);
+                }
+                if (nextNodes.isEmpty()) {
+                    return Collections.emptyList();
+                }
+                currentNodes = nextNodes;
+            }
+
+            return tomatchvalues(currentNodes);
+        }
+        catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private List<PathToken> parsejsonpathtokens(String jsonPath)
+    {
+        if (jsonPath == null || jsonPath.isEmpty() || jsonPath.charAt(0) != '$') {
+            return null;
+        }
+
+        List<PathToken> tokens = new ArrayList<>();
+        int index = 1;
+        while (index < jsonPath.length()) {
+            char current = jsonPath.charAt(index);
+            if (current == '.') {
+                index++;
+                if (index >= jsonPath.length()) {
+                    break;
+                }
+                if (jsonPath.charAt(index) == '*') {
+                    tokens.add(PathToken.wildcard());
+                    index++;
+                    continue;
+                }
+
+                int start = index;
+                while (index < jsonPath.length()) {
+                    char pathChar = jsonPath.charAt(index);
+                    if (pathChar == '.' || pathChar == '[') {
+                        break;
+                    }
+                    index++;
+                }
+                if (start == index) {
+                    return null;
+                }
+                tokens.add(PathToken.property(jsonPath.substring(start, index)));
+                continue;
+            }
+
+            if (current == '[') {
+                int closingIndex = jsonPath.indexOf(']', index + 1);
+                if (closingIndex < 0) {
+                    return null;
+                }
+
+                String bracketContent = jsonPath.substring(index + 1, closingIndex).trim();
+                if (bracketContent.isEmpty()) {
+                    return null;
+                }
+                if ("*".equals(bracketContent)) {
+                    tokens.add(PathToken.wildcard());
+                }
+                else if (isquotedproperty(bracketContent)) {
+                    tokens.add(PathToken.property(bracketContent.substring(1, bracketContent.length() - 1)));
+                }
+                else {
+                    try {
+                        int arrayIndex = Integer.parseInt(bracketContent);
+                        if (arrayIndex < 0) {
+                            return null;
+                        }
+                        tokens.add(PathToken.arrayindex(arrayIndex));
+                    }
+                    catch (NumberFormatException e) {
+                        return null;
+                    }
+                }
+
+                index = closingIndex + 1;
+                continue;
+            }
+
+            return null;
+        }
+
+        return tokens;
+    }
+
+    private boolean isquotedproperty(String value)
+    {
+        return value.length() >= 2
+                && ((value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'')
+                || (value.charAt(0) == '"' && value.charAt(value.length() - 1) == '"'));
+    }
+
+    private void applypathtoken(JsonNode currentNode, PathToken token, List<JsonNode> nextNodes)
+    {
+        if (token.type == PathTokenType.PROPERTY) {
+            addpropertymatchescaseinsensitive(currentNode, token.propertyName, nextNodes);
+            return;
+        }
+
+        if (token.type == PathTokenType.ARRAY_INDEX) {
+            if (currentNode.isArray() && token.arrayIndex < currentNode.size()) {
+                nextNodes.add(currentNode.get(token.arrayIndex));
+            }
+            return;
+        }
+
+        if (token.type == PathTokenType.WILDCARD) {
+            if (currentNode.isObject()) {
+                Iterator<JsonNode> values = currentNode.elements();
+                while (values.hasNext()) {
+                    nextNodes.add(values.next());
+                }
+            }
+            else if (currentNode.isArray()) {
+                for (JsonNode arrayElement : currentNode) {
+                    nextNodes.add(arrayElement);
+                }
+            }
+        }
+    }
+
+    private void addpropertymatchescaseinsensitive(JsonNode currentNode, String propertyName, List<JsonNode> nextNodes)
+    {
+        if (!currentNode.isObject() || propertyName == null) {
+            return;
+        }
+
+        Iterator<String> fieldNames = currentNode.fieldNames();
+        while (fieldNames.hasNext()) {
+            String fieldName = fieldNames.next();
+            if (fieldName.equalsIgnoreCase(propertyName)) {
+                JsonNode matchedNode = currentNode.get(fieldName);
+                if (matchedNode != null) {
+                    nextNodes.add(matchedNode);
+                }
+            }
         }
     }
 
@@ -182,7 +380,23 @@ public class AthenaUDFHandler
             return "$" + normalizedPath;
         }
 
+        if (normalizedPath.startsWith("[")) {
+            return "$" + normalizedPath;
+        }
+
         return "$." + normalizedPath;
+    }
+
+    private List<String> tomatchvalues(List<?> matches)
+    {
+        List<String> values = new ArrayList<>();
+        for (Object match : matches) {
+            String value = tomatchvalue(match);
+            if (value != null) {
+                values.add(value);
+            }
+        }
+        return values;
     }
 
     private String tomatchvalue(Object value)

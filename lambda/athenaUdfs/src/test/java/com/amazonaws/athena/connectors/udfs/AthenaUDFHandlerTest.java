@@ -105,4 +105,25 @@ public class AthenaUDFHandlerTest
         assertFalse(athenaUDFHandler.comparejsonpath(json, "$.a.b[1].c[*].x", "=", "needle"));
         assertTrue(athenaUDFHandler.comparejsonpath(json, "$.a.b[0].c[*].x", "=", "needle"));
     }
+
+    @Test
+    public void testCompareJsonPathCaseInsensitivePropertyNames()
+    {
+        String json = "{\"Event\":{\"CreatedAt\":\"2024-01-02T00:00:00Z\"}}";
+        assertTrue(athenaUDFHandler.comparejsonpath(json, "$.event.createdat", "=", "2024-01-02T00:00:00Z"));
+    }
+
+    @Test
+    public void testCompareJsonPathCaseInsensitiveWithWildcard()
+    {
+        String json = "{\"A\":{\"B\":[{\"C\":{\"X\":\"needle\"}},{\"C\":{\"X\":\"other\"}}]}}";
+        assertTrue(athenaUDFHandler.comparejsonpath(json, "$.a.b[*].c.x", "=", "needle"));
+    }
+
+    @Test
+    public void testCompareJsonPathCaseInsensitiveBracketProperty()
+    {
+        String json = "{\"Root\":{\"CamelCase\":\"value\"}}";
+        assertTrue(athenaUDFHandler.comparejsonpath(json, "$['root']['camelcase']", "=", "value"));
+    }
 }
