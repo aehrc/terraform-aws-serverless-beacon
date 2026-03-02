@@ -127,7 +127,10 @@ def route(request: RequestParams, variant_id):
     dataset_samples = defaultdict(set)
 
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "analyses", "biosamples", id_modifier="A.id"
+        request.query.filters,
+        "analyses",
+        "biosamples",
+        id_modifier="A.id",
     )
 
     if conditions:
@@ -168,14 +171,19 @@ def route(request: RequestParams, variant_id):
             )
 
     queries = []
-    
+
     dataset_samples_sorted = OrderedDict(sorted(dataset_samples.items()))
     iterated_biosamples = 0
     chosen_biosamples = 0
-    total_biosamples = sum([len(sample_names) for sample_names in dataset_samples_sorted.values()])
+    total_biosamples = sum(
+        [len(sample_names) for sample_names in dataset_samples_sorted.values()]
+    )
 
     for dataset_id, sample_names in dataset_samples.items():
-        if len(sample_names) > 0 and request.query.requested_granularity == Granularity.RECORD:
+        if (
+            len(sample_names) > 0
+            and request.query.requested_granularity == Granularity.RECORD
+        ):
             # TODO optimise for duplicate individuals
             chosen_samples = []
 

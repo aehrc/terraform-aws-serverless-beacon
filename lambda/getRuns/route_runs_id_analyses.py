@@ -51,7 +51,11 @@ def get_record_query(id, skip, limit, conditions=""):
 
 def route(request: RequestParams, run_id):
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "runs", "analyses", with_where=False
+        request.query.filters,
+        "runs",
+        "analyses",
+        with_where=False,
+        request=request,
     )
 
     if request.query.requested_granularity == Granularity.BOOLEAN:

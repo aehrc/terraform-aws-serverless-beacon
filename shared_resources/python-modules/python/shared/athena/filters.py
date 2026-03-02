@@ -12,11 +12,13 @@ from shared.ontoutils import (
     get_term_descendants_in_beacon,
 )
 from shared.utils import ENV_ATHENA
+from shared.variantutils import perform_variant_search
+from shared.apiutils import RequestParams, Granularity
 
 from .analysis import Analysis
 from .biosample import Biosample
 from .cohort import Cohort
-from .dataset import Dataset
+from .dataset import Dataset, get_datasets
 from .individual import Individual
 from .run import Run
 
@@ -53,6 +55,7 @@ def entity_search_conditions(
     default_scope: str,
     id_modifier="id",
     with_where=True,
+    request: RequestParams | None = None,
 ):
     # arrays to gradually form the SQL expression
     join_constraints = []
@@ -60,6 +63,44 @@ def entity_search_conditions(
     # using execution parameters to separately pass to boto3 for it to do SQL sanitization
     join_execution_parameters = []
     outer_execution_parameters = []
+    filter_samples = []
+
+    if request is not None and request.query.request_parameters is not None:
+        g_variant = request.query.request_parameters
+        # TODO get sample ids for the variant and add to the join constraints
+        datasets = get_datasets(g_variant.assembly_id, skip=0, limit="ALL")
+
+        print(f"Found {len(datasets)} datasets for assembly {g_variant.assembly_id}")
+        for dataset in datasets:
+            print("Dataset", dataset)
+
+        query_responses = perform_variant_search(
+            datasets=datasets,
+            reference_name=g_variant.reference_name,
+            reference_bases=g_variant.reference_bases,
+            alternate_bases=g_variant.alternate_bases,
+            start=g_variant.start,
+            end=g_variant.end,
+            variant_type=g_variant.variant_type,
+            variant_min_length=g_variant.variant_min_length,
+            variant_max_length=g_variant.variant_max_length,
+            requested_granularity=Granularity.RECORD,
+            include_datasets=request.query.include_resultset_responses,
+            dataset_samples=[],
+            include_samples=True,
+        )
+
+        sample_names_relevant_to_variant = set()
+        for query_response in query_responses:
+            print("Query response samples", query_response)
+            sample_names_relevant_to_variant.update(query_response.sample_names)
+
+        filter_samples = list(sample_names_relevant_to_variant)
+
+        join_constraints.append(
+            f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{Analysis._table_name}" S ON RI.analysisid=S.id WHERE S._vcfsampleid IN ({', '.join(['?' for s in filter_samples])}) """
+        )
+        join_execution_parameters += filter_samples
 
     for f in filters:
         if isinstance(f, AlphanumericFilter):

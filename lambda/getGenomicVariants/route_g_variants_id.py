@@ -58,7 +58,10 @@ def route(request: RequestParams, variant_id):
     end = [pos + len(alternate_bases)]
 
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "analyses", "analyses", id_modifier="A.id"
+        request.query.filters,
+        "analyses",
+        "analyses",
+        id_modifier="A.id",
     )
 
     if conditions:

@@ -46,7 +46,10 @@ def get_record_query(skip, limit, conditions=""):
 
 def route(request: RequestParams):
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "biosamples", "biosamples"
+        request.query.filters,
+        "biosamples",
+        "biosamples",
+        request=request,
     )
 
     if request.query.requested_granularity == Granularity.BOOLEAN:
@@ -83,14 +86,14 @@ def route(request: RequestParams):
         )
         record_future = executor.submit(
             Biosample.get_by_query,
-            record_query, 
-            execution_parameters=execution_parameters
+            record_query,
+            execution_parameters=execution_parameters,
         )
         # counts fetching
         count_query = get_count_query(conditions)
         count_future = executor.submit(
             Biosample.get_count_by_query,
-            count_query, 
+            count_query,
             execution_parameters=execution_parameters,
         )
         executor.shutdown()

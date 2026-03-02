@@ -46,7 +46,10 @@ def get_record_query(skip, limit, conditions=""):
 
 def route(request: RequestParams):
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "analyses", "analyses"
+        request.query.filters,
+        "analyses",
+        "analyses",
+        request=request,
     )
 
     if request.query.requested_granularity == Granularity.BOOLEAN:
@@ -82,7 +85,9 @@ def route(request: RequestParams):
             request.query.pagination.skip, request.query.pagination.limit, conditions
         )
         record_future = executor.submit(
-            Analysis.get_by_query, record_query, execution_parameters=execution_parameters
+            Analysis.get_by_query,
+            record_query,
+            execution_parameters=execution_parameters,
         )
         # counts fetching
         count_query = get_count_query(conditions)

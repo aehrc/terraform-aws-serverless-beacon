@@ -85,8 +85,8 @@ def get_record_query(dataset_id, sample_names):
 
 def route(request: RequestParams, variant_id):
     dataset_hash = base64.b64decode(variant_id.encode()).decode()
-    assembly_id, reference_name, pos, reference_bases, alternate_bases = dataset_hash.split(
-        "\t"
+    assembly_id, reference_name, pos, reference_bases, alternate_bases = (
+        dataset_hash.split("\t")
     )
     pos = int(pos) - 1
     start = [pos]
@@ -94,7 +94,10 @@ def route(request: RequestParams, variant_id):
     dataset_samples = defaultdict(set)
 
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "analyses", "individuals", id_modifier="A.id"
+        request.query.filters,
+        "analyses",
+        "individuals",
+        id_modifier="A.id",
     )
 
     if conditions:
@@ -139,10 +142,15 @@ def route(request: RequestParams, variant_id):
     dataset_samples_sorted = OrderedDict(sorted(dataset_samples.items()))
     iterated_individuals = 0
     chosen_individuals = 0
-    total_individuals = sum([len(sample_names) for sample_names in dataset_samples_sorted.values()])
+    total_individuals = sum(
+        [len(sample_names) for sample_names in dataset_samples_sorted.values()]
+    )
 
     for dataset_id, sample_names in dataset_samples_sorted.items():
-        if len(sample_names) > 0 and request.query.requested_granularity == Granularity.RECORD:
+        if (
+            len(sample_names) > 0
+            and request.query.requested_granularity == Granularity.RECORD
+        ):
             # TODO optimise for duplicate individuals
             chosen_samples = []
 

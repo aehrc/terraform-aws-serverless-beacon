@@ -43,8 +43,16 @@ def route(request: RequestParams, individual_id):
         "individuals",
         id_modifier="A.id",
         with_where=False,
+        request=request,
     )
     query_params = request.query.request_parameters
+    if query_params is None:
+        return bundle_response(
+            400,
+            {
+                "request_parameters": "Variant query parameters are required for this endpoint"
+            },
+        )
     query = datasets_query(conditions, query_params.assembly_id, individual_id)
     exec_id = run_custom_query(
         query, return_id=True, execution_parameters=execution_parameters

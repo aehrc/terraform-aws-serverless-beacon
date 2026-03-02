@@ -177,7 +177,7 @@ class RequestQuery(CamelModel):
         IncludeResultsetResponses.HIT
     )
     pagination: Pagination = Pagination()
-    request_parameters: RequestQueryParams = RequestQueryParams()
+    request_parameters: Optional[RequestQueryParams] = None
     test_mode: bool = False
     requested_granularity: Granularity = Granularity(BEACON_DEFAULT_GRANULARITY)
     _filters: dict = PrivateAttr()
@@ -228,7 +228,11 @@ class RequestParams(CamelModel):
             "apiVersion": self.meta.api_version,
             "requestedSchemas": self.meta.requested_schemas,
             "filters": self.query._filters,
-            "req_params": self.query.request_parameters._user_params,
+            "req_params": (
+                self.query.request_parameters._user_params
+                if self.query.request_parameters
+                else None
+            ),
             "includeResultsetResponses": self.query.include_resultset_responses,
             "pagination": self.query.pagination.model_dump(),
             "requestedGranularity": self.query.requested_granularity,

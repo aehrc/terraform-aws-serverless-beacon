@@ -46,7 +46,10 @@ def get_record_query(skip, limit, conditions=[]):
 
 def route(request: RequestParams):
     conditions, execution_parameters = entity_search_conditions(
-        request.query.filters, "datasets", "datasets"
+        request.query.filters,
+        "datasets",
+        "datasets",
+        request=request,
     )
 
     if request.query.requested_granularity == "boolean":

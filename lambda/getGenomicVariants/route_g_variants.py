@@ -50,6 +50,13 @@ def route(request: RequestParams):
         request.query.filters, "analyses", "analyses", id_modifier="A.id"
     )
     query_params = request.query.request_parameters
+    if query_params is None:
+        return bundle_response(
+            400,
+            {
+                "request_parameters": "Variant query parameters are required for this endpoint"
+            },
+        )
     check_all = request.query.include_resultset_responses in (
         IncludeResultsetResponses.HIT,
         IncludeResultsetResponses.ALL,
