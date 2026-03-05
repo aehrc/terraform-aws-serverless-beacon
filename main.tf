@@ -51,6 +51,11 @@ locals {
     # configurations
     CONFIG_MAX_VARIANT_SEARCH_BASE_RANGE = var.config-max-variant-search-base-range
   }
+  # variant related variables
+  variant_variables = {
+    SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
+    SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
+  }
   # athena related variables
   athena_variables = {
     ATHENA_WORKGROUP               = aws_athena_workgroup.sbeacon-workgroup.name
@@ -120,6 +125,7 @@ module "lambda-submitDataset" {
       DYNAMO_DATASETS_TABLE = aws_dynamodb_table.datasets.name
       INDEXER_LAMBDA        = module.lambda-indexer.lambda_function_name
     },
+    local.variant_variables,
     local.sbeacon_variables,
     local.athena_variables,
     local.dynamodb_variables
@@ -274,6 +280,7 @@ module "lambda-getFilteringTerms" {
   tags = var.common-tags
 
   environment_variables = merge(
+
     local.sbeacon_variables,
     local.athena_variables,
     local.dynamodb_variables
@@ -309,10 +316,7 @@ module "lambda-getAnalyses" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -387,10 +391,7 @@ module "lambda-getIndividuals" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -426,10 +427,7 @@ module "lambda-getBiosamples" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -465,10 +463,7 @@ module "lambda-getDatasets" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -504,9 +499,7 @@ module "lambda-getCohorts" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA = module.lambda-splitQuery.lambda_function_name
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -542,10 +535,7 @@ module "lambda-getRuns" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -613,7 +603,8 @@ module "lambda-performQuery" {
     VARIANTS_BUCKET = aws_s3_bucket.variants-bucket.bucket
     },
     local.sbeacon_variables,
-  local.dynamodb_variables)
+    local.dynamodb_variables
+  )
 }
 
 #
@@ -710,10 +701,7 @@ module "lambda-analytics" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables
@@ -747,10 +735,7 @@ module "lambda-askbeacon" {
   tags = var.common-tags
 
   environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
+    local.variant_variables,
     local.athena_variables,
     local.sbeacon_variables,
     local.dynamodb_variables,
