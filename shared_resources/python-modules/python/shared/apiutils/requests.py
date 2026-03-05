@@ -60,6 +60,13 @@ class RequestQueryParams(CamelModel):
         super().__init__(**data)
         self._user_params = data
 
+    @field_validator("variant_type", mode="before")
+    @classmethod
+    def validate_variant_type(cls, variant_type):
+        if isinstance(variant_type, str) and len(variant_type.strip()) == 0:
+            return None
+        return variant_type
+
     @field_validator("start", "end")
     @classmethod
     def vallidate_base_positions(cls, base: list[int], info: ValidationInfo):
