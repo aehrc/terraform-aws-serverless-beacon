@@ -56,7 +56,7 @@ def perform_query(payload: dict(), is_async: bool = False):
     sample_indices = set()
     all_sample_names = []
     sample_names = []
-    
+
     bcftools_query = QueryBuiler()
     bcftools_query = bcftools_query.set_samples(chosen_samples)
     bcftools_query = bcftools_query.set_region(region)
@@ -64,12 +64,12 @@ def perform_query(payload: dict(), is_async: bool = False):
 
     bcftools_query = bcftools_query.set_vcf(payload["vcf_location"])
     args = bcftools_query.build()
-    
+
     print("Iterating bcftools result")
     query_process = subprocess.Popen(
         args, stdout=subprocess.PIPE, cwd="/tmp", encoding="ascii"
     )
-    
+
     # iterate through bcftools output
     for line in query_process.stdout:
         try:
@@ -120,6 +120,20 @@ def perform_query(payload: dict(), is_async: bool = False):
                         if alt.startswith("<")
                         else len(alt) < vcf_reference_length
                     )
+                    and variant_min_length <= len(alt) <= variant_max_length
+                ]
+            elif variant_type == "SNP":
+                hit_indexes = [
+                    i
+                    for i, alt in enumerate(vcf_all_alts)
+                    if len(alt) == vcf_reference_length
+                    and variant_min_length <= len(alt) <= variant_max_length
+                ]
+            elif variant_type == "INDEL":
+                hit_indexes = [
+                    i
+                    for i, alt in enumerate(vcf_all_alts)
+                    if len(alt) != vcf_reference_length
                     and variant_min_length <= len(alt) <= variant_max_length
                 ]
             elif variant_type == "INS":
@@ -219,6 +233,8 @@ def perform_query(payload: dict(), is_async: bool = False):
                 total_count = int(info[3:])
             elif info.startswith("VT="):
                 vcf_variant_type = info[3:]
+            elif info.startswith("SVTYPE=") and vcf_variant_type == "N/A":
+                vcf_variant_type = info[7:]
 
         all_calls = None
         # if AC=X was there
