@@ -67,12 +67,7 @@ def entity_search_conditions(
 
     if request is not None and request.query.request_parameters is not None:
         g_variant = request.query.request_parameters
-        # TODO get sample ids for the variant and add to the join constraints
         datasets = get_datasets(g_variant.assembly_id, skip=0, limit="ALL")
-
-        print(f"Found {len(datasets)} datasets for assembly {g_variant.assembly_id}")
-        for dataset in datasets:
-            print("Dataset", dataset)
 
         query_responses = perform_variant_search(
             datasets=datasets,
@@ -92,15 +87,18 @@ def entity_search_conditions(
 
         sample_names_relevant_to_variant = set()
         for query_response in query_responses:
-            print("Query response samples", query_response)
             sample_names_relevant_to_variant.update(query_response.sample_names)
 
         filter_samples = list(sample_names_relevant_to_variant)
 
-        join_constraints.append(
-            f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{Analysis._table_name}" S ON RI.analysisid=S.id WHERE S._vcfsampleid IN ({', '.join(['?' for s in filter_samples])}) """
-        )
-        join_execution_parameters += filter_samples
+        if filter_samples:
+            join_constraints.append(
+                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{Analysis._table_name}" S ON RI.analysisid=S.id WHERE S._vcfsampleid IN ({', '.join(['?' for s in filter_samples])}) """
+            )
+            join_execution_parameters += filter_samples
+        else:
+            # if there are no samples relevant to the variant, then we can return a constraint that will yield no results
+            outer_constraints.append("1=0")
 
     for f in filters:
         if isinstance(f, AlphanumericFilter):
