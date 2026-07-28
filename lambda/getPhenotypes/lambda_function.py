@@ -13,6 +13,11 @@ def lambda_handler(event, context):
     if event["resource"] == "/phenotypes":
         return route_phenotypes(request_params)
 
+    return bundle_response(
+        404,
+        {"message": f"Unknown resource {event.get('resource')}"}
+    )
+
 
 if __name__ == "__main__":
     pass

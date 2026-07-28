@@ -33,23 +33,23 @@
         "score": {
             "description": "The confidence score for the genotype call.",
             "examples": [
-                "0.9238856"
+                0.9238856
             ],
-            "type": "string"
+            "type": "number"
         },
         "theta": {
             "description": "The theta value for the genotype call.",
             "examples": [
-                "0.4629413"
+                0.4629413
             ],
-            "type": "string"
+            "type": "number"
         },
         "b_allele_freq": {
             "description": "The frequency of the minor (B) allele.",
             "examples": [
-                "0.5026675.1"
+                0.5026675
             ],
-            "type": "string"
+            "type": "number"
         }
     },
     "required": [

@@ -31,75 +31,75 @@
             "examples": [
                 3.2
             ],
-            "type": "string"
+            "type": "number"
         },
-        "weaing_weight_kg": {
+        "weaning_weight_kg": {
             "description": "Weaning weight of the sampled individual in kilograms.",
             "examples": [
                 10
             ],
-            "type": "string"
+            "type": "number"
         },
         "six_month_weight_kg": {
             "description": "Six-month weight of the sampled individual in kilograms.",
             "examples": [
                 10
             ],
-            "type": "string"
+            "type": "number"
         },
         "fat_thickness_cm": {
             "description": "Fat thickness of the sampled individual in centimeters.",
             "examples": [
                 35.5
             ],
-            "type": "string"
+            "type": "number"
         },
         "eye_muscle_area_cm2": {
             "description": "Eye muscle area of the sampled individual in square centimeters.",
             "examples": [
                 35.5
             ],
-            "type": "string"
+            "type": "number"
         },
         "height_at_withers_cm": {
             "description": "Height at withers of the sampled individual in centimeters.",
             "examples": [
                 40.0
             ],
-            "type": "string"
+            "type": "number"
         },"chest_girth_cm": {
             "description": "Chest girth of the sampled individual in centimeters.",
             "examples": [
                 35.5
             ],
-            "type": "string"
+            "type": "number"
         },
         "shin_circumference_cm": {
             "description": "Shin circumference of the sampled individual in centimeters.",
             "examples": [
                 20.0
             ],
-            "type": "string"
+            "type": "number"
         },"pre_weaning_gain_kg": {
             "description": "Pre-weaning weight gain of the sampled individual in kilograms.",
             "examples": [
                 10
             ],
-            "type": "string"
+            "type": "number"
         },
         "post_weaning_gain_kg": {
             "description": "Post-weaning weight gain of the sampled individual in kilograms.",
             "examples": [
                 25
             ],
-            "type": "string"
+            "type": "number"
         },
         "daily_weight_gain_kg": {
             "description": "Daily weight gain of the sampled individual in kilograms.",
             "examples": [
                 5
             ],
-            "type": "string"
+            "type": "number"
         }
     },
     "required": [

@@ -58,7 +58,7 @@ resource "aws_glue_catalog_table" "sbeacon-snps" {
 
     columns {
       name = "coordinate"
-      type = "string"
+      type = "double"
     }
 
     columns {
@@ -179,17 +179,17 @@ resource "aws_glue_catalog_table" "sbeacon-genotypes" {
 
     columns {
       name = "score"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "theta"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "b_allele_freq"
-      type = "string"
+      type = "double"
     }
   }
 }
@@ -242,57 +242,57 @@ resource "aws_glue_catalog_table" "sbeacon-phenotypes" {
 
     columns {
       name = "birth_weight_kg"
-      type = "string"
+      type = "double"
     }
 
     columns {
-      name = "weaing_weight_kg"
-      type = "string"
+      name = "weaning_weight_kg"
+      type = "double"
     }
 
     columns {
       name = "six_month_weight_kg"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "fat_thickness_cm"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "eye_muscle_area_cm2"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "height_at_withers_cm"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "chest_girth_cm"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "shin_circumference_cm"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "pre_weaning_gain_kg"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "post_weaning_gain_kg"
-      type = "string"
+      type = "double"
     }
 
     columns {
       name = "daily_weight_gain_kg"
-      type = "string"
+      type = "double"
     }
   } 
 }

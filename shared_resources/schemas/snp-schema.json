@@ -28,9 +28,9 @@
         "coordinate": {
             "description": "Coordinate SNP is located at",
             "examples": [
-                "5327353"
+                5327353
             ],
-            "type": "string"
+            "type": "number"
         },
         "allelea_top_base": {
             "description": "Most common major (A) base.",

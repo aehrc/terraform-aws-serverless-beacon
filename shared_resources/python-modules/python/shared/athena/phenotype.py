@@ -23,7 +23,7 @@ class Phenotype(jsons.JsonSerializable, AthenaModel):
         "sample_id",
         "sex",
         "birth_weight_kg",
-        "weaing_weight_kg",
+        "weaning_weight_kg",
         "six_month_weight_kg",
         "fat_thickness_cm",
         "eye_muscle_area_cm2",
@@ -34,7 +34,22 @@ class Phenotype(jsons.JsonSerializable, AthenaModel):
         "post_weaning_gain_kg",
         "daily_weight_gain_kg"
     ]
-    _table_column_types = defaultdict(lambda: "string")
+    _table_column_types = defaultdict(
+        lambda: "string", 
+        {
+            "birth_weight_kg": "double", 
+            "weaning_weight_kg": "double", 
+            "six_month_weight_kg": "double", 
+            "fat_thickness_cm": "double", 
+            "eye_muscle_area_cm2": "double", 
+            "height_at_withers_cm": "double", 
+            "chest_girth_cm": "double", 
+            "shin_circumference_cm": "double", 
+            "pre_weaning_gain_kg": "double", 
+            "post_weaning_gain_kg": "double", 
+            "daily_weight_gain_kg": "double"
+        }
+    )
 
 
     def init(
@@ -44,7 +59,7 @@ class Phenotype(jsons.JsonSerializable, AthenaModel):
         sample_id="",
         sex="",
         birth_weight_kg="",
-        weaing_weight_kg="",
+        weaning_weight_kg="",
         six_month_weight_kg="",
         fat_thickness_cm="",
         eye_muscle_area_cm2="",
@@ -59,7 +74,7 @@ class Phenotype(jsons.JsonSerializable, AthenaModel):
         self.sample_id = sample_id
         self.sex = sex
         self.birth_weight_kg = birth_weight_kg
-        self.weaing_weight_kg = weaing_weight_kg
+        self.weaning_weight_kg = weaning_weight_kg
         self.six_month_weight_kg = six_month_weight_kg
         self.fat_thickness_cm = fat_thickness_cm
         self.eye_muscle_area_cm2 = eye_muscle_area_cm2

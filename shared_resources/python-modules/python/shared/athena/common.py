@@ -44,7 +44,12 @@ class AthenaModel:
             query, queue=None, execution_parameters=execution_parameters
         )
 
-        if not len(result) > 0:
+        # if not len(result) > 0:
+        #     print("Athena query returned no result")
+        #     return []
+        if result is None:
+            raise Exception(f"Athena query failed. query={query} - Athena returned None")
+        if len(result) == 0:
             return []
         elif queue is None:
             return len(result) > 1
@@ -84,7 +89,9 @@ class AthenaModel:
             query, queue=None, execution_parameters=execution_parameters
         )
 
-        if not len(result) > 0:
+        if result is None:
+            raise Exception(f"Athena query failed. query={query} - Athena returned None")
+        if len(result) == 0:
             return []
         elif queue is None:
             return int(result[1]["Data"][0]["VarCharValue"])
@@ -131,6 +138,8 @@ def run_custom_query(
     """
     print(f"{query=}")
     print(f"{execution_parameters=}")
+
+    print([(p, type(p)) for p in execution_parameters])
 
     if execution_parameters is None:
         response = athena.start_query_execution(

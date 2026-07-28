@@ -93,6 +93,15 @@ resource "aws_api_gateway_deployment" "BeaconApi" {
       aws_api_gateway_integration_response.genotypes_post,
       aws_api_gateway_method_response.genotypes,
       aws_api_gateway_method_response.genotypes_post,
+      # /phenotypes
+      aws_api_gateway_method.phenotypes,
+      aws_api_gateway_method.phenotypes_post,
+      aws_api_gateway_integration.phenotypes,
+      aws_api_gateway_integration.phenotypes_post,
+      aws_api_gateway_integration_response.phenotypes,
+      aws_api_gateway_integration_response.phenotypes_post,
+      aws_api_gateway_method_response.phenotypes,
+      aws_api_gateway_method_response.phenotypes_post,
       # index
       aws_api_gateway_method.index_post,
       aws_api_gateway_integration.index_post,

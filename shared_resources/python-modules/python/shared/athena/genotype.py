@@ -27,7 +27,7 @@ class Genotype(jsons.JsonSerializable, AthenaModel):
         "theta",
         "b_allele_freq"
     ]
-    _table_column_types = defaultdict(lambda: "string")
+    _table_column_types = defaultdict(lambda: "string", {"score": "double", "theta": "double", "b_allele_freq": "double"})
 
 
     def init(

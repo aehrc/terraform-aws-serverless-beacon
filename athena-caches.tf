@@ -242,7 +242,7 @@ resource "aws_glue_catalog_table" "sbeacon-phenotypes-cache" {
     }
 
     columns {
-      name = "weaing_weight_kg"
+      name = "weaning_weight_kg"
       type = "string"
     }
 

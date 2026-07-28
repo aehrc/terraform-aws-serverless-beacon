@@ -29,7 +29,7 @@ table_request_params = {
     "allelea_top_base": Snp,
     "alleleb_top_base": Snp,
     "birth_weight_kg": Phenotype,
-    "weaing_weight_kg": Phenotype,
+    "weaning_weight_kg": Phenotype,
     "six_month_weight_kg": Phenotype,
     "fat_thickness_cm": Phenotype,
     "eye_muscle_area_cm2": Phenotype,
@@ -47,13 +47,19 @@ type_table_id = {
     "phenotypes": "sample_id"
 }
 
-# given a dict <f>={"operator":X,"value":Y} return appropriate SQL fragment "<operator> <value>"
+# # given a dict <f>={"operator":X,"value":Y} return appropriate SQL fragment "<operator> <value>"
+# def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
+#     if isinstance(filter.value, int) or isinstance(filter.value, float):
+#         # infer a numeric comparison
+#         return "!=" if filter.operator == Operator.NOT else filter.operator
+#     # infer an alphanumeric comparison
+#     return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
+
 def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
-    if isinstance(filter.value, int) or isinstance(filter.value, float):
-        # infer a numeric comparison
-        return "!=" if filter.operator == Operator.NOT else filter.operator
-    # infer an alphanumeric comparison
-    return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
+    if filter.operator == Operator.NOT:
+        return "!="
+
+    return filter.operator.value
 
 
 def entity_search_conditions(
@@ -116,7 +122,7 @@ def entity_search_conditions(
                 # naive comparison (JSON will not be in our data)
                 operator = _get_comparison_operator(f)
                 outer_constraints.append("{} {} ?".format(filter_id, operator))
-                outer_execution_parameters.append(f"'{str(f.value)}'")
+                outer_execution_parameters.append(str(f.value))
             
             else:
                 group = f.scope
@@ -127,7 +133,7 @@ def entity_search_conditions(
 
                 operator = _get_comparison_operator(f)
                 comparison = "{} {} ?".format(filter_id, operator)
-                join_execution_parameters.append(f"'{str(f.value)}'")
+                join_execution_parameters.append(str(f.value))
 
                 table_id_col = type_table_id[group]
                 target_table = table_request_params[filter_id]

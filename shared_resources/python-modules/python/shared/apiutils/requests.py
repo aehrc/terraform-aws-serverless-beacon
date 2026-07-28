@@ -145,7 +145,7 @@ class OntologyFilter(CamelModel):
 # Thirdparty Code
 class AlphanumericFilter(CamelModel):
     id: str
-    value: Union[str, int]
+    value: Union[str, int, float]
     scope: Optional[str] = None
     operator: Operator = Operator.EQUAL
 

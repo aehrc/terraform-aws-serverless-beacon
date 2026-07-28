@@ -25,7 +25,7 @@ class Snp(jsons.JsonSerializable, AthenaModel):
         "allelea_top_base",
         "alleleb_top_base"
     ]
-    _table_column_types = defaultdict(lambda: "string")
+    _table_column_types = defaultdict(lambda: "string", {"coordinate": "double"})
 
 
     def init(
