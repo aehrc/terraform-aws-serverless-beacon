@@ -25,17 +25,17 @@ def test_extract_genotype_txt():
             "dataset_id": "genotype1",
             "id_ref": "rs1",
             "value": "AA",
-            "score": "0.95",
-            "theta": "0.42",
-            "b_allele_freq": "0.12",
+            "score": 0.95,
+            "theta": 0.42,
+            "b_allele_freq": 0.12,
         },
         {
             "dataset_id": "genotype1",
             "id_ref": "rs2",
             "value": "AB",
-            "score": "0.87",
-            "theta": "0.51",
-            "b_allele_freq": "0.48",
+            "score": 0.87,
+            "theta": 0.51,
+            "b_allele_freq": 0.48,
         },
     ]
 
@@ -53,7 +53,7 @@ def test_extract_snp_txt():
             "dataset_id": "snp1",
             "id": "rs1",
             "chromosome": "1",
-            "coordinate": "12345",
+            "coordinate": 12345,
             "allelea_top_base": "A",
             "alleleb_top_base": "G",
         },
@@ -61,7 +61,7 @@ def test_extract_snp_txt():
             "dataset_id": "snp1",
             "id": "rs2",
             "chromosome": "2",
-            "coordinate": "67890",
+            "coordinate": 67890,
             "allelea_top_base": "C",
             "alleleb_top_base": "T",
         },
@@ -73,8 +73,8 @@ def test_extract_phenotype():
     rows = extract(raw, "phenotype1", delimiter=",")
 
     assert rows == [
-        {"dataset_id": "phenotype1", "sample_id": "merino1", "sex": "male", "birth_weight_kg": "3"},
-        {"dataset_id": "phenotype1", "sample_id": "merino2", "sex": "female", "birth_weight_kg": "2"},
+        {"dataset_id": "phenotype1", "sample_id": "merino1", "sex": "male", "birth_weight_kg": 3},
+        {"dataset_id": "phenotype1", "sample_id": "merino2", "sex": "female", "birth_weight_kg": 2},
     ]
 
 if __name__ == "__main__":

@@ -47,6 +47,17 @@ type_table_id = {
     "phenotypes": "sample_id"
 }
 
+STRING_FIELDS = {
+    "id",
+    "chromosome",
+    "allelea_top_base",
+    "alleleb_top_base",
+    "sample_id",
+    "breed",
+    "sex",
+    "value",
+}
+
 # # given a dict <f>={"operator":X,"value":Y} return appropriate SQL fragment "<operator> <value>"
 # def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
 #     if isinstance(filter.value, int) or isinstance(filter.value, float):
@@ -55,11 +66,14 @@ type_table_id = {
 #     # infer an alphanumeric comparison
 #     return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
 
-def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
+def _get_comparison_operator(filter):
     if filter.operator == Operator.NOT:
         return "!="
 
-    return filter.operator.value
+    if filter.operator == Operator.EQUAL:
+        return "="
+
+    return filter.operator
 
 
 def entity_search_conditions(
@@ -116,30 +130,40 @@ def entity_search_conditions(
         if isinstance(f, AlphanumericFilter):
             # check to see if the field is in default scope
             # karyotypicSex = "XX" for default scope (Individuals)
+            filter_id = f.id.strip().replace(" ", "")
+
             if f.scope is None or f.scope == default_scope:
-                filter_id = f.id.strip().replace(" ", "")
 
                 # naive comparison (JSON will not be in our data)
                 operator = _get_comparison_operator(f)
-                outer_constraints.append("{} {} ?".format(filter_id, operator))
+
+                if filter_id in STRING_FIELDS:
+                    outer_constraints.append(f"{filter_id} {operator} CAST(? AS VARCHAR)")
+                else:
+                    outer_constraints.append(f"{filter_id} {operator} ?")
+
                 outer_execution_parameters.append(str(f.value))
-            
+
             else:
                 group = f.scope
-                filter_id = f.id.strip().replace(" ", "")
 
                 if group not in type_table_id or filter_id not in table_request_params:
                     continue
 
                 operator = _get_comparison_operator(f)
-                comparison = "{} {} ?".format(filter_id, operator)
+
+                if filter_id in STRING_FIELDS:
+                    comparison = (f"{filter_id} {operator} CAST(? AS VARCHAR)")
+                else:
+                    comparison = (f"{filter_id} {operator} ?")
+
                 join_execution_parameters.append(str(f.value))
 
                 table_id_col = type_table_id[group]
                 target_table = table_request_params[filter_id]
 
                 join_constraints.append(
-                    f""" SELECT {table_id_col} FROM "{target_table._table_name}" T WHERE {comparison} """
+                    f"""SELECT {table_id_col} FROM "{target_table._table_name}" T WHERE {comparison}"""
                 )
 
     # format fragments together to form coherent SQL expression
