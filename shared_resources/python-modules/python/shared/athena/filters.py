@@ -58,13 +58,6 @@ STRING_FIELDS = {
     "value",
 }
 
-# # given a dict <f>={"operator":X,"value":Y} return appropriate SQL fragment "<operator> <value>"
-# def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
-#     if isinstance(filter.value, int) or isinstance(filter.value, float):
-#         # infer a numeric comparison
-#         return "!=" if filter.operator == Operator.NOT else filter.operator
-#     # infer an alphanumeric comparison
-#     return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
 
 def _get_comparison_operator(filter):
     if filter.operator == Operator.NOT:
