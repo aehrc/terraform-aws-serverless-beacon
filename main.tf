@@ -61,22 +61,14 @@ locals {
     ATHENA_WORKGROUP               = aws_athena_workgroup.sbeacon-workgroup.name
     ATHENA_METADATA_DATABASE       = aws_glue_catalog_database.metadata-database.name
     ATHENA_METADATA_BUCKET         = aws_s3_bucket.metadata-bucket.bucket
-    ATHENA_DATASETS_TABLE          = aws_glue_catalog_table.sbeacon-datasets.name
-    ATHENA_DATASETS_CACHE_TABLE    = aws_glue_catalog_table.sbeacon-datasets-cache.name
-    ATHENA_COHORTS_TABLE           = aws_glue_catalog_table.sbeacon-cohorts.name
-    ATHENA_COHORTS_CACHE_TABLE     = aws_glue_catalog_table.sbeacon-cohorts-cache.name
-    ATHENA_INDIVIDUALS_TABLE       = aws_glue_catalog_table.sbeacon-individuals.name
-    ATHENA_INDIVIDUALS_CACHE_TABLE = aws_glue_catalog_table.sbeacon-individuals-cache.name
-    ATHENA_BIOSAMPLES_TABLE        = aws_glue_catalog_table.sbeacon-biosamples.name
-    ATHENA_BIOSAMPLES_CACHE_TABLE  = aws_glue_catalog_table.sbeacon-biosamples-cache.name
-    ATHENA_RUNS_TABLE              = aws_glue_catalog_table.sbeacon-runs.name
-    ATHENA_RUNS_CACHE_TABLE        = aws_glue_catalog_table.sbeacon-runs-cache.name
-    ATHENA_ANALYSES_TABLE          = aws_glue_catalog_table.sbeacon-analyses.name
-    ATHENA_ANALYSES_CACHE_TABLE    = aws_glue_catalog_table.sbeacon-analyses-cache.name
-    ATHENA_TERMS_TABLE             = aws_cloudformation_stack.sbeacon_terms_stack.parameters.TableName
-    ATHENA_TERMS_INDEX_TABLE       = aws_cloudformation_stack.sbeacon_terms_index_stack.parameters.TableName
     ATHENA_TERMS_CACHE_TABLE       = aws_glue_catalog_table.sbeacon-terms-cache.name
     ATHENA_RELATIONS_TABLE         = aws_glue_catalog_table.sbeacon-relations.name
+    ATHENA_SNPS_TABLE              = aws_glue_catalog_table.sbeacon-snps.name
+    ATHENA_SAMPLES_TABLE           = aws_glue_catalog_table.sbeacon-samples.name
+    ATHENA_GENOTYPES_TABLE         = aws_glue_catalog_table.sbeacon-genotypes.name
+    ATHENA_PHENOTYPES_TABLE        = aws_glue_catalog_table.sbeacon-phenotypes.name
+
+
   }
   # dynamodb variables
   dynamodb_variables = {
@@ -293,25 +285,25 @@ module "lambda-getFilteringTerms" {
 }
 
 #
-# getAnalyses Lambda Function
+# getGenotypes Lambda Function
 #
-module "lambda-getAnalyses" {
+module "lambda-getGenotypes" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name       = "getAnalyses"
-  description         = "Get the beacon map."
+  function_name       = "getGenotypes"
+  description         = "Get the Genotypes."
   runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
-    data.aws_iam_policy_document.lambda-getAnalyses.json,
+    data.aws_iam_policy_document.lambda-getGenotypes.json,
     data.aws_iam_policy_document.athena-full-access.json,
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getAnalyses"
+  source_path            = "${path.module}/lambda/getGenotypes"
 
   tags = var.common-tags
 
@@ -329,64 +321,25 @@ module "lambda-getAnalyses" {
 }
 
 #
-# getGenomicVariants Lambda Function
+# getSnps Lambda Function
 #
-module "lambda-getGenomicVariants" {
+module "lambda-getSnps" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name       = "getGenomicVariants"
-  description         = "Get the variants."
+  function_name       = "getSnps"
+  description         = "Get the Snps."
   runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
-    data.aws_iam_policy_document.lambda-getGenomicVariants.json,
+    data.aws_iam_policy_document.lambda-getSnps.json,
     data.aws_iam_policy_document.athena-full-access.json,
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getGenomicVariants"
-
-  tags = var.common-tags
-
-  environment_variables = merge(
-    {
-      SPLIT_QUERY_LAMBDA    = module.lambda-splitQuery.lambda_function_name,
-      SPLIT_QUERY_TOPIC_ARN = aws_sns_topic.splitQuery.arn
-    },
-    local.athena_variables,
-    local.sbeacon_variables,
-    local.dynamodb_variables
-  )
-
-  layers = [
-    local.python_libraries_layer,
-    local.python_modules_layer
-  ]
-}
-
-#
-# getIndividuals Lambda Function
-#
-module "lambda-getIndividuals" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name       = "getIndividuals"
-  description         = "Get the individuals."
-  runtime             = "python3.12"
-  handler             = "lambda_function.lambda_handler"
-  memory_size         = 1769
-  timeout             = 60
-  attach_policy_jsons = true
-  policy_jsons = [
-    data.aws_iam_policy_document.lambda-getIndividuals.json,
-    data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.dynamodb-onto-access.json
-  ]
-  number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getIndividuals"
+  source_path            = "${path.module}/lambda/getSnps"
 
   tags = var.common-tags
 
@@ -404,25 +357,25 @@ module "lambda-getIndividuals" {
 }
 
 #
-# getBiosamples Lambda Function
+# getSamples Lambda Function
 #
-module "lambda-getBiosamples" {
+module "lambda-getSamples" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name       = "getBiosamples"
-  description         = "Get the biosamples."
+  function_name       = "getSamples"
+  description         = "Get the Samples."
   runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
-    data.aws_iam_policy_document.lambda-getBiosamples.json,
+    data.aws_iam_policy_document.lambda-getSamples.json,
     data.aws_iam_policy_document.athena-full-access.json,
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getBiosamples"
+  source_path            = "${path.module}/lambda/getSamples"
 
   tags = var.common-tags
 
@@ -440,97 +393,25 @@ module "lambda-getBiosamples" {
 }
 
 #
-# getDatasets Lambda Function
+# getPhenotypes Lambda Function
 #
-module "lambda-getDatasets" {
+module "lambda-getPhenotypes" {
   source = "terraform-aws-modules/lambda/aws"
 
-  function_name       = "getDatasets"
-  description         = "Get the datasets."
+  function_name       = "getPhenotypes"
+  description         = "Get the Phenotypes."
   runtime             = "python3.12"
   handler             = "lambda_function.lambda_handler"
   memory_size         = 1769
   timeout             = 60
   attach_policy_jsons = true
   policy_jsons = [
-    data.aws_iam_policy_document.lambda-getDatasets.json,
+    data.aws_iam_policy_document.lambda-getPhenotypes.json,
     data.aws_iam_policy_document.athena-full-access.json,
     data.aws_iam_policy_document.dynamodb-onto-access.json
   ]
   number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getDatasets"
-
-  tags = var.common-tags
-
-  environment_variables = merge(
-    local.variant_variables,
-    local.athena_variables,
-    local.sbeacon_variables,
-    local.dynamodb_variables
-  )
-
-  layers = [
-    local.python_libraries_layer,
-    local.python_modules_layer
-  ]
-}
-
-#
-# getCohorts Lambda Function
-#
-module "lambda-getCohorts" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name       = "getCohorts"
-  description         = "Get the cohorts."
-  runtime             = "python3.12"
-  handler             = "lambda_function.lambda_handler"
-  memory_size         = 1769
-  timeout             = 60
-  attach_policy_jsons = true
-  policy_jsons = [
-    data.aws_iam_policy_document.lambda-getCohorts.json,
-    data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.dynamodb-onto-access.json
-  ]
-  number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getCohorts"
-
-  tags = var.common-tags
-
-  environment_variables = merge(
-    local.variant_variables,
-    local.athena_variables,
-    local.sbeacon_variables,
-    local.dynamodb_variables
-  )
-
-  layers = [
-    local.python_libraries_layer,
-    local.python_modules_layer
-  ]
-}
-
-#
-# getRuns Lambda Function
-#
-module "lambda-getRuns" {
-  source = "terraform-aws-modules/lambda/aws"
-
-  function_name       = "getRuns"
-  description         = "Get the runs."
-  runtime             = "python3.12"
-  handler             = "lambda_function.lambda_handler"
-  memory_size         = 1769
-  timeout             = 60
-  attach_policy_jsons = true
-  policy_jsons = [
-    data.aws_iam_policy_document.lambda-getRuns.json,
-    data.aws_iam_policy_document.athena-full-access.json,
-    data.aws_iam_policy_document.dynamodb-onto-access.json
-  ]
-  number_of_policy_jsons = 3
-  source_path            = "${path.module}/lambda/getRuns"
+  source_path            = "${path.module}/lambda/getPhenotypes"
 
   tags = var.common-tags
 

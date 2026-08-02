@@ -1,0 +1,45 @@
+{
+    "$comment": "Schema for the sample table",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Schema for a sample record stored in Athena.",
+    "properties": {
+        "breed": {
+            "description": "Breed of the sampled individual.",
+            "examples": [
+                "Holstein"
+            ],
+            "type": "string"
+        },
+        "dataset_id": {
+            "description": "Identifier of the dataset this sample belongs to.",
+            "examples": [
+                "em23dsa92mj8g"
+            ],
+            "type": "string"
+        },
+        "sample_id": {
+            "description": "Unique identifier of the sample.",
+            "examples": [
+                "SRR10903401"
+            ],
+            "type": "string"
+        },
+        "sex": {
+            "description": "Biological sex of the sampled individual.",
+            "examples": [
+                "Male",
+                "Female"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "dataset_id",
+        "sample_id",
+        "breed",
+        "sex"
+    ],
+    "title": "Sample",
+    "type": "object"
+}

@@ -1,192 +1,373 @@
-from langchain.output_parsers import PydanticOutputParser
-from langchain.prompts import ChatPromptTemplate
+"""
+LLM layer for AskTheSheeps.
+
+What changed and why
+--------------------
+1. Imports moved to `langchain_core.*`. `langchain.prompts` and
+   `langchain.output_parsers` were removed in langchain 1.x, so the old imports
+   fail outright on a modern resolve; `langchain_core` paths work on 0.1 -> 1.x.
+
+2. `format_instructions` was passed as a partial variable but never appeared in
+   any template body, so LangChain silently dropped it - the models were never
+   shown the schema they were being parsed against. Every extractor now has a
+   real FORMAT block.
+
+3. A parse failure inside a RunnableParallel used to bubble up and fail the
+   whole /ask/query request. Extraction is now fault tolerant: bad JSON gets one
+   repair attempt, then falls back to an empty model instead of a 500.
+
+4. The prompts targeted human clinical genomics (GRCh38, biosamples, runs,
+   ontology terms). They now target the Illumina OvineSNP50 domain and are
+   grounded in the actual Athena column names via sheep_schema.
+
+5. Filters are structured (field / operator / value) rather than free text.
+   "birth weight greater than 4 kg" previously became a single opaque string
+   handed to the ontology vector search, which cannot represent a numeric
+   comparison at all - that is the requirement-doc query 2 failure mode.
+"""
+
+import json
+import re
+
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import (
     RunnableLambda,
     RunnableParallel,
     RunnablePassthrough,
 )
+
+from shared import sheep_schema
 from utils.models import (
+    Aggregation,
     Filters,
     GeneratedCodeAnalytics,
     Granularity,
+    Region,
     Scope,
-    Variant,
     YesNo,
     llm_json,
     llm_text,
 )
 
-scope_extractor_template = """
-INSTRUCTIONS
-Given a user query, select the result scope to best suited for the query.
-Return a JSON object formatted to look like:
-{{
-    scope: most appropriate scope to respond to the query, if unsure put "unknown"
-}}
+# --------------------------------------------------------------------------- #
+# Shared domain preamble
+# --------------------------------------------------------------------------- #
 
-SCOPE MUST BE ONE OF
-individuals: user expects indivdual or people entries to be returned
-biosamples: user expects biosample or samples entries to be returned
-runs: user explicitly mention runs entries to be returned
-analyses: user explicitly mention analyses entries to be returned
-datasets: user explicitly mention datasets entries to be returned
-cohorts: user explicitly mention cohorts entries to be returned
-g_variants: user explicitly expects only genomic variants or variants entries to be returned
-unknown: if you cannot confidently pick any of the above
+DOMAIN_BACKGROUND = """You are the query builder for AskTheSheeps: a natural language interface over a
+GA4GH Beacon v2 (sBeacon) instance holding Illumina OvineSNP50 genotyping data for sheep flocks.
+The users are livestock producers and animal geneticists, not clinicians.
+
+The data comes from a genotyping provider report and has four tables:
+{schema}
+
+Domain notes you must respect:
+- A "sample" (or animal, ewe, ram, lamb) is one sheep. Breed values look like Sunit, Dorper, German_Mutton.
+- A SNP is identified by a marker name from the manifest, e.g. 250506CS3900065000002_1238.1 or OARUn.1294_14483.1.
+- Chromosome is a string: 1-26, X, Y, 0 (unmapped), OAR or Contig (unplaced scaffolds). There is NO GRCh38/hg38 here.
+- coordinate is the base position on the ovine draft build.
+- A genotype call ("value") is exactly one of AA, AB, BB or NC (no call). NC means the assay failed for that animal.
+- allelea_top_base / alleleb_top_base are the A and B alleles from the manifest. Major/minor allele is a
+  frequency question about the genotype table, not a manifest lookup.
+"""
+
+SCHEMA_PARTIAL = {"schema": sheep_schema.describe_schema()}
+
+
+# --------------------------------------------------------------------------- #
+# Fault tolerant JSON parsing
+# --------------------------------------------------------------------------- #
+
+_FENCE_RE = re.compile(r"^\s*```(?:json)?|```\s*$", re.IGNORECASE)
+
+REPAIR_TEMPLATE = ChatPromptTemplate.from_template(
+    """The following text was supposed to be a single JSON object matching a schema but could not be parsed.
+Return ONLY the corrected JSON object. No prose, no code fences.
+
+SCHEMA
+{format_instructions}
+
+TEXT
+{text}
+
+ERROR
+{error}
+
+OUTPUT
+"""
+)
+
+
+def _message_text(message) -> str:
+    content = getattr(message, "content", message)
+    if isinstance(content, list):
+        # Some providers return content blocks rather than a plain string.
+        content = "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return _FENCE_RE.sub("", str(content)).strip()
+
+
+def _tolerant_parser(model_cls, parser):
+    """
+    Parse -> repair once -> fall back to an empty model.
+
+    Extraction runs as a RunnableParallel; without this, one malformed field
+    took down the entire request.
+    """
+
+    def _parse(message):
+        text = _message_text(message)
+        try:
+            return parser.parse(text)
+        except Exception as first_error:  # noqa: BLE001 - we retry below
+            print(f"[templates] parse failed for {model_cls.__name__}: {first_error}")
+            try:
+                repaired = (REPAIR_TEMPLATE | llm_text).invoke(
+                    {
+                        "format_instructions": parser.get_format_instructions(),
+                        "text": text[:4000],
+                        "error": str(first_error)[:500],
+                    }
+                )
+                return parser.parse(_message_text(repaired))
+            except Exception as second_error:  # noqa: BLE001
+                print(
+                    f"[templates] repair failed for {model_cls.__name__}: {second_error}"
+                )
+                return model_cls()
+
+    return RunnableLambda(_parse, name=f"parse_{model_cls.__name__}")
+
+
+def get_extractor_chain(template, model_cls, extra_partials=None):
+    parser = PydanticOutputParser(pydantic_object=model_cls)
+    partials = dict(SCHEMA_PARTIAL)
+    partials["format_instructions"] = parser.get_format_instructions()
+    if extra_partials:
+        partials.update(extra_partials)
+    prompt = ChatPromptTemplate.from_template(template, partial_variables=partials)
+    return prompt | llm_json | _tolerant_parser(model_cls, parser)
+
+
+def extract_object(query, template, model_cls):
+    """One-shot helper, kept for callers outside the map chain."""
+    return get_extractor_chain(template, model_cls).invoke(query)
+
+
+# --------------------------------------------------------------------------- #
+# Scope
+# --------------------------------------------------------------------------- #
+
+scope_extractor_template = (
+    DOMAIN_BACKGROUND
+    + """
+INSTRUCTIONS
+Pick the single table the user's answer should be drawn from.
+
+snps        - marker level facts from the manifest: alleles, chromosome, coordinate, which SNPs exist in a region
+genotypes   - per animal per marker calls: who carries what, allele or genotype frequencies, call rates
+samples     - the animals themselves: breed, sex, how many animals
+phenotypes  - measured traits: weights, fat thickness, eye muscle area, gains
+unknown     - you cannot confidently choose
+
+There is deliberately no "datasets" option: this deployment has no getDatasets
+handler, so a dataset-scoped query has nowhere to go.
+
+Tie-break: if the question is about allele or genotype FREQUENCY, or about animals carrying a call, choose genotypes.
+If the question only asks what the alleles or positions ARE, choose snps.
+
+EXAMPLES
+"What are the major and minor alleles for all SNPs between position 1 and 50,000 on chromosome 1?" -> snps
+"What are the allele frequencies of those SNPs in animals with birth weight greater than 4kg?" -> genotypes
+"How many samples are recorded as female?" -> samples
+"Which Dorper rams have the AB call at OAR1_103544816?" -> genotypes
+"What is the average weaning weight by breed?" -> phenotypes
+
+FORMAT
+{format_instructions}
 
 QUERY
 {query}
 
 OUTPUT
 """
+)
 
-variant_extractor_template = """
+
+# --------------------------------------------------------------------------- #
+# Region / SNP selection
+# --------------------------------------------------------------------------- #
+
+region_extractor_template = (
+    DOMAIN_BACKGROUND
+    + """
 INSTRUCTIONS
-Given a user query, extract the assembly, chromosome, start base and end base.
-Return a JSON object formatted to look like:
-{{
-    success: true or false, if a none of the attributes could be identified
-    assembly_id: what is the mentioned assembly name (eg: grch38, hg38, or something similar) if unsure use "unknown",
-    chromosome: chromosome mentioned in the query (could be a numeric string from 1 to 22, X or Y), if unsure use "unknown",
-    start: start base pair or position; single number or an array of two numbers, if unsure use "unknown",
-    end: end base pair or position; single number or an array of two numbers, if unsure use "unknown",
-}}
+Extract only the genomic location part of the query: chromosome, coordinate range and any explicit marker names.
+Ignore breed, sex, phenotype measurements and genotype calls - another extractor handles those.
 
-CONDITIONS
-whenever a field is unsure; use "unknown"
-Ensure all fields are valid JSON
+RULES
+- chromosome: a bare string such as "1", "26", "X", "Y", "0", "OAR" or "Contig". Strip any "chr"/"chromosome" prefix.
+  Use "unknown" if the query does not name one. Never invent a chromosome.
+- start / end: integer base positions. "between position 1 and 50,000" -> start 1, end 50000.
+  A single position mentioned alone goes in start with end left "unknown".
+- snp_ids: marker names copied verbatim from the query. Empty list if none.
+- success: true only if at least one of chromosome, start, end or snp_ids was found.
+- Do NOT emit an assembly. There is no GRCh38 in this dataset.
+
+EXAMPLES
+"SNPs between position 1 and 50,000 on chromosome 1" -> chromosome "1", start 1, end 50000, snp_ids []
+"the call for OARUn.1294_14483.1" -> chromosome "unknown", snp_ids ["OARUn.1294_14483.1"], success true
+"how many female animals" -> success false, everything unknown
+
+FORMAT
+{format_instructions}
 
 QUERY
 {query}
 
 OUTPUT
 """
+)
 
-filter_extractor_template = """
+
+# --------------------------------------------------------------------------- #
+# Filters
+# --------------------------------------------------------------------------- #
+
+filter_extractor_template = (
+    DOMAIN_BACKGROUND
+    + """
 INSTRUCTIONS
-Does the query contain a set of conditions. Ignore anything that corresponds to a genomic variant (position, chromosome, assembly)
-Return a JSON object with an array formatted to look like:
-{{
-    filters: [
-        {{
-            term: place only one condition term here,
-            scope: what might be the scope of this condition, chose from "individuals", "biosamples" and "runs"
-        }}
-    ]
-}}
+Extract every non-positional condition in the query as a structured filter.
+Genomic coordinates and marker names are handled elsewhere - ignore them here.
 
-CONDITIONS
-filters: this is an array with objects having two attributes called "term" and "scope". Ignore genomic variants
-term: please insert only one condition here, if there are many, use multiple objects in "filters" array
-if you do not see any terms, just return an empty array like {{filters: []}}
-QUERY
-{query}
+Each filter has:
+  type      - "alphanumeric" for anything matching a column above (this is almost always the right answer),
+              "ontology" only for a clinical/trait concept that has no column (rare in this dataset).
+  field     - the exact column name from the data model above. Never invent one.
+  operator  - one of =, !, >, >=, <, <=   (Beacon v2 spells NOT EQUAL as "!", never "!=")
+  value     - the compared value as a string, numbers without units ("4", not "4kg")
+  scope     - the table the field belongs to: snps, samples, genotypes or phenotypes
+  term      - only for ontology filters: the free-text concept
 
-OUTPUT
-"""
+RULES
+- "greater than" -> ">", "at least"/"or more" -> ">=", "under"/"less than" -> "<", "at most" -> "<=", "not"/"other than" -> "!".
+- Sex values are lower case: male, female.
+- Genotype calls go in field "value" with an AA/AB/BB/NC value.
+- Split compound conditions into one filter each.
+- If there are no conditions return {{"filters": []}}.
 
-granularity_extractor_template = """
-INSTRUCTIONS
-Does the query contain a set of conditions.
-Return a JSON object with an array formatted to look like:
-{{
-    granularity: what kind of a return is expected, 'unknown' if not found
-}}
+EXAMPLES
+"animals with birth weight greater than 4kg"
+  -> [{{"type":"alphanumeric","field":"birth_weight_kg","operator":">","value":"4","scope":"phenotypes"}}]
+"How many samples are recorded as female?"
+  -> [{{"type":"alphanumeric","field":"sex","operator":"=","value":"female","scope":"samples"}}]
+"Dorper ewes heavier than 20kg at weaning"
+  -> [{{"type":"alphanumeric","field":"breed","operator":"=","value":"Dorper","scope":"samples"}},
+      {{"type":"alphanumeric","field":"sex","operator":"=","value":"female","scope":"samples"}},
+      {{"type":"alphanumeric","field":"weaning_weight_kg","operator":">","value":"20","scope":"phenotypes"}}]
+"SNPs on chromosome 1 between 1 and 50,000" -> []
 
-CANDIDATE GRANULARITIES
-record: requesting actual data records
-count: asking for cardinality or count
-boolean: only interested in the existence of data
-unknown: if any of the above types not be matched
-
-QUERY
-{query}
-
-OUTPUT
-"""
-
-analytics_code_generator_template = """
-INSTRUCTIONS
-You must create a python code achieve the task indicated by the user query.
-Please comment your code for easy understanding
-The response must be in the following JSON format
-{{
-    code: python code
-    files: [] # this is a list of output files paths written by the script
-    assumptions: [] # list of short assumptions you made
-    feedback: [] # list of short instructions for user if they need to attend such as modify attributes according to the actual table content (do not include anything related to libraries, imports or variables)
-}}
-
-CONDITIONS
-You can only use following python libraries and they are already imported as shown within brackets
-* Pandas (import pandas as pd)
-* Numpy (import numpy as np)
-* Matplotlib (import matplotlib.pyplot as plt)
-* Seaborn (import seaborn as sns)
-Do not write any import statements (or include comments regarding imports)
-Do not try to simulate any data
-All files must be written to /tmp/ directory
-Do not plt.show() the plot, just save it
-Do not add any return variables
-Do not make checks to validate presense of columns, you already have that info below
-If there are plots, unless explicitly asked use vertical formats. Plot labels could be long, so add enough padding with `bbox_inches='tight'` when saving figures
-If the chosen fields are not strings apply following rules
-- dict - a dictionary with keys "id" and "label" mark this in feedback to let usser adjust code
-- list - list entries likely are dictionaries with keys "id" and "label" mark this in feedback to let usser adjust code
-
-INPUT
-Following inputs are available for you. All inputs are pandas dataframes
-{data}
+FORMAT
+{format_instructions}
 
 QUERY
 {query}
 
 OUTPUT
 """
-
-analytics_table_data_template = """
-Table name: {name}
-    Columns: {cols}
-    Datatypes: {types}
-"""
+)
 
 
-def extract_object(query, template, model):
-    parser = PydanticOutputParser(pydantic_object=model)
-    template = ChatPromptTemplate.from_template(
-        template,
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
-    chain = template | llm_json | parser
-    result = chain.invoke(query)
-    return result
+# --------------------------------------------------------------------------- #
+# Granularity and aggregation
+# --------------------------------------------------------------------------- #
 
-
-def get_extractor_chain(template, model):
-    parser = PydanticOutputParser(pydantic_object=model)
-    template = ChatPromptTemplate.from_template(
-        template,
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
-    chain = template | llm_json | parser
-    return chain
-
-
-def _get_validator_chain():
-    template = ChatPromptTemplate.from_template(
-        """You are a query builder for GA4GH Beacon V2. You must only accept user queries that are strickly relevant to the GA4FH beacon V2 domain. 
+granularity_extractor_template = (
+    DOMAIN_BACKGROUND
+    + """
 INSTRUCTIONS
-Queries must be a biologically relevant question related to genomic variants, individuals, biosamples, runs, analysis. Conditions can be anything related to health,
-biosample collection or phenotypic information.
+Decide what shape of answer the user expects.
 
-Consider the scenarios below.
-- If user is just greeting, write a few word greeting along the lines "Hello, I am AskBeacon assistant. What did you have mind for sBeacon?"
-lightly modify the greeting message to be creative.
+record  - they want the actual rows back
+count   - they want a number: "how many", "what proportion", "count of"
+boolean - they only want to know whether anything matches at all: "are there any", "do we have"
+unknown - none of the above can be determined
 
-Repond with JSON of the form;
+EXAMPLES
+"How many samples are recorded as female?" -> count
+"What are the major and minor alleles for all SNPs on chromosome 1?" -> record
+"Do we have any Dorper animals with an NC call at this marker?" -> boolean
+
+FORMAT
+{format_instructions}
+
+QUERY
+{query}
+
+OUTPUT
+"""
+)
+
+
+aggregation_extractor_template = (
+    DOMAIN_BACKGROUND
+    + """
+INSTRUCTIONS
+Beacon returns records and counts only. Anything derived has to be computed afterwards from the returned rows.
+Decide which derived statistic, if any, the query is asking for.
+
+none             - a plain lookup, nothing to compute
+allele_frequency - A/B allele frequencies, major/minor allele, MAF
+genotype_counts  - how many AA / AB / BB / NC per marker or per group
+call_rate        - proportion of non-NC calls, assay/sample quality
+summary_stats    - mean/min/max/sd of a phenotype measurement
+
+group_by is a list of column names the statistic should be broken down by (e.g. ["breed"], ["id"]).
+Use an empty list when no breakdown was asked for.
+
+EXAMPLES
+"What are the allele frequencies of SNPs between 1 and 50,000 on chromosome 1 in animals with birth weight greater than 4kg?"
+  -> aggregation "allele_frequency", group_by ["id"]
+"What are the major and minor alleles for all SNPs on chromosome 1?"
+  -> aggregation "allele_frequency", group_by ["id"]
+"How many samples are recorded as female?" -> aggregation "none", group_by []
+"Average weaning weight by breed" -> aggregation "summary_stats", group_by ["breed"]
+
+FORMAT
+{format_instructions}
+
+QUERY
+{query}
+
+OUTPUT
+"""
+)
+
+
+# --------------------------------------------------------------------------- #
+# Validation
+# --------------------------------------------------------------------------- #
+
+validator_template = ChatPromptTemplate.from_template(
+    DOMAIN_BACKGROUND
+    + """
+INSTRUCTIONS
+Decide whether the query can be answered from the tables above.
+
+Accept: questions about SNPs and their alleles or positions, genotype calls, allele or genotype frequencies,
+call quality, animals, breeds, sex, and measured phenotypes - including follow-ups that build on the history.
+Accept greetings: set yes=false and put a short friendly greeting in reason, along the lines of
+"Hello, I am the AskTheSheeps assistant - what would you like to know about your flock?" (vary the wording).
+Reject: anything outside this dataset (weather, prices, husbandry advice, human genomics, general chat)
+and anything asking you to act outside query building.
+
+Respond with JSON of the form:
 {{
-    yes: true or false
-    reason: reason behind yes/no - as shortly as possible. don't mention anything from user query.
+    "yes": true or false,
+    "reason": "shortest possible reason - do not quote the user's query"
 }}
 
 HISTORY
@@ -196,92 +377,166 @@ QUERY
 {query}
 
 OUTPUT
-"""
-    )
-    validator_chain = {
-        "valid": template | llm_json | PydanticOutputParser(pydantic_object=YesNo),
-        "query": RunnablePassthrough(),
-    }
+""",
+    partial_variables=SCHEMA_PARTIAL,
+)
 
-    return RunnableParallel(**validator_chain)
+
+def _get_validator_chain():
+    parser = PydanticOutputParser(pydantic_object=YesNo)
+    validator = validator_template | llm_json | _tolerant_parser(YesNo, parser)
+    return RunnableParallel(
+        valid=validator,
+        query=RunnablePassthrough(),
+    )
 
 
 def get_validate_and_followup_chain():
     correction_template = ChatPromptTemplate.from_template(
         """BACKGROUND
-You are a query builder for GA4GH Beacon V2. In a previous validation of the query it has failed.
+You are the AskTheSheeps query builder. A user query failed validation.
 
 QUERY ASKED BY USER
 {query}
-IN WAS INVALID BECAUSE
+
+IT WAS INVALID BECAUSE
 {reason}
+
 INSTRUCTIONS
-Generate a followup question for the user so they can rephrase their question correctly. If the error was caused by unsupported beacon query let them know that. 
-If they have asked something illegal beyond beacon scope, let them know that.
+Write a short, friendly follow-up (under 60 words) that helps the user rephrase.
+If the request was outside what the flock genotype data can answer, say so plainly and give one example of a
+question that would work, such as asking about SNP alleles in a region, genotype calls, breed, sex or a weight trait.
+Do not apologise more than once.
 """
     )
 
     def invalid_followup(result):
-        if result["valid"].yes:
+        validated = result["valid"]
+        # YesNo() default cannot be constructed without fields, so a hard parse
+        # failure surfaces as an invalid query rather than an exception.
+        if getattr(validated, "yes", False):
             return {
                 "valid": True,
                 "response": "Would you like to add any other conditions?",
             }
-        followup_chain = correction_template | llm_text
-
-        return {
-            "valid": False,
-            "response": followup_chain.invoke(
-                {"query": result["query"], "reason": result["valid"].reason}
-            ).content,
-        }
+        followup = (correction_template | llm_text).invoke(
+            {
+                "query": result["query"].get("query", "")
+                if isinstance(result["query"], dict)
+                else result["query"],
+                "reason": getattr(validated, "reason", "the query could not be parsed"),
+            }
+        )
+        return {"valid": False, "response": _message_text(followup)}
 
     return _get_validator_chain() | RunnableLambda(invalid_followup)
 
 
+# --------------------------------------------------------------------------- #
+# The extraction map
+# --------------------------------------------------------------------------- #
+
+
 def get_data_extractor_map_chain():
-    extractor_chain = {
-        "scope": get_extractor_chain(scope_extractor_template, Scope),
-        "filters": get_extractor_chain(filter_extractor_template, Filters),
-        "variant": get_extractor_chain(variant_extractor_template, Variant),
-        "granularity": get_extractor_chain(granularity_extractor_template, Granularity),
-        "query": RunnablePassthrough(),
-    }
-    map_chain = RunnableParallel(**extractor_chain)
-    return map_chain
+    return RunnableParallel(
+        scope=get_extractor_chain(scope_extractor_template, Scope),
+        filters=get_extractor_chain(filter_extractor_template, Filters),
+        region=get_extractor_chain(region_extractor_template, Region),
+        granularity=get_extractor_chain(granularity_extractor_template, Granularity),
+        aggregation=get_extractor_chain(aggregation_extractor_template, Aggregation),
+        query=RunnablePassthrough(),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Follow-up on success
+# --------------------------------------------------------------------------- #
 
 
 def get_success_followup_chain():
     followup_template = ChatPromptTemplate.from_template(
-        """BACKGROUND
-You are a query builder for GA4GH Beacon V2. You must only accept user queries that are strickly relevant to the GA4FH beacon V2 domain. 
-Queries must be a direct question related to genomic variants, individuals, biosamples, runs, analysis. Conditions can be anything related to health,
-biosample collection or phenotypic information.
+        DOMAIN_BACKGROUND
+        + """
+INSTRUCTIONS
+Tell the user, in plain producer-friendly language and under 90 words, what you understood from their question,
+then invite them to refine it or run it.
 
-Your task is to observe user query, see what we have extracted, explain the how we have mapped diseases to ontology terms and generate a understandable response.
-Information in the extracted section could be from a past conversation. So no need to comment on any relatedness mismatches you notice.
+- Acknowledge each extracted item briefly (scope, filters, region, granularity, aggregation).
+- If UNRESOLVED FIELDS is non-empty, name them and say which columns are available instead - this is the only
+  place you should push back.
+- If ONTOLOGY TERMS is non-empty, list them as "code - label" so the user can check the mapping.
+- If nothing was extracted, ask one concrete question that would move the query forward.
+- Do not invent results, do not speculate about how many animals will match, do not add a conclusion.
 
 QUERY ASKED BY USER
 {query}
-YOU HAVE DISCOVERED FOLLOWING INFORMATION (IGNORE IF EMPTY)
-{extracted}
-YOU ARE RETURNING FOLLOWING ONTOLOGY TERMS (IGNORE IF EMPTY)
-{terms}
-INSTRUCTIONS
-Generate a followup so that the user can provide more info if they want. If there are some extracted content, acknowledge that.
-If there arent any, please advise them in less than 20 words. Note that following are the allowed information.
-- scope
-- granularity
-- variant - only if scope is g_variants
-- filters
 
-If nothing much is needed, let them know you can add more if needed or validate and run query.
-If you see terms, explain that queried terms are translated into ontology codes (format is "ontology code" - "label"), tell that in list form so user can map it.
-Do not add conclusions or make assumptions. No need to validate relationship of terms to query.
-"""
+EXTRACTED (ignore if empty)
+{extracted}
+
+UNRESOLVED FIELDS (ignore if empty)
+{unresolved}
+
+ONTOLOGY TERMS (ignore if empty)
+{terms}
+
+OUTPUT
+""",
+        partial_variables=SCHEMA_PARTIAL,
     )
 
     return followup_template | llm_text
+
+
+# --------------------------------------------------------------------------- #
+# Analytics code generation
+# --------------------------------------------------------------------------- #
+
+analytics_code_generator_template = (
+    DOMAIN_BACKGROUND
+    + """
+INSTRUCTIONS
+Write python code that answers the user's query from the dataframes described below.
+Comment the code so a non-programmer can follow it.
+Respond in this JSON format:
+{{
+    "code": "python code",
+    "files": [],        // output file paths written by the script
+    "assumptions": [],  // short assumptions you made
+    "feedback": []      // short notes for the user (never about imports or libraries)
+}}
+
+CONDITIONS
+Only these libraries are available and they are ALREADY imported:
+* Pandas (pd)  * Numpy (np)  * Matplotlib (plt)  * Seaborn (sns)
+Do not write import statements. Do not simulate or fabricate data. Do not call plt.show(). Do not return anything.
+Write every output file to /tmp/. Save figures with bbox_inches='tight'. Prefer vertical plot formats.
+Do not check whether columns exist - the schema below is authoritative.
+If a chosen field is a dict, it has keys "id" and "label"; if it is a list, its entries are such dicts.
+Note that in each case, add a line to "feedback" so the user can adjust.
+
+DOMAIN RULES FOR STATISTICS
+- Allele frequency per SNP from calls: freq(B) = (2*BB + AB) / (2 * (AA + AB + BB)). NC rows must be excluded, not counted as 0.
+- Major allele is whichever of A/B has frequency > 0.5; minor is the other. MAF = min(freq(A), freq(B)).
+- Call rate = non-NC calls / total calls.
+- Never average genotype strings; map them to dosages first.
+
+INPUT
+These pandas dataframes are available:
+{data}
+
+QUERY
+{query}
+
+OUTPUT
+"""
+)
+
+analytics_table_data_template = """
+Table name: {name}
+    Columns: {cols}
+    Datatypes: {types}
+"""
 
 
 def get_analytics_code_generator_chain():
@@ -292,10 +547,23 @@ def get_analytics_code_generator_chain():
 
 def generate_analytics_table_data(table_names, table_info):
     constructed_str = ""
-
     for name, (cols, types) in zip(table_names, table_info):
         constructed_str += analytics_table_data_template.format(
             name=name, cols=cols, types=types
         )
-
     return constructed_str
+
+
+__all__ = [
+    "get_validate_and_followup_chain",
+    "get_data_extractor_map_chain",
+    "get_success_followup_chain",
+    "get_analytics_code_generator_chain",
+    "generate_analytics_table_data",
+    "get_extractor_chain",
+    "extract_object",
+]
+
+
+if __name__ == "__main__":  # pragma: no cover - smoke check without an API key
+    print(json.dumps(SCHEMA_PARTIAL, indent=2))

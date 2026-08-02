@@ -47,7 +47,7 @@ resource "aws_api_gateway_method" "submit-dataset-id_post" {
   authorizer_id = var.beacon-enable-auth ? aws_api_gateway_authorizer.BeaconUserPool-authorizer.id : null
 
   request_parameters = {
-    "method.request.path.id" = true
+    "method.request.path.type" = true
   }
 }
 

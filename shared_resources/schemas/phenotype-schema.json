@@ -1,0 +1,111 @@
+{
+    "$comment": "Schema for the phenotypes table",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Schema for a phenotype record stored in Athena.",
+    "properties": {
+        "dataset_id": {
+            "description": "Identifier of the dataset this sample belongs to.",
+            "examples": [
+                "em23dsa92mj8g"
+            ],
+            "type": "string"
+        },
+        "sample_id": {
+            "description": "Unique identifier of the sample (sample_name).",
+            "examples": [
+                "SRR10903401"
+            ],
+            "type": "string"
+        },
+        "sex": {
+            "description": "Biological sex of the sampled individual.",
+            "examples": [
+                "Male",
+                "Female"
+            ],
+            "type": "string"
+        },
+        "birth_weight_kg": {
+            "description": "Birth weight of the sampled individual in kilograms.",
+            "examples": [
+                3.2
+            ],
+            "type": "number"
+        },
+        "weaning_weight_kg": {
+            "description": "Weaning weight of the sampled individual in kilograms.",
+            "examples": [
+                10
+            ],
+            "type": "number"
+        },
+        "six_month_weight_kg": {
+            "description": "Six-month weight of the sampled individual in kilograms.",
+            "examples": [
+                10
+            ],
+            "type": "number"
+        },
+        "fat_thickness_cm": {
+            "description": "Fat thickness of the sampled individual in centimeters.",
+            "examples": [
+                35.5
+            ],
+            "type": "number"
+        },
+        "eye_muscle_area_cm2": {
+            "description": "Eye muscle area of the sampled individual in square centimeters.",
+            "examples": [
+                35.5
+            ],
+            "type": "number"
+        },
+        "height_at_withers_cm": {
+            "description": "Height at withers of the sampled individual in centimeters.",
+            "examples": [
+                40.0
+            ],
+            "type": "number"
+        },"chest_girth_cm": {
+            "description": "Chest girth of the sampled individual in centimeters.",
+            "examples": [
+                35.5
+            ],
+            "type": "number"
+        },
+        "shin_circumference_cm": {
+            "description": "Shin circumference of the sampled individual in centimeters.",
+            "examples": [
+                20.0
+            ],
+            "type": "number"
+        },"pre_weaning_gain_kg": {
+            "description": "Pre-weaning weight gain of the sampled individual in kilograms.",
+            "examples": [
+                10
+            ],
+            "type": "number"
+        },
+        "post_weaning_gain_kg": {
+            "description": "Post-weaning weight gain of the sampled individual in kilograms.",
+            "examples": [
+                25
+            ],
+            "type": "number"
+        },
+        "daily_weight_gain_kg": {
+            "description": "Daily weight gain of the sampled individual in kilograms.",
+            "examples": [
+                5
+            ],
+            "type": "number"
+        }
+    },
+    "required": [
+        "dataset_id",
+        "sample_id"
+    ],
+    "title": "Phenotype",
+    "type": "object"
+}

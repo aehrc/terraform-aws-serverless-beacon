@@ -8,23 +8,6 @@
             "pattern": "^([ACGTUNRYSWKMBDHV\\-\\.]*)$",
             "type": "string"
         },
-        "aminoacidChange": {
-            "description": "Aminoacid alteration of interest. Format 1 letter",
-            "examples": [
-                "V600E",
-                "M734V"
-            ],
-            "type": "string"
-        },
-        "assemblyId": {
-            "description": "Genomic assembly accession and version as RefSqeq assembly accession (e.g. \"GCF_000001405.39\") or a versioned assembly name or synonym such as UCSC Genome Browser assembly (e.g. \"hg38\") or Genome Reference Consortium Human (e.g. \"GRCh38.p13\") names.",
-            "example": [
-                "GCF_000001405.39",
-                "hg38",
-                "GRCh38.p13"
-            ],
-            "type": "string"
-        },
         "end": {
             "description": "Precise or bracketing the end of the variants of interest: * (0-based, exclusive) - see `start` * for bracket queries, provide 2 values (e.g. [111,222]).\"",
             "items": {
@@ -35,30 +18,6 @@
             "maxItems": 2,
             "minItems": 0,
             "type": "array"
-        },
-        "geneId": {
-            "description": "* A gene identifier * It is strongly suggested to use a symbol following\n  the HGNC (https://www.genenames.org) nomenclature.",
-            "examples": [
-                "BRAF",
-                "SCN5A"
-            ],
-            "type": "string"
-        },
-        "genomicAlleleShortForm": {
-            "description": "HGVSId descriptor",
-            "examples": [
-                "NM_004006.2:c.4375C>T"
-            ],
-            "type": "string"
-        },
-        "mateName": {
-            "description": "Reference sequence id for genomic reference sequence in which variant coordinates are given, e.g. \"NC_000009\" for human chromosome 9. Preferably the RefSeqId, alternatively, names, synonymous or aliases e.g. \"Chr9\" could be used.",
-            "example": [
-                "NC_000009",
-                "Chr9",
-                "NC_012920.1"
-            ],
-            "type": "string"
         },
         "referenceBases": {
             "description": "Reference bases for this variant (starting from `start`). * Accepted values: `[ACGTN]*` * N is a wildcard, that denotes the position of any base,\n  and can be used as a standalone base of any type or within a partially known\n  sequence. As example, a query of `ANNT` the Ns can take take any form of [ACGT]\n  and will match `ANNT`, `ACNT`, `ACCT`, `ACGT` ... and so forth.\n* an *empty value* is used in the case of insertions with the maximally trimmed, inserted\n  sequence being indicated in `AlternateBases`",
@@ -84,22 +43,6 @@
             "maxItems": 2,
             "minItems": 1,
             "type": "array"
-        },
-        "variantMaxLength": {
-            "description": "* Maximum length in bases of a genomic variant. * This is an optional parameter without prescribed use. While a length is\n  commonly available for structural variants such as copy number variations,\n  it is recommended that length based queries should also be supported for\n  variants with indicated referenceBases and alternateBases, to enable\n  length-specific wildcard queries.",
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-        },
-        "variantMinLength": {
-            "description": "* Minimum length in bases of a genomic variant * This is an optional parameter without prescribed use. While a length is\n  commonly available for structural variants such as copy number variations,\n  it is recommended that length based queries should also be supported for\n  variants with indicated referenceBases and alternateBases, to enable\n  length-specific wildcard queries.",
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "variantType": {
-            "description": "The `variantType` is used to query variants which are not defined through a sequence of one or more bases using the `alternateBases` parameter. Examples here are e.g. structural variants: * DUP\n  - increased allelic count of material from the genomic region between\n    `start` and `end` positions\n  - no assumption about the placement of the additional sequences is being\n    made (i.e. no _in situ_ requirement as tandem duplications)\n* DEL: deletion of sequence following `start` * BND: breakend, i.e. termination of the allele at position `start` or in\n  the `startMin` => `startMax` interval, or fusion of the sequence to distant\n  partner\nEither `alternateBases` or `variantType` is required, with the exception of range queries (single\\ `start` and `end` parameters).",
-            "type": "string"
         }
     },
     "type": "object"

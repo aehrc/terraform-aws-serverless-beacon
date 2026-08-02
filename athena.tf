@@ -10,10 +10,10 @@ resource "aws_glue_catalog_database" "metadata-database" {
 }
 
 # 
-# Cohorts metadata
-# 
-resource "aws_glue_catalog_table" "sbeacon-cohorts" {
-  name          = "sbeacon_cohorts"
+# SNPs metadata
+#
+resource "aws_glue_catalog_table" "sbeacon-snps" {
+  name          = "sbeacon_snps"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -24,7 +24,7 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/cohorts"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/snps"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -41,57 +41,43 @@ resource "aws_glue_catalog_table" "sbeacon-cohorts" {
     }
 
     columns {
+      name = "dataset_id"
+      type = "string"
+    }
+
+
+    columns {
       name = "id"
       type = "string"
     }
 
     columns {
-      name = "cohortdatatypes"
+      name = "chromosome"
       type = "string"
     }
 
     columns {
-      name = "cohortdesign"
+      name = "coordinate"
+      type = "double"
+    }
+
+    columns {
+      name = "allelea_top_base"
       type = "string"
     }
 
     columns {
-      name = "cohortsize"
-      type = "int"
-    }
-
-    columns {
-      name = "cohorttype"
-      type = "string"
-    }
-
-    columns {
-      name = "collectionevents"
-      type = "string"
-    }
-
-    columns {
-      name = "exclusioncriteria"
-      type = "string"
-    }
-
-    columns {
-      name = "inclusioncriteria"
-      type = "string"
-    }
-
-    columns {
-      name = "name"
+      name = "alleleb_top_base"
       type = "string"
     }
   }
 }
 
 # 
-# Datasets metadata
-# 
-resource "aws_glue_catalog_table" "sbeacon-datasets" {
-  name          = "sbeacon_datasets"
+# Samples metadata
+#
+resource "aws_glue_catalog_table" "sbeacon-samples" {
+  name          = "sbeacon_samples"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -102,7 +88,7 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/datasets"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/samples"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -119,72 +105,32 @@ resource "aws_glue_catalog_table" "sbeacon-datasets" {
     }
 
     columns {
-      name = "id"
+      name = "dataset_id"
       type = "string"
     }
 
     columns {
-      name = "_assemblyid"
+      name = "sample_id"
       type = "string"
     }
 
     columns {
-      name = "_vcflocations"
+      name = "breed"
       type = "string"
     }
 
     columns {
-      name = "_vcfchromosomemap"
-      type = "string"
-    }
-
-    columns {
-      name = "createdatetime"
-      type = "string"
-    }
-
-    columns {
-      name = "datauseconditions"
-      type = "string"
-    }
-
-    columns {
-      name = "description"
-      type = "string"
-    }
-
-    columns {
-      name = "externalurl"
-      type = "string"
-    }
-
-    columns {
-      name = "info"
-      type = "string"
-    }
-
-    columns {
-      name = "name"
-      type = "string"
-    }
-
-    columns {
-      name = "updatedatetime"
-      type = "string"
-    }
-
-    columns {
-      name = "version"
+      name = "sex"
       type = "string"
     }
   }
 }
 
 # 
-# Individuals metadata
-# 
-resource "aws_glue_catalog_table" "sbeacon-individuals" {
-  name          = "sbeacon_individuals"
+# Genotypes metadata
+#
+resource "aws_glue_catalog_table" "sbeacon-genotypes" {
+  name          = "sbeacon_genotypes"
   database_name = aws_glue_catalog_database.metadata-database.name
 
   table_type = "EXTERNAL_TABLE"
@@ -195,7 +141,7 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
   }
 
   storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/individuals"
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/genotypes"
     input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
 
@@ -212,67 +158,80 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "id"
+      name = "dataset_id"
       type = "string"
     }
 
     columns {
-      name = "_datasetid"
+      name = "id_ref"
       type = "string"
     }
 
     columns {
-      name = "_cohortid"
+      name = "sample_id"
       type = "string"
     }
 
     columns {
-      name = "diseases"
+      name = "value"
       type = "string"
     }
 
     columns {
-      name = "ethnicity"
+      name = "score"
+      type = "double"
+    }
+
+    columns {
+      name = "theta"
+      type = "double"
+    }
+
+    columns {
+      name = "b_allele_freq"
+      type = "double"
+    }
+  }
+}
+
+# 
+# Phenotypes metadata
+#
+resource "aws_glue_catalog_table" "sbeacon-phenotypes" {
+  name          = "sbeacon_phenotypes"
+  database_name = aws_glue_catalog_database.metadata-database.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    "orc.compress" = "SNAPPY"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/phenotypes"
+    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
+
+
+    ser_de_info {
+      name                  = "ORC"
+      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+
+      parameters = {
+        "serialization.format"      = 1,
+        "orc.column.index.access"   = "FALSE"
+        "hive.orc.use-column-names" = "TRUE"
+      }
+    }
+
+    columns {
+      name = "dataset_id"
       type = "string"
     }
 
     columns {
-      name = "exposures"
-      type = "string"
-    }
-
-    columns {
-      name = "geographicorigin"
-      type = "string"
-    }
-
-    columns {
-      name = "info"
-      type = "string"
-    }
-
-    columns {
-      name = "interventionsorprocedures"
-      type = "string"
-    }
-
-    columns {
-      name = "karyotypicsex"
-      type = "string"
-    }
-
-    columns {
-      name = "measures"
-      type = "string"
-    }
-
-    columns {
-      name = "pedigrees"
-      type = "string"
-    }
-
-    columns {
-      name = "phenotypicfeatures"
+      name = "sample_id"
       type = "string"
     }
 
@@ -282,504 +241,60 @@ resource "aws_glue_catalog_table" "sbeacon-individuals" {
     }
 
     columns {
-      name = "treatments"
-      type = "string"
-    }
-  }
-}
-
-# 
-# Biosamples metadata
-# 
-resource "aws_glue_catalog_table" "sbeacon-biosamples" {
-  name          = "sbeacon_biosamples"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
-
-  parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
-  }
-
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/biosamples"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
-      }
-    }
-    columns {
-      name = "id"
-      type = "string"
+      name = "birth_weight_kg"
+      type = "double"
     }
 
     columns {
-      name = "_datasetid"
-      type = "string"
+      name = "weaning_weight_kg"
+      type = "double"
     }
 
     columns {
-      name = "_cohortid"
-      type = "string"
+      name = "six_month_weight_kg"
+      type = "double"
     }
 
     columns {
-      name = "individualid"
-      type = "string"
+      name = "fat_thickness_cm"
+      type = "double"
     }
 
     columns {
-      name = "biosamplestatus"
-      type = "string"
+      name = "eye_muscle_area_cm2"
+      type = "double"
     }
 
     columns {
-      name = "collectiondate"
-      type = "string"
+      name = "height_at_withers_cm"
+      type = "double"
     }
 
     columns {
-      name = "collectionmoment"
-      type = "string"
+      name = "chest_girth_cm"
+      type = "double"
     }
 
     columns {
-      name = "diagnosticmarkers"
-      type = "string"
+      name = "shin_circumference_cm"
+      type = "double"
     }
 
     columns {
-      name = "histologicaldiagnosis"
-      type = "string"
+      name = "pre_weaning_gain_kg"
+      type = "double"
     }
 
     columns {
-      name = "measurements"
-      type = "string"
+      name = "post_weaning_gain_kg"
+      type = "double"
     }
 
     columns {
-      name = "obtentionprocedure"
-      type = "string"
+      name = "daily_weight_gain_kg"
+      type = "double"
     }
-
-    columns {
-      name = "pathologicalstage"
-      type = "string"
-    }
-
-    columns {
-      name = "pathologicaltnmfinding"
-      type = "string"
-    }
-
-    columns {
-      name = "phenotypicfeatures"
-      type = "string"
-    }
-
-    columns {
-      name = "sampleorigindetail"
-      type = "string"
-    }
-
-    columns {
-      name = "sampleorigintype"
-      type = "string"
-    }
-
-    columns {
-      name = "sampleprocessing"
-      type = "string"
-    }
-
-    columns {
-      name = "samplestorage"
-      type = "string"
-    }
-
-    columns {
-      name = "tumorgrade"
-      type = "string"
-    }
-
-    columns {
-      name = "tumorprogression"
-      type = "string"
-    }
-
-    columns {
-      name = "info"
-      type = "string"
-    }
-
-    columns {
-      name = "notes"
-      type = "string"
-    }
-  }
-}
-
-# 
-# Runs metadata
-# 
-resource "aws_glue_catalog_table" "sbeacon-runs" {
-  name          = "sbeacon_runs"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
-
-  parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
-  }
-
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/runs"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
-      }
-    }
-
-    columns {
-      name = "id"
-      type = "string"
-    }
-
-    columns {
-      name = "_datasetid"
-      type = "string"
-    }
-
-    columns {
-      name = "_cohortid"
-      type = "string"
-    }
-
-    columns {
-      name = "biosampleid"
-      type = "string"
-    }
-
-    columns {
-      name = "individualid"
-      type = "string"
-    }
-
-    columns {
-      name = "info"
-      type = "string"
-    }
-
-    columns {
-      name = "librarylayout"
-      type = "string"
-    }
-
-    columns {
-      name = "libraryselection"
-      type = "string"
-    }
-
-    columns {
-      name = "librarysource"
-      type = "string"
-    }
-
-    columns {
-      name = "librarystrategy"
-      type = "string"
-    }
-
-    columns {
-      name = "platform"
-      type = "string"
-    }
-
-    columns {
-      name = "platformmodel"
-      type = "string"
-    }
-
-    columns {
-      name = "rundate"
-      type = "string"
-    }
-  }
-}
-
-# 
-# Analyses metadata
-# 
-resource "aws_glue_catalog_table" "sbeacon-analyses" {
-  name          = "sbeacon_analyses"
-  database_name = aws_glue_catalog_database.metadata-database.name
-
-  table_type = "EXTERNAL_TABLE"
-
-  parameters = {
-    EXTERNAL       = "TRUE"
-    "orc.compress" = "SNAPPY"
-  }
-
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.metadata-bucket.bucket}/analyses"
-    input_format  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-
-
-    ser_de_info {
-      name                  = "ORC"
-      serialization_library = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-
-      parameters = {
-        "serialization.format"      = 1,
-        "orc.column.index.access"   = "FALSE"
-        "hive.orc.use-column-names" = "TRUE"
-      }
-    }
-
-    columns {
-      name = "id"
-      type = "string"
-    }
-
-    columns {
-      name = "_datasetid"
-      type = "string"
-    }
-
-    columns {
-      name = "_cohortid"
-      type = "string"
-    }
-
-    columns {
-      name = "_vcfsampleid"
-      type = "string"
-    }
-
-    columns {
-      name = "individualid"
-      type = "string"
-    }
-
-    columns {
-      name = "biosampleid"
-      type = "string"
-    }
-
-    columns {
-      name = "runid"
-      type = "string"
-    }
-
-    columns {
-      name = "aligner"
-      type = "string"
-    }
-
-    columns {
-      name = "analysisdate"
-      type = "string"
-    }
-
-    columns {
-      name = "info"
-      type = "string"
-    }
-
-    columns {
-      name = "pipelinename"
-      type = "string"
-    }
-
-    columns {
-      name = "pipelineref"
-      type = "string"
-    }
-
-    columns {
-      name = "variantcaller"
-      type = "string"
-    }
-  }
-}
-
-# 
-# Ontology terms index
-# aws cloudformation is used because of terraform bug - https://github.com/hashicorp/terraform-provider-aws/issues/26686
-# 
-resource "aws_cloudformation_stack" "sbeacon_terms_index_stack" {
-  name = "sbeacon-terms-index-stack"
-
-  parameters = {
-    DatabaseName = aws_glue_catalog_database.metadata-database.name
-    TableName    = "sbeacon_terms_index"
-  }
-
-
-  template_body = jsonencode(
-    {
-      Parameters = {
-        DatabaseName = {
-          Type = "String"
-        }
-        TableName = {
-          Type = "String"
-        }
-      }
-      Resources = {
-        SBeaconTermsGlueCatalogTable = {
-          Type = "AWS::Glue::Table"
-          Properties = {
-            DatabaseName = { Ref = "DatabaseName" }
-            CatalogId    = { Ref = "AWS::AccountId" }
-            TableInput = {
-              Name      = { Ref = "TableName" }
-              TableType = "EXTERNAL_TABLE"
-              Parameters = {
-                EXTERNAL       = "TRUE"
-                "orc.compress" = "SNAPPY"
-                numFiles       = "-1"
-              }
-              StorageDescriptor = {
-                Location     = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms-index"
-                InputFormat  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-                OutputFormat = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-                SerdeInfo = {
-                  Name                 = "ORC"
-                  SerializationLibrary = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-                  Parameters = {
-                    "serialization.format"      = "1"
-                    "orc.column.index.access"   = "FALSE"
-                    "hive.orc.use-column-names" = "TRUE"
-                  }
-                }
-                Columns = [
-                  {
-                    Name = "id"
-                    Type = "string"
-                  },
-                  {
-                    Name = "term"
-                    Type = "string"
-                  }
-                ]
-              }
-              PartitionKeys = [
-                {
-                  Name    = "kind"
-                  Type    = "string"
-                  Comment = "partition by kind"
-                }
-              ]
-            }
-          }
-        }
-      }
-    }
-  )
-}
-
-# 
-# Ontology terms (for pagination and filtering)
-# aws cloudformation is used because of terraform bug - https://github.com/hashicorp/terraform-provider-aws/issues/26686
-# 
-resource "aws_cloudformation_stack" "sbeacon_terms_stack" {
-  name = "sbeacon-terms-stack"
-
-  parameters = {
-    DatabaseName = aws_glue_catalog_database.metadata-database.name
-    TableName    = "sbeacon_terms"
-  }
-
-
-  template_body = jsonencode(
-    {
-      Parameters = {
-        DatabaseName = {
-          Type = "String"
-        }
-        TableName = {
-          Type = "String"
-        }
-      }
-      Resources = {
-        SBeaconTermsGlueCatalogTable = {
-          Type = "AWS::Glue::Table"
-          Properties = {
-            DatabaseName = { Ref = "DatabaseName" }
-            CatalogId    = { Ref = "AWS::AccountId" }
-            TableInput = {
-              Name      = { Ref = "TableName" }
-              TableType = "EXTERNAL_TABLE"
-              Parameters = {
-                EXTERNAL       = "TRUE"
-                "orc.compress" = "SNAPPY"
-                numFiles       = "-1"
-              }
-              StorageDescriptor = {
-                Location     = "s3://${aws_s3_bucket.metadata-bucket.bucket}/terms"
-                InputFormat  = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat"
-                OutputFormat = "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"
-                SerdeInfo = {
-                  Name                 = "ORC"
-                  SerializationLibrary = "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
-                  Parameters = {
-                    "serialization.format"      = "1"
-                    "orc.column.index.access"   = "FALSE"
-                    "hive.orc.use-column-names" = "TRUE"
-                  }
-                }
-                Columns = [
-                  {
-                    Name = "term"
-                    Type = "string"
-                  },
-                  {
-                    Name = "label"
-                    Type = "string"
-                  },
-                  {
-                    Name = "type"
-                    Type = "string"
-                  },
-                ]
-              }
-              PartitionKeys = [
-                {
-                  Name    = "kind"
-                  Type    = "string"
-                  Comment = "partition by kind"
-                }
-              ]
-            }
-          }
-        }
-      }
-    }
-  )
+  } 
 }
 
 # 
@@ -843,36 +358,6 @@ resource "aws_glue_catalog_table" "sbeacon-relations" {
       type = "string"
     }
   }
-}
-
-resource "aws_glue_crawler" "sbeacon-crawler" {
-  database_name = aws_glue_catalog_database.metadata-database.name
-  name          = "sbeacon-crawler"
-  role          = aws_iam_role.glue_role.arn
-
-  catalog_target {
-    database_name = aws_glue_catalog_database.metadata-database.name
-    tables = [
-      aws_glue_catalog_table.sbeacon-individuals.name,
-      aws_glue_catalog_table.sbeacon-biosamples.name
-    ]
-  }
-
-  schema_change_policy {
-    delete_behavior = "LOG"
-  }
-
-  configuration = <<EOF
-{
-  "Version":1.0,
-  "Grouping": {
-    "TableGroupingPolicy": "CombineCompatibleSchemas"
-  },
-  "CrawlerOutput": {
-      "Partitions": { "AddOrUpdateBehavior": "InheritFromTable" }
-   }
-}
-EOF
 }
 
 resource "aws_athena_workgroup" "sbeacon-workgroup" {

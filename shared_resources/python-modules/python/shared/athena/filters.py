@@ -5,48 +5,68 @@ from shared.apiutils import (
     CustomFilter,
     OntologyFilter,
     Operator,
-    Similarity,
-)
-from shared.ontoutils import (
-    get_term_ancestors_in_beacon,
-    get_term_descendants_in_beacon,
 )
 from shared.utils import ENV_ATHENA
 from shared.variantutils import perform_variant_search
 from shared.apiutils import RequestParams, Granularity
 
-from .analysis import Analysis
-from .biosample import Biosample
-from .cohort import Cohort
-from .dataset import Dataset, get_datasets
-from .individual import Individual
-from .run import Run
+from .genotype import Genotype
+from .sample import Sample
+from .snp import Snp
+from .phenotype import Phenotype
 
-type_class = {
-    "individuals": Individual,
-    "biosamples": Biosample,
-    "runs": Run,
-    "analyses": Analysis,
-    "datasets": Dataset,
-    "cohorts": Cohort,
+table_request_params = {
+    "sample_id": Genotype,
+    "value": Genotype,
+    "score": Genotype,
+    "theta": Genotype,
+    "b_allele_freq": Genotype,
+    "breed": Sample,
+    "sex": Sample,
+    "id": Snp,
+    "chromosome": Snp,
+    "coordinate": Snp,
+    "allelea_top_base": Snp,
+    "alleleb_top_base": Snp,
+    "birth_weight_kg": Phenotype,
+    "weaning_weight_kg": Phenotype,
+    "six_month_weight_kg": Phenotype,
+    "fat_thickness_cm": Phenotype,
+    "eye_muscle_area_cm2": Phenotype,
+    "height_at_withers_cm": Phenotype,
+    "chest_girth_cm": Phenotype,
+    "shin_circumference_cm": Phenotype,
+    "pre_weaning_gain_kg": Phenotype,
+    "post_weaning_gain_kg": Phenotype,
+    "daily_weight_gain_kg": Phenotype
 }
-type_relations_table_id = {
-    "individuals": "individualid",
-    "biosamples": "biosampleid",
-    "runs": "runid",
-    "analyses": "analysisid",
-    "datasets": "datasetid",
-    "cohorts": "cohortid",
+type_table_id = {
+    "genotypes": "sample_id",
+    "samples": "sample_id",
+    "snps": "id",
+    "phenotypes": "sample_id"
+}
+
+STRING_FIELDS = {
+    "id",
+    "chromosome",
+    "allelea_top_base",
+    "alleleb_top_base",
+    "sample_id",
+    "breed",
+    "sex",
+    "value",
 }
 
 
-# given a dict <f>={"operator":X,"value":Y} return appropriate SQL fragment "<operator> <value>"
-def _get_comparison_operator(filter: Union[AlphanumericFilter, OntologyFilter]):
-    if isinstance(filter.value, int) or isinstance(filter.value, float):
-        # infer a numeric comparison
-        return "!=" if filter.operator == Operator.NOT else filter.operator
-    # infer an alphanumeric comparison
-    return "LIKE" if filter.operator == Operator.EQUAL else "NOT LIKE"
+def _get_comparison_operator(filter):
+    if filter.operator == Operator.NOT:
+        return "!="
+
+    if filter.operator == Operator.EQUAL:
+        return "="
+
+    return filter.operator
 
 
 def entity_search_conditions(
@@ -65,36 +85,35 @@ def entity_search_conditions(
     outer_execution_parameters = []
     filter_samples = []
 
+    # TODO check what the aim of this request is; if it means that we are 100% looking for an individual record
     if request is not None and request.query.request_parameters is not None:
         g_variant = request.query.request_parameters
-        datasets = get_datasets(g_variant.assembly_id, skip=0, limit="ALL")
 
-        query_responses = perform_variant_search(
-            datasets=datasets,
+        print("Performing initial query")
+        query_response = perform_variant_search(
             reference_name=g_variant.reference_name,
             reference_bases=g_variant.reference_bases,
             alternate_bases=g_variant.alternate_bases,
             start=g_variant.start,
             end=g_variant.end,
-            variant_type=g_variant.variant_type,
-            variant_min_length=g_variant.variant_min_length,
-            variant_max_length=g_variant.variant_max_length,
-            requested_granularity=Granularity.RECORD,
             include_datasets=request.query.include_resultset_responses,
-            dataset_samples=[],
             include_samples=True,
         )
 
-        sample_names_relevant_to_variant = set()
-        for query_response in query_responses:
-            sample_names_relevant_to_variant.update(query_response.sample_names)
 
-        filter_samples = list(sample_names_relevant_to_variant)
+        if query_response:
+            sample_names_relevant_to_variant = set()
+            sample_names_relevant_to_variant.update(query_response)
+            filter_samples = list(sample_names_relevant_to_variant)
 
-        if filter_samples:
+            print(f"Found matching samples: {filter_samples}")
+
+            # Everything is joined by the sample id (unique), so we don't need an explicit relations table
+            values = ", ".join(["(?)" for _ in filter_samples])
+
             join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{Analysis._table_name}" S ON RI.analysisid=S.id WHERE S._vcfsampleid IN ({', '.join(['?' for s in filter_samples])}) """
-            )
+                f"SELECT sample_id FROM (VALUES {values}) AS t(sample_id)")
+
             join_execution_parameters += filter_samples
         else:
             # if there are no samples relevant to the variant, then we can return a constraint that will yield no results
@@ -104,89 +123,46 @@ def entity_search_conditions(
         if isinstance(f, AlphanumericFilter):
             # check to see if the field is in default scope
             # karyotypicSex = "XX" for default scope (Individuals)
-            if f.scope is None or f.scope == default_scope:
-                filter_id = f.id.strip().replace(" ", "")
+            filter_id = f.id.strip().replace(" ", "")
 
-                if "." not in filter_id:
-                    # naive comparison
-                    operator = _get_comparison_operator(f)
-                    outer_constraints.append("{} {} ?".format(filter_id, operator))
-                    outer_execution_parameters.append(f"'{str(f.value)}'")
+            if f.scope is None or f.scope == default_scope:
+
+                # naive comparison (JSON will not be in our data)
+                operator = _get_comparison_operator(f)
+
+                if filter_id in STRING_FIELDS:
+                    outer_constraints.append(f"{filter_id} {operator} CAST(? AS VARCHAR)")
                 else:
-                    # this is a json path comparison
-                    json_root = filter_id.split(".", 1)[0]
-                    json_path = filter_id.split(".", 1)[1]
-                    func_call = f"""comparejsonpath({json_root}, '$.{json_path}', '{f.operator}', ?)"""
-                    outer_constraints.append(func_call)
-                    outer_execution_parameters.append(f"'{str(f.value)}'")
-            # otherwise, we have to use the relations table
-            # eg: scope = "cohorts", cohortType = "beacon-defined"
+                    outer_constraints.append(f"{filter_id} {operator} ?")
+
+                outer_execution_parameters.append(str(f.value))
+
             else:
                 group = f.scope
-                joined_class = type_class[group]
-                filter_id = f.id.strip().replace(" ", "")
 
-                if "." not in filter_id:
-                    # naive comparison
-                    operator = _get_comparison_operator(f)
-                    comparison = "{} {} ?".format(filter_id, operator)
-                    join_execution_parameters.append(f"'{str(f.value)}'")
-                    join_constraints.append(
-                        f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE TN.{comparison} """
-                    )
+                if group not in type_table_id or filter_id not in table_request_params:
+                    continue
+
+                operator = _get_comparison_operator(f)
+
+                if filter_id in STRING_FIELDS:
+                    comparison = (f"{filter_id} {operator} CAST(? AS VARCHAR)")
                 else:
-                    # this is a json path comparison from a different entity
-                    json_root = filter_id.split(".", 1)[0]
-                    json_path = filter_id.split(".", 1)[1]
-                    func_call = f"""comparejsonpath(TN.{json_root}, '$.{json_path}', '{f.operator}', ?)"""
-                    join_execution_parameters.append(f"'{str(f.value)}'")
-                    join_constraints.append(
-                        f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{joined_class._table_name}" TN ON RI.{type_relations_table_id[group]}=TN.id WHERE {func_call} """
-                    )
+                    comparison = (f"{filter_id} {operator} ?")
 
-        elif isinstance(f, OntologyFilter):
-            # by default expanded terms is just the term itself
-            expanded_terms = {f.id}
-            # if descendantTerms is false, then similarity measures dont really make sense...
-            if f.include_descendant_terms:
-                # process inclusion of term descendants dependant on 'similarity'
-                if f.similarity in (Similarity.HIGH, Similarity.EXACT):
-                    expanded_terms = get_term_descendants_in_beacon(f.id)
-                else:
-                    # NOTE: this simplistic similarity method not nessisarily efficient or nessisarily desirable
-                    ancestors = get_term_ancestors_in_beacon(f.id)
-                    ancestor_descendants = sorted(
-                        [get_term_descendants_in_beacon(a) for a in ancestors], key=len
-                    )
-                    if f.similarity == Similarity.MEDIUM:
-                        # all terms which have an ancestor half way up
-                        expanded_terms = ancestor_descendants[
-                            len(ancestor_descendants) // 2
-                        ]
-                    elif f.similarity == Similarity.LOW:
-                        # all terms which have any ancestor in common
-                        expanded_terms = ancestor_descendants[-1]
+                join_execution_parameters.append(str(f.value))
 
-            join_execution_parameters += [str(a) for a in expanded_terms]
-            expanded_terms = " , ".join(["?" for a in expanded_terms])
-            # process scope clarification if specified different
-            group = f.scope or default_scope
-            join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.term IN ({expanded_terms}) """
-            )
-        elif isinstance(f, CustomFilter):
-            # TODO this is a dummy replacement, for future implementation
-            group = f.scope or default_scope
-            expanded_terms = "?"
-            join_execution_parameters += [f.id]
-            join_constraints.append(
-                f""" SELECT RI.{type_relations_table_id[id_type]} FROM "{ENV_ATHENA.ATHENA_RELATIONS_TABLE}" RI JOIN "{ENV_ATHENA.ATHENA_TERMS_INDEX_TABLE}" TI ON RI.{type_relations_table_id[group]}=TI.id WHERE TI.kind='{group}' AND TI.term IN ({expanded_terms}) """
-            )
+                table_id_col = type_table_id[group]
+                target_table = table_request_params[filter_id]
+
+                join_constraints.append(
+                    f"""SELECT {table_id_col} FROM "{target_table._table_name}" T WHERE {comparison}"""
+                )
 
     # format fragments together to form coherent SQL expression
     join_constraints = " INTERSECT ".join(join_constraints)
     join_constraints = (
-        f"{id_modifier} IN ({join_constraints}) " if join_constraints else ""
+        f"{type_table_id[id_type]} IN ({join_constraints}) " if join_constraints else ""
     )
     total_constraints = (
         [join_constraints] if join_constraints else []

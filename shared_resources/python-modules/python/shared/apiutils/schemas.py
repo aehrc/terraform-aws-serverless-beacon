@@ -18,6 +18,10 @@ class DefaultSchemas(Enum):
     }
     INDIVIDUALS = {"entityType": "individual", "schema": "beacon-individual-v2.0.0"}
     RUNS = {"entityType": "run", "schema": "beacon-run-v2.0.0"}
+    SAMPLES = {"entityType": "sample", "schema": "beacon-sample-v2.0.0"}
+    GENOTYPES = {"entityType": "genotype", "schema": "beacon-genotype-v2.0.0"}
+    SNPS = {"entityType": "snp", "schema": "beacon-snp-v2.0.0"}
+    PHENOTYPES = {"entityType": "phenotype", "schema": "beacon-phenotype-v2.0.0"}
 
 
 #

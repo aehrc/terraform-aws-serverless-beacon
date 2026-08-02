@@ -31,16 +31,11 @@ class AthenaModel:
     @classmethod
     def get_by_query(cls, query, /, *, queue=None, execution_parameters=None):
         query = query.format(database=ENV_ATHENA.ATHENA_METADATA_DATABASE, table=cls._table_name)
-        exec_id = run_custom_query(
-            query, queue=None, return_id=True, execution_parameters=execution_parameters
+        results = run_custom_query(
+            query, queue=None, return_id=False, execution_parameters=execution_parameters
         )
 
-        if exec_id:
-            if queue is None:
-                return cls.parse_array(exec_id)
-            else:
-                queue.put(cls.parse_array(exec_id))
-        return []
+        return results
 
     @classmethod
     def get_existence_by_query(cls, query, /, *, queue=None, execution_parameters=None):
@@ -49,7 +44,12 @@ class AthenaModel:
             query, queue=None, execution_parameters=execution_parameters
         )
 
-        if not len(result) > 0:
+        # if not len(result) > 0:
+        #     print("Athena query returned no result")
+        #     return []
+        if result is None:
+            raise Exception(f"Athena query failed. query={query} - Athena returned None")
+        if len(result) == 0:
             return []
         elif queue is None:
             return len(result) > 1
@@ -89,7 +89,9 @@ class AthenaModel:
             query, queue=None, execution_parameters=execution_parameters
         )
 
-        if not len(result) > 0:
+        if result is None:
+            raise Exception(f"Athena query failed. query={query} - Athena returned None")
+        if len(result) == 0:
             return []
         elif queue is None:
             return int(result[1]["Data"][0]["VarCharValue"])
@@ -136,6 +138,8 @@ def run_custom_query(
     """
     print(f"{query=}")
     print(f"{execution_parameters=}")
+
+    print([(p, type(p)) for p in execution_parameters])
 
     if execution_parameters is None:
         response = athena.start_query_execution(

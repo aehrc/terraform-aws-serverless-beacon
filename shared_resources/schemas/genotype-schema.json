@@ -1,0 +1,63 @@
+{
+    "$comment": "Schema for the genotypes table",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Schema for a genotype record stored in Athena.",
+    "properties": {
+        "dataset_id": {
+            "description": "Identifier of the dataset this sample belongs to.",
+            "examples": [
+                "em23dsa92mj8g"
+            ],
+            "type": "string"
+        },
+        "sample_id": {
+            "description": "Unique identifier of the sample.",
+            "examples": [
+                "SRR10903401"
+            ],
+            "type": "string"
+        },
+        "id_ref": {
+            "description": "Reference identifier for the SNP.",
+            "examples": [
+                "250506CS3900065000002_1238.1"
+            ],
+            "type": "string"
+        },
+        "value": {
+            "description": "The genotype call.",
+            "enum": ["AA", "AB", "BB", "NC"],
+            "type": "string"
+        },
+        "score": {
+            "description": "The confidence score for the genotype call.",
+            "examples": [
+                0.9238856
+            ],
+            "type": "number"
+        },
+        "theta": {
+            "description": "The theta value for the genotype call.",
+            "examples": [
+                0.4629413
+            ],
+            "type": "number"
+        },
+        "b_allele_freq": {
+            "description": "The frequency of the minor (B) allele.",
+            "examples": [
+                0.5026675
+            ],
+            "type": "number"
+        }
+    },
+    "required": [
+        "dataset_id",
+        "sample_id",
+        "id_ref",
+        "value"
+    ],
+    "title": "Genotype",
+    "type": "object"
+}

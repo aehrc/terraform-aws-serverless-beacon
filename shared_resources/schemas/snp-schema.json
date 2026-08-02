@@ -1,0 +1,66 @@
+{
+    "$comment": "Schema for the snp table",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Schema for a SNP manifest record stored in Athena.",
+    "properties": {
+        "dataset_id": {
+            "description": "Identifier of the dataset this sample belongs to.",
+            "examples": [
+                "em23dsa92mj8g"
+            ],
+            "type": "string"
+        },
+        "id": {
+            "description": "Unique identifier of the SNP.",
+            "examples": [
+                "250506CS3900065000002_1238.1"
+            ],
+            "type": "string"
+        },
+        "chromosome": {
+            "description": "Chromosome SNP is located on.",
+            "examples": [
+                "15"
+            ],
+            "type": "string"
+        },
+        "coordinate": {
+            "description": "Coordinate SNP is located at",
+            "examples": [
+                5327353
+            ],
+            "type": "number"
+        },
+        "allelea_top_base": {
+            "description": "Most common major (A) base.",
+            "examples": [
+                "A",
+                "C",
+                "T",
+                "G"
+            ],
+            "type": "string"
+        },
+        "alleleb_top_base": {
+            "description": "Most common minor (B) base.",
+            "examples": [
+                "A",
+                "C",
+                "T",
+                "G"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "dataset_id",
+        "id",
+        "coordinate",
+        "chromosome",
+        "allelea_top_base",
+        "alleleb_top_base"
+    ],
+    "title": "Snp",
+    "type": "object"
+}
